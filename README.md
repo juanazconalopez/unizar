@@ -54,3 +54,19 @@ npm run build
 ```
 
 En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
+
+## Publicación en Cloudflare Pages
+
+Conecta el repositorio de GitHub desde **Workers & Pages → Create → Pages → Connect to Git** y utiliza:
+
+- Rama de producción: `main`
+- Comando de compilación: `npm run build`
+- Directorio de salida: `dist`
+- Versión de Node: la indicada en `.node-version`
+
+Configura estas variables tanto para producción como para las vistas previas:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+
+Después del primer despliegue, añade la dirección `https://<proyecto>.pages.dev` a las URLs de redirección permitidas de Supabase. La URI autorizada de Google continúa siendo el callback de Supabase, no la URL de Cloudflare.
