@@ -1,75 +1,56 @@
-# React + TypeScript + Vite
+# CDU Rugby Zaragoza · Entrenamientos
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación responsive para planificar y registrar los entrenamientos de un equipo.
 
-Currently, two official plugins are available:
+## Funciones actuales
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Acceso con Google mediante Supabase Auth.
+- Aprobación de cuentas y permisos independientes de jugador, colaborador y owner.
+- Temporadas y participantes con fechas de incorporación y salida.
+- Tareas semanales en borrador, publicadas o anuladas.
+- Resultados con texto, fecha de realización y fatiga de 1 a 5.
+- Panel semanal del jugador.
+- Gestión de usuarios, permisos y temporadas para owners.
 
-## React Compiler
+La autorización real se aplica mediante las políticas RLS de `supabase/migrations`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Desarrollo local
 
-## Expanding the ESLint configuration
+Requiere Node `20.19` o posterior compatible con Vite 8.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Crea `.env.local` con las variables públicas del proyecto:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
+
+Los secretos de Google no deben guardarse en el proyecto ni usar el prefijo `VITE_`. Se configuran únicamente en Supabase, dentro de **Authentication → Sign In / Providers → Google**.
+
+## Organización del código
+
+```text
+src/
+├── components/     # Layout y piezas visuales reutilizables
+├── constants/      # Opciones y valores compartidos
+├── features/       # Pantallas agrupadas por funcionalidad
+├── hooks/          # Estado de autenticación y carga de datos
+├── lib/            # Cliente Supabase y utilidades puras
+├── services/       # Escrituras y operaciones contra Supabase
+├── App.tsx         # Coordinación de vistas y operaciones
+└── types.ts        # Tipos compartidos del dominio
+```
+
+## Comprobaciones
+
+```bash
+npm run lint
+npm run build
+```
+
+En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
