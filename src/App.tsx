@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
-import { LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
+import { DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
+import { AttendanceView } from './features/attendance/AttendanceView'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { SeasonsView } from './features/seasons/SeasonsView'
 import { TasksView } from './features/tasks/TasksView'
@@ -12,6 +13,7 @@ import {
   createSeason,
   createTrainingTask,
   saveTaskResult,
+  saveTrainingAttendance,
   setSeasonMembership,
   updateProfilePermissions,
   updateTaskStatus,
@@ -83,6 +85,16 @@ function App() {
     }
   }
 
+  async function handleAttendance(date: string, attendedPlayerIds: string[]) {
+    if (!auth.session?.user) return
+    const activePlayerIds = data.profiles
+      .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived)
+      .map((profile) => profile.id)
+    await saveTrainingAttendance(date, activePlayerIds, attendedPlayerIds, auth.session.user.id)
+    notify('Asistencia guardada correctamente.')
+    await data.reload()
+  }
+
   async function handleMembership(season: Season, player: Profile, active: boolean) {
     try {
       const existing = data.memberships.find(
@@ -104,6 +116,7 @@ function App() {
   if (auth.loading) return <LoadingScreen />
   if (!auth.session) return <LoginScreen errorMessage={auth.errorMessage} onLogin={auth.signInWithGoogle} />
   if (!data.profile || data.loading && !data.profile) return <LoadingScreen />
+  if (data.profile.is_archived) return <DisabledScreen name={data.profile.display_name} onSignOut={handleSignOut} />
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
 
   const userId = auth.session.user.id
@@ -122,12 +135,21 @@ function App() {
       {view === 'home' && (
         <Dashboard
           memberships={data.memberships}
+          attendance={data.attendance}
           profile={data.profile}
           results={data.results}
           tasks={data.tasks}
           userId={userId}
           onGoToTasks={() => setView('tasks')}
           onSaveResult={handleSaveResult}
+        />
+      )}
+      {view === 'attendance' && data.profile.is_owner && (
+        <AttendanceView
+          attendance={data.attendance}
+          profiles={data.profiles}
+          sessions={data.trainingSessions}
+          onSave={handleAttendance}
         />
       )}
       {view === 'tasks' && (

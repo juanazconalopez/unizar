@@ -10,9 +10,19 @@ Aplicación responsive para planificar y registrar los entrenamientos de un equi
 - Tareas semanales en borrador, publicadas o anuladas.
 - Resultados con texto, fecha de realización y fatiga de 1 a 5.
 - Panel semanal del jugador.
+- Registro de asistencia a entrenamientos de campo por fecha.
+- Estadística personal de asistencia con mensajes motivadores.
 - Gestión de usuarios, permisos y temporadas para owners.
+- Desautorización reversible de cuentas sin perder su histórico.
 
 La autorización real se aplica mediante las políticas RLS de `supabase/migrations`.
+
+## Base de datos
+
+Las migraciones se aplican en orden desde el editor SQL de Supabase. La migración
+`003_attendance_and_archived_users.sql` añade las sesiones de campo, la asistencia,
+el archivo reversible de usuarios y sus políticas RLS. Debe aplicarse antes de
+publicar una versión del frontend que utilice esas funciones.
 
 ## Desarrollo local
 

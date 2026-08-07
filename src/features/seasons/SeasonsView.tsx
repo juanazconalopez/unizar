@@ -69,7 +69,7 @@ function SeasonCard({ season, profiles, memberships, expanded, onToggle, onToggl
       <button className="secondary-button full-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
       {expanded && (
         <div className="member-list">
-          {profiles.filter((player) => player.is_approved).map((player) => {
+          {profiles.filter((player) => player.is_approved && !player.is_archived).map((player) => {
             const membership = seasonMemberships.find((item) => item.player_id === player.id)
             const active = Boolean(membership && !membership.active_until)
             return (

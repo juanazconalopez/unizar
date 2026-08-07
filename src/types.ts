@@ -5,6 +5,7 @@ export type Profile = {
   is_active: boolean
   is_collaborator: boolean
   is_owner: boolean
+  is_archived: boolean
   created_at: string
 }
 
@@ -49,7 +50,23 @@ export type TaskResult = {
   updated_at: string
 }
 
-export type ViewName = 'home' | 'tasks' | 'seasons' | 'team'
+export type TrainingSession = {
+  id: string
+  session_date: string
+  created_by: string
+  created_at: string
+}
+
+export type AttendanceRecord = {
+  session_id: string
+  player_id: string
+  attended: boolean
+  marked_by: string
+  updated_at: string
+  training_sessions: { session_date: string } | null
+}
+
+export type ViewName = 'home' | 'tasks' | 'attendance' | 'seasons' | 'team'
 
 export type ResultValues = {
   resultText: string

@@ -3,14 +3,15 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { mondayFor } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { Profile, ResultValues, SeasonPlayer, TaskResult, TrainingTask } from '../../types'
+import type { AttendanceRecord, Profile, ResultValues, SeasonPlayer, TaskResult, TrainingTask } from '../../types'
 import { TaskCard } from '../tasks/TaskCard'
 
-export function Dashboard({ profile, memberships, tasks, results, userId, onGoToTasks, onSaveResult }: {
+export function Dashboard({ profile, memberships, tasks, results, attendance, userId, onGoToTasks, onSaveResult }: {
   profile: Profile
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
+  attendance: AttendanceRecord[]
   userId: string
   onGoToTasks: () => void
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
@@ -27,6 +28,12 @@ export function Dashboard({ profile, memberships, tasks, results, userId, onGoTo
   const averageFatigue = results.length
     ? (results.reduce((sum, result) => sum + result.fatigue_level, 0) / results.length).toFixed(1)
     : '—'
+  const personalAttendance = attendance.filter((record) => record.player_id === userId)
+  const attendedSessions = personalAttendance.filter((record) => record.attended).length
+  const attendanceRate = personalAttendance.length
+    ? Math.round((attendedSessions / personalAttendance.length) * 100)
+    : 0
+  const motivation = attendanceMotivation(attendanceRate, personalAttendance.length)
 
   return (
     <div className="page">
@@ -39,6 +46,11 @@ export function Dashboard({ profile, memberships, tasks, results, userId, onGoTo
         <StatCard label="Esta semana" value={`${completed}/${weekTasks.length}`} note="tareas completadas" tone="green" />
         <StatCard label="Cumplimiento" value={`${completion}%`} note="esta semana" tone="blue" />
         <StatCard label="Fatiga media" value={averageFatigue} note="en tus registros" tone="coral" />
+        <StatCard label="Asistencia" value={personalAttendance.length ? `${attendanceRate}%` : '—'} note="entrenamientos de campo" tone="lime" />
+      </section>
+      <section className="motivation-card">
+        <span><Icon name="spark" size={22} /></span>
+        <div><strong>{motivation.title}</strong><p>{motivation.text}</p></div>
       </section>
       <section className="section-block">
         <div className="section-heading">
@@ -60,6 +72,14 @@ export function Dashboard({ profile, memberships, tasks, results, userId, onGoTo
       </section>
     </div>
   )
+}
+
+function attendanceMotivation(rate: number, total: number) {
+  if (!total) return { title: 'Tu próxima sesión cuenta', text: 'Cuando empiecen los entrenamientos de campo podrás seguir aquí tu constancia.' }
+  if (rate >= 90) return { title: 'Tu constancia empuja al equipo', text: `Has estado en ${rate}% de los entrenamientos. ¡Sigue así!` }
+  if (rate >= 75) return { title: 'Vas por muy buen camino', text: `Llevas un ${rate}% de asistencia. Cada sesión te acerca un poco más.` }
+  if (rate >= 50) return { title: 'Cada entrenamiento suma', text: `Tu asistencia está en el ${rate}%. El próximo entrenamiento es una oportunidad para avanzar.` }
+  return { title: 'El siguiente paso empieza contigo', text: `Ahora estás en un ${rate}%. Volver al campo ya es progreso.` }
 }
 
 function StatCard({ label, value, note, tone }: { label: string; value: string; note: string; tone: string }) {

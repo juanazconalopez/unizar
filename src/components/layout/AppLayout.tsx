@@ -28,6 +28,7 @@ export function AppLayout({
     { id: 'home', label: 'Inicio', icon: 'home' },
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
     ...(profile.is_owner ? [
+      { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
       { id: 'seasons' as const, label: 'Temporadas', icon: 'calendar' as const },
       { id: 'team' as const, label: 'Equipo', icon: 'users' as const },
     ] : []),

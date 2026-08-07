@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { errorText } from '../lib/errors'
 import { fetchTrainingData } from '../services/trainingService'
-import type { Profile, Season, SeasonPlayer, TaskResult, TrainingTask } from '../types'
+import type { AttendanceRecord, Profile, Season, SeasonPlayer, TaskResult, TrainingSession, TrainingTask } from '../types'
 
 export function useTrainingData(session: Session | null) {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -11,6 +11,8 @@ export function useTrainingData(session: Session | null) {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [tasks, setTasks] = useState<TrainingTask[]>([])
   const [results, setResults] = useState<TaskResult[]>([])
+  const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([])
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -31,6 +33,8 @@ export function useTrainingData(session: Session | null) {
       setResults(data.results)
       setMemberships(data.memberships)
       setProfiles(data.profiles)
+      setTrainingSessions(data.trainingSessions)
+      setAttendance(data.attendance)
     } catch (error) {
       setErrorMessage(errorText(error))
     } finally {
@@ -50,6 +54,8 @@ export function useTrainingData(session: Session | null) {
     profiles,
     tasks,
     results,
+    trainingSessions,
+    attendance,
     loading,
     errorMessage,
     reload,

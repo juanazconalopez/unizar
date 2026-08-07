@@ -53,6 +53,18 @@ export function PendingScreen({ name, onSignOut }: { name: string; onSignOut: ()
   )
 }
 
+export function DisabledScreen({ name, onSignOut }: { name: string; onSignOut: () => void }) {
+  return (
+    <main className="center-screen pending-screen">
+      <span className="pending-club-logo"><img alt="CDU Rugby Zaragoza" src={clubLogo} /></span>
+      <span className="eyebrow">CUENTA DESAUTORIZADA</span>
+      <h1>Hola, {name}</h1>
+      <p>Tu cuenta ya no tiene acceso a la aplicación. Si crees que se trata de un error, ponte en contacto con el responsable del equipo.</p>
+      <button className="secondary-button" onClick={onSignOut}><Icon name="logout" size={18} />Cerrar sesión</button>
+    </main>
+  )
+}
+
 function GoogleIcon() {
   return (
     <svg aria-hidden="true" height="20" viewBox="0 0 24 24" width="20">
