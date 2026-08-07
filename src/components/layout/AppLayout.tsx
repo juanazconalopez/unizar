@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Profile, ViewName } from '../../types'
 import { Icon } from '../Icon'
@@ -9,6 +10,7 @@ type NavigationItem = { id: ViewName; label: string; icon: IconName }
 
 export function AppLayout({
   profile,
+  email,
   view,
   message,
   errorMessage,
@@ -17,6 +19,7 @@ export function AppLayout({
   children,
 }: {
   profile: Profile
+  email: string
   view: ViewName
   message: string
   errorMessage: string
@@ -24,6 +27,9 @@ export function AppLayout({
   onSignOut: () => void
   children: ReactNode
 }) {
+  const contentRef = useRef<HTMLElement>(null)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const navigation: NavigationItem[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
@@ -36,11 +42,39 @@ export function AppLayout({
 
   const role = profile.is_owner ? 'Owner' : profile.is_collaborator ? 'Colaborador' : 'Jugador'
 
+  function navigate(nextView: ViewName) {
+    setProfileMenuOpen(false)
+    onNavigate(nextView)
+  }
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 })
+  }, [view])
+
+  useEffect(() => {
+    if (!profileMenuOpen) return
+
+    function closeOnOutsidePress(event: PointerEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileMenuOpen(false)
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setProfileMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [profileMenuOpen])
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <ClubBrand onClick={() => onNavigate('home')} />
-        <Navigation items={navigation} view={view} onNavigate={onNavigate} />
+        <ClubBrand onClick={() => navigate('home')} />
+        <Navigation items={navigation} view={view} onNavigate={navigate} />
         <div className="sidebar-profile">
           <Avatar name={profile.display_name} />
           <div><strong>{profile.display_name}</strong><span>{role}</span></div>
@@ -50,17 +84,52 @@ export function AppLayout({
         </div>
       </aside>
 
-      <main className="content">
+      <main className="content" ref={contentRef}>
         <header className="mobile-header">
-          <ClubBrand compact onClick={() => onNavigate('home')} />
-          <Avatar name={profile.display_name} />
+          <ClubBrand compact onClick={() => navigate('home')} />
+          <div className="mobile-profile-actions" ref={profileMenuRef}>
+            <button
+              aria-expanded={profileMenuOpen}
+              aria-haspopup="menu"
+              aria-label="Abrir menú de usuario"
+              className="mobile-avatar-button"
+              onClick={() => setProfileMenuOpen((open) => !open)}
+              type="button"
+            >
+              <Avatar name={profile.display_name} />
+            </button>
+            {profileMenuOpen && (
+              <div className="mobile-profile-menu" role="menu">
+                <div className="mobile-profile-summary">
+                  <Avatar name={profile.display_name} />
+                  <div>
+                    <strong>{profile.display_name}</strong>
+                    <span>{email || 'Cuenta de Google'}</span>
+                  </div>
+                </div>
+                <span className="mobile-role">{role}</span>
+                <button
+                  className="mobile-signout-button"
+                  onClick={() => {
+                    setProfileMenuOpen(false)
+                    onSignOut()
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  <Icon name="logout" size={18} />
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
+          </div>
         </header>
         {message && <div className="toast success"><Icon name="check" size={18} />{message}</div>}
         {errorMessage && <div className="toast error">{errorMessage}</div>}
         {children}
       </main>
 
-      <Navigation mobile items={navigation} view={view} onNavigate={onNavigate} />
+      <Navigation mobile items={navigation} view={view} onNavigate={navigate} />
     </div>
   )
 }

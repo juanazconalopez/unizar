@@ -195,14 +195,27 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .mobile-header, .mobile-nav { display: none; }
 
 @media (max-width: 900px) {
+  .app-shell { height: 100vh; height: 100dvh; min-height: 0; display: grid; grid-template-rows: minmax(0,1fr) auto; overflow: hidden; }
   .sidebar { display: none; }
-  .content { margin-left: 0; padding-bottom: calc(84px + env(safe-area-inset-bottom)); overflow-x: clip; }
+  .content { min-height: 0; height: auto; margin-left: 0; padding-bottom: 0; overflow-x: clip; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   .mobile-header { position: sticky; z-index: 15; top: 0; min-height: 70px; padding: max(8px,env(safe-area-inset-top)) 18px 8px; display: flex; align-items: center; justify-content: space-between; color: white; background: #07513c; }
   .mobile-header .brand { padding: 0; }
   .mobile-header .club-logo-wrap { width: 44px; height: 44px; }
   .mobile-header .brand-copy strong { font-size: 15px; }
   .mobile-header .brand-copy small { font-size: 8px; }
-  .mobile-nav { position: fixed; z-index: 20; top: auto; right: 0; bottom: 0; left: 0; width: 100%; max-width: 100vw; min-height: calc(70px + env(safe-area-inset-bottom)); padding: 7px 8px max(7px,env(safe-area-inset-bottom)); overflow: hidden; display: flex; align-items: flex-start; justify-content: space-around; border-top: 1px solid var(--line); background: rgba(255,255,255,.97); box-shadow: 0 -5px 18px rgba(31,63,54,.08); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transform: translateZ(0); }
+  .mobile-profile-actions { position: relative; display: flex; align-items: center; }
+  .mobile-avatar-button { width: 44px; height: 44px; padding: 3px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; display: grid; place-items: center; color: inherit; background: rgba(255,255,255,.08); }
+  .mobile-avatar-button .avatar { width: 36px; height: 36px; }
+  .mobile-avatar-button[aria-expanded='true'] { border-color: white; background: rgba(255,255,255,.18); }
+  .mobile-profile-menu { position: absolute; z-index: 25; top: calc(100% + 10px); right: 0; width: min(285px,calc(100vw - 24px)); padding: 15px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: white; box-shadow: 0 16px 42px rgba(18,56,46,.22); }
+  .mobile-profile-summary { min-width: 0; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 11px; }
+  .mobile-profile-summary > div > strong, .mobile-profile-summary > div > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-profile-summary > div > strong { font-size: 13px; }
+  .mobile-profile-summary > div > span { margin-top: 3px; color: var(--muted); font-size: 11px; }
+  .mobile-role { width: fit-content; margin: 12px 0; padding: 4px 8px; border-radius: 20px; display: block; color: var(--green); background: var(--green-soft); font-size: 9px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; }
+  .mobile-signout-button { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #ebc7bf; border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #984e42; background: #fff7f5; font-size: 12px; font-weight: 800; }
+  .mobile-signout-button:hover { background: #fff0ed; }
+  .mobile-nav { position: relative; z-index: 20; width: 100%; min-width: 0; max-width: 100%; min-height: calc(70px + env(safe-area-inset-bottom)); padding: 7px 8px max(7px,env(safe-area-inset-bottom)); overflow: hidden; display: flex; align-items: flex-start; justify-content: space-around; border-top: 1px solid var(--line); background: rgba(255,255,255,.97); box-shadow: 0 -5px 18px rgba(31,63,54,.08); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
   .mobile-nav button { min-width: 0; min-height: 52px; padding: 5px 2px; overflow: hidden; border: 0; flex: 1 1 0; display: grid; justify-items: center; align-content: center; gap: 3px; color: #82908c; background: transparent; font-size: 9px; font-weight: 700; }
   .mobile-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mobile-nav button.active { color: var(--green); }

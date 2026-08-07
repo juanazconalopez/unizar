@@ -125,6 +125,7 @@ function App() {
 
   return (
     <AppLayout
+      email={auth.session.user.email ?? ''}
       errorMessage={errorMessage}
       message={message}
       profile={data.profile}
