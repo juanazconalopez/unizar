@@ -1,18 +1,23 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '../../components/Icon'
+import { FatigueIcon } from '../../components/ui/FatigueIcon'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { addDays, formatDate, formatWeek, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { ResultValues, TaskResult, TrainingTask } from '../../types'
 
-export function TaskCard({ task, result, onSave, managerActions }: {
+export function TaskCard({ task, result, onSave, managerActions, hideWeek = false }: {
   task: TrainingTask
   result?: TaskResult
   onSave?: (task: TrainingTask, values: ResultValues) => Promise<void>
   managerActions?: ReactNode
+  hideWeek?: boolean
 }) {
+  const detailTitleId = useId()
   const [open, setOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const resultFatigue = FATIGUE_LEVELS.find((item) => item.value === result?.fatigue_level)
@@ -42,22 +47,30 @@ export function TaskCard({ task, result, onSave, managerActions }: {
 
   return (
     <article className={result ? 'task-card completed' : 'task-card'}>
+      {!open && (
+        <button
+          aria-label={`Ver detalle de ${task.title}`}
+          className="task-card-detail-link"
+          onClick={() => setDetailOpen(true)}
+          type="button"
+        />
+      )}
       <div className="task-status-icon">{result ? <Icon name="check" /> : <Icon name="clock" />}</div>
       <div className="task-main">
         <div className="task-meta">
           <span>{task.training_type || 'Entrenamiento'}</span><span>·</span><span>{task.seasons?.name}</span>
         </div>
         <h3>{task.title}</h3>
-        {task.description && <p>{task.description}</p>}
-        <div className="task-footer">
-          <span>{formatWeek(task.week_start)}</span>
+        {task.description && <p className="task-card-description">{task.description}</p>}
+        {(!hideWeek || result) && <div className="task-footer">
+          {!hideWeek && <span>{formatWeek(task.week_start)}</span>}
           {result && (
             <span className="result-summary">
               {formatDate(result.performed_on, { weekday: 'long', day: 'numeric', month: 'short' })}
-              {' · '}{resultFatigue?.emoji} {resultFatigue?.label}
+              {' · '}<FatigueIcon level={result.fatigue_level} size={16} /> {resultFatigue?.label}
             </span>
           )}
-        </div>
+        </div>}
         {open && onSave && (
           <form className="result-form" onSubmit={submit}>
             <label>
@@ -73,8 +86,8 @@ export function TaskCard({ task, result, onSave, managerActions }: {
               <div className="fatigue-options">
                 {FATIGUE_LEVELS.map((item) => (
                   <label key={item.value}>
-                    <input defaultChecked={(result?.fatigue_level ?? 3) === item.value} name="fatigueLevel" type="radio" value={item.value} />
-                    <span><b>{item.emoji}</b><small>{item.label}</small></span>
+                    <input aria-label={item.label} defaultChecked={(result?.fatigue_level ?? 3) === item.value} name="fatigueLevel" type="radio" value={item.value} />
+                    <span><FatigueIcon level={item.value} /><small>{item.label}</small></span>
                   </label>
                 ))}
               </div>
@@ -89,12 +102,37 @@ export function TaskCard({ task, result, onSave, managerActions }: {
       </div>
       <div className="task-actions">
         {managerActions}
-        {onSave && task.status === 'published' && (
+        {onSave && task.status === 'published' && !open && (
           <button className={result ? 'secondary-button compact' : 'primary-button compact'} onClick={() => setOpen((value) => !value)}>
             {result ? 'Editar' : 'Completar'}
           </button>
         )}
       </div>
+      {detailOpen && createPortal(
+        <div className="task-detail-backdrop" onClick={() => setDetailOpen(false)}>
+          <section
+            aria-labelledby={detailTitleId}
+            aria-modal="true"
+            className="task-detail-dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="task-detail-heading">
+              <div>
+                <span className="eyebrow">{task.training_type || 'ENTRENAMIENTO'} · {task.seasons?.name}</span>
+                <h2 id={detailTitleId}>{task.title}</h2>
+              </div>
+              <button aria-label="Cerrar detalle" className="icon-button" onClick={() => setDetailOpen(false)} type="button">×</button>
+            </div>
+            <div className="task-detail-week"><Icon name="calendar" size={17} /><span>{formatWeek(task.week_start)}</span></div>
+            <div className="task-detail-description">
+              <span className="eyebrow">INDICACIONES</span>
+              <p>{task.description || 'Esta tarea no tiene indicaciones adicionales.'}</p>
+            </div>
+          </section>
+        </div>,
+        document.body,
+      )}
     </article>
   )
 }

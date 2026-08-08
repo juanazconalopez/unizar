@@ -17,7 +17,9 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const currentMonday = mondayFor(new Date())
-  const completedIds = new Set(results.map((result) => result.task_id))
+  const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
+  const publishedResults = results.filter((result) => publishedTaskIds.has(result.task_id))
+  const completedIds = new Set(publishedResults.map((result) => result.task_id))
   const weekTasks = tasks
     .filter((task) => (
       task.week_start === currentMonday
@@ -31,8 +33,8 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
     })
   const completed = weekTasks.filter((task) => completedIds.has(task.id)).length
   const completion = weekTasks.length ? Math.round((completed / weekTasks.length) * 100) : 0
-  const averageFatigue = results.length
-    ? (results.reduce((sum, result) => sum + result.fatigue_level, 0) / results.length).toFixed(1)
+  const averageFatigue = publishedResults.length
+    ? (publishedResults.reduce((sum, result) => sum + result.fatigue_level, 0) / publishedResults.length).toFixed(1)
     : '—'
   const personalAttendance = attendance.filter((record) => record.player_id === userId)
   const attendedSessions = personalAttendance.filter((record) => record.attended).length
@@ -68,7 +70,7 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
             {weekTasks.slice(0, 4).map((task) => (
               <TaskCard
                 key={task.id}
-                result={results.find((item) => item.task_id === task.id)}
+                result={publishedResults.find((item) => item.task_id === task.id)}
                 task={task}
                 onSave={onSaveResult}
               />

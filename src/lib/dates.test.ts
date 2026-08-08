@@ -1,0 +1,28 @@
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { addDays, mondayFor, seasonState, toIsoDate, todayIso } from './dates'
+
+afterEach(() => vi.useRealTimers())
+
+describe('date helpers', () => {
+  test('calculates Monday without mutating the supplied Date', () => {
+    const date = new Date('2026-08-09T12:00:00')
+
+    expect(mondayFor(date)).toBe('2026-08-03')
+    expect(toIsoDate(date)).toBe('2026-08-09')
+  })
+
+  test('adds days across month and year boundaries', () => {
+    expect(addDays('2026-12-30', 3)).toBe('2027-01-02')
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+  })
+
+  test('uses the current day to classify seasons', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-05T12:00:00'))
+
+    expect(todayIso()).toBe('2026-08-05')
+    expect(seasonState({ start_date: '2026-01-01', end_date: '2026-12-31' })).toBe('Activa')
+    expect(seasonState({ start_date: '2026-09-01', end_date: '2027-06-30' })).toBe('Próxima')
+    expect(seasonState({ start_date: '2025-01-01', end_date: '2025-12-31' })).toBe('Finalizada')
+  })
+})

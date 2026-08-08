@@ -29,6 +29,7 @@ publicar una versión del frontend que utilice esas funciones.
 Requiere Node `20.19` o posterior compatible con Vite 8.
 
 ```bash
+nvm use 22
 npm install
 npm run dev
 ```
@@ -59,8 +60,19 @@ src/
 ## Comprobaciones
 
 ```bash
+nvm use 22
+npm test
 npm run lint
 npm run build
+```
+
+Los tests usan Vitest y Testing Library. Las pruebas de cada componente o feature
+se guardan junto al archivo probado (`*.test.tsx`); `src/test` contiene únicamente
+la configuración y las fixtures compartidas. Para trabajar en modo interactivo:
+
+```bash
+nvm use 22
+npm run test:watch
 ```
 
 En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
