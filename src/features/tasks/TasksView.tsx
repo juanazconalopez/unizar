@@ -1,27 +1,35 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { addDays, formatWeek, mondayFor } from '../../lib/dates'
+import { addDays, formatWeek, mondayFor, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
 import { TaskCard } from './TaskCard'
 import { TaskForm } from './TaskForm'
+import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 
-export function TasksView({ canManage, seasons, memberships, tasks, results, userId, onCreate, onSaveResult, onStatusChange }: {
+export function TasksView({ canManage, isOwner = false, seasons, memberships, tasks, results, userId, onCreate, onUpdate, onSaveResult, onStatusChange }: {
   canManage: boolean
+  isOwner?: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
   userId: string
   onCreate: (values: TaskValues) => Promise<void>
+  onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
+  const [editingTask, setEditingTask] = useState<TrainingTask | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
+  const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
+  const [selectedPlanningDate, setSelectedPlanningDate] = useState(todayIso())
+  const [planningMonth, setPlanningMonth] = useState(`${todayIso().slice(0, 7)}-01`)
+  const currentWeekRef = useRef<HTMLElement>(null)
   const resultIds = new Set(results.map((result) => result.task_id))
   const filteredTasks = tasks.filter((task) => {
     if (canManage) return true
@@ -32,21 +40,78 @@ export function TasksView({ canManage, seasons, memberships, tasks, results, use
   })
   const currentWeek = mondayFor(new Date())
   const oldestVisibleWeek = addDays(currentWeek, -(visibleWeekCount - 1) * 7)
-  const visibleTasks = canManage
-    ? filteredTasks
-    : filteredTasks.filter((task) => (
-      filter === 'pending'
-        ? task.week_start === currentWeek
-        : task.week_start >= oldestVisibleWeek && task.week_start <= currentWeek
-    ))
-  const taskWeeks = canManage ? [] : groupTasksByWeek(visibleTasks, resultIds)
-  const hasOlderTasks = !canManage
-    && filter !== 'pending'
+  const visibleTasks = filteredTasks.filter((task) => {
+    if (!canManage && filter === 'pending') return task.week_start === currentWeek
+    return task.week_start >= oldestVisibleWeek && (canManage || task.week_start <= currentWeek)
+  })
+  const taskWeeks = groupTasksByWeek(visibleTasks, resultIds)
+  const displayedTaskWeeks = canManage ? includeCurrentWeek(taskWeeks, currentWeek) : taskWeeks
+  const hasOlderTasks = (canManage || filter !== 'pending')
     && filteredTasks.some((task) => task.week_start < oldestVisibleWeek)
+  const selectedPlanningWeek = mondayFor(selectedPlanningDate)
+  const selectedWeekTasks = groupTasksByWeek(
+    tasks.filter((task) => task.week_start === selectedPlanningWeek),
+    resultIds,
+  )[0]?.weekTasks ?? []
+  const formOpen = showForm || editingTask !== null
+
+  useEffect(() => {
+    if (!canManage || managementView !== 'list') return
+    const frame = window.requestAnimationFrame(() => {
+      currentWeekRef.current?.scrollIntoView?.({ block: 'start' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [canManage, managementView])
 
   function changeFilter(nextFilter: typeof filter) {
     setFilter(nextFilter)
     setVisibleWeekCount(3)
+  }
+
+  function goToCurrentWeek() {
+    const today = todayIso()
+    setSelectedPlanningDate(today)
+    setPlanningMonth(`${today.slice(0, 7)}-01`)
+  }
+
+  function openCreateForm() {
+    setEditingTask(null)
+    setShowForm(true)
+  }
+
+  function openEditForm(task: TrainingTask) {
+    setShowForm(false)
+    setEditingTask(task)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingTask(null)
+  }
+
+  async function saveTask(values: TaskValues) {
+    if (editingTask) {
+      await onUpdate(editingTask, values)
+      if (managementView === 'calendar') {
+        setSelectedPlanningDate(values.date)
+        setPlanningMonth(`${values.date.slice(0, 7)}-01`)
+      }
+    } else {
+      await onCreate(values)
+    }
+    closeForm()
+  }
+
+  function managerActionsFor(task: TrainingTask) {
+    if (!canManage) return undefined
+    const canEdit = isOwner || task.created_by === userId
+    if (!canEdit) return <span className={`status-select ${task.status}`}>{statusLabel(task.status)}</span>
+    return (
+      <>
+        <StatusControl status={task.status} onChange={(status) => onStatusChange(task.id, status)} />
+        <button className="secondary-button compact" onClick={() => openEditForm(task)} type="button">Editar tarea</button>
+      </>
+    )
   }
 
   return (
@@ -55,13 +120,26 @@ export function TasksView({ canManage, seasons, memberships, tasks, results, use
         eyebrow="PLANIFICACIÓN"
         title="Tareas"
         subtitle={canManage ? 'Crea, publica y revisa los entrenamientos.' : 'Consulta y completa tus entrenamientos.'}
-        action={canManage ? <button className="primary-button" onClick={() => setShowForm(true)}><Icon name="plus" size={18} />Nueva tarea</button> : undefined}
+        action={canManage ? (
+          <div className="task-view-actions">
+            <button className="secondary-button" onClick={() => { closeForm(); setManagementView((view) => view === 'calendar' ? 'list' : 'calendar') }}>
+              <Icon name={managementView === 'calendar' ? 'tasks' : 'calendar'} size={18} />
+              {managementView === 'calendar' ? 'Vista de lista' : 'Vista calendario'}
+            </button>
+            {managementView === 'list' && !formOpen && (
+              <button className="primary-button" onClick={openCreateForm}><Icon name="plus" size={18} />Nueva tarea</button>
+            )}
+          </div>
+        ) : undefined}
       />
-      {showForm && (
+      {formOpen && managementView === 'list' && (
         <TaskForm
+          key={editingTask?.id ?? 'new-list-task'}
+          initialDate={todayIso()}
           seasons={seasons}
-          onCancel={() => setShowForm(false)}
-          onCreate={async (values) => { await onCreate(values); setShowForm(false) }}
+          task={editingTask ?? undefined}
+          onCancel={closeForm}
+          onSubmit={saveTask}
         />
       )}
       {!canManage && (
@@ -73,59 +151,107 @@ export function TasksView({ canManage, seasons, memberships, tasks, results, use
           ))}
         </div>
       )}
-      {canManage ? (
-        <div className="task-list">
-          {visibleTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              managerActions={<StatusControl status={task.status} onChange={(status) => onStatusChange(task.id, status)} />}
-              onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
-              result={results.find((item) => item.task_id === task.id)}
-              task={task}
-            />
-          ))}
-          {!visibleTasks.length && <EmptyState title="No hay tareas" text="Crea la primera tarea para empezar a planificar." />}
-        </div>
-      ) : (
-        <>
-          <div className="task-week-list">
-            {taskWeeks.map(({ weekStart, weekTasks }) => (
-              <section className="task-week-group" key={weekStart}>
-                <div className="task-week-heading">
-                  <div><span className="eyebrow">{weekRelativeLabel(weekStart, currentWeek)}</span><h2>{formatWeek(weekStart)}</h2></div>
-                  <span>{weekTasks.length} {weekTasks.length === 1 ? 'tarea' : 'tareas'}</span>
-                </div>
-                <div className="task-list">
-                  {weekTasks.map((task) => (
-                    <TaskCard
-                      hideWeek
-                      key={task.id}
-                      onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
-                      result={results.find((item) => item.task_id === task.id)}
-                      task={task}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-            {!visibleTasks.length && (
-              <EmptyState
-                title="No hay tareas"
-                text={filter === 'pending' ? 'No hay tareas pendientes esta semana.' : 'No hay entrenamientos en esta categoría durante las semanas visibles.'}
+      {canManage && managementView === 'calendar' ? (
+        <div className="task-calendar-view">
+          <div className="planning-current-action">
+            <button className="secondary-button compact" onClick={goToCurrentWeek} type="button">
+              <Icon name="calendar" size={16} />Ir a la semana actual
+            </button>
+          </div>
+          <TaskPlanningCalendar
+            month={planningMonth}
+            selectedDate={selectedPlanningDate}
+            tasks={tasks}
+            onMonthChange={setPlanningMonth}
+            onSelectDate={setSelectedPlanningDate}
+          />
+          <section className="selected-planning-week">
+            <div className="task-week-heading">
+              <div><span className="eyebrow">SEMANA SELECCIONADA</span><h2>{formatWeek(selectedPlanningWeek)}</h2></div>
+              <span>{selectedWeekTasks.length} {selectedWeekTasks.length === 1 ? 'tarea' : 'tareas'}</span>
+            </div>
+            <div className="task-list">
+              {selectedWeekTasks.map((task) => (
+                <TaskCard
+                  hideWeek
+                  key={task.id}
+                  managerActions={managerActionsFor(task)}
+                  onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
+                  result={results.find((item) => item.task_id === task.id)}
+                  task={task}
+                />
+              ))}
+              {!selectedWeekTasks.length && <EmptyState title="Semana sin tareas" text="Crea una tarea para empezar a planificar esta semana." />}
+            </div>
+            <div className="selected-week-actions">
+              {!formOpen && (
+                <button className="primary-button" onClick={openCreateForm} type="button">
+                  <Icon name="plus" size={18} />Nueva tarea en esta semana
+                </button>
+              )}
+            </div>
+            {formOpen && (
+              <TaskForm
+                key={editingTask?.id ?? 'new-calendar-task'}
+                initialDate={selectedPlanningDate}
+                seasons={seasons}
+                task={editingTask ?? undefined}
+                onCancel={closeForm}
+                onSubmit={saveTask}
               />
             )}
-          </div>
-          {hasOlderTasks && (
-            <div className="load-more-weeks">
-              <button className="secondary-button" onClick={() => setVisibleWeekCount((count) => count + 2)} type="button">
-                Ver dos semanas anteriores
-              </button>
+          </section>
+        </div>
+      ) : <>
+        <div className="task-week-list">
+        {displayedTaskWeeks.map(({ weekStart, weekTasks }) => (
+          <section className="task-week-group" key={weekStart} ref={weekStart === currentWeek ? currentWeekRef : undefined}>
+            <div className="task-week-heading">
+              <div><span className="eyebrow">{weekRelativeLabel(weekStart, currentWeek)}</span><h2>{formatWeek(weekStart)}</h2></div>
+              <span>{weekTasks.length} {weekTasks.length === 1 ? 'tarea' : 'tareas'}</span>
             </div>
-          )}
-        </>
+            <div className="task-list">
+              {weekTasks.map((task) => (
+                <TaskCard
+                  hideWeek
+                  key={task.id}
+                  managerActions={managerActionsFor(task)}
+                  onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
+                  result={results.find((item) => item.task_id === task.id)}
+                  task={task}
+                />
+              ))}
+              {canManage && !weekTasks.length && <EmptyState title="Semana sin tareas" text="No hay tareas planificadas para la semana actual." />}
+            </div>
+          </section>
+        ))}
+        {!displayedTaskWeeks.length && (
+          <EmptyState
+            title="No hay tareas"
+            text={canManage
+              ? 'Crea la primera tarea para empezar a planificar.'
+              : filter === 'pending'
+                ? 'No hay tareas pendientes esta semana.'
+                : 'No hay entrenamientos en esta categoría durante las semanas visibles.'}
+          />
+        )}
+      </div>
+      {hasOlderTasks && (
+        <div className="load-more-weeks">
+          <button className="secondary-button" onClick={() => setVisibleWeekCount((count) => count + 2)} type="button">
+            Ver dos semanas anteriores
+          </button>
+        </div>
       )}
+      </>}
     </div>
   )
+}
+
+function includeCurrentWeek(taskWeeks: Array<{ weekStart: string; weekTasks: TrainingTask[] }>, currentWeek: string) {
+  if (taskWeeks.some((week) => week.weekStart === currentWeek)) return taskWeeks
+  return [...taskWeeks, { weekStart: currentWeek, weekTasks: [] }]
+    .sort((first, second) => second.weekStart.localeCompare(first.weekStart))
 }
 
 function groupTasksByWeek(tasks: TrainingTask[], resultIds: Set<string>) {
@@ -145,8 +271,10 @@ function groupTasksByWeek(tasks: TrainingTask[], resultIds: Set<string>) {
 
 function weekRelativeLabel(weekStart: string, currentWeek: string) {
   if (weekStart === currentWeek) return 'SEMANA ACTUAL'
+  if (weekStart === addDays(currentWeek, 7)) return 'SEMANA PRÓXIMA'
   if (weekStart === addDays(currentWeek, -7)) return 'SEMANA ANTERIOR'
   const weeksAgo = Math.round((Date.parse(`${currentWeek}T12:00:00`) - Date.parse(`${weekStart}T12:00:00`)) / 604_800_000)
+  if (weeksAgo < 0) return `DENTRO DE ${Math.abs(weeksAgo)} SEMANAS`
   return `HACE ${weeksAgo} SEMANAS`
 }
 
@@ -158,4 +286,10 @@ function StatusControl({ status, onChange }: { status: TaskStatus; onChange: (st
       <option value="cancelled">Anulada</option>
     </select>
   )
+}
+
+function statusLabel(status: TaskStatus) {
+  if (status === 'published') return 'Publicada'
+  if (status === 'draft') return 'Borrador'
+  return 'Anulada'
 }

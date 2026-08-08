@@ -130,6 +130,18 @@ export async function createTrainingTask(values: TaskValues, userId: string) {
   if (error) throw error
 }
 
+export async function updateTrainingTask(taskId: string, values: TaskValues) {
+  const { error } = await supabase.from('tasks').update({
+    season_id: values.seasonId,
+    week_start: mondayFor(values.date),
+    title: values.title.trim(),
+    description: values.description.trim() || null,
+    training_type: values.trainingType,
+    status: values.status,
+  }).eq('id', taskId)
+  if (error) throw error
+}
+
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId)
   if (error) throw error

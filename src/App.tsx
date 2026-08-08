@@ -17,6 +17,7 @@ import {
   saveTrainingAttendance,
   setSeasonMembership,
   updateProfilePermissions,
+  updateTrainingTask,
   updateTaskStatus,
 } from './services/trainingService'
 import type {
@@ -68,6 +69,17 @@ function App() {
       await data.reload()
     } catch (error) {
       setOperationError(errorText(error))
+    }
+  }
+
+  async function handleUpdateTask(task: TrainingTask, values: TaskValues) {
+    try {
+      await updateTrainingTask(task.id, values)
+      notify('Tarea actualizada.')
+      await data.reload()
+    } catch (error) {
+      setOperationError(errorText(error))
+      throw error
     }
   }
 
@@ -170,12 +182,14 @@ function App() {
       {view === 'tasks' && (
         <TasksView
           canManage={canManageTasks}
+          isOwner={data.profile.is_owner}
           memberships={data.memberships}
           results={personalResults}
           seasons={data.seasons}
           tasks={data.tasks}
           userId={userId}
           onCreate={handleCreateTask}
+          onUpdate={handleUpdateTask}
           onSaveResult={handleSaveResult}
           onStatusChange={handleTaskStatus}
         />

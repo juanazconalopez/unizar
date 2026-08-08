@@ -46,12 +46,12 @@ describe('TaskCard', () => {
     const user = userEvent.setup()
     const { rerender } = render(<TaskCard task={makeTask()} result={makeResult()} onSave={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Editar' }))
-    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar resultado' }))
+    expect(screen.queryByRole('button', { name: 'Editar resultado' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Resultado del entrenamiento')).toHaveValue('Trabajo completado.')
     expect(screen.getByRole('radio', { name: /Media/ })).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Cancelar' }))
-    expect(screen.getByRole('button', { name: 'Editar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar resultado' })).toBeInTheDocument()
 
     rerender(<TaskCard task={makeTask({ status: 'draft' })} onSave={vi.fn()} />)
     expect(screen.queryByRole('button', { name: 'Completar' })).not.toBeInTheDocument()

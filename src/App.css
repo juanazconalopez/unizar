@@ -87,6 +87,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 9px; }
 .form-error { color: #a64236 !important; font-size: 12px !important; }
 .panel-form { margin: -15px 0 30px; padding: 27px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: var(--shadow); }
+.task-form-dialog { width: min(760px,100%); max-height: min(820px,calc(100vh - 48px)); margin: 0; overflow-y: auto; box-shadow: 0 24px 70px rgba(12,39,32,.2); }
+.task-form-description textarea { min-height: 190px; line-height: 1.55; }
 .panel-form-heading { margin-bottom: 23px; display: flex; justify-content: space-between; align-items: start; }
 .panel-form-heading h2 { margin: 4px 0 0; font-size: 22px; }
 .panel-form-heading .icon-button:hover { background: var(--canvas); }
@@ -96,7 +98,20 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .filter-tabs button { padding: 7px 14px; border: 0; border-radius: 7px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; }
 .filter-tabs button.active { color: var(--green); background: white; box-shadow: 0 2px 7px rgba(31,63,54,.08); }
 .task-week-list { display: grid; gap: 30px; }
-.task-week-group { min-width: 0; }
+.task-view-actions { display: flex; align-items: center; gap: 9px; }
+.task-calendar-view { display: grid; gap: 27px; }
+.planning-current-action { margin-bottom: -17px; display: flex; justify-content: flex-end; }
+.selected-planning-week { min-width: 0; }
+.selected-planning-week .empty-state { padding: 23px 20px; }
+.selected-planning-week .empty-state > span { width: 36px; height: 36px; }
+.selected-planning-week .empty-state h3 { margin-top: 9px; }
+.selected-week-actions { margin-top: 14px; display: flex; justify-content: flex-end; }
+.task-planning-panel { min-width: 0; }
+.task-planning-calendar > button { min-height: 100px; }
+.week-task-bubbles { max-width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
+.week-task-bubbles i { width: 17px; height: 17px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #356b74; background: #dff0f2; font-style: normal; font-size: 8px; font-weight: 900; }
+.week-task-bubbles small { padding: 0 2px; color: #356b74; font-size: 8px; font-weight: 800; }
+.task-week-group { min-width: 0; scroll-margin-top: 18px; }
 .task-week-heading { margin-bottom: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .task-week-heading h2 { margin: 4px 0 0; color: var(--ink); font-size: 18px; }
 .task-week-heading > span { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
@@ -317,6 +332,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .page-header { margin-bottom: 27px; align-items: flex-start; flex-direction: column; }
   .page-header h1 { font-size: 34px; }
   .page-header .primary-button { width: 100%; }
+  .task-view-actions { width: 100%; align-items: stretch; flex-direction: column-reverse; }
+  .task-view-actions .secondary-button { width: 100%; }
+  .selected-week-actions .primary-button { width: 100%; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 32px; }
   .stat-card { min-height: 125px; padding: 17px; }
   .stat-card strong { font-size: 31px; }
@@ -325,6 +343,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .task-status-icon { width: 33px; height: 33px; }
   .task-detail-backdrop { padding: 12px; }
   .task-detail-dialog { max-height: calc(100vh - 24px); padding: 21px 18px; border-radius: 15px; }
+  .task-form-dialog { max-height: calc(100vh - 24px); margin: 0; padding: 21px 18px; border-radius: 15px; }
+  .task-form-description textarea { min-height: 220px; }
   .task-detail-heading h2 { font-size: 21px; }
   .attendance-toolbar { min-width: 0; max-width: 100%; align-items: stretch; flex-direction: column; }
   .attendance-toolbar > label { width: 100%; }
@@ -346,6 +366,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .calendar-weekdays { padding-inline: 5px; }
   .statistics-calendar { padding: 0 5px 5px; }
   .statistics-calendar > button, .calendar-empty { min-height: 69px; padding: 6px 3px; gap: 3px; }
+  .task-planning-calendar > button { min-height: 76px; }
+  .week-task-bubbles { gap: 2px; }
+  .week-task-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .statistics-calendar > button.today strong { width: 22px; height: 22px; margin: -2px 0 0 -1px; }
   .statistics-calendar > button small { width: 100%; padding: 2px 3px; font-size: 7px; }
   .calendar-legend { padding: 10px 10px 13px; gap: 7px 12px; }

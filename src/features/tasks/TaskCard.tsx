@@ -104,7 +104,7 @@ export function TaskCard({ task, result, onSave, managerActions, hideWeek = fals
         {managerActions}
         {onSave && task.status === 'published' && !open && (
           <button className={result ? 'secondary-button compact' : 'primary-button compact'} onClick={() => setOpen((value) => !value)}>
-            {result ? 'Editar' : 'Completar'}
+            {result ? 'Editar resultado' : 'Completar'}
           </button>
         )}
       </div>
