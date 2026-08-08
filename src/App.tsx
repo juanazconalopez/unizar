@@ -4,6 +4,7 @@ import { DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './fea
 import { AttendanceView } from './features/attendance/AttendanceView'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { SeasonsView } from './features/seasons/SeasonsView'
+import { StatisticsView } from './features/statistics/StatisticsView'
 import { TasksView } from './features/tasks/TasksView'
 import { TeamView } from './features/team/TeamView'
 import { useAuth } from './hooks/useAuth'
@@ -45,7 +46,9 @@ function App() {
 
   async function handleSaveResult(task: TrainingTask, values: ResultValues) {
     if (!auth.session?.user) return
-    const exists = data.results.some((result) => result.task_id === task.id)
+    const exists = data.results.some(
+      (result) => result.task_id === task.id && result.player_id === auth.session?.user.id,
+    )
     await saveTaskResult(task, values, auth.session.user.id, exists)
     notify(exists ? 'Resultado actualizado.' : 'Entrenamiento completado. ¡Buen trabajo!')
     await data.reload()
@@ -120,6 +123,7 @@ function App() {
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
 
   const userId = auth.session.user.id
+  const personalResults = data.results.filter((result) => result.player_id === userId)
   const canManageTasks = data.profile.is_owner || data.profile.is_collaborator
   const errorMessage = operationError || data.errorMessage || auth.errorMessage
 
@@ -138,11 +142,21 @@ function App() {
           memberships={data.memberships}
           attendance={data.attendance}
           profile={data.profile}
-          results={data.results}
+          results={personalResults}
           tasks={data.tasks}
           userId={userId}
           onGoToTasks={() => setView('tasks')}
           onSaveResult={handleSaveResult}
+        />
+      )}
+      {view === 'statistics' && data.profile.is_owner && (
+        <StatisticsView
+          attendance={data.attendance}
+          memberships={data.memberships}
+          profiles={data.profiles}
+          results={data.results}
+          sessions={data.trainingSessions}
+          tasks={data.tasks}
         />
       )}
       {view === 'attendance' && data.profile.is_owner && (
@@ -157,7 +171,7 @@ function App() {
         <TasksView
           canManage={canManageTasks}
           memberships={data.memberships}
-          results={data.results}
+          results={personalResults}
           seasons={data.seasons}
           tasks={data.tasks}
           userId={userId}

@@ -66,7 +66,7 @@ export type AttendanceRecord = {
   training_sessions: { session_date: string } | null
 }
 
-export type ViewName = 'home' | 'tasks' | 'attendance' | 'seasons' | 'team'
+export type ViewName = 'home' | 'statistics' | 'tasks' | 'attendance' | 'seasons' | 'team'
 
 export type ResultValues = {
   resultText: string

@@ -32,6 +32,9 @@ export function AppLayout({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const navigation: NavigationItem[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
+    ...(profile.is_owner ? [
+      { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
+    ] : []),
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
     ...(profile.is_owner ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },

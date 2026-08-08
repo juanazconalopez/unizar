@@ -46,13 +46,14 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
+  const resultsQuery = supabase.from('task_results').select('*')
   const [seasonsResponse, tasksResponse, resultsResponse, membershipsResponse, attendanceResponse] = await Promise.all([
     supabase.from('seasons').select('*').order('start_date', { ascending: false }),
     supabase
       .from('tasks')
       .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
       .order('week_start', { ascending: false }),
-    supabase.from('task_results').select('*').eq('player_id', userId),
+    profile.is_owner ? resultsQuery : resultsQuery.eq('player_id', userId),
     supabase.from('season_players').select('*'),
     supabase
       .from('training_attendance')

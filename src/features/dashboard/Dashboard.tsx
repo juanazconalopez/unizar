@@ -17,12 +17,18 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const currentMonday = mondayFor(new Date())
-  const weekTasks = tasks.filter((task) => (
-    task.week_start === currentMonday
-    && task.status === 'published'
-    && canUserCompleteTask(task, memberships, userId)
-  ))
   const completedIds = new Set(results.map((result) => result.task_id))
+  const weekTasks = tasks
+    .filter((task) => (
+      task.week_start === currentMonday
+      && task.status === 'published'
+      && canUserCompleteTask(task, memberships, userId)
+    ))
+    .sort((first, second) => {
+      const completionOrder = Number(completedIds.has(first.id)) - Number(completedIds.has(second.id))
+      if (completionOrder !== 0) return completionOrder
+      return first.created_at.localeCompare(second.created_at) || first.id.localeCompare(second.id)
+    })
   const completed = weekTasks.filter((task) => completedIds.has(task.id)).length
   const completion = weekTasks.length ? Math.round((completed / weekTasks.length) * 100) : 0
   const averageFatigue = results.length
