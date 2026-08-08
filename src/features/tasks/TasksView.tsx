@@ -4,18 +4,21 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatWeek, mondayFor, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
+import type { Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
 import { TaskCard } from './TaskCard'
 import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
+import { TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, isOwner = false, seasons, memberships, tasks, results, userId, onCreate, onUpdate, onSaveResult, onStatusChange }: {
+export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, onCreate, onUpdate, onSaveResult, onStatusChange }: {
   canManage: boolean
   isOwner?: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
+  profiles?: Profile[]
   tasks: TrainingTask[]
   results: TaskResult[]
+  teamResults?: TaskResult[]
   userId: string
   onCreate: (values: TaskValues) => Promise<void>
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
@@ -54,6 +57,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, ta
     resultIds,
   )[0]?.weekTasks ?? []
   const formOpen = showForm || editingTask !== null
+  const managerResults = teamResults ?? results
 
   useEffect(() => {
     if (!canManage || managementView !== 'list') return
@@ -176,6 +180,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, ta
                   hideWeek
                   key={task.id}
                   managerActions={managerActionsFor(task)}
+                  managementSummary={<TaskResultsSummary profiles={profiles} results={managerResults} task={task} />}
                   onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
                   result={results.find((item) => item.task_id === task.id)}
                   task={task}
@@ -216,6 +221,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, ta
                   hideWeek
                   key={task.id}
                   managerActions={managerActionsFor(task)}
+                  managementSummary={canManage ? <TaskResultsSummary profiles={profiles} results={managerResults} task={task} /> : undefined}
                   onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
                   result={results.find((item) => item.task_id === task.id)}
                   task={task}

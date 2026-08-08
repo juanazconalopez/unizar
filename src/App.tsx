@@ -184,9 +184,11 @@ function App() {
           canManage={canManageTasks}
           isOwner={data.profile.is_owner}
           memberships={data.memberships}
+          profiles={data.profiles}
           results={personalResults}
           seasons={data.seasons}
           tasks={data.tasks}
+          teamResults={canManageTasks ? data.results : undefined}
           userId={userId}
           onCreate={handleCreateTask}
           onUpdate={handleUpdateTask}

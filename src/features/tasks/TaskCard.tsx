@@ -8,11 +8,12 @@ import { addDays, formatDate, formatWeek, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { ResultValues, TaskResult, TrainingTask } from '../../types'
 
-export function TaskCard({ task, result, onSave, managerActions, hideWeek = false }: {
+export function TaskCard({ task, result, onSave, managerActions, managementSummary, hideWeek = false }: {
   task: TrainingTask
   result?: TaskResult
   onSave?: (task: TrainingTask, values: ResultValues) => Promise<void>
   managerActions?: ReactNode
+  managementSummary?: ReactNode
   hideWeek?: boolean
 }) {
   const detailTitleId = useId()
@@ -62,6 +63,7 @@ export function TaskCard({ task, result, onSave, managerActions, hideWeek = fals
         </div>
         <h3>{task.title}</h3>
         {task.description && <p className="task-card-description">{task.description}</p>}
+        {managementSummary}
         {(!hideWeek || result) && <div className="task-footer">
           {!hideWeek && <span>{formatWeek(task.week_start)}</span>}
           {result && (

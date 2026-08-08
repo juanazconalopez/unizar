@@ -46,6 +46,7 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
+  const canManageTasks = profile.is_owner || profile.is_collaborator
   const resultsQuery = supabase.from('task_results').select('*')
   const [seasonsResponse, tasksResponse, resultsResponse, membershipsResponse, attendanceResponse] = await Promise.all([
     supabase.from('seasons').select('*').order('start_date', { ascending: false }),
@@ -53,7 +54,7 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
       .from('tasks')
       .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
       .order('week_start', { ascending: false }),
-    profile.is_owner ? resultsQuery : resultsQuery.eq('player_id', userId),
+    canManageTasks ? resultsQuery : resultsQuery.eq('player_id', userId),
     supabase.from('season_players').select('*'),
     supabase
       .from('training_attendance')
@@ -69,17 +70,17 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
 
   let profiles: Profile[] = []
   let trainingSessions: TrainingSession[] = []
-  if (profile.is_owner) {
-    const [profilesResponse, sessionsResponse] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
-        .order('display_name'),
-      supabase.from('training_sessions').select('*').order('session_date', { ascending: false }),
-    ])
+  if (canManageTasks) {
+    const profilesResponse = await supabase
+      .from('profiles')
+      .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
+      .order('display_name')
     if (profilesResponse.error) throw profilesResponse.error
-    if (sessionsResponse.error) throw sessionsResponse.error
     profiles = (profilesResponse.data ?? []) as Profile[]
+  }
+  if (profile.is_owner) {
+    const sessionsResponse = await supabase.from('training_sessions').select('*').order('session_date', { ascending: false })
+    if (sessionsResponse.error) throw sessionsResponse.error
     trainingSessions = (sessionsResponse.data ?? []) as TrainingSession[]
   }
 
