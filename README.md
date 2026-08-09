@@ -20,9 +20,9 @@ La autorización real se aplica mediante las políticas RLS de `supabase/migrati
 ## Base de datos
 
 Las migraciones se aplican en orden desde el editor SQL de Supabase. Las migraciones
-`003` a `006` añaden asistencia, archivo reversible de usuarios, lectura de resultados
+`003` a `008` añaden asistencia, archivo reversible de usuarios, lectura de resultados
 para gestores, tipos de tarea canónicos, periodos históricos de participación y
-normalización de nombres, además de la actualización automática de `updated_at`.
+normalización de nombres, partidos, disponibilidad y alineaciones, además de la actualización automática de `updated_at`.
 Deben aplicarse todas antes de publicar.
 
 ## Desarrollo local

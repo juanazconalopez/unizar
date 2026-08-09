@@ -2,6 +2,9 @@ import { todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord,
+  Match,
+  MatchAvailability,
+  MatchLineup,
   Profile,
   Season,
   SeasonPlayer,
@@ -20,6 +23,9 @@ export type TrainingData = {
   results: TaskResult[]
   trainingSessions: TrainingSession[]
   attendance: AttendanceRecord[]
+  matches: Match[]
+  matchAvailability: MatchAvailability[]
+  matchLineups: MatchLineup[]
 }
 
 export async function fetchTrainingData(userId: string): Promise<TrainingData> {
@@ -40,12 +46,15 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
     results: [],
     trainingSessions: [],
     attendance: [],
+    matches: [],
+    matchAvailability: [],
+    matchLineups: [],
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
   const canManageTasks = profile.is_owner || profile.is_collaborator
   const resultsQuery = supabase.from('task_results').select('*')
-  const [seasonsResponse, tasksResponse, resultsResponse, membershipsResponse, attendanceResponse] = await Promise.all([
+  const [seasonsResponse, tasksResponse, resultsResponse, membershipsResponse, attendanceResponse, matchesResponse, availabilityResponse, lineupsResponse] = await Promise.all([
     supabase.from('seasons').select('*').order('start_date', { ascending: false }),
     supabase
       .from('tasks')
@@ -57,6 +66,9 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
       .from('training_attendance')
       .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
       .order('updated_at', { ascending: false }),
+    supabase.from('matches').select('*, seasons(name)').order('match_date', { ascending: true }),
+    supabase.from('match_availability').select('*'),
+    supabase.from('match_lineup').select('*').order('sort_order'),
   ])
 
   if (seasonsResponse.error) throw seasonsResponse.error
@@ -64,17 +76,17 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
   if (resultsResponse.error) throw resultsResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
   if (attendanceResponse.error) throw attendanceResponse.error
+  if (matchesResponse.error) throw matchesResponse.error
+  if (availabilityResponse.error) throw availabilityResponse.error
+  if (lineupsResponse.error) throw lineupsResponse.error
 
-  let profiles: Profile[] = []
   let trainingSessions: TrainingSession[] = []
-  if (canManageTasks) {
-    const profilesResponse = await supabase
-      .from('profiles')
-      .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
-      .order('display_name')
-    if (profilesResponse.error) throw profilesResponse.error
-    profiles = (profilesResponse.data ?? []) as Profile[]
-  }
+  const profilesResponse = await supabase
+    .from('profiles')
+    .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
+    .order('display_name')
+  if (profilesResponse.error) throw profilesResponse.error
+  const profiles = (profilesResponse.data ?? []) as Profile[]
   if (profile.is_owner) {
     const sessionsResponse = await supabase.from('training_sessions').select('*').order('session_date', { ascending: false })
     if (sessionsResponse.error) throw sessionsResponse.error
@@ -90,6 +102,9 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
     profiles,
     trainingSessions,
     attendance: (attendanceResponse.data ?? []) as unknown as AttendanceRecord[],
+    matches: (matchesResponse.data ?? []) as unknown as Match[],
+    matchAvailability: (availabilityResponse.data ?? []) as MatchAvailability[],
+    matchLineups: (lineupsResponse.data ?? []) as MatchLineup[],
   }
 }
 

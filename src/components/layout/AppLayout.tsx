@@ -36,10 +36,10 @@ export function AppLayout({
       { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
     ] : []),
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
+    ...(!profile.is_collaborator || profile.is_owner ? [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }] : []),
     ...(profile.is_owner ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
-      { id: 'seasons' as const, label: 'Temporadas', icon: 'calendar' as const },
-      { id: 'team' as const, label: 'Equipo', icon: 'users' as const },
+      { id: 'settings' as const, label: 'Ajustes', icon: 'settings' as const },
     ] : []),
   ]
 

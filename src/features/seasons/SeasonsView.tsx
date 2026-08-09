@@ -8,7 +8,8 @@ import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
 import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
-export function SeasonsView({ seasons, profiles, memberships, onCreate, onToggleMembership }: {
+export function SeasonsView({ embedded = false, seasons, profiles, memberships, onCreate, onToggleMembership }: {
+  embedded?: boolean
   seasons: Season[]
   profiles: Profile[]
   memberships: SeasonPlayer[]
@@ -19,13 +20,13 @@ export function SeasonsView({ seasons, profiles, memberships, onCreate, onToggle
   const [expanded, setExpanded] = useState<string | null>(null)
 
   return (
-    <div className="page">
-      <PageHeader
+    <div className={embedded ? 'settings-section' : 'page'}>
+      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2><p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => setShowForm(true)}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
         eyebrow="ORGANIZACIÓN"
         title="Temporadas"
         subtitle="Gestiona periodos y participantes del equipo."
         action={<button className="primary-button" onClick={() => setShowForm(true)}><Icon name="plus" size={18} />Nueva temporada</button>}
-      />
+      />}
       {showForm && (
         <SeasonForm
           onCancel={() => setShowForm(false)}

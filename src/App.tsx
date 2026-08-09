@@ -3,10 +3,10 @@ import { AppLayout } from './components/layout/AppLayout'
 import { DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
 import { AttendanceView } from './features/attendance/AttendanceView'
 import { Dashboard } from './features/dashboard/Dashboard'
-import { SeasonsView } from './features/seasons/SeasonsView'
+import { SettingsView } from './features/settings/SettingsView'
 import { StatisticsView } from './features/statistics/StatisticsView'
 import { TasksView } from './features/tasks/TasksView'
-import { TeamView } from './features/team/TeamView'
+import { MatchesView } from './features/matches/MatchesView'
 import { useAuth } from './hooks/useAuth'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
@@ -18,8 +18,13 @@ import {
   updateProfilePermissions,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
+import { createMatch, deleteMatch, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
 import type {
   Profile,
+  AvailabilityStatus,
+  Match,
+  MatchLineup,
+  MatchValues,
   ResultValues,
   Season,
   SeasonValues,
@@ -90,6 +95,26 @@ function App() {
       setOperationError(errorText(error))
       throw error
     }
+  }
+
+  async function handleSaveMatch(match: Match | undefined, values: MatchValues) {
+    if (!auth.session?.user) return
+    if (match) await updateMatch(match.id, values)
+    else await createMatch(values, auth.session.user.id)
+    notify(match ? 'Partido actualizado.' : 'Partido creado.')
+    await data.reload()
+  }
+
+  async function handleDeleteMatch(match: Match) {
+    await deleteMatch(match.id); notify('Partido eliminado.'); await data.reload()
+  }
+
+  async function handleMatchAvailability(match: Match, status: AvailabilityStatus, comment: string) {
+    await saveMatchAvailability(match.id, userId, status, comment); notify('Disponibilidad guardada.'); await data.reload()
+  }
+
+  async function handleMatchLineup(match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) {
+    await saveMatchLineup(match, entries, published); notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.'); await data.reload()
   }
 
   async function handleCreateSeason(values: SeasonValues) {
@@ -201,17 +226,32 @@ function App() {
           onStatusChange={handleTaskStatus}
         />
       )}
-      {view === 'seasons' && data.profile.is_owner && (
-        <SeasonsView
+      {view === 'matches' && (
+        <MatchesView
+          availability={data.matchAvailability}
+          isOwner={data.profile.is_owner}
+          lineups={data.matchLineups}
+          matches={data.matches}
           memberships={data.memberships}
           profiles={data.profiles}
           seasons={data.seasons}
-          onCreate={handleCreateSeason}
-          onToggleMembership={handleMembership}
+          userId={userId}
+          onDelete={handleDeleteMatch}
+          onSaveAvailability={handleMatchAvailability}
+          onSaveLineup={handleMatchLineup}
+          onSaveMatch={handleSaveMatch}
         />
       )}
-      {view === 'team' && data.profile.is_owner && (
-        <TeamView currentUserId={userId} profiles={data.profiles} onUpdate={handleUpdateProfile} />
+      {view === 'settings' && data.profile.is_owner && (
+        <SettingsView
+          currentUserId={userId}
+          memberships={data.memberships}
+          profiles={data.profiles}
+          seasons={data.seasons}
+          onCreateSeason={handleCreateSeason}
+          onToggleMembership={handleMembership}
+          onUpdateProfile={handleUpdateProfile}
+        />
       )}
     </AppLayout>
   )

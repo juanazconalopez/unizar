@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { errorText } from '../lib/errors'
 import { fetchTrainingData } from '../services/trainingService'
-import type { AttendanceRecord, Profile, Season, SeasonPlayer, TaskResult, TrainingSession, TrainingTask } from '../types'
+import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TrainingSession, TrainingTask } from '../types'
 
 export function useTrainingData(session: Session | null) {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -13,6 +13,9 @@ export function useTrainingData(session: Session | null) {
   const [results, setResults] = useState<TaskResult[]>([])
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+  const [matches, setMatches] = useState<Match[]>([])
+  const [matchAvailability, setMatchAvailability] = useState<MatchAvailability[]>([])
+  const [matchLineups, setMatchLineups] = useState<MatchLineup[]>([])
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -35,6 +38,9 @@ export function useTrainingData(session: Session | null) {
       setProfiles(data.profiles)
       setTrainingSessions(data.trainingSessions)
       setAttendance(data.attendance)
+      setMatches(data.matches)
+      setMatchAvailability(data.matchAvailability)
+      setMatchLineups(data.matchLineups)
     } catch (error) {
       setErrorMessage(errorText(error))
     } finally {
@@ -56,6 +62,9 @@ export function useTrainingData(session: Session | null) {
     results,
     trainingSessions,
     attendance,
+    matches,
+    matchAvailability,
+    matchLineups,
     loading,
     errorMessage,
     reload,

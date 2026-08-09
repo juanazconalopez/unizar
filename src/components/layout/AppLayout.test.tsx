@@ -28,6 +28,7 @@ describe('AppLayout', () => {
 
     expect(within(navigation).getByRole('button', { name: 'Inicio' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
 
@@ -38,8 +39,16 @@ describe('AppLayout', () => {
   test('shows every management area to owners', () => {
     const { navigation } = renderLayout(makeProfile({ is_owner: true, is_collaborator: true }))
 
-    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Asistencia', 'Temporadas', 'Equipo']) {
+    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Asistencia', 'Ajustes']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
+    expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
+  })
+
+  test('keeps collaborators focused on task management', () => {
+    const { navigation } = renderLayout(makeProfile({ is_collaborator: true }))
+    expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
   })
 })

@@ -67,7 +67,34 @@ export type AttendanceRecord = {
   training_sessions: { session_date: string } | null
 }
 
-export type ViewName = 'home' | 'statistics' | 'tasks' | 'attendance' | 'seasons' | 'team'
+export type MatchStatus = 'draft' | 'published' | 'cancelled' | 'completed'
+export type MatchKind = 'official' | 'friendly'
+export type RugbyFormat = 'xv' | 'sevens'
+export type AvailabilityStatus = 'available' | 'doubt' | 'unavailable'
+export type LineupRole = 'starter' | 'substitute'
+
+export type Match = {
+  id: string
+  season_id: string
+  opponent: string
+  match_date: string
+  kickoff_time: string | null
+  venue: string | null
+  is_home: boolean
+  notes: string | null
+  status: MatchStatus
+  match_kind: MatchKind
+  rugby_format: RugbyFormat
+  lineup_published: boolean
+  created_by: string
+  created_at: string
+  seasons: { name: string } | null
+}
+
+export type MatchAvailability = { match_id: string; player_id: string; status: AvailabilityStatus; comment: string | null; updated_at: string }
+export type MatchLineup = { match_id: string; player_id: string; role: LineupRole; position: string | null; slot_number: number; sort_order: number; updated_at: string }
+
+export type ViewName = 'home' | 'statistics' | 'tasks' | 'matches' | 'attendance' | 'settings'
 
 export type ResultValues = {
   resultText: string
@@ -88,4 +115,17 @@ export type SeasonValues = {
   name: string
   start_date: string
   end_date: string
+}
+
+export type MatchValues = {
+  seasonId: string
+  opponent: string
+  matchDate: string
+  kickoffTime: string
+  venue: string
+  isHome: boolean
+  notes: string
+  status: MatchStatus
+  matchKind: MatchKind
+  rugbyFormat: RugbyFormat
 }

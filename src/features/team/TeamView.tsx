@@ -5,7 +5,8 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate } from '../../lib/dates'
 import type { Profile } from '../../types'
 
-export function TeamView({ profiles, currentUserId, onUpdate }: {
+export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }: {
+  embedded?: boolean
   profiles: Profile[]
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
@@ -16,12 +17,12 @@ export function TeamView({ profiles, currentUserId, onUpdate }: {
   const archived = profiles.filter((profile) => profile.is_archived)
 
   return (
-    <div className="page">
-      <PageHeader
+    <div className={embedded ? 'settings-section' : 'page'}>
+      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2><p>{approved.length} miembros aprobados · {pending.length} solicitudes pendientes</p></div></div> : <PageHeader
         eyebrow="ADMINISTRACIÓN"
         title="Equipo"
         subtitle={`${approved.length} miembros aprobados · ${pending.length} solicitudes pendientes`}
-      />
+      />}
       {pending.length > 0 && (
         <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">
           {pending.map((person) => <ApprovalRequestRow key={person.id} onUpdate={onUpdate} person={person} />)}
