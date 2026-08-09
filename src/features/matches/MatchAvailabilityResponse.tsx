@@ -14,6 +14,7 @@ export function MatchAvailabilityResponse({ initial, match, onSave }: {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   if (match.status !== 'published' || match.match_date < todayIso()) return null
+  if (match.lineup_published) return <div className="availability-locked"><strong>Disponibilidad cerrada</strong><span>La convocatoria ya está publicada y no admite cambios.</span></div>
 
   async function accept() {
     setSaving(true); setError('')

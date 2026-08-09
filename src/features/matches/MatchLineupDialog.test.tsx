@@ -21,4 +21,22 @@ describe('MatchLineupDialog', () => {
     expect(screen.getAllByText('Suelta aquí')).toHaveLength(7)
     expect(screen.queryByText('Suplentes')).not.toBeInTheDocument()
   })
+
+  test('keeps collaborators eligible when they are active players', () => {
+    const collaborator = makeProfile({ is_collaborator: true, display_name: 'Andrea López' })
+    render(<MatchLineupDialog availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match()} memberships={[makeMembership()]} profiles={[collaborator]} onClose={vi.fn()} onSave={vi.fn()} />)
+    expect(screen.getByText('Andrea López')).toBeInTheDocument()
+  })
+
+  test('removes a provisional selection when the player is no longer available', () => {
+    const entry = { match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }
+    render(<MatchLineupDialog availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'doubt', comment: null, updated_at: new Date().toISOString() }]} entries={[entry]} match={match()} memberships={[makeMembership()]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
+    expect(screen.queryByText('Ana Martín')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Suelta aquí')).toHaveLength(23)
+  })
+
+  test('does not allow reopening availability after publication', () => {
+    render(<MatchLineupDialog availability={[]} entries={[]} match={match({ lineup_published: true })} memberships={[makeMembership()]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
+    expect(screen.getByRole('checkbox', { name: 'Convocatoria publicada' })).toBeDisabled()
+  })
 })

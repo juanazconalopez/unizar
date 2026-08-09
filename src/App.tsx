@@ -7,6 +7,7 @@ import { SettingsView } from './features/settings/SettingsView'
 import { StatisticsView } from './features/statistics/StatisticsView'
 import { TasksView } from './features/tasks/TasksView'
 import { MatchesView } from './features/matches/MatchesView'
+import { CompetitionView } from './features/competition/CompetitionView'
 import { useAuth } from './hooks/useAuth'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
@@ -241,6 +242,9 @@ function App() {
           onSaveLineup={handleMatchLineup}
           onSaveMatch={handleSaveMatch}
         />
+      )}
+      {view === 'competition' && !data.profile.is_owner && (
+        <CompetitionView fixtures={[]} playerStats={[]} seasons={[]} standings={[]} />
       )}
       {view === 'settings' && data.profile.is_owner && (
         <SettingsView

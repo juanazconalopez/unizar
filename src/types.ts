@@ -94,7 +94,58 @@ export type Match = {
 export type MatchAvailability = { match_id: string; player_id: string; status: AvailabilityStatus; comment: string | null; updated_at: string }
 export type MatchLineup = { match_id: string; player_id: string; role: LineupRole; position: string | null; slot_number: number; sort_order: number; updated_at: string }
 
-export type ViewName = 'home' | 'statistics' | 'tasks' | 'matches' | 'attendance' | 'settings'
+export type CompetitionSeason = {
+  id: string
+  name: string
+  startsOn: string
+  sourceLabel: string
+  updatedAt: string | null
+}
+
+export type CompetitionFixture = {
+  id: string
+  competitionSeasonId: string
+  round: string
+  roundOrder: number
+  matchDate: string
+  kickoffTime: string | null
+  homeTeam: string
+  awayTeam: string
+  homeScore: number | null
+  awayScore: number | null
+  status: 'scheduled' | 'final' | 'postponed'
+}
+
+export type CompetitionStanding = {
+  competitionSeasonId: string
+  position: number
+  team: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  pointsFor: number
+  pointsAgainst: number
+  difference: number
+  offensiveBonus: number
+  defensiveBonus: number
+  points: number
+}
+
+export type CompetitionPlayerStat = {
+  competitionSeasonId: string
+  player: string
+  team: string
+  points: number
+  tries: number
+  conversions: number
+  penalties: number
+  drops: number
+  yellowCards: number
+  redCards: number
+}
+
+export type ViewName = 'home' | 'statistics' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
 
 export type ResultValues = {
   resultText: string

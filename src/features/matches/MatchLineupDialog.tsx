@@ -18,14 +18,15 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
   const editable = Boolean(onSave)
   const limit = lineupLimit(match)
   const starters = match.rugby_format === 'sevens' ? 7 : 15
-  const eligible = activePlayers(profiles).filter((profile) => !profile.is_collaborator && memberships.some((membership) => (
+  const eligible = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
     membership.player_id === profile.id && membership.season_id === match.season_id && membershipCoversDate(membership, match.match_date)
   )))
   const availableIds = new Set(availability.filter((item) => item.status === 'available').map((item) => item.player_id))
-  const [slots, setSlots] = useState<Record<number, string>>(() => Object.fromEntries(entries.map((entry) => [entry.slot_number, entry.player_id])))
+  const [slots, setSlots] = useState<Record<number, string>>(() => Object.fromEntries(entries.filter((entry) => availableIds.has(entry.player_id)).map((entry) => [entry.slot_number, entry.player_id])))
   const [published, setPublished] = useState(match.lineup_published)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [confirmMissing, setConfirmMissing] = useState(false)
   const selectedIds = new Set(Object.values(slots))
   const selectable = eligible.filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id))
 
@@ -43,8 +44,10 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
     if (playerId) assign(playerId, slot)
   }
 
-  async function save() {
+  async function save(confirmed = false) {
     if (!onSave) return
+    const missingStarters = Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])
+    if (published && missingStarters.length && !confirmed) { setConfirmMissing(true); return }
     setSaving(true); setError('')
     const lineup = Object.entries(slots).map(([slotValue, player_id]) => {
       const slot_number = Number(slotValue)
@@ -66,9 +69,21 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
         </div>
       })}</section>
     </div> : <PublishedLineup entries={entries} profiles={profiles} starters={starters} />}
-    {editable && <><label className="publish-lineup"><input checked={published} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />Publicar convocatoria para las jugadoras</label>{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
+    {editable && <><label className="publish-lineup"><input checked={published} disabled={match.lineup_published} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{match.lineup_published ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
+    {confirmMissing && <MissingStartersDialog missing={Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])} onCancel={() => setConfirmMissing(false)} onConfirm={() => { setConfirmMissing(false); void save(true) }} />}
   </Modal>
 }
+
+function MissingStartersDialog({ missing, onCancel, onConfirm }: { missing: number[]; onCancel: () => void; onConfirm: () => void }) {
+  const titleId = useId()
+  return <Modal className="lineup-confirm-dialog" labelledBy={titleId} onClose={onCancel}>
+    <div className="task-detail-heading"><div><span className="eyebrow">COMPROBAR ALINEACIÓN</span><h2 id={titleId}>Hay titulares sin rellenar</h2></div><button aria-label="Cerrar" className="icon-button" onClick={onCancel}>×</button></div>
+    <div className="lineup-warning"><IconWarning /><div><strong>Faltan {missing.length} {missing.length === 1 ? 'titular' : 'titulares'}</strong><p>Dorsales sin asignar: {missing.join(', ')}. Puedes publicar igualmente si el equipo va a jugar con menos jugadoras.</p></div></div>
+    <div className="form-actions"><button className="secondary-button" onClick={onCancel}>Revisar alineación</button><button className="primary-button" onClick={onConfirm}>Publicar igualmente</button></div>
+  </Modal>
+}
+
+function IconWarning() { return <span aria-hidden="true">!</span> }
 
 function PublishedLineup({ entries, profiles, starters }: { entries: MatchLineup[]; profiles: Profile[]; starters: number }) {
   const ordered = [...entries].sort((first, second) => first.slot_number - second.slot_number)

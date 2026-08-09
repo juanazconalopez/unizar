@@ -36,14 +36,15 @@ export function AppLayout({
       { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
     ] : []),
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
-    ...(!profile.is_collaborator || profile.is_owner ? [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }] : []),
+    { id: 'matches', label: 'Partidos', icon: 'calendar' },
+    ...(!profile.is_owner ? [{ id: 'competition' as const, label: 'Competición', icon: 'trophy' as const }] : []),
     ...(profile.is_owner ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
       { id: 'settings' as const, label: 'Ajustes', icon: 'settings' as const },
     ] : []),
   ]
 
-  const role = profile.is_owner ? 'Owner' : profile.is_collaborator ? 'Colaborador' : 'Jugador'
+  const role = profile.is_owner ? 'Owner' : profile.is_collaborator ? 'Colaboradora · Jugadora' : 'Jugadora'
 
   function navigate(nextView: ViewName) {
     setProfileMenuOpen(false)

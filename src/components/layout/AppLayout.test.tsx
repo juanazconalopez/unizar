@@ -29,6 +29,7 @@ describe('AppLayout', () => {
     expect(within(navigation).getByRole('button', { name: 'Inicio' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
 
@@ -44,11 +45,15 @@ describe('AppLayout', () => {
     }
     expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Competición' })).not.toBeInTheDocument()
   })
 
-  test('keeps collaborators focused on task management', () => {
+  test('keeps player sections available when a player is also a collaborator', () => {
     const { navigation } = renderLayout(makeProfile({ is_collaborator: true }))
     expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
-    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument()
   })
 })
