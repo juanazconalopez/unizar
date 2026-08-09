@@ -19,6 +19,7 @@ export type Season = {
 }
 
 export type SeasonPlayer = {
+  id: string
   season_id: string
   player_id: string
   active_from: string

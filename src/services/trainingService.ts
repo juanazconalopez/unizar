@@ -1,15 +1,12 @@
-import { mondayFor, todayIso } from '../lib/dates'
+import { todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord,
   Profile,
-  ResultValues,
   Season,
   SeasonPlayer,
   SeasonValues,
   TaskResult,
-  TaskStatus,
-  TaskValues,
   TrainingSession,
   TrainingTask,
 } from '../types'
@@ -96,58 +93,6 @@ export async function fetchTrainingData(userId: string): Promise<TrainingData> {
   }
 }
 
-export async function saveTaskResult(
-  task: TrainingTask,
-  values: ResultValues,
-  userId: string,
-  exists: boolean,
-) {
-  const payload = {
-    task_id: task.id,
-    player_id: userId,
-    result_text: values.resultText.trim(),
-    fatigue_level: values.fatigueLevel,
-    performed_on: values.performedOn,
-    updated_at: new Date().toISOString(),
-  }
-
-  const response = exists
-    ? await supabase.from('task_results').update(payload).eq('task_id', task.id).eq('player_id', userId)
-    : await supabase.from('task_results').insert(payload)
-
-  if (response.error) throw response.error
-}
-
-export async function createTrainingTask(values: TaskValues, userId: string) {
-  const { error } = await supabase.from('tasks').insert({
-    season_id: values.seasonId,
-    week_start: mondayFor(values.date),
-    title: values.title.trim(),
-    description: values.description.trim() || null,
-    training_type: values.trainingType,
-    status: values.status,
-    created_by: userId,
-  })
-  if (error) throw error
-}
-
-export async function updateTrainingTask(taskId: string, values: TaskValues) {
-  const { error } = await supabase.from('tasks').update({
-    season_id: values.seasonId,
-    week_start: mondayFor(values.date),
-    title: values.title.trim(),
-    description: values.description.trim() || null,
-    training_type: values.trainingType,
-    status: values.status,
-  }).eq('id', taskId)
-  if (error) throw error
-}
-
-export async function updateTaskStatus(taskId: string, status: TaskStatus) {
-  const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId)
-  if (error) throw error
-}
-
 export async function createSeason(values: SeasonValues, userId: string) {
   const { error } = await supabase.from('seasons').insert({
     ...values,
@@ -211,12 +156,15 @@ export async function setSeasonMembership(
   active: boolean,
   existing?: SeasonPlayer,
 ) {
-  if (active && !existing) {
-    const activeFrom = todayIso() < season.start_date ? season.start_date : todayIso()
+  if (active) {
+    if (existing) return
+    const activeFrom = todayIso() < season.start_date ? season.start_date : todayIso() > season.end_date ? season.end_date : todayIso()
+    const activeUntil = todayIso() > season.end_date ? season.end_date : null
     const { error } = await supabase.from('season_players').insert({
       season_id: season.id,
       player_id: player.id,
       active_from: activeFrom,
+      active_until: activeUntil,
     })
     if (error) throw error
     return
@@ -227,18 +175,7 @@ export async function setSeasonMembership(
     const { error } = await supabase
       .from('season_players')
       .update({ active_until: activeUntil })
-      .eq('season_id', season.id)
-      .eq('player_id', player.id)
-    if (error) throw error
-    return
-  }
-
-  if (active && existing?.active_until) {
-    const { error } = await supabase
-      .from('season_players')
-      .update({ active_until: null })
-      .eq('season_id', season.id)
-      .eq('player_id', player.id)
+      .eq('id', existing.id)
     if (error) throw error
   }
 }

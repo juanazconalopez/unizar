@@ -19,10 +19,11 @@ La autorización real se aplica mediante las políticas RLS de `supabase/migrati
 
 ## Base de datos
 
-Las migraciones se aplican en orden desde el editor SQL de Supabase. La migración
-`003_attendance_and_archived_users.sql` añade las sesiones de campo, la asistencia,
-el archivo reversible de usuarios y sus políticas RLS. Debe aplicarse antes de
-publicar una versión del frontend que utilice esas funciones.
+Las migraciones se aplican en orden desde el editor SQL de Supabase. Las migraciones
+`003` a `006` añaden asistencia, archivo reversible de usuarios, lectura de resultados
+para gestores, tipos de tarea canónicos, periodos históricos de participación y
+normalización de nombres, además de la actualización automática de `updated_at`.
+Deben aplicarse todas antes de publicar.
 
 ## Desarrollo local
 
@@ -74,6 +75,9 @@ la configuración y las fixtures compartidas. Para trabajar en modo interactivo:
 nvm use 22
 npm run test:watch
 ```
+
+Las comprobaciones SQL de esquema y RLS están en `supabase/tests/schema_test.sql`
+y se ejecutan con Supabase CLI mediante `supabase test db`.
 
 En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
 

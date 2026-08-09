@@ -10,16 +10,14 @@ import { TeamView } from './features/team/TeamView'
 import { useAuth } from './hooks/useAuth'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
+import { activeMembershipFor } from './lib/selectors'
 import {
   createSeason,
-  createTrainingTask,
-  saveTaskResult,
   saveTrainingAttendance,
   setSeasonMembership,
   updateProfilePermissions,
-  updateTrainingTask,
-  updateTaskStatus,
 } from './services/trainingService'
+import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
 import type {
   Profile,
   ResultValues,
@@ -83,6 +81,17 @@ function App() {
     }
   }
 
+  async function handleDeleteTask(task: TrainingTask) {
+    try {
+      await deleteTrainingTask(task.id)
+      notify('Tarea y respuestas eliminadas.')
+      await data.reload()
+    } catch (error) {
+      setOperationError(errorText(error))
+      throw error
+    }
+  }
+
   async function handleCreateSeason(values: SeasonValues) {
     if (!auth.session?.user) return
     await createSeason(values, auth.session.user.id)
@@ -100,21 +109,16 @@ function App() {
     }
   }
 
-  async function handleAttendance(date: string, attendedPlayerIds: string[]) {
+  async function handleAttendance(date: string, playerIds: string[], attendedPlayerIds: string[]) {
     if (!auth.session?.user) return
-    const activePlayerIds = data.profiles
-      .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived)
-      .map((profile) => profile.id)
-    await saveTrainingAttendance(date, activePlayerIds, attendedPlayerIds, auth.session.user.id)
+    await saveTrainingAttendance(date, playerIds, attendedPlayerIds, auth.session.user.id)
     notify('Asistencia guardada correctamente.')
     await data.reload()
   }
 
   async function handleMembership(season: Season, player: Profile, active: boolean) {
     try {
-      const existing = data.memberships.find(
-        (membership) => membership.season_id === season.id && membership.player_id === player.id,
-      )
+      const existing = activeMembershipFor(data.memberships, season.id, player.id)
       await setSeasonMembership(season, player, active, existing)
       notify(`${player.display_name} ${active ? 'forma parte de' : 'ha salido de'} ${season.name}.`)
       await data.reload()
@@ -191,6 +195,7 @@ function App() {
           teamResults={canManageTasks ? data.results : undefined}
           userId={userId}
           onCreate={handleCreateTask}
+          onDelete={handleDeleteTask}
           onUpdate={handleUpdateTask}
           onSaveResult={handleSaveResult}
           onStatusChange={handleTaskStatus}

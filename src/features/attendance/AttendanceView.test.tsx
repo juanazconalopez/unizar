@@ -15,6 +15,7 @@ describe('AttendanceView', () => {
       makeProfile({ id: 'inactive', display_name: 'Inactiva', is_active: false }),
       makeProfile({ id: 'pending', display_name: 'Pendiente', is_approved: false }),
       makeProfile({ id: 'archived', display_name: 'Archivada', is_archived: true }),
+      makeProfile({ id: 'owner', display_name: 'Owner Excluida', is_owner: true }),
     ]
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(
@@ -30,11 +31,12 @@ describe('AttendanceView', () => {
     expect(within(list).getByText('Ana Martín')).toBeInTheDocument()
     expect(within(list).getByText('María López')).toBeInTheDocument()
     expect(screen.queryByText('Inactiva')).not.toBeInTheDocument()
+    expect(screen.queryByText('Owner Excluida')).not.toBeInTheDocument()
     expect(within(list).getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
 
     await user.click(within(list).getByRole('checkbox', { name: /María López/ }))
     await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
 
-    expect(onSave).toHaveBeenCalledWith(today, ['player-1', 'player-2'])
+    expect(onSave).toHaveBeenCalledWith(today, ['player-1', 'player-2'], ['player-1', 'player-2'])
   })
 })

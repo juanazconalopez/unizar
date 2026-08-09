@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, seasonState } from '../../lib/dates'
+import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
 import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
@@ -69,13 +70,13 @@ function SeasonCard({ season, profiles, memberships, expanded, onToggle, onToggl
       <button className="secondary-button full-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
       {expanded && (
         <div className="member-list">
-          {profiles.filter((player) => player.is_approved && !player.is_archived).map((player) => {
-            const membership = seasonMemberships.find((item) => item.player_id === player.id)
-            const active = Boolean(membership && !membership.active_until)
+          {profiles.filter((player) => player.is_approved && !player.is_archived && !player.is_owner).map((player) => {
+            const membership = activeMembershipFor(seasonMemberships, season.id, player.id)
+            const active = Boolean(membership)
             return (
               <label key={player.id}>
                 <span><Avatar name={player.display_name} /><span><strong>{player.display_name}</strong><small>{player.is_active ? 'Jugador activo' : 'Jugador inactivo'}</small></span></span>
-                <input checked={active} disabled={!player.is_active} onChange={(event) => void onToggleMembership(season, player, event.target.checked)} type="checkbox" />
+                <input checked={active} disabled={!isActivePlayer(player)} onChange={(event) => void onToggleMembership(season, player, event.target.checked)} type="checkbox" />
               </label>
             )
           })}

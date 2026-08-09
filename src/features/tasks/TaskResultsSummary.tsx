@@ -1,7 +1,7 @@
-import { useEffect, useId, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useId, useState } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { FatigueIcon } from '../../components/ui/FatigueIcon'
+import { Modal } from '../../components/ui/Modal'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { formatDate } from '../../lib/dates'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
@@ -11,7 +11,6 @@ export function TaskResultsSummary({ task, results, profiles }: {
   results: TaskResult[]
   profiles: Profile[]
 }) {
-  const titleId = useId()
   const [open, setOpen] = useState(false)
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
   const playerResults = results
@@ -20,20 +19,6 @@ export function TaskResultsSummary({ task, results, profiles }: {
   const average = playerResults.length
     ? playerResults.reduce((total, result) => total + result.fatigue_level, 0) / playerResults.length
     : null
-
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [open])
 
   return (
     <>
@@ -51,21 +36,30 @@ export function TaskResultsSummary({ task, results, profiles }: {
           <button className="secondary-button compact" onClick={() => setOpen(true)} type="button">Ver resultados</button>
         )}
       </div>
-      {open && createPortal(
-        <div className="task-detail-backdrop" onClick={() => setOpen(false)}>
-          <section
-            aria-labelledby={titleId}
-            aria-modal="true"
-            className="task-detail-dialog task-results-dialog"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
+      {open && <TaskResultsDialog onClose={() => setOpen(false)} profiles={profiles} results={results} task={task} />}
+    </>
+  )
+}
+
+export function TaskResultsDialog({ task, results, profiles, onClose }: {
+  task: TrainingTask
+  results: TaskResult[]
+  profiles: Profile[]
+  onClose: () => void
+}) {
+  const titleId = useId()
+  const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
+  const playerResults = results
+    .filter((result) => result.task_id === task.id && !profileById.get(result.player_id)?.is_owner)
+    .sort((first, second) => second.performed_on.localeCompare(first.performed_on))
+  const average = playerResults.reduce((total, result) => total + result.fatigue_level, 0) / playerResults.length
+  return <Modal className="task-results-dialog" labelledBy={titleId} onClose={onClose}>
             <div className="task-detail-heading">
               <div>
                 <span className="eyebrow">RESULTADOS · {playerResults.length} {playerResults.length === 1 ? 'JUGADORA' : 'JUGADORAS'}</span>
                 <h2 id={titleId}>{task.title}</h2>
               </div>
-              <button aria-label="Cerrar resultados" className="icon-button" onClick={() => setOpen(false)} type="button">×</button>
+              <button aria-label="Cerrar resultados" className="icon-button" onClick={onClose} type="button">×</button>
             </div>
             <div className="task-results-average">
               <FatigueIcon level={Math.round(average ?? 3)} size={30} />
@@ -90,10 +84,5 @@ export function TaskResultsSummary({ task, results, profiles }: {
                 )
               })}
             </div>
-          </section>
-        </div>,
-        document.body,
-      )}
-    </>
-  )
+      </Modal>
 }

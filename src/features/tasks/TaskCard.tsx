@@ -1,8 +1,8 @@
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import { Icon } from '../../components/Icon'
 import { FatigueIcon } from '../../components/ui/FatigueIcon'
+import { Modal } from '../../components/ui/Modal'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { addDays, formatDate, formatWeek, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
@@ -110,15 +110,7 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
           </button>
         )}
       </div>
-      {detailOpen && createPortal(
-        <div className="task-detail-backdrop" onClick={() => setDetailOpen(false)}>
-          <section
-            aria-labelledby={detailTitleId}
-            aria-modal="true"
-            className="task-detail-dialog"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
+      {detailOpen && <Modal labelledBy={detailTitleId} onClose={() => setDetailOpen(false)}>
             <div className="task-detail-heading">
               <div>
                 <span className="eyebrow">{task.training_type || 'ENTRENAMIENTO'} · {task.seasons?.name}</span>
@@ -131,10 +123,7 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
               <span className="eyebrow">INDICACIONES</span>
               <p>{task.description || 'Esta tarea no tiene indicaciones adicionales.'}</p>
             </div>
-          </section>
-        </div>,
-        document.body,
-      )}
+      </Modal>}
     </article>
   )
 }

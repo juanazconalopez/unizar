@@ -6,11 +6,12 @@ import { addDays, formatWeek, mondayFor, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
 import { TaskCard } from './TaskCard'
+import { TaskAlerts } from './TaskAlerts'
 import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
-import { TaskResultsSummary } from './TaskResultsSummary'
+import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, onCreate, onUpdate, onSaveResult, onStatusChange }: {
+export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, onCreate, onDelete, onUpdate, onSaveResult, onStatusChange }: {
   canManage: boolean
   isOwner?: boolean
   seasons: Season[]
@@ -21,12 +22,15 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   teamResults?: TaskResult[]
   userId: string
   onCreate: (values: TaskValues) => Promise<void>
+  onDelete: (task: TrainingTask) => Promise<void>
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<TrainingTask | null>(null)
+  const [copyingTask, setCopyingTask] = useState<TrainingTask | null>(null)
+  const [alertResultsTask, setAlertResultsTask] = useState<TrainingTask | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
   const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
@@ -56,7 +60,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     tasks.filter((task) => task.week_start === selectedPlanningWeek),
     resultIds,
   )[0]?.weekTasks ?? []
-  const formOpen = showForm || editingTask !== null
+  const formOpen = showForm || editingTask !== null || copyingTask !== null
   const managerResults = teamResults ?? results
 
   useEffect(() => {
@@ -80,17 +84,26 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
 
   function openCreateForm() {
     setEditingTask(null)
+    setCopyingTask(null)
     setShowForm(true)
   }
 
   function openEditForm(task: TrainingTask) {
     setShowForm(false)
+    setCopyingTask(null)
     setEditingTask(task)
+  }
+
+  function openCopyForm(task: TrainingTask) {
+    setShowForm(false)
+    setEditingTask(null)
+    setCopyingTask(task)
   }
 
   function closeForm() {
     setShowForm(false)
     setEditingTask(null)
+    setCopyingTask(null)
   }
 
   async function saveTask(values: TaskValues) {
@@ -114,6 +127,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
       <>
         <StatusControl status={task.status} onChange={(status) => onStatusChange(task.id, status)} />
         <button className="secondary-button compact" onClick={() => openEditForm(task)} type="button">Editar tarea</button>
+        <button className="secondary-button compact" onClick={() => openCopyForm(task)} type="button">Copiar</button>
       </>
     )
   }
@@ -136,13 +150,17 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           </div>
         ) : undefined}
       />
+      {canManage && <TaskAlerts currentWeek={currentWeek} onViewResults={setAlertResultsTask} profiles={profiles} results={managerResults} tasks={tasks} />}
+      {alertResultsTask && <TaskResultsDialog onClose={() => setAlertResultsTask(null)} profiles={profiles} results={managerResults} task={alertResultsTask} />}
       {formOpen && managementView === 'list' && (
         <TaskForm
-          key={editingTask?.id ?? 'new-list-task'}
-          initialDate={todayIso()}
+          key={editingTask?.id ?? copyingTask?.id ?? 'new-list-task'}
+          initialDate={copyingTask?.week_start ?? todayIso()}
           seasons={seasons}
           task={editingTask ?? undefined}
+          template={copyingTask ?? undefined}
           onCancel={closeForm}
+          onDelete={async (task) => { await onDelete(task); closeForm() }}
           onSubmit={saveTask}
         />
       )}
@@ -197,11 +215,13 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
             </div>
             {formOpen && (
               <TaskForm
-                key={editingTask?.id ?? 'new-calendar-task'}
-                initialDate={selectedPlanningDate}
+                key={editingTask?.id ?? copyingTask?.id ?? 'new-calendar-task'}
+                initialDate={copyingTask?.week_start ?? selectedPlanningDate}
                 seasons={seasons}
                 task={editingTask ?? undefined}
+                template={copyingTask ?? undefined}
                 onCancel={closeForm}
+                onDelete={async (task) => { await onDelete(task); closeForm() }}
                 onSubmit={saveTask}
               />
             )}

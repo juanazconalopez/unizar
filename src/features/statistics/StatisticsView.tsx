@@ -3,6 +3,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, mondayFor, todayIso, toIsoDate } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
+import { activePlayers as selectActivePlayers } from '../../lib/selectors'
 import type {
   AttendanceRecord,
   Profile,
@@ -25,15 +26,7 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
-  const activePlayers = useMemo(
-    () => profiles.filter((profile) => (
-      profile.is_approved
-      && profile.is_active
-      && !profile.is_archived
-      && !profile.is_owner
-    )),
-    [profiles],
-  )
+  const activePlayers = useMemo(() => selectActivePlayers(profiles), [profiles])
   const playerIds = useMemo(() => new Set(activePlayers.map((profile) => profile.id)), [activePlayers])
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const playerAttendance = attendance.filter((record) => playerIds.has(record.player_id))
@@ -45,7 +38,20 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   const monthSessions = sessions.filter((session) => session.session_date.startsWith(monthPrefix))
   const monthAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(monthPrefix))
   const monthResults = playerResults.filter((result) => result.performed_on.startsWith(monthPrefix))
-  const playersWithTasks = new Set(monthResults.map((result) => result.player_id)).size
+  const averageAttendance = monthSessions.length && activePlayers.length
+    ? monthAttendance.filter((record) => record.attended).length / monthSessions.length
+    : null
+  const averageCompletedTasks = activePlayers.length ? monthResults.length / activePlayers.length : null
+  const previousMonthPrefix = offsetMonth(month, -1).slice(0, 7)
+  const previousSessions = sessions.filter((session) => session.session_date.startsWith(previousMonthPrefix))
+  const previousAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(previousMonthPrefix))
+  const attendanceRate = averageAttendance === null ? null : (averageAttendance / activePlayers.length) * 100
+  const previousAttendanceRate = previousSessions.length && activePlayers.length
+    ? (previousAttendance.filter((record) => record.attended).length / previousSessions.length / activePlayers.length) * 100
+    : null
+  const attendanceDrop = attendanceRate !== null && previousAttendanceRate !== null
+    ? Math.round(previousAttendanceRate - attendanceRate)
+    : 0
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -64,11 +70,20 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
       <section className="statistics-summary" aria-label="Resumen del mes">
         <SummaryMetric label="Entrenamientos" value={monthSessions.length.toString()} />
         <SummaryMetric
-          label="Asistencias"
-          value={monthAttendance.length ? `${monthAttendance.filter((record) => record.attended).length}/${monthAttendance.length}` : '—'}
+          label="Media asistencia"
+          value={averageAttendance === null ? '—' : `${Math.round((averageAttendance / activePlayers.length) * 100)}%`}
         />
-        <SummaryMetric label="Jugadoras con tareas" value={playersWithTasks.toString()} />
+        <SummaryMetric
+          label="Media tareas realizadas"
+          value={averageCompletedTasks === null ? '—' : formatAverage(averageCompletedTasks)}
+        />
       </section>
+      {attendanceDrop >= 10 && (
+        <div className="monthly-alert" role="status">
+          <strong>La asistencia ha bajado {attendanceDrop} puntos</strong>
+          <span>Comparación con el mes anterior. Puede ser útil revisar lesiones, carga y disponibilidad.</span>
+        </div>
+      )}
 
       <section className="calendar-panel">
         <div className="calendar-toolbar">
@@ -126,6 +141,10 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
 
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return <article><span>{label}</span><strong>{value}</strong></article>
+}
+
+function formatAverage(value: number) {
+  return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(value)
 }
 
 function DayDetail({ activePlayers, attendance, date, memberships, results, sessions, tasks }: {

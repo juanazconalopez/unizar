@@ -1,8 +1,8 @@
 export const TRAINING_TYPES = [
-  'Carrera',
-  'Fuerza',
-  'Técnica',
-  'Movilidad',
+  'Físico',
+  'Gimnasio',
+  'Táctico',
+  'Técnico',
   'Recuperación',
   'Otro',
 ] as const

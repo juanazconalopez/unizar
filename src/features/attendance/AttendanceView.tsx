@@ -5,17 +5,16 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
+import { activePlayers, attendancePlayerIdsForDate } from '../../lib/selectors'
 import type { AttendanceRecord, Profile, TrainingSession } from '../../types'
 
 export function AttendanceView({ profiles, sessions, attendance, onSave }: {
   profiles: Profile[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
-  onSave: (date: string, attendedPlayerIds: string[]) => Promise<void>
+  onSave: (date: string, playerIds: string[], attendedPlayerIds: string[]) => Promise<void>
 }) {
-  const activePlayers = profiles.filter(
-    (profile) => profile.is_approved && profile.is_active && !profile.is_archived,
-  )
+  const currentPlayers = activePlayers(profiles)
   const [date, setDate] = useState(todayIso())
   const [selected, setSelected] = useState<Set<string>>(
     () => attendedPlayersForDate(attendance, todayIso()),
@@ -42,7 +41,7 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
     setSaving(true)
     setFormError('')
     try {
-      await onSave(date, [...selected])
+      await onSave(date, [...visibleIds], [...visibleSelected])
     } catch (error) {
       setFormError(errorText(error))
     } finally {
@@ -50,7 +49,13 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
     }
   }
 
-  const allSelected = activePlayers.length > 0 && activePlayers.every((player) => selected.has(player.id))
+  const historicalIds = attendancePlayerIdsForDate(attendance, date)
+  const visiblePlayers = profiles.filter((profile) => (
+    !profile.is_owner && (currentPlayers.some((player) => player.id === profile.id) || historicalIds.has(profile.id))
+  ))
+  const visibleIds = new Set(visiblePlayers.map((player) => player.id))
+  const visibleSelected = new Set([...selected].filter((id) => visibleIds.has(id)))
+  const allSelected = visiblePlayers.length > 0 && visiblePlayers.every((player) => visibleSelected.has(player.id))
   const recentDates = sessions.slice(0, 5)
 
   return (
@@ -67,7 +72,7 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
           <input max={todayIso()} onChange={(event) => changeDate(event.target.value)} type="date" value={date} />
         </label>
         {date !== todayIso() && <button className="secondary-button" onClick={() => changeDate(todayIso())}>Volver a hoy</button>}
-        <div className="attendance-count"><strong>{selected.size}</strong><span>de {activePlayers.length}<br />asistentes</span></div>
+        <div className="attendance-count"><strong>{visibleSelected.size}</strong><span>de {visiblePlayers.length}<br />asistentes</span></div>
       </section>
 
       {recentDates.length > 0 && (
@@ -81,21 +86,21 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
         </div>
       )}
 
-      {activePlayers.length ? (
+      {visiblePlayers.length ? (
         <section className="attendance-panel">
           <div className="attendance-panel-heading">
             <div><span className="eyebrow">JUGADORAS ACTIVAS</span><h2>{formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>
             <label className="select-all">
               <input
                 checked={allSelected}
-                onChange={(event) => setSelected(event.target.checked ? new Set(activePlayers.map((player) => player.id)) : new Set())}
+                onChange={(event) => setSelected(event.target.checked ? new Set(visiblePlayers.map((player) => player.id)) : new Set())}
                 type="checkbox"
               />
               Marcar todas
             </label>
           </div>
           <div className="attendance-list">
-            {activePlayers.map((player) => {
+            {visiblePlayers.map((player) => {
               const checked = selected.has(player.id)
               return (
                 <label className={checked ? 'attendance-player present' : 'attendance-player'} key={player.id}>
@@ -108,7 +113,7 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
           </div>
           {formError && <p className="form-error">{formError}</p>}
           <div className="attendance-save">
-            <span>{selected.size === activePlayers.length ? '¡Equipo completo!' : `${activePlayers.length - selected.size} sin marcar`}</span>
+            <span>{visibleSelected.size === visiblePlayers.length ? '¡Equipo completo!' : `${visiblePlayers.length - visibleSelected.size} sin marcar`}</span>
             <button className="primary-button" disabled={saving} onClick={save}>
               <Icon name="check" size={18} />{saving ? 'Guardando…' : 'Guardar asistencia'}
             </button>

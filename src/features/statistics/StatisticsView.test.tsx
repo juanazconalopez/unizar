@@ -35,14 +35,14 @@ describe('StatisticsView', () => {
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
     expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('1')
-    expect(within(summary).getByText('1/2')).toBeInTheDocument()
-    expect(within(summary).getByText('Jugadoras con tareas').closest('article')).toHaveTextContent('1')
+    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('50%')
+    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('0,5')
     expect(screen.getByText('Ana Martín')).toBeInTheDocument()
     expect(screen.getByText('María López')).toBeInTheDocument()
     expect(screen.queryByText('Owner Excluida')).not.toBeInTheDocument()
     expect(screen.getByText('Asistió al entrenamiento')).toBeInTheDocument()
     expect(screen.getByText('No asistió al entrenamiento')).toBeInTheDocument()
-    expect(screen.getByText('50%')).toBeInTheDocument()
+    expect(within(document.querySelector('.weekly-team-summary')!).getByText('50%')).toBeInTheDocument()
     expect(screen.getByText('1 de 2 tareas asignadas completadas por las jugadoras.')).toBeInTheDocument()
 
     const anaRow = screen.getByText('Ana Martín').closest('article')!
@@ -51,6 +51,81 @@ describe('StatisticsView', () => {
     const mariaRow = screen.getByText('María López').closest('article')!
     expect(within(mariaRow).getByLabelText('No asistió al entrenamiento de campo')).toBeInTheDocument()
     expect(within(mariaRow).queryByText('T')).not.toBeInTheDocument()
+  })
+
+  test('shows average attendance per training instead of the accumulated total', () => {
+    const monthPrefix = todayIso().slice(0, 7)
+    const firstTraining = `${monthPrefix}-01`
+    const secondTraining = `${monthPrefix}-02`
+    const profiles = [
+      makeProfile({ id: 'player-1' }),
+      makeProfile({ id: 'player-2', display_name: 'Jugadora 2' }),
+      makeProfile({ id: 'player-3', display_name: 'Jugadora 3' }),
+      makeProfile({ id: 'player-4', display_name: 'Jugadora 4' }),
+    ]
+    render(
+      <StatisticsView
+        profiles={profiles}
+        sessions={[
+          makeSession({ id: 'session-1', session_date: firstTraining }),
+          makeSession({ id: 'session-2', session_date: secondTraining }),
+        ]}
+        attendance={[
+          ...profiles.map((profile, index) => makeAttendance({
+            session_id: 'session-1',
+            player_id: profile.id,
+            attended: index < 2,
+            training_sessions: { session_date: firstTraining },
+          })),
+          ...profiles.map((profile) => makeAttendance({
+            session_id: 'session-2',
+            player_id: profile.id,
+            attended: true,
+            training_sessions: { session_date: secondTraining },
+          })),
+        ]}
+        memberships={[]}
+        tasks={[]}
+        results={[]}
+      />,
+    )
+
+    const summary = screen.getByRole('region', { name: 'Resumen del mes' })
+    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('75%')
+  })
+
+  test('averages completed published tasks across every active player', () => {
+    const today = todayIso()
+    const profiles = [
+      makeProfile({ id: 'player-1' }),
+      makeProfile({ id: 'player-2', display_name: 'Jugadora 2' }),
+      makeProfile({ id: 'player-3', display_name: 'Jugadora 3' }),
+    ]
+    render(
+      <StatisticsView
+        profiles={profiles}
+        sessions={[]}
+        attendance={[]}
+        memberships={[]}
+        tasks={[
+          makeTask({ id: 'task-1' }),
+          makeTask({ id: 'task-2' }),
+          makeTask({ id: 'task-3' }),
+          makeTask({ id: 'draft-task', status: 'draft' }),
+        ]}
+        results={[
+          makeResult({ task_id: 'task-1', player_id: 'player-2', performed_on: today }),
+          makeResult({ task_id: 'task-2', player_id: 'player-2', performed_on: today }),
+          makeResult({ task_id: 'task-1', player_id: 'player-3', performed_on: today }),
+          makeResult({ task_id: 'task-2', player_id: 'player-3', performed_on: today }),
+          makeResult({ task_id: 'task-3', player_id: 'player-3', performed_on: today }),
+          makeResult({ task_id: 'draft-task', player_id: 'player-1', performed_on: today }),
+        ]}
+      />,
+    )
+
+    const summary = screen.getByRole('region', { name: 'Resumen del mes' })
+    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('1,7')
   })
 
   test('does not show attendance badges when there is no field session that day', () => {

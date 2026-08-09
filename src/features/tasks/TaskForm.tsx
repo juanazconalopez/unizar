@@ -1,34 +1,29 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { Modal } from '../../components/ui/Modal'
 import { TRAINING_TYPES } from '../../constants/training'
 import { todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { Season, TaskStatus, TaskValues, TrainingTask } from '../../types'
 
-export function TaskForm({ seasons, initialDate = todayIso(), task, onCancel, onSubmit }: {
+export function TaskForm({ seasons, initialDate = todayIso(), task, template, onCancel, onDelete, onSubmit }: {
   seasons: Season[]
   initialDate?: string
   task?: TrainingTask
+  template?: TrainingTask
   onCancel: () => void
+  onDelete?: (task: TrainingTask) => Promise<void>
   onSubmit: (values: TaskValues) => Promise<void>
 }) {
   const titleId = useId()
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [formError, setFormError] = useState('')
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !saving) onCancel()
-    }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [onCancel, saving])
+  const busy = saving || deleting
+  const source = task ?? template
+  const trainingTypes: readonly string[] = source?.training_type && !TRAINING_TYPES.some((type) => type === source.training_type)
+    ? [source.training_type, ...TRAINING_TYPES]
+    : TRAINING_TYPES
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -38,7 +33,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, onCancel, on
     try {
       await onSubmit({
         seasonId: String(form.get('seasonId')),
-        date: String(form.get('date')),
+        date: task?.week_start ?? String(form.get('date')),
         title: String(form.get('title')),
         description: String(form.get('description')),
         trainingType: String(form.get('trainingType')),
@@ -50,41 +45,45 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, onCancel, on
     }
   }
 
-  return createPortal(
-    <div className="task-detail-backdrop" onClick={() => { if (!saving) onCancel() }}>
-      <form
-        aria-labelledby={titleId}
-        aria-modal="true"
-        className="panel-form task-form-dialog"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={submit}
-        role="dialog"
-      >
+  async function deleteTask() {
+    if (!task || !onDelete) return
+    if (!window.confirm(`¿Eliminar "${task.title}"? También se eliminarán definitivamente todas las respuestas enviadas.`)) return
+    setDeleting(true)
+    setFormError('')
+    try {
+      await onDelete(task)
+    } catch (error) {
+      setFormError(errorText(error))
+      setDeleting(false)
+    }
+  }
+
+  return (
+      <Modal className="panel-form task-form-dialog" disabled={busy} labelledBy={titleId} onClose={onCancel} onSubmit={submit}>
         <div className="panel-form-heading">
-          <div><span className="eyebrow">{task ? 'EDITAR ENTRENAMIENTO' : 'NUEVO ENTRENAMIENTO'}</span><h2 id={titleId}>{task ? 'Editar tarea' : 'Crear tarea'}</h2></div>
-          <button aria-label="Cerrar" className="icon-button" disabled={saving} onClick={onCancel} type="button">×</button>
+          <div><span className="eyebrow">{task ? 'EDITAR ENTRENAMIENTO' : template ? 'COPIAR ENTRENAMIENTO' : 'NUEVO ENTRENAMIENTO'}</span><h2 id={titleId}>{task ? 'Editar tarea' : template ? 'Copiar tarea' : 'Crear tarea'}</h2></div>
+          <button aria-label="Cerrar" className="icon-button" disabled={busy} onClick={onCancel} type="button">×</button>
         </div>
         <div className="form-grid">
-          <label>Título<input autoFocus defaultValue={task?.title} name="title" required placeholder="Ej. Rodaje suave" /></label>
+          <label>Título<input autoFocus defaultValue={source?.title} name="title" required placeholder="Ej. Rodaje suave" /></label>
           <label>
             Temporada
-            <select name="seasonId" required defaultValue={task?.season_id ?? ''}>
+            <select name="seasonId" required defaultValue={source?.season_id ?? ''}>
               <option disabled value="">Seleccionar…</option>
               {seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
             </select>
           </label>
-          <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={task?.week_start ?? initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>
-          <label>Tipo<select defaultValue={task?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{TRAINING_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
-          <label className="full-field task-form-description">Descripción<textarea defaultValue={task?.description ?? ''} name="description" rows={7} placeholder="Indicaciones, distancia, repeticiones…" /></label>
-          <label>Estado<select name="status" defaultValue={task?.status ?? 'published'}><option value="published">Publicada</option><option value="draft">Borrador</option>{task && <option value="cancelled">Anulada</option>}</select></label>
+          {!task && <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>}
+          <label>Tipo<select defaultValue={source?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{trainingTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+          <label className="full-field task-form-description">Descripción<textarea defaultValue={source?.description ?? ''} name="description" rows={7} placeholder="Indicaciones, distancia, repeticiones…" /></label>
+          <label>Estado<select name="status" defaultValue={task?.status ?? 'draft'}><option value="published">Publicada</option><option value="draft">Borrador</option>{task && <option value="cancelled">Anulada</option>}</select></label>
         </div>
         {formError && <p className="form-error">{formError}</p>}
         <div className="form-actions">
-          <button className="secondary-button" disabled={saving} onClick={onCancel} type="button">Cancelar</button>
-          <button className="primary-button" disabled={saving || !seasons.length}>{saving ? 'Guardando…' : task ? 'Guardar cambios' : 'Crear tarea'}</button>
+          {task && onDelete && <button className="danger-button task-form-delete" disabled={busy} onClick={() => void deleteTask()} type="button">{deleting ? 'Eliminando…' : 'Eliminar tarea'}</button>}
+          <button className="secondary-button" disabled={busy} onClick={onCancel} type="button">Cancelar</button>
+          <button className="primary-button" disabled={busy || !seasons.length}>{saving ? 'Guardando…' : task ? 'Guardar cambios' : template ? 'Copiar tarea' : 'Crear tarea'}</button>
         </div>
-      </form>
-    </div>,
-    document.body,
+      </Modal>
   )
 }

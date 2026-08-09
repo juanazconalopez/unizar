@@ -38,6 +38,7 @@ export function makeSeason(overrides: Partial<Season> = {}): Season {
 
 export function makeMembership(overrides: Partial<SeasonPlayer> = {}): SeasonPlayer {
   return {
+    id: 'membership-1',
     season_id: 'season-1',
     player_id: 'player-1',
     active_from: '2026-01-01',
