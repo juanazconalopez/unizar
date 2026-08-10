@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { addDays, mondayFor, seasonState, toIsoDate, todayIso } from './dates'
+import { addDays, mondayFor, monthEnd, monthStart, offsetMonth, seasonState, toIsoDate, todayIso } from './dates'
 
 afterEach(() => vi.useRealTimers())
 
 describe('date helpers', () => {
+  test('builds month windows across year and leap-year boundaries', () => {
+    expect(monthStart('2026-08-19')).toBe('2026-08-01')
+    expect(monthEnd('2024-02-10')).toBe('2024-02-29')
+    expect(offsetMonth('2026-01-15', -1)).toBe('2025-12-01')
+  })
+
   test('calculates Monday without mutating the supplied Date', () => {
     const date = new Date('2026-08-09T12:00:00')
 

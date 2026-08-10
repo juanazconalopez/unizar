@@ -1,13 +1,17 @@
 import { act, renderHook } from '@testing-library/react'
 import type { Session } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { makeProfile } from '../test/fixtures'
-import { fetchTrainingData } from '../services/trainingService'
+import { makeProfile, makeResult, makeTask } from '../test/fixtures'
+import { fetchTaskWindow, fetchTrainingData } from '../services/trainingService'
 import type { ViewName } from '../types'
 import { AUTO_REFRESH_INTERVAL_MS, useTrainingData } from './useTrainingData'
 
 vi.mock('../services/trainingService', () => ({
   fetchTrainingData: vi.fn(),
+  fetchTaskWindow: vi.fn(),
+  fetchStatisticsWindow: vi.fn(),
+  fetchAttendanceDate: vi.fn(),
+  fetchMatchWindow: vi.fn(),
 }))
 
 const session = {
@@ -41,6 +45,7 @@ describe('useTrainingData', () => {
     vi.setSystemTime(new Date('2026-08-10T10:00:00Z'))
     vi.mocked(fetchTrainingData).mockReset()
     vi.mocked(fetchTrainingData).mockResolvedValue(trainingData)
+    vi.mocked(fetchTaskWindow).mockReset()
   })
 
   afterEach(() => vi.useRealTimers())
@@ -95,5 +100,21 @@ describe('useTrainingData', () => {
     await flushInitialLoad()
 
     expect(fetchTrainingData).toHaveBeenLastCalledWith('player-1', 'matches')
+  })
+
+  test('adds a requested task window without discarding visible data', async () => {
+    const oldTask = makeTask({ id: 'old-task', week_start: '2026-07-20' })
+    const oldResult = makeResult({ task_id: oldTask.id, player_id: 'player-1' })
+    vi.mocked(fetchTaskWindow).mockResolvedValue({ tasks: [oldTask], results: [oldResult] })
+    const { result } = renderHook(() => useTrainingData(session, 'tasks'))
+    await flushInitialLoad()
+
+    await act(async () => {
+      await result.current.loadTaskRange('2026-07-20', '2026-07-27')
+    })
+
+    expect(fetchTaskWindow).toHaveBeenCalledWith('player-1', false, '2026-07-20', '2026-07-27')
+    expect(result.current.tasks).toContainEqual(oldTask)
+    expect(result.current.results).toContainEqual(oldResult)
   })
 })

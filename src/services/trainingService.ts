@@ -1,4 +1,4 @@
-import { addDays, mondayFor, todayIso } from '../lib/dates'
+import { addDays, mondayFor, monthEnd, monthStart, offsetMonth, todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord,
@@ -46,6 +46,116 @@ export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
   }
 }
 
+type TaskWindowData = Pick<TrainingData, 'tasks' | 'results'>
+type AttendanceWindowData = Pick<TrainingData, 'trainingSessions' | 'attendance'>
+type MatchWindowData = Pick<TrainingData, 'matches' | 'matchAvailability' | 'matchLineups'>
+
+const emptyTaskWindow: TaskWindowData = { tasks: [], results: [] }
+const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [] }
+const emptyMatchWindow: MatchWindowData = { matches: [], matchAvailability: [], matchLineups: [] }
+
+/** Loads task results only for the tasks in the requested week window. */
+export async function fetchTaskWindow(
+  userId: string,
+  canManageTasks: boolean,
+  fromWeek: string,
+  toWeek: string,
+): Promise<TaskWindowData> {
+  const { data: taskRows, error: tasksError } = await supabase
+    .from('tasks')
+    .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
+    .gte('week_start', fromWeek)
+    .lte('week_start', toWeek)
+    .order('week_start', { ascending: false })
+  if (tasksError) throw tasksError
+
+  const tasks = (taskRows ?? []) as unknown as TrainingTask[]
+  if (!tasks.length) return emptyTaskWindow
+  let resultsQuery = supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id))
+  if (!canManageTasks) resultsQuery = resultsQuery.eq('player_id', userId)
+  const { data: resultRows, error: resultsError } = await resultsQuery
+  if (resultsError) throw resultsError
+  return { tasks, results: (resultRows ?? []) as TaskResult[] }
+}
+
+async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
+  if (!sessionRows.length) return emptyAttendanceWindow
+  let query = supabase
+    .from('training_attendance')
+    .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
+    .in('session_id', sessionRows.map((session) => session.id))
+    .order('updated_at', { ascending: false })
+  if (playerId) query = query.eq('player_id', playerId)
+  const { data, error } = await query
+  if (error) throw error
+  return { trainingSessions: sessionRows, attendance: (data ?? []) as unknown as AttendanceRecord[] }
+}
+
+/** Loads one calendar month plus the preceding month used by the comparison card. */
+export async function fetchStatisticsWindow(month: string): Promise<TaskWindowData & AttendanceWindowData> {
+  const fromDate = offsetMonth(monthStart(month), -1)
+  const toDate = monthEnd(month)
+  const [taskData, sessionsResponse] = await Promise.all([
+    // Results are associated by task id, so completions near a month boundary are not lost.
+    fetchTaskWindow('', true, mondayFor(fromDate), mondayFor(toDate)),
+    supabase
+      .from('training_sessions')
+      .select('*')
+      .gte('session_date', fromDate)
+      .lte('session_date', toDate)
+      .order('session_date', { ascending: false }),
+  ])
+  if (sessionsResponse.error) throw sessionsResponse.error
+  const attendanceData = await fetchAttendanceForSessions((sessionsResponse.data ?? []) as TrainingSession[])
+  return { ...taskData, ...attendanceData }
+}
+
+export async function fetchAttendanceDate(date: string): Promise<AttendanceWindowData> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select('*')
+    .eq('session_date', date)
+    .order('session_date', { ascending: false })
+  if (error) throw error
+  return fetchAttendanceForSessions((data ?? []) as TrainingSession[])
+}
+
+async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select('*')
+    .order('session_date', { ascending: false })
+    .limit(5)
+  if (error) throw error
+  return fetchAttendanceForSessions((data ?? []) as TrainingSession[])
+}
+
+/** Loads availability and lineups only for matches in the requested date range. */
+export async function fetchMatchWindow(fromDate: string, toDate?: string): Promise<MatchWindowData> {
+  let query = supabase
+    .from('matches')
+    .select('*, seasons(name)')
+    .gte('match_date', fromDate)
+    .order('match_date', { ascending: true })
+  if (toDate) query = query.lte('match_date', toDate)
+  const { data: matchRows, error: matchesError } = await query
+  if (matchesError) throw matchesError
+  const matches = (matchRows ?? []) as unknown as Match[]
+  if (!matches.length) return emptyMatchWindow
+  const matchIds = matches.map((match) => match.id)
+  const [availabilityResponse, lineupsResponse] = await Promise.all([
+    supabase.from('match_availability').select('*').in('match_id', matchIds),
+    supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order'),
+  ])
+  if (availabilityResponse.error) throw availabilityResponse.error
+  if (lineupsResponse.error) throw lineupsResponse.error
+  return {
+    matches,
+    matchAvailability: (availabilityResponse.data ?? []) as MatchAvailability[],
+    matchLineups: (lineupsResponse.data ?? []) as MatchLineup[],
+  }
+}
+
 export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
   const { data: ownProfile, error: profileError } = await supabase
     .from('profiles')
@@ -72,67 +182,73 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
 
   const canManageTasks = profile.is_owner || profile.is_collaborator
   const requirements = dataRequirementsFor(scope, canManageTasks)
-  const needsSessions = profile.is_owner && (scope === 'statistics' || scope === 'attendance')
   const currentWeek = mondayFor(new Date())
 
-  let tasksQuery = supabase
-      .from('tasks')
-      .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
-      .order('week_start', { ascending: false })
-  if (scope === 'home') tasksQuery = tasksQuery.eq('week_start', currentWeek)
-
-  let resultsQuery = supabase.from('task_results').select('*')
-  if (scope === 'home' || !canManageTasks) resultsQuery = resultsQuery.eq('player_id', userId)
-  if (scope === 'home') resultsQuery = resultsQuery.gte('performed_on', currentWeek).lte('performed_on', addDays(currentWeek, 6))
-
-  let attendanceQuery = supabase
-      .from('training_attendance')
-      .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
-      .order('updated_at', { ascending: false })
-  if (scope === 'home') attendanceQuery = attendanceQuery.eq('player_id', userId)
-
   const emptyResponse = Promise.resolve({ data: [], error: null })
-  const [seasonsResponse, tasksResponse, resultsResponse, membershipsResponse, attendanceResponse, matchesResponse, availabilityResponse, lineupsResponse, profilesResponse, sessionsResponse] = await Promise.all([
+  const [seasonsResponse, membershipsResponse, profilesResponse] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
-    requirements.tasks ? tasksQuery : emptyResponse,
-    requirements.results ? resultsQuery : emptyResponse,
     requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
-    requirements.attendance ? attendanceQuery : emptyResponse,
-    requirements.matches ? supabase.from('matches').select('*, seasons(name)').order('match_date', { ascending: true }) : emptyResponse,
-    requirements.matches ? supabase.from('match_availability').select('*') : emptyResponse,
-    requirements.matches ? supabase.from('match_lineup').select('*').order('sort_order') : emptyResponse,
     requirements.profiles
       ? supabase
         .from('profiles')
         .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
         .order('display_name')
       : emptyResponse,
-    needsSessions ? supabase.from('training_sessions').select('*').order('session_date', { ascending: false }) : emptyResponse,
   ])
 
   if (seasonsResponse.error) throw seasonsResponse.error
-  if (tasksResponse.error) throw tasksResponse.error
-  if (resultsResponse.error) throw resultsResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
-  if (attendanceResponse.error) throw attendanceResponse.error
-  if (matchesResponse.error) throw matchesResponse.error
-  if (availabilityResponse.error) throw availabilityResponse.error
-  if (lineupsResponse.error) throw lineupsResponse.error
   if (profilesResponse.error) throw profilesResponse.error
-  if (sessionsResponse.error) throw sessionsResponse.error
+
+  const seasons = (seasonsResponse.data ?? []) as Season[]
+  let taskData = emptyTaskWindow
+  let attendanceData = emptyAttendanceWindow
+  let matchData = emptyMatchWindow
+
+  if (scope === 'home') {
+    taskData = await fetchTaskWindow(userId, false, currentWeek, currentWeek)
+    // The home percentage is seasonal, not a lifetime download across every season.
+    const dashboardSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso()) ?? seasons[0]
+    if (dashboardSeason) {
+      const { data, error } = await supabase
+        .from('training_sessions')
+        .select('*')
+        .gte('session_date', dashboardSeason.start_date)
+        .lte('session_date', dashboardSeason.end_date)
+        .order('session_date', { ascending: false })
+      if (error) throw error
+      attendanceData = await fetchAttendanceForSessions((data ?? []) as TrainingSession[], userId)
+    }
+  } else if (scope === 'tasks') {
+    const start = addDays(currentWeek, -14)
+    const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
+    const managerEnd = activeSeason?.end_date && activeSeason.end_date >= currentWeek
+      ? mondayFor(activeSeason.end_date)
+      : addDays(currentWeek, 84)
+    taskData = await fetchTaskWindow(userId, canManageTasks, start, canManageTasks ? managerEnd : currentWeek)
+  } else if (scope === 'statistics' && profile.is_owner) {
+    const statisticsData = await fetchStatisticsWindow(monthStart(todayIso()))
+    taskData = statisticsData
+    attendanceData = statisticsData
+  } else if (scope === 'attendance' && profile.is_owner) {
+    attendanceData = await fetchRecentAttendance()
+  } else if (scope === 'matches') {
+    // Keep the list useful while excluding completed seasons; older months load on demand.
+    matchData = await fetchMatchWindow(monthStart(todayIso()))
+  }
 
   return {
     profile,
-    seasons: (seasonsResponse.data ?? []) as Season[],
-    tasks: (tasksResponse.data ?? []) as unknown as TrainingTask[],
-    results: (resultsResponse.data ?? []) as TaskResult[],
+    seasons,
+    tasks: taskData.tasks,
+    results: taskData.results,
     memberships: (membershipsResponse.data ?? []) as SeasonPlayer[],
     profiles: (profilesResponse.data ?? []) as Profile[],
-    trainingSessions: (sessionsResponse.data ?? []) as TrainingSession[],
-    attendance: (attendanceResponse.data ?? []) as unknown as AttendanceRecord[],
-    matches: (matchesResponse.data ?? []) as unknown as Match[],
-    matchAvailability: (availabilityResponse.data ?? []) as MatchAvailability[],
-    matchLineups: (lineupsResponse.data ?? []) as MatchLineup[],
+    trainingSessions: attendanceData.trainingSessions,
+    attendance: attendanceData.attendance,
+    matches: matchData.matches,
+    matchAvailability: matchData.matchAvailability,
+    matchLineups: matchData.matchLineups,
   }
 }
 

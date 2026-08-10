@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { addDays, formatWeek, mondayFor, todayIso } from '../../lib/dates'
+import { addDays, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
 import { TaskCard } from './TaskCard'
@@ -11,7 +11,7 @@ import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, onCreate, onDelete, onUpdate, onSaveResult, onStatusChange }: {
+export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, loadingRange = false, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange }: {
   canManage: boolean
   isOwner?: boolean
   seasons: Season[]
@@ -21,9 +21,11 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   results: TaskResult[]
   teamResults?: TaskResult[]
   userId: string
+  loadingRange?: boolean
   onCreate: (values: TaskValues) => Promise<void>
   onDelete: (task: TrainingTask) => Promise<void>
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
+  onLoadRange?: (fromWeek: string, toWeek: string) => Promise<void>
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>
 }) {
@@ -53,8 +55,13 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   })
   const taskWeeks = groupTasksByWeek(visibleTasks, resultIds)
   const displayedTaskWeeks = canManage ? includeCurrentWeek(taskWeeks, currentWeek) : taskWeeks
-  const hasOlderTasks = (canManage || filter !== 'pending')
-    && filteredTasks.some((task) => task.week_start < oldestVisibleWeek)
+  const earliestSeasonStart = seasons.reduce<string | null>((earliest, season) => (
+    !earliest || season.start_date < earliest ? season.start_date : earliest
+  ), null)
+  const hasOlderTasks = (canManage || filter !== 'pending') && (
+    filteredTasks.some((task) => task.week_start < oldestVisibleWeek)
+    || Boolean(onLoadRange && earliestSeasonStart && mondayFor(earliestSeasonStart) < oldestVisibleWeek)
+  )
   const selectedPlanningWeek = mondayFor(selectedPlanningDate)
   const selectedWeekTasks = groupTasksByWeek(
     tasks.filter((task) => task.week_start === selectedPlanningWeek),
@@ -80,6 +87,26 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     const today = todayIso()
     setSelectedPlanningDate(today)
     setPlanningMonth(`${today.slice(0, 7)}-01`)
+  }
+
+  function changePlanningMonth(nextMonth: string) {
+    setPlanningMonth(nextMonth)
+    if (onLoadRange) {
+      void onLoadRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))).catch(() => undefined)
+    }
+  }
+
+  async function loadOlderWeeks() {
+    const fromWeek = addDays(oldestVisibleWeek, -14)
+    const toWeek = addDays(oldestVisibleWeek, -7)
+    if (onLoadRange) {
+      try {
+        await onLoadRange(fromWeek, toWeek)
+      } catch {
+        return
+      }
+    }
+    setVisibleWeekCount((count) => count + 2)
   }
 
   function openCreateForm() {
@@ -116,6 +143,18 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     } else {
       await onCreate(values)
     }
+    if (onLoadRange) {
+      const week = mondayFor(editingTask?.week_start ?? values.date)
+      try { await onLoadRange(week, week) } catch { /* The mutation itself already succeeded. */ }
+    }
+    closeForm()
+  }
+
+  async function deleteTask(task: TrainingTask) {
+    await onDelete(task)
+    if (onLoadRange) {
+      try { await onLoadRange(task.week_start, task.week_start) } catch { /* The deletion itself already succeeded. */ }
+    }
     closeForm()
   }
 
@@ -125,7 +164,12 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     if (!canEdit) return <span className={`status-select ${task.status}`}>{statusLabel(task.status)}</span>
     return (
       <>
-        <StatusControl status={task.status} onChange={(status) => onStatusChange(task.id, status)} />
+        <StatusControl status={task.status} onChange={async (status) => {
+          await onStatusChange(task.id, status)
+          if (onLoadRange) {
+            try { await onLoadRange(task.week_start, task.week_start) } catch { /* The status change itself already succeeded. */ }
+          }
+        }} />
         <button className="secondary-button compact" onClick={() => openEditForm(task)} type="button">Editar tarea</button>
         <button className="secondary-button compact" onClick={() => openCopyForm(task)} type="button">Copiar</button>
       </>
@@ -160,7 +204,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           task={editingTask ?? undefined}
           template={copyingTask ?? undefined}
           onCancel={closeForm}
-          onDelete={async (task) => { await onDelete(task); closeForm() }}
+          onDelete={deleteTask}
           onSubmit={saveTask}
         />
       )}
@@ -184,7 +228,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
             month={planningMonth}
             selectedDate={selectedPlanningDate}
             tasks={tasks}
-            onMonthChange={setPlanningMonth}
+            onMonthChange={changePlanningMonth}
             onSelectDate={setSelectedPlanningDate}
           />
           <section className="selected-planning-week">
@@ -221,7 +265,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
                 task={editingTask ?? undefined}
                 template={copyingTask ?? undefined}
                 onCancel={closeForm}
-                onDelete={async (task) => { await onDelete(task); closeForm() }}
+                onDelete={deleteTask}
                 onSubmit={saveTask}
               />
             )}
@@ -264,8 +308,8 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
       </div>
       {hasOlderTasks && (
         <div className="load-more-weeks">
-          <button className="secondary-button" onClick={() => setVisibleWeekCount((count) => count + 2)} type="button">
-            Ver dos semanas anteriores
+          <button className="secondary-button" disabled={loadingRange} onClick={() => void loadOlderWeeks()} type="button">
+            {loadingRange ? 'Cargando…' : 'Ver dos semanas anteriores'}
           </button>
         </div>
       )}
@@ -304,9 +348,9 @@ function weekRelativeLabel(weekStart: string, currentWeek: string) {
   return `HACE ${weeksAgo} SEMANAS`
 }
 
-function StatusControl({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void }) {
+function StatusControl({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void | Promise<void> }) {
   return (
-    <select aria-label="Estado" className={`status-select ${status}`} onChange={(event) => onChange(event.target.value as TaskStatus)} value={status}>
+    <select aria-label="Estado" className={`status-select ${status}`} onChange={(event) => void onChange(event.target.value as TaskStatus)} value={status}>
       <option value="draft">Borrador</option>
       <option value="published">Publicada</option>
       <option value="cancelled">Anulada</option>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate, mondayFor, todayIso, toIsoDate } from '../../lib/dates'
+import { formatDate, mondayFor, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { activePlayers as selectActivePlayers } from '../../lib/selectors'
 import type {
@@ -20,9 +20,11 @@ type StatisticsProps = {
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
+  loadingRange?: boolean
+  onLoadMonth?: (month: string) => Promise<void>
 }
 
-export function StatisticsView({ profiles, sessions, attendance, memberships, tasks, results }: StatisticsProps) {
+export function StatisticsView({ profiles, sessions, attendance, memberships, tasks, results, loadingRange = false, onLoadMonth }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -53,8 +55,15 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
     ? Math.round(previousAttendanceRate - attendanceRate)
     : 0
 
-  function changeMonth(offset: number) {
+  async function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
+    if (onLoadMonth) {
+      try {
+        await onLoadMonth(nextMonth)
+      } catch {
+        return
+      }
+    }
     setMonth(nextMonth)
     setSelectedDate(nextMonth)
   }
@@ -87,12 +96,12 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
 
       <section className="calendar-panel">
         <div className="calendar-toolbar">
-          <button aria-label="Mes anterior" onClick={() => changeMonth(-1)} type="button">‹</button>
+          <button aria-label="Mes anterior" disabled={loadingRange} onClick={() => void changeMonth(-1)} type="button">‹</button>
           <div>
             <span className="eyebrow">MES</span>
             <h2>{formatDate(month, { month: 'long', year: 'numeric' })}</h2>
           </div>
-          <button aria-label="Mes siguiente" onClick={() => changeMonth(1)} type="button">›</button>
+          <button aria-label="Mes siguiente" disabled={loadingRange} onClick={() => void changeMonth(1)} type="button">›</button>
         </div>
         <div className="calendar-weekdays" aria-hidden="true">
           {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
@@ -284,9 +293,4 @@ function calendarDays(month: string) {
     ...Array.from<null>({ length: offset }).fill(null),
     ...Array.from({ length: totalDays }, (_, index) => toIsoDate(new Date(year, monthNumber - 1, index + 1, 12))),
   ]
-}
-
-function offsetMonth(month: string, offset: number) {
-  const [year, monthNumber] = month.split('-').map(Number)
-  return toIsoDate(new Date(year, monthNumber - 1 + offset, 1, 12))
 }

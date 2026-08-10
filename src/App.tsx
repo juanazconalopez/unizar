@@ -256,6 +256,8 @@ function App() {
           results={data.results}
           sessions={data.trainingSessions}
           tasks={data.tasks}
+          loadingRange={data.loadingRange}
+          onLoadMonth={data.loadStatisticsMonth}
         />
       )}
       {view === 'attendance' && data.profile.is_owner && (
@@ -263,6 +265,8 @@ function App() {
           attendance={data.attendance}
           profiles={data.profiles}
           sessions={data.trainingSessions}
+          loadingRange={data.loadingRange}
+          onLoadDate={data.loadAttendanceDate}
           onSave={handleAttendance}
         />
       )}
@@ -277,9 +281,11 @@ function App() {
           tasks={data.tasks}
           teamResults={canManageTasks ? data.results : undefined}
           userId={userId}
+          loadingRange={data.loadingRange}
           onCreate={handleCreateTask}
           onDelete={handleDeleteTask}
           onUpdate={handleUpdateTask}
+          onLoadRange={data.loadTaskRange}
           onSaveResult={handleSaveResult}
           onStatusChange={handleTaskStatus}
         />
@@ -295,6 +301,7 @@ function App() {
           seasons={data.seasons}
           userId={userId}
           onDelete={handleDeleteMatch}
+          onLoadMonth={data.loadMatchMonth}
           onSaveAvailability={handleMatchAvailability}
           onSaveLineup={handleMatchLineup}
           onSaveMatch={handleSaveMatch}

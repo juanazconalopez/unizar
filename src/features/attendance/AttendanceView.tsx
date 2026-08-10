@@ -8,10 +8,12 @@ import { errorText } from '../../lib/errors'
 import { activePlayers, attendancePlayerIdsForDate } from '../../lib/selectors'
 import type { AttendanceRecord, Profile, TrainingSession } from '../../types'
 
-export function AttendanceView({ profiles, sessions, attendance, onSave }: {
+export function AttendanceView({ profiles, sessions, attendance, loadingRange = false, onLoadDate, onSave }: {
   profiles: Profile[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
+  loadingRange?: boolean
+  onLoadDate?: (date: string) => Promise<AttendanceRecord[] | undefined>
   onSave: (date: string, playerIds: string[], attendedPlayerIds: string[]) => Promise<void>
 }) {
   const currentPlayers = activePlayers(profiles)
@@ -26,6 +28,11 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
     setDate(nextDate)
     setSelected(attendedPlayersForDate(attendance, nextDate))
     setFormError('')
+    if (onLoadDate) {
+      void onLoadDate(nextDate).then((records) => {
+        if (records) setSelected(attendedPlayersForDate(records, nextDate))
+      }).catch(() => undefined)
+    }
   }
 
   function togglePlayer(playerId: string) {
@@ -42,6 +49,14 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
     setFormError('')
     try {
       await onSave(date, [...visibleIds], [...visibleSelected])
+      if (onLoadDate) {
+        try {
+          const records = await onLoadDate(date)
+          if (records) setSelected(attendedPlayersForDate(records, date))
+        } catch {
+          // The save succeeded; the shared error banner reports the refresh failure.
+        }
+      }
     } catch (error) {
       setFormError(errorText(error))
     } finally {
@@ -69,7 +84,7 @@ export function AttendanceView({ profiles, sessions, attendance, onSave }: {
       <section className="attendance-toolbar">
         <label>
           Fecha del entrenamiento
-          <input max={todayIso()} onChange={(event) => changeDate(event.target.value)} type="date" value={date} />
+          <input disabled={loadingRange} max={todayIso()} onChange={(event) => changeDate(event.target.value)} type="date" value={date} />
         </label>
         {date !== todayIso() && <button className="secondary-button" onClick={() => changeDate(todayIso())}>Volver a hoy</button>}
         <div className="attendance-count"><strong>{visibleSelected.size}</strong><span>de {visiblePlayers.length}<br />asistentes</span></div>

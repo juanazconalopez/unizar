@@ -24,6 +24,20 @@ export function addDays(value: string, days: number) {
   return toIsoDate(date)
 }
 
+export function monthStart(value: string) {
+  return `${value.slice(0, 7)}-01`
+}
+
+export function offsetMonth(value: string, offset: number) {
+  const date = dateFromIso(monthStart(value))
+  date.setMonth(date.getMonth() + offset)
+  return monthStart(toIsoDate(date))
+}
+
+export function monthEnd(value: string) {
+  return addDays(offsetMonth(value, 1), -1)
+}
+
 export function formatDate(value: string, options?: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('es-ES', options ?? {
     day: 'numeric',
