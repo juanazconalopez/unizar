@@ -32,6 +32,39 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3, .brand, .stat-card strong { font-family: 'Manrope', system-ui, sans-serif; }
 
+.pwa-update {
+  position: fixed;
+  z-index: 100;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  width: min(430px, calc(100vw - 36px));
+  padding: 16px;
+  border: 1px solid #c9dbd3;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--ink);
+  background: white;
+  box-shadow: 0 18px 55px rgba(12, 39, 32, .2);
+}
+.pwa-update strong, .pwa-update span { display: block; }
+.pwa-update strong { margin-bottom: 3px; font-family: 'Manrope', system-ui, sans-serif; font-size: 13px; }
+.pwa-update span { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.pwa-update-actions { flex: 0 0 auto; display: flex; gap: 7px; }
+
+@media (max-width: 560px) {
+  .pwa-update {
+    right: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    width: calc(100vw - 24px);
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .pwa-update-actions { justify-content: flex-end; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation-duration: .01ms !important; }
 }

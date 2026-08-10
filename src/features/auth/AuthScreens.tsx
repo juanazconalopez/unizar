@@ -12,6 +12,26 @@ export function LoadingScreen() {
   )
 }
 
+export function DataLoadErrorScreen({ errorMessage, online, onRetry, onSignOut }: {
+  errorMessage: string
+  online: boolean
+  onRetry: () => void
+  onSignOut: () => void
+}) {
+  return (
+    <main className="center-screen pending-screen load-error-screen">
+      <span className="pending-club-logo"><img alt="CDU Rugby Zaragoza" src={clubLogo} /></span>
+      <span className="eyebrow">{online ? 'NO SE HAN PODIDO CARGAR LOS DATOS' : 'SIN CONEXIÓN'}</span>
+      <h1>{online ? 'Algo no ha ido bien' : 'Necesitamos conexión'}</h1>
+      <p>{online ? errorMessage : 'Conéctate a Internet para recuperar la información actualizada del equipo.'}</p>
+      <div className="load-error-actions">
+        <button className="primary-button" disabled={!online} onClick={onRetry} type="button">Reintentar</button>
+        <button className="secondary-button" onClick={onSignOut} type="button"><Icon name="logout" size={18} />Cerrar sesión</button>
+      </div>
+    </main>
+  )
+}
+
 export function LoginScreen({ errorMessage, onLogin }: { errorMessage: string; onLogin: () => void }) {
   return (
     <main className="login-screen">

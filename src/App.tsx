@@ -1,14 +1,10 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
-import { DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
-import { AttendanceView } from './features/attendance/AttendanceView'
+import { SectionError, SectionLoading, ViewErrorBoundary } from './components/AsyncViewState'
+import { DataLoadErrorScreen, DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
 import { Dashboard } from './features/dashboard/Dashboard'
-import { SettingsView } from './features/settings/SettingsView'
-import { StatisticsView } from './features/statistics/StatisticsView'
-import { TasksView } from './features/tasks/TasksView'
-import { MatchesView } from './features/matches/MatchesView'
-import { CompetitionView } from './features/competition/CompetitionView'
 import { useAuth } from './hooks/useAuth'
+import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
 import { activeMembershipFor } from './lib/selectors'
@@ -36,12 +32,49 @@ import type {
 } from './types'
 import './App.css'
 
+const loadAttendanceView = () => import('./features/attendance/AttendanceView')
+const loadSettingsView = () => import('./features/settings/SettingsView')
+const loadStatisticsView = () => import('./features/statistics/StatisticsView')
+const loadTasksView = () => import('./features/tasks/TasksView')
+const loadMatchesView = () => import('./features/matches/MatchesView')
+const loadCompetitionView = () => import('./features/competition/CompetitionView')
+
+const AttendanceView = lazy(() => loadAttendanceView().then((module) => ({ default: module.AttendanceView })))
+const SettingsView = lazy(() => loadSettingsView().then((module) => ({ default: module.SettingsView })))
+const StatisticsView = lazy(() => loadStatisticsView().then((module) => ({ default: module.StatisticsView })))
+const TasksView = lazy(() => loadTasksView().then((module) => ({ default: module.TasksView })))
+const MatchesView = lazy(() => loadMatchesView().then((module) => ({ default: module.MatchesView })))
+const CompetitionView = lazy(() => loadCompetitionView().then((module) => ({ default: module.CompetitionView })))
+
+function preloadView(view: ViewName) {
+  if (view === 'tasks') void loadTasksView()
+  if (view === 'matches') void loadMatchesView()
+  if (view === 'competition') void loadCompetitionView()
+  if (view === 'statistics') void loadStatisticsView()
+  if (view === 'attendance') void loadAttendanceView()
+  if (view === 'settings') void loadSettingsView()
+}
+
 function App() {
   const [view, setView] = useState<ViewName>('home')
   const [message, setMessage] = useState('')
   const [operationError, setOperationError] = useState('')
   const auth = useAuth()
-  const data = useTrainingData(auth.session)
+  const online = useOnlineStatus()
+  const data = useTrainingData(auth.session, view)
+
+  function requireConnection() {
+    if (navigator.onLine) return
+    const error = new Error('Sin conexión. Recupera Internet antes de guardar cambios.')
+    setOperationError(error.message)
+    throw error
+  }
+
+  function navigate(nextView: ViewName) {
+    preloadView(nextView)
+    setOperationError('')
+    setView(nextView)
+  }
 
   function notify(text: string) {
     setMessage(text)
@@ -50,6 +83,7 @@ function App() {
   }
 
   async function handleSaveResult(task: TrainingTask, values: ResultValues) {
+    requireConnection()
     if (!auth.session?.user) return
     const exists = data.results.some(
       (result) => result.task_id === task.id && result.player_id === auth.session?.user.id,
@@ -60,6 +94,7 @@ function App() {
   }
 
   async function handleCreateTask(values: TaskValues) {
+    requireConnection()
     if (!auth.session?.user) return
     await createTrainingTask(values, auth.session.user.id)
     notify(values.status === 'published' ? 'Tarea creada y publicada.' : 'Borrador guardado.')
@@ -68,6 +103,7 @@ function App() {
 
   async function handleTaskStatus(taskId: string, status: TaskStatus) {
     try {
+      requireConnection()
       await updateTaskStatus(taskId, status)
       notify(status === 'published' ? 'Tarea publicada.' : 'Estado de la tarea actualizado.')
       await data.reload()
@@ -78,6 +114,7 @@ function App() {
 
   async function handleUpdateTask(task: TrainingTask, values: TaskValues) {
     try {
+      requireConnection()
       await updateTrainingTask(task.id, values)
       notify('Tarea actualizada.')
       await data.reload()
@@ -89,6 +126,7 @@ function App() {
 
   async function handleDeleteTask(task: TrainingTask) {
     try {
+      requireConnection()
       await deleteTrainingTask(task.id)
       notify('Tarea y respuestas eliminadas.')
       await data.reload()
@@ -99,6 +137,7 @@ function App() {
   }
 
   async function handleSaveMatch(match: Match | undefined, values: MatchValues) {
+    requireConnection()
     if (!auth.session?.user) return
     if (match) await updateMatch(match.id, values)
     else await createMatch(values, auth.session.user.id)
@@ -107,18 +146,22 @@ function App() {
   }
 
   async function handleDeleteMatch(match: Match) {
+    requireConnection()
     await deleteMatch(match.id); notify('Partido eliminado.'); await data.reload()
   }
 
   async function handleMatchAvailability(match: Match, status: AvailabilityStatus, comment: string) {
+    requireConnection()
     await saveMatchAvailability(match.id, userId, status, comment); notify('Disponibilidad guardada.'); await data.reload()
   }
 
   async function handleMatchLineup(match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) {
+    requireConnection()
     await saveMatchLineup(match, entries, published); notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.'); await data.reload()
   }
 
   async function handleCreateSeason(values: SeasonValues) {
+    requireConnection()
     if (!auth.session?.user) return
     await createSeason(values, auth.session.user.id)
     notify('Temporada creada.')
@@ -127,6 +170,7 @@ function App() {
 
   async function handleUpdateProfile(profile: Profile) {
     try {
+      requireConnection()
       await updateProfilePermissions(profile)
       notify(`Permisos de ${profile.display_name} actualizados.`)
       await data.reload()
@@ -136,6 +180,7 @@ function App() {
   }
 
   async function handleAttendance(date: string, playerIds: string[], attendedPlayerIds: string[]) {
+    requireConnection()
     if (!auth.session?.user) return
     await saveTrainingAttendance(date, playerIds, attendedPlayerIds, auth.session.user.id)
     notify('Asistencia guardada correctamente.')
@@ -144,6 +189,7 @@ function App() {
 
   async function handleMembership(season: Season, player: Profile, active: boolean) {
     try {
+      requireConnection()
       const existing = activeMembershipFor(data.memberships, season.id, player.id)
       await setSeasonMembership(season, player, active, existing)
       notify(`${player.display_name} ${active ? 'forma parte de' : 'ha salido de'} ${season.name}.`)
@@ -160,7 +206,12 @@ function App() {
 
   if (auth.loading) return <LoadingScreen />
   if (!auth.session) return <LoginScreen errorMessage={auth.errorMessage} onLogin={auth.signInWithGoogle} />
-  if (!data.profile || data.loading && !data.profile) return <LoadingScreen />
+  if (!data.profile || data.loadedUserId !== auth.session.user.id) {
+    if (data.errorMessage && !data.loading) {
+      return <DataLoadErrorScreen errorMessage={data.errorMessage} online={online} onRetry={() => void data.reload()} onSignOut={handleSignOut} />
+    }
+    return <LoadingScreen />
+  }
   if (data.profile.is_archived) return <DisabledScreen name={data.profile.display_name} onSignOut={handleSignOut} />
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
 
@@ -175,10 +226,16 @@ function App() {
       errorMessage={errorMessage}
       message={message}
       profile={data.profile}
+      online={online}
       view={view}
-      onNavigate={setView}
+      onNavigate={navigate}
       onSignOut={handleSignOut}
     >
+      {data.loadedView !== view ? (
+        data.errorMessage && !data.loading
+          ? <SectionError message={online ? data.errorMessage : 'No hay conexión a Internet.'} onRetry={() => void data.reload()} />
+          : <SectionLoading />
+      ) : <ViewErrorBoundary key={view}><Suspense fallback={<SectionLoading />}>
       {view === 'home' && (
         <Dashboard
           memberships={data.memberships}
@@ -187,7 +244,7 @@ function App() {
           results={personalResults}
           tasks={data.tasks}
           userId={userId}
-          onGoToTasks={() => setView('tasks')}
+          onGoToTasks={() => navigate('tasks')}
           onSaveResult={handleSaveResult}
         />
       )}
@@ -257,6 +314,7 @@ function App() {
           onUpdateProfile={handleUpdateProfile}
         />
       )}
+      </Suspense></ViewErrorBoundary>}
     </AppLayout>
   )
 }

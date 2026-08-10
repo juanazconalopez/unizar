@@ -53,7 +53,7 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
       <section className="stats-grid">
         <StatCard label="Esta semana" value={`${completed}/${weekTasks.length}`} note="tareas completadas" tone="green" />
         <StatCard label="Cumplimiento" value={`${completion}%`} note="esta semana" tone="blue" />
-        <StatCard label="Fatiga media" value={averageFatigue} note="en tus registros" tone="coral" />
+        <StatCard label="Fatiga media" value={averageFatigue} note="esta semana" tone="coral" />
         <StatCard label="Asistencia" value={personalAttendance.length ? `${attendanceRate}%` : '—'} note="entrenamientos de campo" tone="lime" />
       </section>
       <section className="motivation-card">

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { makeProfile } from '../../test/fixtures'
@@ -55,5 +55,39 @@ describe('AppLayout', () => {
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument()
+  })
+
+  test('offers the native PWA installation when the browser supports it', async () => {
+    const user = userEvent.setup()
+    const prompt = vi.fn().mockResolvedValue(undefined)
+    const event = Object.assign(new Event('beforeinstallprompt'), {
+      prompt,
+      userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+    })
+
+    act(() => window.dispatchEvent(event))
+    renderLayout()
+    await user.click(screen.getByRole('button', { name: 'Instalar aplicación' }))
+
+    expect(prompt).toHaveBeenCalledOnce()
+  })
+
+  test('warns when the application loses its connection', () => {
+    render(
+      <AppLayout
+        profile={makeProfile()}
+        email="ana@example.com"
+        view="home"
+        message=""
+        errorMessage=""
+        online={false}
+        onNavigate={vi.fn()}
+        onSignOut={vi.fn()}
+      >
+        <p>Contenido</p>
+      </AppLayout>,
+    )
+
+    expect(screen.getByText(/Sin conexión. Puedes consultar/)).toBeInTheDocument()
   })
 })
