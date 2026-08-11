@@ -6,10 +6,11 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { attendancePlayerIdsForDate, isActivePlayer, membershipCoversDate } from '../../lib/selectors'
-import type { AttendanceRecord, Profile, SeasonPlayer, TrainingSession } from '../../types'
+import type { AttendanceRecord, Profile, Season, SeasonPlayer, TrainingSession } from '../../types'
 
-export function AttendanceView({ profiles, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
+export function AttendanceView({ profiles, seasons, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
   profiles: Profile[]
+  seasons: Season[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
   memberships: SeasonPlayer[]
@@ -23,12 +24,14 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
   )
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [saved, setSaved] = useState(false)
   const dateRequestId = useRef(0)
 
   function changeDate(nextDate: string) {
     setDate(nextDate)
     setSelected(attendedPlayersForDate(attendance, nextDate))
     setFormError('')
+    setSaved(false)
     if (onLoadDate) {
       const requestId = ++dateRequestId.current
       void onLoadDate(nextDate).then((records) => {
@@ -40,6 +43,7 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
   }
 
   function togglePlayer(playerId: string) {
+    setSaved(false)
     setSelected((current) => {
       const next = new Set(current)
       if (next.has(playerId)) next.delete(playerId)
@@ -53,6 +57,7 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
     setFormError('')
     try {
       await onSave(date, [...visibleIds], [...visibleSelected])
+      setSaved(true)
       if (onLoadDate) {
         try {
           const records = await onLoadDate(date)
@@ -69,8 +74,12 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
   }
 
   const historicalIds = attendancePlayerIdsForDate(attendance, date)
+  const selectedSeason = seasons.find((season) => season.start_date <= date && season.end_date >= date)
   const eligibleIds = new Set(memberships
-    .filter((membership) => membershipCoversDate(membership, date))
+    .filter((membership) => (
+      membership.season_id === selectedSeason?.id
+      && membershipCoversDate(membership, date)
+    ))
     .map((membership) => membership.player_id))
   const visiblePlayers = profiles.filter((profile) => (
     !profile.is_owner && ((isActivePlayer(profile) && eligibleIds.has(profile.id)) || historicalIds.has(profile.id))
@@ -96,6 +105,7 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
         {date !== todayIso() && <button className="secondary-button" onClick={() => changeDate(todayIso())}>Volver a hoy</button>}
         <div className="attendance-count"><strong>{visibleSelected.size}</strong><span>de {visiblePlayers.length}<br />asistentes</span></div>
       </section>
+      {selectedSeason && <p className="attendance-context"><Icon name="calendar" size={15} />Temporada: <strong>{selectedSeason.name}</strong></p>}
 
       {recentDates.length > 0 && (
         <div className="attendance-dates" aria-label="Fechas recientes">
@@ -134,6 +144,7 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
             })}
           </div>
           {formError && <p className="form-error">{formError}</p>}
+          {saved && <p aria-live="polite" className="form-success"><Icon name="check" size={16} />Asistencia guardada para esta fecha.</p>}
           <div className="attendance-save">
             <span>{visibleSelected.size === visiblePlayers.length ? '¡Equipo completo!' : `${visiblePlayers.length - visibleSelected.size} sin marcar`}</span>
             <button className="primary-button" disabled={saving} onClick={save}>
@@ -141,7 +152,14 @@ export function AttendanceView({ profiles, sessions, attendance, memberships, lo
             </button>
           </div>
         </section>
-      ) : <EmptyState title="No hay jugadoras activas" text="Activa y aprueba jugadoras desde la vista Equipo." />}
+      ) : (
+        <EmptyState
+          title={selectedSeason ? 'No hay jugadoras activas' : 'No hay temporada para esta fecha'}
+          text={selectedSeason
+            ? 'Añade las jugadoras a esta temporada desde Configuración → Equipo.'
+            : 'Crea o ajusta una temporada que incluya esta fecha antes de guardar asistencia.'}
+        />
+      )}
     </div>
   )
 }

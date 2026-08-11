@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
+import { errorText } from '../../lib/errors'
 import { activePlayers, membershipCoversDate } from '../../lib/selectors'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer } from '../../types'
 
@@ -57,7 +58,7 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
       const slot_number = Number(slotValue)
       return { player_id, slot_number, role: slot_number <= starters ? 'starter' as const : 'substitute' as const, position: null, sort_order: slot_number }
     }).sort((first, second) => first.slot_number - second.slot_number)
-    try { await onSave(lineup, published) } catch { setError('No se ha podido guardar la alineación.'); setSaving(false) }
+    try { await onSave(lineup, published) } catch (caught) { setError(errorText(caught)); setSaving(false) }
   }
 
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>

@@ -7,6 +7,7 @@ import { Dashboard } from './features/dashboard/Dashboard'
 import { useAuth } from './hooks/useAuth'
 import { useCompetitionData } from './hooks/useCompetitionData'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { useNotifications } from './hooks/useNotifications'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
 import { todayIso } from './lib/dates'
@@ -68,7 +69,12 @@ function App() {
   const auth = useAuth()
   const online = useOnlineStatus()
   const data = useTrainingData(auth.session, view)
+  const notifications = useNotifications(data.profile, auth.session?.user.id)
   const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
+
+  async function reloadData() {
+    await Promise.all([data.reload(), notifications.reload()])
+  }
 
   function requireConnection() {
     if (navigator.onLine) return
@@ -97,7 +103,7 @@ function App() {
     )
     await saveTaskResult(task, values, auth.session.user.id, exists)
     notify(exists ? 'Resultado actualizado.' : 'Entrenamiento completado. ¡Buen trabajo!')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleCreateTask(values: TaskValues) {
@@ -105,7 +111,7 @@ function App() {
     if (!auth.session?.user) return
     await createTrainingTask(values, auth.session.user.id)
     notify(values.status === 'published' ? 'Tarea creada y publicada.' : 'Borrador guardado.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleTaskStatus(taskId: string, status: TaskStatus) {
@@ -113,7 +119,7 @@ function App() {
       requireConnection()
       await updateTaskStatus(taskId, status)
       notify(status === 'published' ? 'Tarea publicada.' : 'Estado de la tarea actualizado.')
-      await data.reload()
+      await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
     }
@@ -124,7 +130,7 @@ function App() {
       requireConnection()
       await updateTrainingTask(task.id, values)
       notify('Tarea actualizada.')
-      await data.reload()
+      await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
       throw error
@@ -136,7 +142,7 @@ function App() {
       requireConnection()
       await deleteTrainingTask(task.id)
       notify('Tarea y respuestas eliminadas.')
-      await data.reload()
+      await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
       throw error
@@ -149,22 +155,22 @@ function App() {
     if (match) await updateMatch(match.id, values)
     else await createMatch(values, auth.session.user.id)
     notify(match ? 'Partido actualizado.' : 'Partido creado.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleDeleteMatch(match: Match) {
     requireConnection()
-    await deleteMatch(match.id); notify('Partido eliminado.'); await data.reload()
+    await deleteMatch(match.id); notify('Partido eliminado.'); await reloadData()
   }
 
   async function handleMatchAvailability(match: Match, status: AvailabilityStatus, comment: string) {
     requireConnection()
-    await saveMatchAvailability(match.id, userId, status, comment); notify('Disponibilidad guardada.'); await data.reload()
+    await saveMatchAvailability(match.id, userId, status, comment); notify('Disponibilidad guardada.'); await reloadData()
   }
 
   async function handleMatchLineup(match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) {
     requireConnection()
-    await saveMatchLineup(match, entries, published); notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.'); await data.reload()
+    await saveMatchLineup(match, entries, published); notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.'); await reloadData()
   }
 
   async function handleCreateSeason(values: SeasonValues) {
@@ -172,21 +178,21 @@ function App() {
     if (!auth.session?.user) return
     await createSeason(values, auth.session.user.id)
     notify('Temporada creada.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleUpdateSeason(season: Season, values: SeasonValues) {
     requireConnection()
     await updateSeason(season.id, values)
     notify('Temporada actualizada.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleDeleteSeason(season: Season) {
     requireConnection()
     await deleteSeason(season.id)
     notify('Temporada y todos sus datos asociados eliminados.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleUpdateProfile(profile: Profile) {
@@ -194,7 +200,7 @@ function App() {
       requireConnection()
       await updateProfilePermissions(profile)
       notify(`Permisos de ${profile.display_name} actualizados.`)
-      await data.reload()
+      await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
     }
@@ -204,7 +210,7 @@ function App() {
     requireConnection()
     await saveTrainingAttendance(date, playerIds, attendedPlayerIds)
     notify('Asistencia guardada correctamente.')
-    await data.reload()
+    await reloadData()
   }
 
   async function handleMembership(season: Season, player: Profile, active: boolean) {
@@ -213,7 +219,7 @@ function App() {
       const existing = activeMembershipFor(data.memberships, season.id, player.id)
       await setSeasonMembership(season, player, active, existing)
       notify(`${player.display_name} ${active ? 'forma parte de' : 'ha salido de'} ${season.name}.`)
-      await data.reload()
+      await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
     }
@@ -250,6 +256,11 @@ function App() {
       view={view}
       onNavigate={navigate}
       onSignOut={handleSignOut}
+      notifications={notifications.notifications}
+      notificationReadIds={notifications.readIds}
+      notificationUnreadCount={notifications.unreadCount}
+      onNotificationRead={notifications.markRead}
+      onNotificationsReadAll={notifications.markAllRead}
     >
       {data.loadedView !== view ? (
         data.errorMessage && !data.loading
@@ -266,8 +277,13 @@ function App() {
           profile={data.profile}
           results={personalResults}
           tasks={data.tasks}
+          notifications={notifications.notifications}
           userId={userId}
           onGoToTasks={() => navigate('tasks')}
+          onOpenNotification={(notification) => {
+            notifications.markRead(notification)
+            navigate(notification.view)
+          }}
           onSaveResult={handleSaveResult}
         />
       )}
@@ -277,6 +293,7 @@ function App() {
           memberships={data.memberships}
           profiles={data.profiles}
           results={data.results}
+          seasons={data.seasons}
           sessions={data.trainingSessions}
           tasks={data.tasks}
           loadingRange={data.loadingRange}
@@ -288,6 +305,7 @@ function App() {
           attendance={data.attendance}
           memberships={data.memberships}
           profiles={data.profiles}
+          seasons={data.seasons}
           sessions={data.trainingSessions}
           loadingRange={data.loadingRange}
           onLoadDate={data.loadAttendanceDate}

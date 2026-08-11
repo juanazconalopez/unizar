@@ -5,8 +5,10 @@ import { Icon } from './Icon'
 export function SectionLoading() {
   return (
     <div aria-label="Cargando sección" className="section-state" role="status">
-      <div className="loader" />
-      <p>Cargando sección…</p>
+      <div aria-hidden="true" className="section-skeleton">
+        <i /><i /><span /><span /><span />
+      </div>
+      <p className="sr-only">Cargando sección…</p>
     </div>
   )
 }

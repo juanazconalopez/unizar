@@ -4,6 +4,7 @@ import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 
 export type MatchCardProps = {
   availability: MatchAvailability[]
+  eligiblePlayerCount: number
   isOwner: boolean
   lineup: MatchLineup[]
   match: Match
@@ -17,6 +18,7 @@ export type MatchCardProps = {
 
 export function MatchCard({
   availability,
+  eligiblePlayerCount,
   isOwner,
   lineup,
   match,
@@ -54,7 +56,7 @@ export function MatchCard({
 
       {isOwner ? (
         <>
-          <AvailabilitySummary availability={availability} onView={onViewAvailability} />
+          <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />
           <div className="match-actions">
             <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>
             {canViewLineup && <button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button>}
@@ -75,14 +77,17 @@ export function MatchCard({
   )
 }
 
-function AvailabilitySummary({ availability, onView }: { availability: MatchAvailability[]; onView: () => void }) {
+function AvailabilitySummary({ availability, eligiblePlayerCount, onView }: { availability: MatchAvailability[]; eligiblePlayerCount: number; onView: () => void }) {
   const count = (status: AvailabilityStatus) => availability.filter((item) => item.status === status).length
+  const responseCount = new Set(availability.map((item) => item.player_id)).size
+  const missingCount = Math.max(0, eligiblePlayerCount - responseCount)
 
   return (
     <div className="availability-summary">
       <button className="available" onClick={onView}>{count('available')} disponibles</button>
       <button className="doubt" onClick={onView}>{count('doubt')} dudas</button>
       <button className="unavailable" onClick={onView}>{count('unavailable')} no disponibles</button>
+      <button className="unanswered" onClick={onView}>{missingCount} sin responder</button>
     </div>
   )
 }

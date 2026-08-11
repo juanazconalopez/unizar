@@ -3,10 +3,11 @@ import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatDate, mondayFor, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import { membershipCoversDate } from '../../lib/selectors'
+import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import type {
   AttendanceRecord,
   Profile,
+  Season,
   SeasonPlayer,
   TaskResult,
   TrainingSession,
@@ -18,13 +19,14 @@ type StatisticsProps = {
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
   memberships: SeasonPlayer[]
+  seasons: Season[]
   tasks: TrainingTask[]
   results: TaskResult[]
   loadingRange?: boolean
   onLoadMonth?: (month: string) => Promise<void>
 }
 
-export function StatisticsView({ profiles, sessions, attendance, memberships, tasks, results, loadingRange = false, onLoadMonth }: StatisticsProps) {
+export function StatisticsView({ profiles, seasons, sessions, attendance, memberships, tasks, results, loadingRange = false, onLoadMonth }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -39,10 +41,10 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   const monthPrefix = month.slice(0, 7)
   const monthFrom = monthStart(month)
   const monthTo = monthEnd(month)
+  const seasonsById = new Map(seasons.map((season) => [season.id, season]))
   const eligibleMonthPlayerIds = new Set(memberships
     .filter((membership) => (
-      membership.active_from <= monthTo
-      && (!membership.active_until || membership.active_until >= monthFrom)
+      membershipOverlapsSeasonRange(membership, seasonsById.get(membership.season_id), monthFrom, monthTo)
       && playerIds.has(membership.player_id)
     ))
     .map((membership) => membership.player_id))
@@ -73,6 +75,15 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
     setSelectedDate(nextMonth)
   }
 
+  async function goToCurrentMonth() {
+    const currentMonth = `${today.slice(0, 7)}-01`
+    if (onLoadMonth) {
+      try { await onLoadMonth(currentMonth) } catch { return }
+    }
+    setMonth(currentMonth)
+    setSelectedDate(today)
+  }
+
   return (
     <div className="page statistics-page">
       <PageHeader
@@ -86,6 +97,9 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
         <SummaryMetric
           label="Media asistencia"
           value={attendanceRate === null ? '—' : `${Math.round(attendanceRate)}%`}
+          note={attendanceRate !== null && previousAttendanceRate !== null
+            ? `${Math.round(attendanceRate - previousAttendanceRate) >= 0 ? '+' : ''}${Math.round(attendanceRate - previousAttendanceRate)} ptos. vs. mes anterior`
+            : undefined}
         />
         <SummaryMetric
           label="Media tareas realizadas"
@@ -98,6 +112,8 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
           <span>Comparación con el mes anterior. Puede ser útil revisar lesiones, carga y disponibilidad.</span>
         </div>
       )}
+
+      {month !== `${today.slice(0, 7)}-01` && <div className="planning-current-action"><button className="secondary-button compact" disabled={loadingRange} onClick={() => void goToCurrentMonth()} type="button">Volver a este mes</button></div>}
 
       <section className="calendar-panel">
         <div className="calendar-toolbar">
@@ -145,6 +161,7 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
         attendance={playerAttendance}
         date={selectedDate}
         memberships={memberships}
+        seasons={seasons}
         results={playerResults}
         sessions={sessions}
         tasks={tasks}
@@ -153,8 +170,8 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   )
 }
 
-function SummaryMetric({ label, value }: { label: string; value: string }) {
-  return <article><span>{label}</span><strong>{value}</strong></article>
+function SummaryMetric({ label, value, note }: { label: string; value: string; note?: string }) {
+  return <article><span>{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</article>
 }
 
 function formatAverage(value: number) {
@@ -166,16 +183,19 @@ function attendancePercentage(records: AttendanceRecord[]) {
   return (records.filter((record) => record.attended).length / records.length) * 100
 }
 
-function DayDetail({ players, attendance, date, memberships, results, sessions, tasks }: {
+function DayDetail({ players, attendance, date, memberships, results, seasons, sessions, tasks }: {
   players: Profile[]
   attendance: AttendanceRecord[]
   date: string
   memberships: SeasonPlayer[]
   results: TaskResult[]
+  seasons: Season[]
   sessions: TrainingSession[]
   tasks: TrainingTask[]
 }) {
   const weekStart = mondayFor(date)
+  const weekEnd = addDays(weekStart, 6)
+  const seasonsById = new Map(seasons.map((season) => [season.id, season]))
   const attendanceIds = new Set(attendance
     .filter((record) => recordDate(record) === date)
     .map((record) => record.player_id))
@@ -183,9 +203,12 @@ function DayDetail({ players, attendance, date, memberships, results, sessions, 
     attendanceIds.has(player.id)
     || memberships.some((membership) => (
       membership.player_id === player.id
-      && (membershipCoversDate(membership, date)
-        || (membership.active_from <= addDays(weekStart, 6)
-          && (!membership.active_until || membership.active_until >= weekStart)))
+      && membershipOverlapsSeasonRange(
+        membership,
+        seasonsById.get(membership.season_id),
+        weekStart,
+        weekEnd,
+      )
     ))
   ))
   const weeklyTasks = tasks.filter((task) => task.week_start === weekStart && task.status === 'published')

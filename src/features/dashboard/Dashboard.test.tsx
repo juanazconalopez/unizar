@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
 import { makeAttendance, makeMembership, makeProfile, makeResult, makeTask } from '../../test/fixtures'
@@ -40,5 +41,14 @@ describe('Dashboard', () => {
     expect(screen.getByText('Tarea pendiente')).toBeInTheDocument()
     expect(screen.queryByText('Borrador oculto')).not.toBeInTheDocument()
     expect(screen.queryByText('Sin pertenencia')).not.toBeInTheDocument()
+  })
+
+  test('offers direct access to the next actionable alert', async () => {
+    const user = userEvent.setup()
+    const onOpenNotification = vi.fn()
+    const notification = { id: 'next-match', kind: 'match' as const, title: 'Próximo partido', text: 'Rival Rugby', view: 'matches' as const, occurredAt: '2026-08-12T10:00:00.000Z' }
+    render(<Dashboard profile={makeProfile()} memberships={[makeMembership()]} tasks={[]} results={[]} attendance={[]} notifications={[notification]} userId="player-1" onGoToTasks={vi.fn()} onOpenNotification={onOpenNotification} onSaveResult={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: /Próximo partido/ }))
+    expect(onOpenNotification).toHaveBeenCalledWith(notification)
   })
 })

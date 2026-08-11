@@ -7,6 +7,8 @@ import { Avatar } from '../ui/Avatar'
 import { ClubBrand } from '../ui/ClubBrand'
 import { Modal } from '../ui/Modal'
 import { useInstallApp } from '../../hooks/useInstallApp'
+import { NotificationCenter } from '../../features/notifications/NotificationCenter'
+import type { AppNotification } from '../../features/notifications/notifications'
 
 type NavigationItem = { id: ViewName; label: string; icon: IconName }
 
@@ -19,6 +21,11 @@ export function AppLayout({
   online = true,
   onNavigate,
   onSignOut,
+  notifications = [],
+  notificationReadIds = new Set<string>(),
+  notificationUnreadCount = 0,
+  onNotificationRead,
+  onNotificationsReadAll,
   children,
 }: {
   profile: Profile
@@ -29,12 +36,18 @@ export function AppLayout({
   online?: boolean
   onNavigate: (view: ViewName) => void
   onSignOut: () => void
+  notifications?: AppNotification[]
+  notificationReadIds?: Set<string>
+  notificationUnreadCount?: number
+  onNotificationRead?: (notification: AppNotification) => void
+  onNotificationsReadAll?: () => void
   children: ReactNode
 }) {
   const contentRef = useRef<HTMLElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
   const navigation: NavigationItem[] = [
@@ -97,6 +110,7 @@ export function AppLayout({
             <Icon name="download" size={17} />Instalar aplicación
           </button>
         )}
+        <NotificationButton count={notificationUnreadCount} onClick={() => setNotificationsOpen(true)} />
         <div className="sidebar-profile">
           <Avatar name={profile.display_name} />
           <div><strong>{profile.display_name}</strong><span>{role}</span></div>
@@ -110,6 +124,7 @@ export function AppLayout({
         <header className="mobile-header">
           <ClubBrand compact onClick={() => navigate('home')} />
           <div className="mobile-profile-actions" ref={profileMenuRef}>
+            <NotificationButton count={notificationUnreadCount} onClick={() => setNotificationsOpen(true)} />
             <button
               aria-expanded={profileMenuOpen}
               aria-haspopup="menu"
@@ -158,6 +173,21 @@ export function AppLayout({
       </main>
 
       <Navigation mobile items={navigation} view={view} onNavigate={navigate} />
+      {notificationsOpen && (
+        <Modal className="notification-dialog" labelledBy="notification-center-title" onClose={() => setNotificationsOpen(false)}>
+          <div className="notification-dialog-close"><button aria-label="Cerrar avisos" className="icon-button" onClick={() => setNotificationsOpen(false)} type="button">×</button></div>
+          <NotificationCenter
+            notifications={notifications}
+            readIds={notificationReadIds}
+            onReadAll={() => onNotificationsReadAll?.()}
+            onOpen={(notification) => {
+              onNotificationRead?.(notification)
+              setNotificationsOpen(false)
+              navigate(notification.view)
+            }}
+          />
+        </Modal>
+      )}
       {iosInstructionsOpen && (
         <Modal className="install-dialog" labelledBy="install-dialog-title" onClose={() => setIosInstructionsOpen(false)}>
           <div className="task-detail-heading">
@@ -173,6 +203,15 @@ export function AppLayout({
         </Modal>
       )}
     </div>
+  )
+}
+
+function NotificationButton({ count, onClick }: { count: number; onClick: () => void }) {
+  return (
+    <button aria-label={count ? `Avisos, ${count} sin leer` : 'Avisos'} className="notification-button" onClick={onClick} type="button">
+      <Icon name="bell" size={19} />
+      {count > 0 && <span>{count > 9 ? '9+' : count}</span>}
+    </button>
   )
 }
 

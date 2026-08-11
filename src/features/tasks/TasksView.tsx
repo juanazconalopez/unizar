@@ -34,13 +34,18 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   const [copyingTask, setCopyingTask] = useState<TrainingTask | null>(null)
   const [alertResultsTask, setAlertResultsTask] = useState<TrainingTask | null>(null)
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
+  const [search, setSearch] = useState('')
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
   const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
   const [selectedPlanningDate, setSelectedPlanningDate] = useState(todayIso())
   const [planningMonth, setPlanningMonth] = useState(`${todayIso().slice(0, 7)}-01`)
   const currentWeekRef = useRef<HTMLElement>(null)
   const resultIds = new Set(results.map((result) => result.task_id))
+  const normalizedSearch = search.trim().toLocaleLowerCase('es')
   const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = !normalizedSearch || [task.title, task.description, task.training_type]
+      .some((value) => (value ?? '').toLocaleLowerCase('es').includes(normalizedSearch))
+    if (!matchesSearch) return false
     if (canManage) return true
     if (task.status !== 'published') return false
     if (filter === 'pending') return !resultIds.has(task.id)
@@ -208,6 +213,12 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           onSubmit={saveTask}
         />
       )}
+      {(!canManage || managementView === 'list') && (
+        <label className="task-search">
+          <span>Buscar tareas</span>
+          <span><Icon name="search" size={17} /><input onChange={(event) => setSearch(event.target.value)} placeholder="Título, descripción o tipo…" type="search" value={search} /></span>
+        </label>
+      )}
       {!canManage && (
         <div className="filter-tabs">
           {(['all', 'pending', 'completed'] as const).map((value) => (
@@ -299,10 +310,10 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           <EmptyState
             title="No hay tareas"
             text={canManage
-              ? 'Crea la primera tarea para empezar a planificar.'
+              ? normalizedSearch ? 'No hay tareas que coincidan con la búsqueda.' : 'Crea la primera tarea para empezar a planificar.'
               : filter === 'pending'
                 ? 'No hay tareas pendientes esta semana.'
-                : 'No hay entrenamientos en esta categoría durante las semanas visibles.'}
+                : normalizedSearch ? 'No hay tareas que coincidan con la búsqueda.' : 'No hay entrenamientos en esta categoría durante las semanas visibles.'}
           />
         )}
       </div>

@@ -17,6 +17,8 @@ export type IconName =
   | 'download'
   | 'warning'
   | 'refresh'
+  | 'bell'
+  | 'search'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></>,
@@ -35,6 +37,8 @@ const paths: Record<IconName, ReactNode> = {
   download: <><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></>,
   warning: <><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3h.01"/></>,
   refresh: <><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></>,
+  bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
+  search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

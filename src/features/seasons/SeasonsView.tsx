@@ -35,7 +35,9 @@ export function SeasonsView({ embedded = false, seasons, profiles, memberships, 
           season={editingSeason ?? undefined}
           onCancel={() => { setShowForm(false); setEditingSeason(null) }}
           onDelete={editingSeason ? async (season) => {
-            const memberCount = memberships.filter((item) => item.season_id === season.id).length
+            const memberCount = new Set(memberships
+              .filter((item) => item.season_id === season.id)
+              .map((item) => item.player_id)).size
             const confirmed = window.confirm(
               `¿Eliminar “${season.name}”?\n\nSe eliminarán en cascada sus ${memberCount} inscripciones, tareas y respuestas, entrenamientos de campo y asistencias, y partidos con sus disponibilidades y alineaciones. Esta acción no se puede deshacer.`,
             )

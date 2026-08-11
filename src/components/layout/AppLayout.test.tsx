@@ -89,4 +89,28 @@ describe('AppLayout', () => {
 
     expect(screen.getByText(/Sin conexión. Puedes consultar/)).toBeInTheDocument()
   })
+
+  test('opens an alert and navigates to its related screen', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    const onNotificationRead = vi.fn()
+    render(
+      <AppLayout
+        profile={makeProfile()}
+        email="ana@example.com"
+        view="home"
+        message=""
+        errorMessage=""
+        notifications={[{ id: 'notice-1', kind: 'task', title: 'Nueva tarea publicada', text: 'Velocidad', view: 'tasks', occurredAt: '2026-08-07T10:00:00.000Z' }]}
+        notificationUnreadCount={1}
+        onNavigate={onNavigate}
+        onNotificationRead={onNotificationRead}
+        onSignOut={vi.fn()}
+      ><p>Contenido</p></AppLayout>,
+    )
+    await user.click(screen.getAllByRole('button', { name: 'Avisos, 1 sin leer' })[0])
+    await user.click(screen.getByRole('button', { name: /Nueva tarea publicada/ }))
+    expect(onNotificationRead).toHaveBeenCalledWith(expect.objectContaining({ id: 'notice-1' }))
+    expect(onNavigate).toHaveBeenCalledWith('tasks')
+  })
 })

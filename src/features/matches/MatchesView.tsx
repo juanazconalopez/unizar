@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { mondayFor, todayIso } from '../../lib/dates'
+import { activePlayers, membershipCoversDate } from '../../lib/selectors'
 import type {
   AvailabilityStatus,
   Match,
@@ -99,9 +100,15 @@ export function MatchesView({
   }
 
   function renderMatch(match: Match) {
+    const eligibleProfiles = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
+      membership.player_id === profile.id
+      && membership.season_id === match.season_id
+      && membershipCoversDate(membership, match.match_date)
+    )))
     return (
       <MatchCard
         availability={availability.filter((item) => item.match_id === match.id)}
+        eligiblePlayerCount={eligibleProfiles.length}
         isOwner={isOwner}
         key={match.id}
         lineup={lineups.filter((entry) => entry.match_id === match.id)}
@@ -205,6 +212,11 @@ export function MatchesView({
       {availabilityMatch && (
         <MatchAvailabilityDialog
           availability={availability.filter((item) => item.match_id === availabilityMatch.id)}
+          eligibleProfiles={activePlayers(profiles).filter((profile) => memberships.some((membership) => (
+            membership.player_id === profile.id
+            && membership.season_id === availabilityMatch.season_id
+            && membershipCoversDate(membership, availabilityMatch.match_date)
+          )))}
           match={availabilityMatch}
           profiles={profiles}
           onClose={() => setAvailabilityMatch(null)}

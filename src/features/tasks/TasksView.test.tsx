@@ -46,6 +46,18 @@ describe('TasksView', () => {
     expect(screen.queryByText('Pendiente')).not.toBeInTheDocument()
   })
 
+  test('searches by task title, description or type', async () => {
+    const user = userEvent.setup()
+    const currentWeek = mondayFor(new Date())
+    render(<TasksView canManage={false} seasons={[makeSeason()]} memberships={[makeMembership()]} tasks={[
+      makeTask({ id: 'speed', title: 'Cambios de ritmo', description: 'Series cortas', week_start: currentWeek }),
+      makeTask({ id: 'mobility', title: 'Recuperación', description: 'Movilidad de cadera', week_start: currentWeek }),
+    ]} results={[]} userId="player-1" onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onSaveResult={vi.fn()} onStatusChange={vi.fn()} />)
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar tareas' }), 'cadera')
+    expect(screen.getByText('Recuperación')).toBeInTheDocument()
+    expect(screen.queryByText('Cambios de ritmo')).not.toBeInTheDocument()
+  })
+
   test('creates tasks and changes their status in manager mode', async () => {
     const user = userEvent.setup()
     const onCreate = vi.fn().mockResolvedValue(undefined)

@@ -4,16 +4,19 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { mondayFor } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { AttendanceRecord, Profile, ResultValues, SeasonPlayer, TaskResult, TrainingTask } from '../../types'
+import type { AppNotification } from '../notifications/notifications'
 import { TaskCard } from '../tasks/TaskCard'
 
-export function Dashboard({ profile, memberships, tasks, results, attendance, userId, onGoToTasks, onSaveResult }: {
+export function Dashboard({ profile, memberships, tasks, results, attendance, notifications = [], userId, onGoToTasks, onOpenNotification, onSaveResult }: {
   profile: Profile
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
   attendance: AttendanceRecord[]
+  notifications?: AppNotification[]
   userId: string
   onGoToTasks: () => void
+  onOpenNotification?: (notification: AppNotification) => void
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const currentMonday = mondayFor(new Date())
@@ -42,6 +45,9 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
     ? Math.round((attendedSessions / personalAttendance.length) * 100)
     : 0
   const motivation = attendanceMotivation(attendanceRate, personalAttendance.length)
+  const nextItems = notifications.filter((notification, index) => (
+    notifications.findIndex((item) => item.view === notification.view && item.text === notification.text) === index
+  )).slice(0, 3)
 
   return (
     <div className="page">
@@ -60,6 +66,18 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, us
         <span><Icon name="spark" size={22} /></span>
         <div><strong>{motivation.title}</strong><p>{motivation.text}</p></div>
       </section>
+      {nextItems.length > 0 && (
+        <section className="dashboard-next" aria-labelledby="dashboard-next-title">
+          <div className="section-heading"><div><span className="eyebrow">LO PRÓXIMO</span><h2 id="dashboard-next-title">Para tener en cuenta</h2></div></div>
+          <div className="dashboard-next-list">{nextItems.map((notification) => (
+            <button key={notification.id} onClick={() => onOpenNotification?.(notification)} type="button">
+              <span className={`dashboard-next-icon ${notification.kind}`}><Icon name={notification.kind === 'task' ? 'tasks' : notification.kind === 'lineup' ? 'check' : 'calendar'} size={17} /></span>
+              <span><strong>{notification.title}</strong><small>{notification.text}</small></span>
+              <Icon name="arrow" size={16} />
+            </button>
+          ))}</div>
+        </section>
+      )}
       <section className="section-block">
         <div className="section-heading">
           <div><span className="eyebrow">SEMANA ACTUAL</span><h2>Tus entrenamientos</h2></div>

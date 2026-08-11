@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
+import { errorText } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 
 export function useAuth() {
@@ -8,17 +9,33 @@ export function useAuth() {
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error) setErrorMessage(error.message)
-      setSession(data.session)
-      setLoading(false)
-    })
+    let cancelled = false
+    void supabase.auth.getSession()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) setErrorMessage(error.message)
+        setSession(data.session)
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setErrorMessage(errorText(error))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => setSession(nextSession),
+      (_event, nextSession) => {
+        if (!cancelled) {
+          setSession(nextSession)
+          setLoading(false)
+        }
+      },
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signInWithGoogle() {

@@ -2,16 +2,22 @@ import { useEffect, useId, useRef } from 'react'
 import type { FormEventHandler, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
-export function Modal({ children, className, disabled = false, labelledBy, onClose, onSubmit }: {
+export function Modal({ children, className, disabled = false, labelledBy, onClose, onFormChange, onSubmit }: {
   children: ReactNode
   className?: string
   disabled?: boolean
   labelledBy: string
   onClose: () => void
+  onFormChange?: FormEventHandler<HTMLFormElement>
   onSubmit?: FormEventHandler<HTMLFormElement>
 }) {
   const fallbackId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
@@ -22,7 +28,7 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
       focusable?.focus()
     })
     function handleKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !disabled) onClose()
+      if (event.key === 'Escape' && !disabled) onCloseRef.current()
       if (event.key !== 'Tab') return
       const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])]
       if (!focusable.length) return
@@ -38,7 +44,7 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
       window.removeEventListener('keydown', handleKey)
       previousFocus?.focus()
     }
-  }, [disabled, onClose])
+  }, [disabled])
 
   return createPortal(
     <div className="task-detail-backdrop" onClick={() => { if (!disabled) onClose() }}>
@@ -50,7 +56,7 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
         ref={dialogRef}
         role="dialog"
       >
-        {onSubmit ? <form className="modal-form-contents" onSubmit={onSubmit}>{children}</form> : children}
+        {onSubmit ? <form className="modal-form-contents" onChange={onFormChange} onSubmit={onSubmit}>{children}</form> : children}
       </div>
     </div>,
     document.body,

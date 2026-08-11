@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { activeMembershipFor, activePlayers, membershipCoversDate, resultsByTask } from './selectors'
-import { makeMembership, makeProfile, makeResult } from '../test/fixtures'
+import { activeMembershipFor, activePlayers, membershipCoversDate, membershipOverlapsSeasonRange, resultsByTask } from './selectors'
+import { makeMembership, makeProfile, makeResult, makeSeason } from '../test/fixtures'
 
 describe('domain selectors', () => {
   test('excludes owners and keeps separate membership periods', () => {
@@ -15,5 +15,14 @@ describe('domain selectors', () => {
   test('groups results once per task', () => {
     const grouped = resultsByTask([makeResult(), makeResult({ player_id: 'player-2' })])
     expect(grouped.get('task-1')).toHaveLength(2)
+  })
+
+  test('clamps open membership periods to their season dates', () => {
+    const membership = makeMembership({ active_from: '2026-01-01', active_until: null })
+    const season = makeSeason({ start_date: '2026-01-01', end_date: '2026-06-30' })
+
+    expect(membershipOverlapsSeasonRange(membership, season, '2026-06-01', '2026-06-30')).toBe(true)
+    expect(membershipOverlapsSeasonRange(membership, season, '2026-07-01', '2026-07-31')).toBe(false)
+    expect(membershipOverlapsSeasonRange(membership, undefined, '2026-06-01', '2026-06-30')).toBe(false)
   })
 })

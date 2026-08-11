@@ -382,7 +382,8 @@ export async function setSeasonMembership(
   }
 
   if (!active && existing) {
-    const activeUntil = todayIso() < existing.active_from ? existing.active_from : todayIso()
+    const candidateEnd = todayIso() < existing.active_from ? existing.active_from : todayIso()
+    const activeUntil = candidateEnd > season.end_date ? season.end_date : candidateEnd
     const { error } = await supabase
       .from('season_players')
       .update({ active_until: activeUntil })

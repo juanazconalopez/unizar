@@ -1,4 +1,4 @@
-import { formatDate, toIsoDate } from '../../lib/dates'
+import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import type { Match } from '../../types'
 
 export function MatchPlanningCalendar({ matches, month, selectedDate, onMonthChange, onSelectDate }: {
@@ -8,6 +8,7 @@ export function MatchPlanningCalendar({ matches, month, selectedDate, onMonthCha
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
+  const today = todayIso()
   function changeMonth(offset: number) {
     const next = offsetMonth(month, offset)
     onMonthChange(next)
@@ -27,7 +28,7 @@ export function MatchPlanningCalendar({ matches, month, selectedDate, onMonthCha
       return <button
         aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${dayMatches.length} ${dayMatches.length === 1 ? 'partido' : 'partidos'}`}
         aria-pressed={selectedDate === date}
-        className={dayMatches.length ? 'has-match' : ''}
+        className={`${dayMatches.length ? 'has-match ' : ''}${date === today ? 'today' : ''}`}
         key={date}
         onClick={() => onSelectDate(date)}
         type="button"

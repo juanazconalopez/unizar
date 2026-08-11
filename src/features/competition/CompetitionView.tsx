@@ -26,12 +26,14 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats, err
   const [tab, setTab] = useState<CompetitionTab>('results')
   const [metric, setMetric] = useState<StatisticMetric>('points')
   const [team, setTeam] = useState('Todos')
+  const [renderedAt] = useState(() => Date.now())
   const selectedSeasonId = orderedSeasons.some((item) => item.id === seasonId) ? seasonId : orderedSeasons[0]?.id ?? ''
   const season = orderedSeasons.find((item) => item.id === selectedSeasonId)
   const seasonFixtures = fixtures.filter((item) => item.competitionSeasonId === selectedSeasonId)
   const seasonStandings = standings.filter((item) => item.competitionSeasonId === selectedSeasonId).sort((a, b) => a.position - b.position)
   const seasonStats = playerStats.filter((item) => item.competitionSeasonId === selectedSeasonId)
   const teams = ['Todos', ...Array.from(new Set(seasonStats.map((item) => item.team))).sort()]
+  const stale = season?.updatedAt ? renderedAt - Date.parse(season.updatedAt) > 36 * 60 * 60 * 1000 : false
 
   if (!season) {
     return (
@@ -54,6 +56,12 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats, err
       </header>
 
       {errorMessage && <div className="competition-sync-error" role="alert"><Icon name="warning" size={17} />{errorMessage}<span>Se mantienen visibles los últimos datos guardados.</span></div>}
+      {season.updatedAt && (
+        <div className={stale ? 'competition-freshness stale' : 'competition-freshness'}>
+          <Icon name={stale ? 'warning' : 'check'} size={15} />
+          <span>{stale ? 'Datos guardados; conviene sincronizar para comprobar novedades.' : 'Datos actualizados recientemente.'}</span>
+        </div>
+      )}
 
       <nav aria-label="Secciones de competición" className="competition-tabs">
         <button className={tab === 'results' ? 'active' : ''} onClick={() => setTab('results')}>Resultados</button>

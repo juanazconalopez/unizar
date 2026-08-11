@@ -90,6 +90,18 @@ describe('MatchesView', () => {
     expect(dialog).toHaveTextContent('Noa No Disponible')
   })
 
+  test('shows active season players who have not answered yet', async () => {
+    const user = userEvent.setup()
+    const profiles = [makeProfile(), makeProfile({ id: 'player-2', display_name: 'Bea Sin Responder' })]
+    const memberships = [makeMembership(), makeMembership({ id: 'membership-2', player_id: 'player-2' })]
+    render(<MatchesView {...common} availability={[]} memberships={memberships} profiles={profiles} isOwner userId="owner-1" onSaveAvailability={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
+    await user.click(screen.getByRole('button', { name: '2 sin responder' }))
+    const dialog = screen.getByRole('dialog', { name: /Partido contra Rival Rugby/ })
+    expect(dialog).toHaveTextContent('Sin responder2')
+    expect(dialog).toHaveTextContent('Bea Sin Responder')
+  })
+
   test('lets an owner select players and publish the lineup', async () => {
     const user = userEvent.setup(); const onSaveLineup = vi.fn().mockResolvedValue(undefined)
     render(<MatchesView {...common} availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} isOwner userId="owner-1" onSaveAvailability={vi.fn()} onSaveLineup={onSaveLineup} />)

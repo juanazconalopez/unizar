@@ -1,8 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, test } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
-import { makeAttendance, makeMembership, makeProfile, makeResult, makeSession, makeTask } from '../../test/fixtures'
+import { makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
 import { StatisticsView } from './StatisticsView'
+
+const seasons = [makeSeason()]
 
 describe('StatisticsView', () => {
   test('summarizes the current month and shows per-player detail', () => {
@@ -12,6 +14,7 @@ describe('StatisticsView', () => {
     render(
       <StatisticsView
         profiles={profiles}
+        seasons={seasons}
         sessions={[makeSession({ session_date: today })]}
         attendance={[
           makeAttendance({ training_sessions: { session_date: today } }),
@@ -66,6 +69,7 @@ describe('StatisticsView', () => {
     render(
       <StatisticsView
         profiles={profiles}
+        seasons={seasons}
         sessions={[
           makeSession({ id: 'session-1', session_date: firstTraining }),
           makeSession({ id: 'session-2', session_date: secondTraining }),
@@ -107,6 +111,7 @@ describe('StatisticsView', () => {
     render(
       <StatisticsView
         profiles={profiles}
+        seasons={seasons}
         sessions={[]}
         attendance={[]}
         memberships={profiles.map((profile, index) => makeMembership({
@@ -140,6 +145,7 @@ describe('StatisticsView', () => {
     render(
       <StatisticsView
         profiles={[historicalPlayer]}
+        seasons={seasons}
         sessions={[makeSession({ session_date: today })]}
         attendance={[makeAttendance({
           player_id: historicalPlayer.id,
@@ -161,6 +167,7 @@ describe('StatisticsView', () => {
     render(
       <StatisticsView
         profiles={[makeProfile()]}
+        seasons={seasons}
         sessions={[]}
         attendance={[]}
         memberships={[makeMembership()]}
@@ -175,5 +182,26 @@ describe('StatisticsView', () => {
     expect(within(playerRow).queryByLabelText('No asistió al entrenamiento de campo')).not.toBeInTheDocument()
     expect(within(playerRow).queryByLabelText('Asistencia sin registrar')).not.toBeInTheDocument()
     expect(screen.queryByText('Asistió', { selector: '.day-badge-legend span' })).not.toBeInTheDocument()
+  })
+
+  test('does not treat an open membership from an ended season as currently active', () => {
+    render(
+      <StatisticsView
+        profiles={[makeProfile()]}
+        seasons={[
+          makeSeason({ id: 'old-season', start_date: '2025-01-01', end_date: '2025-12-31' }),
+          makeSeason({ id: 'current-season', start_date: '2026-01-01', end_date: '2026-12-31' }),
+        ]}
+        sessions={[]}
+        attendance={[]}
+        memberships={[makeMembership({ season_id: 'old-season', active_from: '2025-01-01', active_until: null })]}
+        tasks={[]}
+        results={[]}
+      />,
+    )
+
+    const summary = screen.getByRole('region', { name: 'Resumen del mes' })
+    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('—')
+    expect(screen.queryByText('Ana Martín')).not.toBeInTheDocument()
   })
 })

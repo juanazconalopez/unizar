@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
 import { makeMembership, makeProfile } from '../../test/fixtures'
@@ -40,5 +41,25 @@ describe('MatchLineupDialog', () => {
     expect(screen.getByText('CONVOCATORIA')).toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Guardar alineación' })).not.toBeInTheDocument()
+  })
+
+  test('shows the database message when saving a lineup fails', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockRejectedValue({ message: 'La convocatoria contiene una jugadora que ya no está disponible' })
+    render(
+      <MatchLineupDialog
+        availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]}
+        entries={[]}
+        match={match()}
+        memberships={[makeMembership()]}
+        profiles={[makeProfile()]}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Añadir' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar alineación' }))
+    expect(await screen.findByText('La convocatoria contiene una jugadora que ya no está disponible')).toBeInTheDocument()
   })
 })

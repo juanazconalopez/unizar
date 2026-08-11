@@ -19,11 +19,17 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [formError, setFormError] = useState('')
+  const [dirty, setDirty] = useState(false)
   const busy = saving || deleting
   const source = task ?? template
   const trainingTypes: readonly string[] = source?.training_type && !TRAINING_TYPES.some((type) => type === source.training_type)
     ? [source.training_type, ...TRAINING_TYPES]
     : TRAINING_TYPES
+
+  function requestCancel() {
+    if (dirty && !window.confirm('Hay cambios sin guardar. ¿Quieres cerrar el formulario?')) return
+    onCancel()
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -59,10 +65,10 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
   }
 
   return (
-      <Modal className="panel-form task-form-dialog" disabled={busy} labelledBy={titleId} onClose={onCancel} onSubmit={submit}>
+      <Modal className="panel-form task-form-dialog" disabled={busy} labelledBy={titleId} onClose={requestCancel} onFormChange={() => setDirty(true)} onSubmit={submit}>
         <div className="panel-form-heading">
           <div><span className="eyebrow">{task ? 'EDITAR ENTRENAMIENTO' : template ? 'COPIAR ENTRENAMIENTO' : 'NUEVO ENTRENAMIENTO'}</span><h2 id={titleId}>{task ? 'Editar tarea' : template ? 'Copiar tarea' : 'Crear tarea'}</h2></div>
-          <button aria-label="Cerrar" className="icon-button" disabled={busy} onClick={onCancel} type="button">×</button>
+          <button aria-label="Cerrar" className="icon-button" disabled={busy} onClick={requestCancel} type="button">×</button>
         </div>
         <div className="form-grid">
           <label>Título<input autoFocus defaultValue={source?.title} name="title" required placeholder="Ej. Rodaje suave" /></label>
@@ -81,7 +87,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
         {formError && <p className="form-error">{formError}</p>}
         <div className="form-actions">
           {task && onDelete && <button className="danger-button task-form-delete" disabled={busy} onClick={() => void deleteTask()} type="button">{deleting ? 'Eliminando…' : 'Eliminar tarea'}</button>}
-          <button className="secondary-button" disabled={busy} onClick={onCancel} type="button">Cancelar</button>
+          <button className="secondary-button" disabled={busy} onClick={requestCancel} type="button">Cancelar</button>
           <button className="primary-button" disabled={busy || !seasons.length}>{saving ? 'Guardando…' : task ? 'Guardar cambios' : template ? 'Copiar tarea' : 'Crear tarea'}</button>
         </div>
       </Modal>

@@ -1,4 +1,4 @@
-import { formatDate, toIsoDate } from '../../lib/dates'
+import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import type { TrainingTask } from '../../types'
 
 export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange, onSelectDate }: {
@@ -9,6 +9,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange
   onSelectDate: (date: string) => void
 }) {
   const days = calendarDays(month)
+  const today = todayIso()
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -38,7 +39,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange
             <button
               aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'}`}
               aria-pressed={selectedDate === date}
-              className={taskCount ? 'has-data' : ''}
+              className={`${taskCount ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
