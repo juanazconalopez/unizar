@@ -84,7 +84,10 @@ describe('StatisticsView', () => {
             training_sessions: { session_date: secondTraining },
           })),
         ]}
-        memberships={[]}
+        memberships={profiles.map((profile, index) => makeMembership({
+          id: `membership-${index + 1}`,
+          player_id: profile.id,
+        }))}
         tasks={[]}
         results={[]}
       />,
@@ -106,7 +109,10 @@ describe('StatisticsView', () => {
         profiles={profiles}
         sessions={[]}
         attendance={[]}
-        memberships={[]}
+        memberships={profiles.map((profile, index) => makeMembership({
+          id: `task-membership-${index + 1}`,
+          player_id: profile.id,
+        }))}
         tasks={[
           makeTask({ id: 'task-1' }),
           makeTask({ id: 'task-2' }),
@@ -128,13 +134,36 @@ describe('StatisticsView', () => {
     expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('1,7')
   })
 
+  test('keeps historical players in past statistics after they become inactive', () => {
+    const today = todayIso()
+    const historicalPlayer = makeProfile({ id: 'historical', display_name: 'Jugadora Histórica', is_active: false, is_archived: true })
+    render(
+      <StatisticsView
+        profiles={[historicalPlayer]}
+        sessions={[makeSession({ session_date: today })]}
+        attendance={[makeAttendance({
+          player_id: historicalPlayer.id,
+          training_sessions: { session_date: today },
+        })]}
+        memberships={[makeMembership({ player_id: historicalPlayer.id })]}
+        tasks={[makeTask()]}
+        results={[makeResult({ player_id: historicalPlayer.id, performed_on: today })]}
+      />,
+    )
+
+    const summary = screen.getByRole('region', { name: 'Resumen del mes' })
+    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('100%')
+    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('1')
+    expect(screen.getByText('Jugadora Histórica')).toBeInTheDocument()
+  })
+
   test('does not show attendance badges when there is no field session that day', () => {
     render(
       <StatisticsView
         profiles={[makeProfile()]}
         sessions={[]}
         attendance={[]}
-        memberships={[]}
+        memberships={[makeMembership()]}
         tasks={[]}
         results={[]}
       />,

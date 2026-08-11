@@ -19,6 +19,8 @@ describe('SeasonsView', () => {
         profiles={[active, available, inactive, archived]}
         memberships={[makeMembership()]}
         onCreate={vi.fn()}
+        onDelete={vi.fn()}
+        onUpdate={vi.fn()}
         onToggleMembership={onToggleMembership}
       />,
     )
@@ -36,7 +38,7 @@ describe('SeasonsView', () => {
   test('creates a season from the form', async () => {
     const user = userEvent.setup()
     const onCreate = vi.fn().mockResolvedValue(undefined)
-    render(<SeasonsView seasons={[]} profiles={[]} memberships={[]} onCreate={onCreate} onToggleMembership={vi.fn()} />)
+    render(<SeasonsView seasons={[]} profiles={[]} memberships={[]} onCreate={onCreate} onDelete={vi.fn()} onUpdate={vi.fn()} onToggleMembership={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Nueva temporada' }))
     await user.type(screen.getByLabelText('Nombre'), 'Temporada 2027')
@@ -45,5 +47,26 @@ describe('SeasonsView', () => {
     await user.click(screen.getByRole('button', { name: 'Crear temporada' }))
 
     expect(onCreate).toHaveBeenCalledWith({ name: 'Temporada 2027', start_date: '2027-01-01', end_date: '2027-12-31' })
+  })
+
+  test('edits a season and warns about cascading data before deleting it', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const onUpdate = vi.fn().mockResolvedValue(undefined)
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<SeasonsView seasons={[season]} profiles={[]} memberships={[makeMembership()]} onCreate={vi.fn()} onDelete={onDelete} onUpdate={onUpdate} onToggleMembership={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Editar' }))
+    expect(screen.getByRole('heading', { name: 'Editar temporada' })).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Nombre'))
+    await user.type(screen.getByLabelText('Nombre'), 'Temporada corregida')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(onUpdate).toHaveBeenCalledWith(season, expect.objectContaining({ name: 'Temporada corregida' }))
+
+    await user.click(screen.getByRole('button', { name: 'Editar' }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar temporada' }))
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('entrenamientos de campo y asistencias'))
+    expect(onDelete).toHaveBeenCalledWith(season)
   })
 })

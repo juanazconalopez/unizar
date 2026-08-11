@@ -6,7 +6,7 @@ import type { Match } from '../../types'
 import { MatchLineupDialog } from './MatchLineupDialog'
 
 function match(overrides: Partial<Match> = {}): Match {
-  return { id: 'match-1', season_id: 'season-1', opponent: 'Rival', match_date: addDays(todayIso(), 7), kickoff_time: null, venue: null, is_home: true, notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), seasons: { name: 'Temporada' }, ...overrides }
+  return { id: 'match-1', season_id: 'season-1', opponent: 'Rival', match_date: addDays(todayIso(), 7), kickoff_time: null, venue: null, is_home: true, notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada' }, ...overrides }
 }
 
 describe('MatchLineupDialog', () => {
@@ -35,8 +35,10 @@ describe('MatchLineupDialog', () => {
     expect(screen.getAllByText('Suelta aquí')).toHaveLength(23)
   })
 
-  test('does not allow reopening availability after publication', () => {
+  test('renders an already published lineup as read-only even if a save callback is supplied', () => {
     render(<MatchLineupDialog availability={[]} entries={[]} match={match({ lineup_published: true })} memberships={[makeMembership()]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
-    expect(screen.getByRole('checkbox', { name: 'Convocatoria publicada' })).toBeDisabled()
+    expect(screen.getByText('CONVOCATORIA')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Guardar alineación' })).not.toBeInTheDocument()
   })
 })

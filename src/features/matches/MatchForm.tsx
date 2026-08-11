@@ -14,6 +14,7 @@ export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onS
   onSubmit: (values: MatchValues) => Promise<void>
 }) {
   const titleId = useId()
+  const structureLocked = Boolean(match?.lineup_published)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -40,16 +41,17 @@ export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onS
     <div className="panel-form-heading"><div><span className="eyebrow">PARTIDO</span><h2 id={titleId}>{match ? 'Editar partido' : 'Nuevo partido'}</h2></div><button aria-label="Cerrar" className="icon-button" onClick={onCancel} type="button">×</button></div>
     <div className="form-grid">
       <label>Rival<input autoFocus defaultValue={match?.opponent} name="opponent" required /></label>
-      <label>Temporada<select defaultValue={match?.season_id ?? ''} name="seasonId" required><option disabled value="">Seleccionar…</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
-      <label>Fecha<input defaultValue={match?.match_date ?? initialDate ?? todayIso()} name="matchDate" required type="date" /></label>
+      <label>Temporada<select defaultValue={match?.season_id ?? ''} disabled={structureLocked} name="seasonId" required><option disabled value="">Seleccionar…</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select>{structureLocked && <input name="seasonId" type="hidden" value={match?.season_id} />}</label>
+      <label>Fecha<input defaultValue={match?.match_date ?? initialDate ?? todayIso()} disabled={structureLocked} name="matchDate" required type="date" />{structureLocked && <input name="matchDate" type="hidden" value={match?.match_date} />}</label>
       <label>Hora<input defaultValue={match?.kickoff_time?.slice(0, 5) ?? ''} name="kickoffTime" type="time" /></label>
       <label>Campo o localidad<input defaultValue={match?.venue ?? ''} name="venue" /></label>
       <label>Condición<select defaultValue={String(match?.is_home ?? true)} name="isHome"><option value="true">Local</option><option value="false">Visitante</option></select></label>
-      <label>Tipo de partido<select defaultValue={match?.match_kind ?? 'official'} name="matchKind"><option value="official">Oficial</option><option value="friendly">Amistoso</option></select></label>
-      <label>Formato<select defaultValue={match?.rugby_format ?? 'xv'} name="rugbyFormat"><option value="xv">Rugby XV</option><option value="sevens">Rugby Seven</option></select></label>
+      <label>Tipo de partido<select defaultValue={match?.match_kind ?? 'official'} disabled={structureLocked} name="matchKind"><option value="official">Oficial</option><option value="friendly">Amistoso</option></select>{structureLocked && <input name="matchKind" type="hidden" value={match?.match_kind} />}</label>
+      <label>Formato<select defaultValue={match?.rugby_format ?? 'xv'} disabled={structureLocked} name="rugbyFormat"><option value="xv">Rugby XV</option><option value="sevens">Rugby Seven</option></select>{structureLocked && <input name="rugbyFormat" type="hidden" value={match?.rugby_format} />}</label>
       <label className="full-field">Notas<textarea defaultValue={match?.notes ?? ''} name="notes" rows={4} /></label>
       <label>Estado<select defaultValue={match?.status ?? 'draft'} name="status"><option value="draft">Borrador</option><option value="published">Publicado</option><option value="cancelled">Cancelado</option><option value="completed">Finalizado</option></select></label>
     </div>
+    {structureLocked && <p className="form-hint">La temporada, fecha y formato están bloqueados porque la convocatoria ya se publicó.</p>}
     {error && <p className="form-error">{error}</p>}
     <div className="form-actions">{match && onDelete && <button className="danger-button task-form-delete" onClick={() => void remove()} type="button">Eliminar partido</button>}<button className="secondary-button" onClick={onCancel} type="button">Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar partido'}</button></div>
   </Modal>

@@ -117,4 +117,62 @@ describe('useTrainingData', () => {
     expect(result.current.tasks).toContainEqual(oldTask)
     expect(result.current.results).toContainEqual(oldResult)
   })
+
+  test('ignores an older range response that arrives after a newer one', async () => {
+    const first = deferred<Awaited<ReturnType<typeof fetchTaskWindow>>>()
+    const second = deferred<Awaited<ReturnType<typeof fetchTaskWindow>>>()
+    vi.mocked(fetchTaskWindow)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+    const { result } = renderHook(() => useTrainingData(session, 'tasks'))
+    await flushInitialLoad()
+
+    let firstLoad!: Promise<void>
+    let secondLoad!: Promise<void>
+    act(() => {
+      firstLoad = result.current.loadTaskRange('2026-07-06', '2026-07-13')
+      secondLoad = result.current.loadTaskRange('2026-06-22', '2026-06-29')
+    })
+    const newestTask = makeTask({ id: 'newest', week_start: '2026-06-22' })
+    await act(async () => {
+      second.resolve({ tasks: [newestTask], results: [] })
+      await secondLoad
+    })
+    await act(async () => {
+      first.resolve({ tasks: [makeTask({ id: 'stale', week_start: '2026-07-06' })], results: [] })
+      await firstLoad
+    })
+
+    expect(result.current.tasks).toContainEqual(newestTask)
+    expect(result.current.tasks.some((task) => task.id === 'stale')).toBe(false)
+  })
+
+  test('reloads supplemental task ranges when the application recovers focus', async () => {
+    const oldTask = makeTask({ id: 'old-task', week_start: '2026-07-20', title: 'Versión inicial' })
+    const refreshedTask = { ...oldTask, title: 'Versión actualizada' }
+    vi.mocked(fetchTaskWindow)
+      .mockResolvedValueOnce({ tasks: [oldTask], results: [] })
+      .mockResolvedValueOnce({ tasks: [refreshedTask], results: [] })
+    const { result } = renderHook(() => useTrainingData(session, 'tasks'))
+    await flushInitialLoad()
+    await act(async () => {
+      await result.current.loadTaskRange('2026-07-20', '2026-07-27')
+    })
+
+    vi.advanceTimersByTime(AUTO_REFRESH_INTERVAL_MS)
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(fetchTaskWindow).toHaveBeenCalledTimes(2)
+    expect(result.current.tasks).toContainEqual(refreshedTask)
+  })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => { resolve = resolvePromise })
+  return { promise, resolve }
+}

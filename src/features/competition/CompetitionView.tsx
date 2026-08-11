@@ -9,11 +9,17 @@ import fenixLogo from '../../assets/teamLogos/matchready-58a5c9abd6c6c-club.png'
 type CompetitionTab = 'results' | 'standings' | 'statistics'
 type StatisticMetric = 'points' | 'tries' | 'conversions' | 'cards'
 
-export function CompetitionView({ seasons, fixtures, standings, playerStats }: {
+export function CompetitionView({ seasons, fixtures, standings, playerStats, errorMessage = '', isOwner = false, loading = false, syncing = false, onSeasonChange, onSync }: {
   seasons: CompetitionSeason[]
   fixtures: CompetitionFixture[]
   standings: CompetitionStanding[]
   playerStats: CompetitionPlayerStat[]
+  errorMessage?: string
+  isOwner?: boolean
+  loading?: boolean
+  syncing?: boolean
+  onSeasonChange?: (seasonId: string) => Promise<void>
+  onSync?: () => Promise<void>
 }) {
   const orderedSeasons = useMemo(() => seasons.slice().sort((a, b) => b.startsOn.localeCompare(a.startsOn)), [seasons])
   const [seasonId, setSeasonId] = useState(() => orderedSeasons[0]?.id ?? '')
@@ -31,7 +37,8 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats }: {
     return (
       <section className="page competition-page">
         <header className="page-header"><div><span className="eyebrow">LIGA AUTONÓMICA ARAGÓN</span><h1>Competición</h1><p>Resultados, clasificación y estadísticas de la liga.</p></div></header>
-        <div className="empty-state"><span><Icon name="trophy" /></span><h3>Competición pendiente de sincronización</h3><p>Los datos aparecerán cuando se conecte la fuente oficial de MatchReady.</p></div>
+        {errorMessage && <div className="competition-sync-error" role="alert"><Icon name="warning" size={17} />{errorMessage}</div>}
+        <div className="empty-state"><span><Icon name="trophy" /></span><h3>{syncing || loading ? 'Sincronizando competición…' : 'Competición pendiente de sincronización'}</h3><p>{syncing || loading ? 'Estamos consultando la fuente pública de MatchReady.' : 'El histórico aparecerá cuando el owner realice la primera sincronización.'}</p>{isOwner && onSync && !syncing && <button className="primary-button" onClick={() => void onSync().catch(() => undefined)}>Sincronizar ahora</button>}</div>
       </section>
     )
   }
@@ -40,8 +47,13 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats }: {
     <section className="page competition-page">
       <header className="page-header competition-header">
         <div><span className="eyebrow">LIGA AUTONÓMICA ARAGÓN</span><h1>Competición</h1><p>Resultados, clasificación y estadísticas de la liga.</p></div>
-        <label className="competition-season">Temporada<select value={selectedSeasonId} onChange={(event) => { setSeasonId(event.target.value); setTeam('Todos') }}>{orderedSeasons.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <div className="competition-header-actions">
+          <label className="competition-season">Temporada<select disabled={loading} value={selectedSeasonId} onChange={(event) => { const next = event.target.value; setSeasonId(next); setTeam('Todos'); if (onSeasonChange) void onSeasonChange(next).catch(() => undefined) }}>{orderedSeasons.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          {isOwner && onSync && <button className="secondary-button" disabled={syncing} onClick={() => void onSync().catch(() => undefined)}><Icon name="refresh" size={17} />{syncing ? 'Sincronizando…' : 'Sincronizar'}</button>}
+        </div>
       </header>
+
+      {errorMessage && <div className="competition-sync-error" role="alert"><Icon name="warning" size={17} />{errorMessage}<span>Se mantienen visibles los últimos datos guardados.</span></div>}
 
       <nav aria-label="Secciones de competición" className="competition-tabs">
         <button className={tab === 'results' ? 'active' : ''} onClick={() => setTab('results')}>Resultados</button>

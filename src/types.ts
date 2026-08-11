@@ -1,98 +1,37 @@
-export type Profile = {
-  id: string
-  display_name: string
-  is_approved: boolean
-  is_active: boolean
-  is_collaborator: boolean
-  is_owner: boolean
-  is_archived: boolean
-  created_at: string
-}
+import type { Enums, Tables } from './lib/database.types'
 
-export type Season = {
-  id: string
-  name: string
-  start_date: string
-  end_date: string
-  created_by: string
-  created_at: string
-}
+export type Profile = Omit<Tables<'profiles'>, 'updated_at'>
 
-export type SeasonPlayer = {
-  id: string
-  season_id: string
-  player_id: string
-  active_from: string
-  active_until: string | null
-}
+export type Season = Tables<'seasons'>
 
-export type TaskStatus = 'draft' | 'published' | 'cancelled'
+export type SeasonPlayer = Tables<'season_players'>
 
-export type TrainingTask = {
-  id: string
-  season_id: string
-  week_start: string
-  title: string
-  description: string | null
-  training_type: string | null
-  status: TaskStatus
-  created_by: string
-  created_at: string
+export type TaskStatus = Enums<'task_status'>
+
+export type TrainingTask = Omit<Tables<'tasks'>, 'updated_at'> & {
   seasons: { name: string } | null
 }
 
-export type TaskResult = {
-  task_id: string
-  player_id: string
-  result_text: string
-  fatigue_level: number
-  performed_on: string
-  completed_at: string
-  updated_at: string
-}
+export type TaskResult = Tables<'task_results'>
 
-export type TrainingSession = {
-  id: string
-  session_date: string
-  created_by: string
-  created_at: string
-}
+export type TrainingSession = Tables<'training_sessions'>
 
-export type AttendanceRecord = {
-  session_id: string
-  player_id: string
-  attended: boolean
-  marked_by: string
-  updated_at: string
+export type AttendanceRecord = Omit<Tables<'training_attendance'>, 'created_at'> & {
   training_sessions: { session_date: string } | null
 }
 
-export type MatchStatus = 'draft' | 'published' | 'cancelled' | 'completed'
-export type MatchKind = 'official' | 'friendly'
-export type RugbyFormat = 'xv' | 'sevens'
-export type AvailabilityStatus = 'available' | 'doubt' | 'unavailable'
-export type LineupRole = 'starter' | 'substitute'
+export type MatchStatus = Enums<'match_status'>
+export type MatchKind = Enums<'match_kind'>
+export type RugbyFormat = Enums<'rugby_format'>
+export type AvailabilityStatus = Enums<'availability_status'>
+export type LineupRole = Enums<'lineup_role'>
 
-export type Match = {
-  id: string
-  season_id: string
-  opponent: string
-  match_date: string
-  kickoff_time: string | null
-  venue: string | null
-  is_home: boolean
-  notes: string | null
-  status: MatchStatus
-  match_kind: MatchKind
-  rugby_format: RugbyFormat
-  lineup_published: boolean
-  created_by: string
-  created_at: string
+export type Match = Tables<'matches'> & {
   seasons: { name: string } | null
 }
 
-export type MatchAvailability = { match_id: string; player_id: string; status: AvailabilityStatus; comment: string | null; updated_at: string }
-export type MatchLineup = { match_id: string; player_id: string; role: LineupRole; position: string | null; slot_number: number; sort_order: number; updated_at: string }
+export type MatchAvailability = Tables<'match_availability'>
+export type MatchLineup = Tables<'match_lineup'>
 
 export type CompetitionSeason = {
   id: string

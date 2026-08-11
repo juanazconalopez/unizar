@@ -1,36 +1,40 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
-import { activePlayers, attendancePlayerIdsForDate } from '../../lib/selectors'
-import type { AttendanceRecord, Profile, TrainingSession } from '../../types'
+import { attendancePlayerIdsForDate, isActivePlayer, membershipCoversDate } from '../../lib/selectors'
+import type { AttendanceRecord, Profile, SeasonPlayer, TrainingSession } from '../../types'
 
-export function AttendanceView({ profiles, sessions, attendance, loadingRange = false, onLoadDate, onSave }: {
+export function AttendanceView({ profiles, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
   profiles: Profile[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
+  memberships: SeasonPlayer[]
   loadingRange?: boolean
   onLoadDate?: (date: string) => Promise<AttendanceRecord[] | undefined>
   onSave: (date: string, playerIds: string[], attendedPlayerIds: string[]) => Promise<void>
 }) {
-  const currentPlayers = activePlayers(profiles)
   const [date, setDate] = useState(todayIso())
   const [selected, setSelected] = useState<Set<string>>(
     () => attendedPlayersForDate(attendance, todayIso()),
   )
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const dateRequestId = useRef(0)
 
   function changeDate(nextDate: string) {
     setDate(nextDate)
     setSelected(attendedPlayersForDate(attendance, nextDate))
     setFormError('')
     if (onLoadDate) {
+      const requestId = ++dateRequestId.current
       void onLoadDate(nextDate).then((records) => {
-        if (records) setSelected(attendedPlayersForDate(records, nextDate))
+        if (records && dateRequestId.current === requestId) {
+          setSelected(attendedPlayersForDate(records, nextDate))
+        }
       }).catch(() => undefined)
     }
   }
@@ -65,8 +69,11 @@ export function AttendanceView({ profiles, sessions, attendance, loadingRange = 
   }
 
   const historicalIds = attendancePlayerIdsForDate(attendance, date)
+  const eligibleIds = new Set(memberships
+    .filter((membership) => membershipCoversDate(membership, date))
+    .map((membership) => membership.player_id))
   const visiblePlayers = profiles.filter((profile) => (
-    !profile.is_owner && (currentPlayers.some((player) => player.id === profile.id) || historicalIds.has(profile.id))
+    !profile.is_owner && ((isActivePlayer(profile) && eligibleIds.has(profile.id)) || historicalIds.has(profile.id))
   ))
   const visibleIds = new Set(visiblePlayers.map((player) => player.id))
   const visibleSelected = new Set([...selected].filter((id) => visibleIds.has(id)))

@@ -30,86 +30,119 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [errorMessage, setErrorMessage] = useState('')
   const [loadedView, setLoadedView] = useState<ViewName | null>(null)
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
+  const tasksRef = useRef<TrainingTask[]>([])
   const inFlightReload = useRef<Promise<void> | null>(null)
   const lastReloadAttempt = useRef(0)
+  const pendingRangeLoads = useRef(0)
+  const rangeRequestIds = useRef({ tasks: 0, statistics: 0, attendance: 0, matches: 0 })
+  const loadedTaskRanges = useRef(new Map<string, { from: string; to: string }>())
+  const loadedStatisticsMonth = useRef<string | null>(null)
+  const loadedAttendanceDate = useRef<string | null>(null)
+  const loadedMatchMonth = useRef<string | null>(null)
+  const rangesUserId = useRef<string | undefined>(undefined)
   const userId = session?.user.id
+
+  const beginRangeLoad = useCallback(() => {
+    pendingRangeLoads.current += 1
+    setLoadingRange(true)
+  }, [])
+
+  const endRangeLoad = useCallback(() => {
+    pendingRangeLoads.current = Math.max(0, pendingRangeLoads.current - 1)
+    if (pendingRangeLoads.current === 0) setLoadingRange(false)
+  }, [])
 
   const loadTaskRange = useCallback(async (fromWeek: string, toWeek: string) => {
     if (!userId || !profile) return
-    setLoadingRange(true)
+    const requestId = ++rangeRequestIds.current.tasks
+    beginRangeLoad()
     setErrorMessage('')
     try {
       const data = await fetchTaskWindow(userId, profile.is_owner || profile.is_collaborator, fromWeek, toWeek)
-      setTasks((current) => replaceDateRange(current, data.tasks, 'week_start', fromWeek, toWeek))
-      setResults((current) => replaceRelated(current, data.results, new Set([
-        ...current.filter((result) => tasks.some((task) => task.id === result.task_id && task.week_start >= fromWeek && task.week_start <= toWeek)).map((result) => result.task_id),
-        ...data.tasks.map((task) => task.id),
-      ]), (result) => result.task_id, resultKey))
+      if (rangeRequestIds.current.tasks !== requestId) return
+      loadedTaskRanges.current.set(`${fromWeek}:${toWeek}`, { from: fromWeek, to: toWeek })
+      setResults((currentResults) => mergeTaskWindow(
+        tasksRef.current, currentResults, data, fromWeek, toWeek,
+      ).results)
+      setTasks((currentTasks) => replaceDateRange(currentTasks, data.tasks, 'week_start', fromWeek, toWeek))
     } catch (error) {
-      setErrorMessage(errorText(error))
+      if (rangeRequestIds.current.tasks === requestId) setErrorMessage(errorText(error))
       throw error
     } finally {
-      setLoadingRange(false)
+      endRangeLoad()
     }
-  }, [profile, tasks, userId])
+  }, [beginRangeLoad, endRangeLoad, profile, userId])
 
   const loadStatisticsMonth = useCallback(async (month: string) => {
     if (!userId) return
-    setLoadingRange(true)
+    const requestId = ++rangeRequestIds.current.statistics
+    beginRangeLoad()
     setErrorMessage('')
     try {
       const data = await fetchStatisticsWindow(month)
+      if (rangeRequestIds.current.statistics !== requestId) return
+      loadedStatisticsMonth.current = month
       setTasks(data.tasks)
       setResults(data.results)
       setTrainingSessions(data.trainingSessions)
       setAttendance(data.attendance)
     } catch (error) {
-      setErrorMessage(errorText(error))
+      if (rangeRequestIds.current.statistics === requestId) setErrorMessage(errorText(error))
       throw error
     } finally {
-      setLoadingRange(false)
+      endRangeLoad()
     }
-  }, [userId])
+  }, [beginRangeLoad, endRangeLoad, userId])
 
   const loadAttendanceDate = useCallback(async (date: string) => {
     if (!userId) return
-    setLoadingRange(true)
+    const requestId = ++rangeRequestIds.current.attendance
+    beginRangeLoad()
     setErrorMessage('')
     try {
       const data = await fetchAttendanceDate(date)
-      const oldSessionIds = new Set(trainingSessions.filter((sessionItem) => sessionItem.session_date === date).map((sessionItem) => sessionItem.id))
-      const affectedIds = new Set([...oldSessionIds, ...data.trainingSessions.map((sessionItem) => sessionItem.id)])
-      setTrainingSessions((current) => mergeByKey(current, data.trainingSessions, (item) => item.id))
-      setAttendance((current) => replaceRelated(current, data.attendance, affectedIds, (item) => item.session_id, attendanceKey))
+      if (rangeRequestIds.current.attendance !== requestId) return data.attendance
+      loadedAttendanceDate.current = date
+      setTrainingSessions((current) => {
+        const oldSessionIds = new Set(current.filter((sessionItem) => sessionItem.session_date === date).map((sessionItem) => sessionItem.id))
+        const affectedIds = new Set([...oldSessionIds, ...data.trainingSessions.map((sessionItem) => sessionItem.id)])
+        setAttendance((currentAttendance) => replaceRelated(currentAttendance, data.attendance, affectedIds, (item) => item.session_id, attendanceKey))
+        return replaceDateRange(current, data.trainingSessions, 'session_date', date, date)
+      })
       return data.attendance
     } catch (error) {
-      setErrorMessage(errorText(error))
+      if (rangeRequestIds.current.attendance === requestId) setErrorMessage(errorText(error))
       throw error
     } finally {
-      setLoadingRange(false)
+      endRangeLoad()
     }
-  }, [trainingSessions, userId])
+  }, [beginRangeLoad, endRangeLoad, userId])
 
   const loadMatchMonth = useCallback(async (month: string) => {
     if (!userId) return
-    setLoadingRange(true)
+    const requestId = ++rangeRequestIds.current.matches
+    beginRangeLoad()
     setErrorMessage('')
     try {
       const from = monthStart(month)
       const to = monthEnd(month)
       const data = await fetchMatchWindow(from, to)
-      const oldMatchIds = new Set(matches.filter((match) => match.match_date >= from && match.match_date <= to).map((match) => match.id))
-      const affectedIds = new Set([...oldMatchIds, ...data.matches.map((match) => match.id)])
-      setMatches((current) => replaceDateRange(current, data.matches, 'match_date', from, to))
-      setMatchAvailability((current) => replaceRelated(current, data.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey))
-      setMatchLineups((current) => replaceRelated(current, data.matchLineups, affectedIds, (item) => item.match_id, lineupKey))
+      if (rangeRequestIds.current.matches !== requestId) return
+      loadedMatchMonth.current = monthStart(month)
+      setMatches((current) => {
+        const oldMatchIds = new Set(current.filter((match) => match.match_date >= from && match.match_date <= to).map((match) => match.id))
+        const affectedIds = new Set([...oldMatchIds, ...data.matches.map((match) => match.id)])
+        setMatchAvailability((currentAvailability) => replaceRelated(currentAvailability, data.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey))
+        setMatchLineups((currentLineups) => replaceRelated(currentLineups, data.matchLineups, affectedIds, (item) => item.match_id, lineupKey))
+        return replaceDateRange(current, data.matches, 'match_date', from, to)
+      })
     } catch (error) {
-      setErrorMessage(errorText(error))
+      if (rangeRequestIds.current.matches === requestId) setErrorMessage(errorText(error))
       throw error
     } finally {
-      setLoadingRange(false)
+      endRangeLoad()
     }
-  }, [matches, userId])
+  }, [beginRangeLoad, endRangeLoad, userId])
 
   const reload = useCallback(async () => {
     if (!userId) {
@@ -117,7 +150,20 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       return
     }
 
+    if (rangesUserId.current !== userId) {
+      rangesUserId.current = userId
+      loadedTaskRanges.current.clear()
+      loadedStatisticsMonth.current = null
+      loadedAttendanceDate.current = null
+      loadedMatchMonth.current = null
+    }
+
     while (inFlightReload.current) await inFlightReload.current
+
+    if (view === 'tasks') rangeRequestIds.current.tasks += 1
+    if (view === 'statistics') rangeRequestIds.current.statistics += 1
+    if (view === 'attendance') rangeRequestIds.current.attendance += 1
+    if (view === 'matches') rangeRequestIds.current.matches += 1
 
     lastReloadAttempt.current = Date.now()
     const request = (async () => {
@@ -125,7 +171,13 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       setErrorMessage('')
 
       try {
-        const data = await fetchTrainingData(userId, view)
+        let data = await fetchTrainingData(userId, view)
+        data = await restoreLoadedRanges(data, view, userId, {
+          taskRanges: [...loadedTaskRanges.current.values()],
+          statisticsMonth: loadedStatisticsMonth.current,
+          attendanceDate: loadedAttendanceDate.current,
+          matchMonth: loadedMatchMonth.current,
+        })
         setProfile(data.profile)
         setSeasons(data.seasons)
         setTasks(data.tasks)
@@ -153,6 +205,10 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       if (inFlightReload.current === request) inFlightReload.current = null
     }
   }, [userId, view])
+
+  useEffect(() => {
+    tasksRef.current = tasks
+  }, [tasks])
 
   useEffect(() => {
     lastReloadAttempt.current = Date.now()
@@ -235,3 +291,96 @@ const resultKey = (result: TaskResult) => `${result.task_id}:${result.player_id}
 const attendanceKey = (record: AttendanceRecord) => `${record.session_id}:${record.player_id}`
 const availabilityKey = (item: MatchAvailability) => `${item.match_id}:${item.player_id}`
 const lineupKey = (item: MatchLineup) => `${item.match_id}:${item.position}:${item.player_id}`
+
+type LoadedRanges = {
+  taskRanges: { from: string; to: string }[]
+  statisticsMonth: string | null
+  attendanceDate: string | null
+  matchMonth: string | null
+}
+
+async function restoreLoadedRanges(
+  base: Awaited<ReturnType<typeof fetchTrainingData>>,
+  view: ViewName,
+  userId: string,
+  ranges: LoadedRanges,
+) {
+  if (view === 'tasks' && ranges.taskRanges.length) {
+    let tasks = base.tasks
+    let results = base.results
+    const canManage = base.profile.is_owner || base.profile.is_collaborator
+    const windows = await Promise.all(ranges.taskRanges.map(async ({ from, to }) => ({
+      from,
+      to,
+      data: await fetchTaskWindow(userId, canManage, from, to),
+    })))
+    for (const window of windows) {
+      const merged = mergeTaskWindow(tasks, results, window.data, window.from, window.to)
+      tasks = merged.tasks
+      results = merged.results
+    }
+    return { ...base, tasks, results }
+  }
+
+  if (view === 'statistics' && ranges.statisticsMonth) {
+    const statistics = await fetchStatisticsWindow(ranges.statisticsMonth)
+    return { ...base, ...statistics }
+  }
+
+  if (view === 'attendance' && ranges.attendanceDate) {
+    let trainingSessions = base.trainingSessions
+    let attendance = base.attendance
+    const window = await fetchAttendanceDate(ranges.attendanceDate)
+    const oldIds = new Set(trainingSessions
+      .filter((session) => session.session_date === ranges.attendanceDate)
+      .map((session) => session.id))
+    const affectedIds = new Set([...oldIds, ...window.trainingSessions.map((session) => session.id)])
+    trainingSessions = replaceDateRange(
+      trainingSessions, window.trainingSessions, 'session_date', ranges.attendanceDate, ranges.attendanceDate,
+    )
+    attendance = replaceRelated(
+      attendance, window.attendance, affectedIds, (item) => item.session_id, attendanceKey,
+    )
+    return { ...base, trainingSessions, attendance }
+  }
+
+  if (view === 'matches' && ranges.matchMonth) {
+    let matches = base.matches
+    let matchAvailability = base.matchAvailability
+    let matchLineups = base.matchLineups
+    const from = monthStart(ranges.matchMonth)
+    const to = monthEnd(ranges.matchMonth)
+    const window = await fetchMatchWindow(from, to)
+    const oldIds = new Set(matches
+      .filter((match) => match.match_date >= from && match.match_date <= to)
+      .map((match) => match.id))
+    const affectedIds = new Set([...oldIds, ...window.matches.map((match) => match.id)])
+    matches = replaceDateRange(matches, window.matches, 'match_date', from, to)
+    matchAvailability = replaceRelated(
+      matchAvailability, window.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey,
+    )
+    matchLineups = replaceRelated(
+      matchLineups, window.matchLineups, affectedIds, (item) => item.match_id, lineupKey,
+    )
+    return { ...base, matches, matchAvailability, matchLineups }
+  }
+
+  return base
+}
+
+function mergeTaskWindow(
+  tasks: TrainingTask[],
+  results: TaskResult[],
+  incoming: { tasks: TrainingTask[]; results: TaskResult[] },
+  from: string,
+  to: string,
+) {
+  const affectedIds = new Set([
+    ...tasks.filter((task) => task.week_start >= from && task.week_start <= to).map((task) => task.id),
+    ...incoming.tasks.map((task) => task.id),
+  ])
+  return {
+    tasks: replaceDateRange(tasks, incoming.tasks, 'week_start', from, to),
+    results: replaceRelated(results, incoming.results, affectedIds, (result) => result.task_id, resultKey),
+  }
+}

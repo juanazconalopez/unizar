@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate, mondayFor, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
+import { addDays, formatDate, mondayFor, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import { activePlayers as selectActivePlayers } from '../../lib/selectors'
+import { membershipCoversDate } from '../../lib/selectors'
 import type {
   AttendanceRecord,
   Profile,
@@ -28,8 +28,8 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
-  const activePlayers = useMemo(() => selectActivePlayers(profiles), [profiles])
-  const playerIds = useMemo(() => new Set(activePlayers.map((profile) => profile.id)), [activePlayers])
+  const historicalPlayers = useMemo(() => profiles.filter((profile) => !profile.is_owner), [profiles])
+  const playerIds = useMemo(() => new Set(historicalPlayers.map((profile) => profile.id)), [historicalPlayers])
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const playerAttendance = attendance.filter((record) => playerIds.has(record.player_id))
   const playerResults = results.filter((result) => (
@@ -37,20 +37,25 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
   ))
   const days = calendarDays(month)
   const monthPrefix = month.slice(0, 7)
+  const monthFrom = monthStart(month)
+  const monthTo = monthEnd(month)
+  const eligibleMonthPlayerIds = new Set(memberships
+    .filter((membership) => (
+      membership.active_from <= monthTo
+      && (!membership.active_until || membership.active_until >= monthFrom)
+      && playerIds.has(membership.player_id)
+    ))
+    .map((membership) => membership.player_id))
   const monthSessions = sessions.filter((session) => session.session_date.startsWith(monthPrefix))
   const monthAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(monthPrefix))
   const monthResults = playerResults.filter((result) => result.performed_on.startsWith(monthPrefix))
-  const averageAttendance = monthSessions.length && activePlayers.length
-    ? monthAttendance.filter((record) => record.attended).length / monthSessions.length
+  const attendanceRate = attendancePercentage(monthAttendance)
+  const averageCompletedTasks = eligibleMonthPlayerIds.size
+    ? monthResults.length / eligibleMonthPlayerIds.size
     : null
-  const averageCompletedTasks = activePlayers.length ? monthResults.length / activePlayers.length : null
   const previousMonthPrefix = offsetMonth(month, -1).slice(0, 7)
-  const previousSessions = sessions.filter((session) => session.session_date.startsWith(previousMonthPrefix))
   const previousAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(previousMonthPrefix))
-  const attendanceRate = averageAttendance === null ? null : (averageAttendance / activePlayers.length) * 100
-  const previousAttendanceRate = previousSessions.length && activePlayers.length
-    ? (previousAttendance.filter((record) => record.attended).length / previousSessions.length / activePlayers.length) * 100
-    : null
+  const previousAttendanceRate = attendancePercentage(previousAttendance)
   const attendanceDrop = attendanceRate !== null && previousAttendanceRate !== null
     ? Math.round(previousAttendanceRate - attendanceRate)
     : 0
@@ -80,7 +85,7 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
         <SummaryMetric label="Entrenamientos" value={monthSessions.length.toString()} />
         <SummaryMetric
           label="Media asistencia"
-          value={averageAttendance === null ? '—' : `${Math.round((averageAttendance / activePlayers.length) * 100)}%`}
+          value={attendanceRate === null ? '—' : `${Math.round(attendanceRate)}%`}
         />
         <SummaryMetric
           label="Media tareas realizadas"
@@ -136,7 +141,7 @@ export function StatisticsView({ profiles, sessions, attendance, memberships, ta
       </section>
 
       <DayDetail
-        activePlayers={activePlayers}
+        players={historicalPlayers}
         attendance={playerAttendance}
         date={selectedDate}
         memberships={memberships}
@@ -156,8 +161,13 @@ function formatAverage(value: number) {
   return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(value)
 }
 
-function DayDetail({ activePlayers, attendance, date, memberships, results, sessions, tasks }: {
-  activePlayers: Profile[]
+function attendancePercentage(records: AttendanceRecord[]) {
+  if (!records.length) return null
+  return (records.filter((record) => record.attended).length / records.length) * 100
+}
+
+function DayDetail({ players, attendance, date, memberships, results, sessions, tasks }: {
+  players: Profile[]
   attendance: AttendanceRecord[]
   date: string
   memberships: SeasonPlayer[]
@@ -166,6 +176,18 @@ function DayDetail({ activePlayers, attendance, date, memberships, results, sess
   tasks: TrainingTask[]
 }) {
   const weekStart = mondayFor(date)
+  const attendanceIds = new Set(attendance
+    .filter((record) => recordDate(record) === date)
+    .map((record) => record.player_id))
+  const activePlayers = players.filter((player) => (
+    attendanceIds.has(player.id)
+    || memberships.some((membership) => (
+      membership.player_id === player.id
+      && (membershipCoversDate(membership, date)
+        || (membership.active_from <= addDays(weekStart, 6)
+          && (!membership.active_until || membership.active_until >= weekStart)))
+    ))
+  ))
   const weeklyTasks = tasks.filter((task) => task.week_start === weekStart && task.status === 'published')
   const weeklyTaskIds = new Set(weeklyTasks.map((task) => task.id))
   const hasSession = sessions.some((session) => session.session_date === date)

@@ -8,29 +8,48 @@ import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
 import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
-export function SeasonsView({ embedded = false, seasons, profiles, memberships, onCreate, onToggleMembership }: {
+export function SeasonsView({ embedded = false, seasons, profiles, memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
   embedded?: boolean
   seasons: Season[]
   profiles: Profile[]
   memberships: SeasonPlayer[]
   onCreate: (values: SeasonValues) => Promise<void>
+  onDelete: (season: Season) => Promise<void>
+  onUpdate: (season: Season, values: SeasonValues) => Promise<void>
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   return (
     <div className={embedded ? 'settings-section' : 'page'}>
-      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2><p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => setShowForm(true)}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
+      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2><p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => { setEditingSeason(null); setShowForm(true) }}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
         eyebrow="ORGANIZACIÓN"
         title="Temporadas"
         subtitle="Gestiona periodos y participantes del equipo."
-        action={<button className="primary-button" onClick={() => setShowForm(true)}><Icon name="plus" size={18} />Nueva temporada</button>}
+        action={<button className="primary-button" onClick={() => { setEditingSeason(null); setShowForm(true) }}><Icon name="plus" size={18} />Nueva temporada</button>}
       />}
-      {showForm && (
+      {(showForm || editingSeason) && (
         <SeasonForm
-          onCancel={() => setShowForm(false)}
-          onCreate={async (values) => { await onCreate(values); setShowForm(false) }}
+          season={editingSeason ?? undefined}
+          onCancel={() => { setShowForm(false); setEditingSeason(null) }}
+          onDelete={editingSeason ? async (season) => {
+            const memberCount = memberships.filter((item) => item.season_id === season.id).length
+            const confirmed = window.confirm(
+              `¿Eliminar “${season.name}”?\n\nSe eliminarán en cascada sus ${memberCount} inscripciones, tareas y respuestas, entrenamientos de campo y asistencias, y partidos con sus disponibilidades y alineaciones. Esta acción no se puede deshacer.`,
+            )
+            if (!confirmed) return false
+            await onDelete(season)
+            setEditingSeason(null)
+            return true
+          } : undefined}
+          onSubmit={async (values) => {
+            if (editingSeason) await onUpdate(editingSeason, values)
+            else await onCreate(values)
+            setShowForm(false)
+            setEditingSeason(null)
+          }}
         />
       )}
       <div className="season-grid">
@@ -41,6 +60,7 @@ export function SeasonsView({ embedded = false, seasons, profiles, memberships, 
             memberships={memberships}
             profiles={profiles}
             season={season}
+            onEdit={() => { setShowForm(false); setEditingSeason(season) }}
             onToggle={() => setExpanded(expanded === season.id ? null : season.id)}
             onToggleMembership={onToggleMembership}
           />
@@ -51,11 +71,12 @@ export function SeasonsView({ embedded = false, seasons, profiles, memberships, 
   )
 }
 
-function SeasonCard({ season, profiles, memberships, expanded, onToggle, onToggleMembership }: {
+function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle, onToggleMembership }: {
   season: Season
   profiles: Profile[]
   memberships: SeasonPlayer[]
   expanded: boolean
+  onEdit: () => void
   onToggle: () => void
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
 }) {
@@ -68,7 +89,10 @@ function SeasonCard({ season, profiles, memberships, expanded, onToggle, onToggl
       <div className="season-card-top"><span className={`season-state ${state.toLowerCase()}`}>{state}</span><span>{activeMembers.length} participantes</span></div>
       <h3>{season.name}</h3>
       <p>{formatDate(season.start_date, { day: 'numeric', month: 'long', year: 'numeric' })} — {formatDate(season.end_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-      <button className="secondary-button full-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
+      <div className="season-card-actions">
+        <button className="secondary-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
+        <button className="secondary-button" onClick={onEdit}>Editar</button>
+      </div>
       {expanded && (
         <div className="member-list">
           {profiles.filter((player) => player.is_approved && !player.is_archived && !player.is_owner).map((player) => {

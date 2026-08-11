@@ -34,6 +34,7 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
   await page.getByRole('button', { name: 'Cerrar' }).click()
   await page.getByRole('button', { name: 'Gestionar alineación' }).first().click()
   await expect(page.getByRole('dialog', { name: /Partido contra/ })).toBeVisible()
+  await page.getByRole('checkbox', { name: 'Publicar convocatoria para las jugadoras' }).check()
   await page.getByRole('button', { name: 'Guardar alineación' }).click()
   await expect(page.getByRole('dialog', { name: 'Hay titulares sin rellenar' })).toBeVisible()
   await page.getByRole('button', { name: 'Revisar alineación' }).click()

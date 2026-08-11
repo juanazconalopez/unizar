@@ -44,7 +44,7 @@ export function AppLayout({
     ] : []),
     { id: 'tasks', label: 'Tareas', icon: 'tasks' },
     { id: 'matches', label: 'Partidos', icon: 'calendar' },
-    ...(!profile.is_owner ? [{ id: 'competition' as const, label: 'Competición', icon: 'trophy' as const }] : []),
+    { id: 'competition', label: 'Competición', icon: 'trophy' },
     ...(profile.is_owner ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
       { id: 'settings' as const, label: 'Ajustes', icon: 'settings' as const },

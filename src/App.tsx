@@ -1,17 +1,22 @@
 import { lazy, Suspense, useState } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
+import { Icon } from './components/Icon'
 import { SectionError, SectionLoading, ViewErrorBoundary } from './components/AsyncViewState'
 import { DataLoadErrorScreen, DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { useAuth } from './hooks/useAuth'
+import { useCompetitionData } from './hooks/useCompetitionData'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
-import { activeMembershipFor } from './lib/selectors'
+import { todayIso } from './lib/dates'
+import { activeMembershipFor, membershipCoversDate } from './lib/selectors'
 import {
   createSeason,
+  deleteSeason,
   saveTrainingAttendance,
   setSeasonMembership,
+  updateSeason,
   updateProfilePermissions,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
@@ -24,6 +29,7 @@ import type {
   MatchValues,
   ResultValues,
   Season,
+  SeasonPlayer,
   SeasonValues,
   TaskStatus,
   TaskValues,
@@ -62,6 +68,7 @@ function App() {
   const auth = useAuth()
   const online = useOnlineStatus()
   const data = useTrainingData(auth.session, view)
+  const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
 
   function requireConnection() {
     if (navigator.onLine) return
@@ -168,6 +175,20 @@ function App() {
     await data.reload()
   }
 
+  async function handleUpdateSeason(season: Season, values: SeasonValues) {
+    requireConnection()
+    await updateSeason(season.id, values)
+    notify('Temporada actualizada.')
+    await data.reload()
+  }
+
+  async function handleDeleteSeason(season: Season) {
+    requireConnection()
+    await deleteSeason(season.id)
+    notify('Temporada y todos sus datos asociados eliminados.')
+    await data.reload()
+  }
+
   async function handleUpdateProfile(profile: Profile) {
     try {
       requireConnection()
@@ -181,8 +202,7 @@ function App() {
 
   async function handleAttendance(date: string, playerIds: string[], attendedPlayerIds: string[]) {
     requireConnection()
-    if (!auth.session?.user) return
-    await saveTrainingAttendance(date, playerIds, attendedPlayerIds, auth.session.user.id)
+    await saveTrainingAttendance(date, playerIds, attendedPlayerIds)
     notify('Asistencia guardada correctamente.')
     await data.reload()
   }
@@ -236,6 +256,9 @@ function App() {
           ? <SectionError message={online ? data.errorMessage : 'No hay conexión a Internet.'} onRetry={() => void data.reload()} />
           : <SectionLoading />
       ) : <ViewErrorBoundary key={view}><Suspense fallback={<SectionLoading />}>
+      {view !== 'competition' && !hasWorkingSeason(data.profile, data.seasons, data.memberships, userId) && (
+        <SeasonContextNotice profile={data.profile} onOpenSettings={() => navigate('settings')} view={view} />
+      )}
       {view === 'home' && (
         <Dashboard
           memberships={data.memberships}
@@ -263,6 +286,7 @@ function App() {
       {view === 'attendance' && data.profile.is_owner && (
         <AttendanceView
           attendance={data.attendance}
+          memberships={data.memberships}
           profiles={data.profiles}
           sessions={data.trainingSessions}
           loadingRange={data.loadingRange}
@@ -307,8 +331,19 @@ function App() {
           onSaveMatch={handleSaveMatch}
         />
       )}
-      {view === 'competition' && !data.profile.is_owner && (
-        <CompetitionView fixtures={[]} playerStats={[]} seasons={[]} standings={[]} />
+      {view === 'competition' && (
+        <CompetitionView
+          errorMessage={competition.errorMessage}
+          fixtures={competition.fixtures}
+          isOwner={data.profile.is_owner}
+          loading={competition.loading}
+          playerStats={competition.playerStats}
+          seasons={competition.seasons}
+          standings={competition.standings}
+          syncing={competition.syncing}
+          onSeasonChange={competition.loadSeason}
+          onSync={competition.synchronize}
+        />
       )}
       {view === 'settings' && data.profile.is_owner && (
         <SettingsView
@@ -317,8 +352,10 @@ function App() {
           profiles={data.profiles}
           seasons={data.seasons}
           onCreateSeason={handleCreateSeason}
+          onDeleteSeason={handleDeleteSeason}
           onToggleMembership={handleMembership}
           onUpdateProfile={handleUpdateProfile}
+          onUpdateSeason={handleUpdateSeason}
         />
       )}
       </Suspense></ViewErrorBoundary>}
@@ -327,3 +364,34 @@ function App() {
 }
 
 export default App
+
+function hasWorkingSeason(profile: Profile, seasons: Season[], memberships: SeasonPlayer[], userId: string) {
+  const today = todayIso()
+  const activeSeasons = seasons.filter((season) => season.start_date <= today && season.end_date >= today)
+  if (profile.is_owner || profile.is_collaborator) return activeSeasons.length > 0
+  return activeSeasons.some((season) => memberships.some((membership) => (
+    membership.season_id === season.id
+    && membership.player_id === userId
+    && membershipCoversDate(membership, today)
+  )))
+}
+
+function SeasonContextNotice({ profile, view, onOpenSettings }: { profile: Profile; view: ViewName; onOpenSettings: () => void }) {
+  const title = profile.is_owner
+    ? 'No hay ninguna temporada activa'
+    : profile.is_collaborator
+      ? 'No hay una temporada activa para planificar'
+      : 'No tienes una temporada activa asignada'
+  const text = profile.is_owner
+    ? 'Crea una temporada o revisa sus fechas para volver a trabajar con tareas y partidos.'
+    : profile.is_collaborator
+      ? 'El owner debe crear una temporada o corregir sus fechas antes de continuar con la planificación.'
+      : 'Consulta con el cuerpo técnico para que revise la temporada y tu inscripción.'
+  return (
+    <div className="season-context-notice" role="status">
+      <span><Icon name="warning" size={18} /></span>
+      <div><strong>{title}</strong><p>{text}</p></div>
+      {profile.is_owner && view !== 'settings' && <button className="secondary-button compact" onClick={onOpenSettings}>Revisar temporadas</button>}
+    </div>
+  )
+}

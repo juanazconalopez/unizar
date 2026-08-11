@@ -46,7 +46,7 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            urlPattern: /\/assets\/.*\.(?:js|css|png|svg|webp)$/,
+            urlPattern: /\/assets\/.*\.(?:js|css|jpe?g|png|svg|webp)$/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'versioned-app-assets',

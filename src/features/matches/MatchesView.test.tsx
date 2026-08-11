@@ -7,7 +7,7 @@ import type { Match } from '../../types'
 import { MatchesView } from './MatchesView'
 
 const match = (overrides: Partial<Match> = {}): Match => ({
-  id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, ...overrides,
+  id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, ...overrides,
 })
 
 const common = { seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
@@ -54,6 +54,15 @@ describe('MatchesView', () => {
     expect(screen.getByRole('button', { name: 'Ver convocatoria' })).toBeInTheDocument()
     expect(screen.getByText('Disponibilidad cerrada')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
+  })
+
+  test('does not let the owner manage a lineup after publication', async () => {
+    const user = userEvent.setup()
+    const lineup = [{ match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }]
+    render(<MatchesView {...common} lineups={lineup} matches={[match({ lineup_published: true })]} isOwner userId="owner-1" onSaveAvailability={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
+    expect(screen.getByRole('button', { name: 'Ver convocatoria' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Gestionar alineación' })).not.toBeInTheDocument()
   })
 
   test('lets the owner open availability grouped by response', async () => {

@@ -40,12 +40,11 @@ describe('AppLayout', () => {
   test('shows every management area to owners', () => {
     const { navigation } = renderLayout(makeProfile({ is_owner: true, is_collaborator: true }))
 
-    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Asistencia', 'Ajustes']) {
+    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Competición', 'Asistencia', 'Ajustes']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
     expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
-    expect(within(navigation).queryByRole('button', { name: 'Competición' })).not.toBeInTheDocument()
   })
 
   test('keeps player sections available when a player is also a collaborator', () => {

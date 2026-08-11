@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { CompetitionView } from './CompetitionView'
 import type { CompetitionFixture, CompetitionPlayerStat, CompetitionSeason, CompetitionStanding } from '../../types'
 
@@ -40,5 +40,22 @@ describe('CompetitionView', () => {
   test('makes the missing production feed explicit', () => {
     render(<CompetitionView fixtures={[]} playerStats={[]} seasons={[]} standings={[]} />)
     expect(screen.getByText('Competición pendiente de sincronización')).toBeInTheDocument()
+  })
+
+  test('allows the owner to start the first synchronization', async () => {
+    const user = userEvent.setup()
+    const onSync = vi.fn().mockResolvedValue(undefined)
+    render(<CompetitionView fixtures={[]} isOwner onSync={onSync} playerStats={[]} seasons={[]} standings={[]} />)
+    await user.click(screen.getByRole('button', { name: 'Sincronizar ahora' }))
+    expect(onSync).toHaveBeenCalledOnce()
+  })
+
+  test('loads another historical season when it is selected', async () => {
+    const user = userEvent.setup()
+    const onSeasonChange = vi.fn().mockResolvedValue(undefined)
+    const older = { ...seasons[0], id: '24-25', name: '2024–25', startsOn: '2024-07-01' }
+    render(<CompetitionView fixtures={fixtures} onSeasonChange={onSeasonChange} playerStats={playerStats} seasons={[seasons[0], older]} standings={standings} />)
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Temporada' }), '24-25')
+    expect(onSeasonChange).toHaveBeenCalledWith('24-25')
   })
 })

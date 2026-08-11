@@ -30,4 +30,8 @@ describe('training data requirements', () => {
       seasons: false,
     })
   })
+
+  test('loads memberships when attendance needs date-based eligibility', () => {
+    expect(dataRequirementsFor('attendance', false).memberships).toBe(true)
+  })
 })

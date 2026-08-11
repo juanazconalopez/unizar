@@ -13,6 +13,7 @@ Aplicación responsive para planificar y registrar los entrenamientos de un equi
 - Registro de asistencia a entrenamientos de campo por fecha.
 - Estadística personal de asistencia con mensajes motivadores.
 - Gestión de usuarios, permisos y temporadas para owners.
+- Histórico de competición sincronizado desde la publicación pública de MatchReady.
 - Desautorización reversible de cuentas sin perder su histórico.
 
 La autorización real se aplica mediante las políticas RLS de `supabase/migrations`.
@@ -20,10 +21,31 @@ La autorización real se aplica mediante las políticas RLS de `supabase/migrati
 ## Base de datos
 
 Las migraciones se aplican en orden desde el editor SQL de Supabase. Las migraciones
-`003` a `008` añaden asistencia, archivo reversible de usuarios, lectura de resultados
+`003` a `013` añaden asistencia, archivo reversible de usuarios, lectura de resultados
 para gestores, tipos de tarea canónicos, periodos históricos de participación y
-normalización de nombres, partidos, disponibilidad y alineaciones, además de la actualización automática de `updated_at`.
+normalización de nombres, partidos, disponibilidad y alineaciones, consultas indexadas,
+histórico de competición y las restricciones de integridad transaccional, además de la
+actualización automática de `updated_at`.
 Deben aplicarse todas antes de publicar.
+
+### Sincronización de competición
+
+Después de aplicar `012_competition_history.sql` y
+`013_reliability_hardening.sql`, despliega la función de servidor:
+
+```bash
+npx supabase functions deploy sync-competition --project-ref TU_PROJECT_REF
+```
+
+No necesita secretos adicionales: Supabase proporciona a la función `SUPABASE_URL`,
+`SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. Solo el owner autenticado puede
+ejecutarla. Al abrir Competición, el owner lanza una sincronización en segundo plano
+si la copia tiene más de doce horas; también dispone del botón **Sincronizar**.
+
+La función descubre el calendario actual desde la página estable de la Federación,
+procesa calendario, clasificación y estadísticas públicas de MatchReady, y guarda
+una instantánea separada por temporada. Una nueva edición aparece automáticamente
+en el selector y las anteriores permanecen en Supabase aunque desaparezca su fuente.
 
 ## Desarrollo local
 
@@ -75,6 +97,18 @@ la configuración y las fixtures compartidas. Para trabajar en modo interactivo:
 nvm use 22
 npm run test:watch
 ```
+
+Los tipos del esquema usados por el cliente de Supabase se guardan en
+`src/lib/database.types.ts`. Regéneralos después de aplicar una migración:
+
+```bash
+nvm use 22
+SUPABASE_PROJECT_ID=tu-project-ref SUPABASE_ACCESS_TOKEN=tu-token npm run types:supabase
+```
+
+Sin `SUPABASE_PROJECT_ID`, el mismo comando consulta la instancia local iniciada
+con Supabase CLI. La compilación estricta detectará después cualquier consulta o
+escritura que ya no coincida con el esquema.
 
 Las comprobaciones SQL de esquema y RLS están en `supabase/tests/schema_test.sql`
 y se ejecutan con Supabase CLI mediante `supabase test db`.

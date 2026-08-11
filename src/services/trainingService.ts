@@ -34,7 +34,7 @@ export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
   return {
     tasks,
     results: tasks,
-    memberships: ['home', 'tasks', 'matches', 'statistics', 'settings'].includes(scope),
+    memberships: ['home', 'tasks', 'matches', 'statistics', 'attendance', 'settings'].includes(scope),
     profiles: scope === 'matches'
       || scope === 'statistics'
       || scope === 'attendance'
@@ -42,7 +42,7 @@ export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
       || (scope === 'tasks' && canManageTasks),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
     matches: scope === 'matches',
-    seasons: scope !== 'competition' && scope !== 'attendance',
+    seasons: scope !== 'competition',
   }
 }
 
@@ -69,13 +69,13 @@ export async function fetchTaskWindow(
     .order('week_start', { ascending: false })
   if (tasksError) throw tasksError
 
-  const tasks = (taskRows ?? []) as unknown as TrainingTask[]
+  const tasks = taskRows ?? []
   if (!tasks.length) return emptyTaskWindow
   let resultsQuery = supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id))
   if (!canManageTasks) resultsQuery = resultsQuery.eq('player_id', userId)
   const { data: resultRows, error: resultsError } = await resultsQuery
   if (resultsError) throw resultsError
-  return { tasks, results: (resultRows ?? []) as TaskResult[] }
+  return { tasks, results: resultRows ?? [] }
 }
 
 async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
@@ -88,7 +88,7 @@ async function fetchAttendanceForSessions(sessionRows: TrainingSession[], player
   if (playerId) query = query.eq('player_id', playerId)
   const { data, error } = await query
   if (error) throw error
-  return { trainingSessions: sessionRows, attendance: (data ?? []) as unknown as AttendanceRecord[] }
+  return { trainingSessions: sessionRows, attendance: data ?? [] }
 }
 
 /** Loads one calendar month plus the preceding month used by the comparison card. */
@@ -106,7 +106,7 @@ export async function fetchStatisticsWindow(month: string): Promise<TaskWindowDa
       .order('session_date', { ascending: false }),
   ])
   if (sessionsResponse.error) throw sessionsResponse.error
-  const attendanceData = await fetchAttendanceForSessions((sessionsResponse.data ?? []) as TrainingSession[])
+  const attendanceData = await fetchAttendanceForSessions(sessionsResponse.data ?? [])
   return { ...taskData, ...attendanceData }
 }
 
@@ -117,7 +117,7 @@ export async function fetchAttendanceDate(date: string): Promise<AttendanceWindo
     .eq('session_date', date)
     .order('session_date', { ascending: false })
   if (error) throw error
-  return fetchAttendanceForSessions((data ?? []) as TrainingSession[])
+  return fetchAttendanceForSessions(data ?? [])
 }
 
 async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
@@ -127,7 +127,7 @@ async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
     .order('session_date', { ascending: false })
     .limit(5)
   if (error) throw error
-  return fetchAttendanceForSessions((data ?? []) as TrainingSession[])
+  return fetchAttendanceForSessions(data ?? [])
 }
 
 /** Loads availability and lineups only for matches in the requested date range. */
@@ -140,7 +140,7 @@ export async function fetchMatchWindow(fromDate: string, toDate?: string): Promi
   if (toDate) query = query.lte('match_date', toDate)
   const { data: matchRows, error: matchesError } = await query
   if (matchesError) throw matchesError
-  const matches = (matchRows ?? []) as unknown as Match[]
+  const matches = matchRows ?? []
   if (!matches.length) return emptyMatchWindow
   const matchIds = matches.map((match) => match.id)
   const [availabilityResponse, lineupsResponse] = await Promise.all([
@@ -151,8 +151,8 @@ export async function fetchMatchWindow(fromDate: string, toDate?: string): Promi
   if (lineupsResponse.error) throw lineupsResponse.error
   return {
     matches,
-    matchAvailability: (availabilityResponse.data ?? []) as MatchAvailability[],
-    matchLineups: (lineupsResponse.data ?? []) as MatchLineup[],
+    matchAvailability: availabilityResponse.data ?? [],
+    matchLineups: lineupsResponse.data ?? [],
   }
 }
 
@@ -164,7 +164,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     .single()
 
   if (profileError) throw profileError
-  const profile = ownProfile as Profile
+  const profile = ownProfile
   const emptyData = {
     profile,
     seasons: [],
@@ -200,7 +200,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (membershipsResponse.error) throw membershipsResponse.error
   if (profilesResponse.error) throw profilesResponse.error
 
-  const seasons = (seasonsResponse.data ?? []) as Season[]
+  const seasons = seasonsResponse.data ?? []
   let taskData = emptyTaskWindow
   let attendanceData = emptyAttendanceWindow
   let matchData = emptyMatchWindow
@@ -217,7 +217,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
         .lte('session_date', dashboardSeason.end_date)
         .order('session_date', { ascending: false })
       if (error) throw error
-      attendanceData = await fetchAttendanceForSessions((data ?? []) as TrainingSession[], userId)
+      attendanceData = await fetchAttendanceForSessions(data ?? [], userId)
     }
   } else if (scope === 'tasks') {
     const start = addDays(currentWeek, -14)
@@ -242,8 +242,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     seasons,
     tasks: taskData.tasks,
     results: taskData.results,
-    memberships: (membershipsResponse.data ?? []) as SeasonPlayer[],
-    profiles: (profilesResponse.data ?? []) as Profile[],
+    memberships: membershipsResponse.data ?? [],
+    profiles: profilesResponse.data ?? [],
     trainingSessions: attendanceData.trainingSessions,
     attendance: attendanceData.attendance,
     matches: matchData.matches,
@@ -253,12 +253,84 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
 }
 
 export async function createSeason(values: SeasonValues, userId: string) {
+  await validateSeasonChange(values)
   const { error } = await supabase.from('seasons').insert({
     ...values,
     name: values.name.trim(),
     created_by: userId,
   })
   if (error) throw error
+}
+
+export async function updateSeason(seasonId: string, values: SeasonValues) {
+  await validateSeasonChange(values, seasonId)
+  const [tasksResponse, matchesResponse, sessionsResponse] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select('title, week_start')
+      .eq('season_id', seasonId)
+      .or(`week_start.lt.${values.start_date},week_start.gt.${addDays(values.end_date, -6)}`)
+      .limit(1),
+    supabase
+      .from('matches')
+      .select('opponent, match_date')
+      .eq('season_id', seasonId)
+      .or(`match_date.lt.${values.start_date},match_date.gt.${values.end_date}`)
+      .limit(1),
+    supabase
+      .from('training_sessions')
+      .select('session_date')
+      .eq('season_id', seasonId)
+      .or(`session_date.lt.${values.start_date},session_date.gt.${values.end_date}`)
+      .limit(1),
+  ])
+  if (tasksResponse.error) throw tasksResponse.error
+  if (matchesResponse.error) throw matchesResponse.error
+  if (sessionsResponse.error) throw sessionsResponse.error
+  const invalidTask = tasksResponse.data?.[0]
+  const invalidMatch = matchesResponse.data?.[0]
+  const invalidSession = sessionsResponse.data?.[0]
+  if (invalidTask) {
+    throw new Error(`No se pueden aplicar esas fechas porque la tarea “${invalidTask.title}” está programada el ${invalidTask.week_start}.`)
+  }
+  if (invalidMatch) {
+    throw new Error(`No se pueden aplicar esas fechas porque el partido contra ${invalidMatch.opponent} está programado el ${invalidMatch.match_date}.`)
+  }
+  if (invalidSession) {
+    throw new Error(`No se pueden aplicar esas fechas porque hay un entrenamiento de campo registrado el ${invalidSession.session_date}.`)
+  }
+
+  const { error } = await supabase
+    .from('seasons')
+    .update({
+      name: values.name.trim(),
+      start_date: values.start_date,
+      end_date: values.end_date,
+    })
+    .eq('id', seasonId)
+  if (error) throw error
+}
+
+export async function deleteSeason(seasonId: string) {
+  const { error } = await supabase.from('seasons').delete().eq('id', seasonId)
+  if (error) throw error
+}
+
+async function validateSeasonChange(values: SeasonValues, excludedSeasonId?: string) {
+  if (!values.name.trim()) throw new Error('Escribe un nombre para la temporada.')
+  if (!values.start_date || !values.end_date) throw new Error('Indica las fechas de inicio y finalización.')
+  if (values.end_date < values.start_date) throw new Error('La fecha de finalización no puede ser anterior a la de inicio.')
+
+  let overlapQuery = supabase
+    .from('seasons')
+    .select('id, name')
+    .lte('start_date', values.end_date)
+    .gte('end_date', values.start_date)
+    .limit(1)
+  if (excludedSeasonId) overlapQuery = overlapQuery.neq('id', excludedSeasonId)
+  const { data, error } = await overlapQuery
+  if (error) throw error
+  if (data?.length) throw new Error(`Las fechas se solapan con “${data[0].name}”. Solo puede haber una temporada activa en cada fecha.`)
 }
 
 export async function updateProfilePermissions(profile: Profile) {
@@ -280,32 +352,12 @@ export async function saveTrainingAttendance(
   attendanceDate: string,
   playerIds: string[],
   attendedPlayerIds: string[],
-  userId: string,
 ) {
-  const now = new Date().toISOString()
-  const { data: session, error: sessionError } = await supabase
-    .from('training_sessions')
-    .upsert(
-      { session_date: attendanceDate, created_by: userId, updated_at: now },
-      { onConflict: 'session_date' },
-    )
-    .select('id')
-    .single()
-
-  if (sessionError) throw sessionError
-  if (!playerIds.length) return
-
-  const attended = new Set(attendedPlayerIds)
-  const rows = playerIds.map((playerId) => ({
-    session_id: session.id,
-    player_id: playerId,
-    attended: attended.has(playerId),
-    marked_by: userId,
-    updated_at: now,
-  }))
-  const { error } = await supabase
-    .from('training_attendance')
-    .upsert(rows, { onConflict: 'session_id,player_id' })
+  const { error } = await supabase.rpc('save_training_attendance', {
+    attendance_date: attendanceDate,
+    checked_player_ids: playerIds,
+    attended_player_ids: attendedPlayerIds,
+  })
   if (error) throw error
 }
 

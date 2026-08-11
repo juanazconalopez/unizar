@@ -15,14 +15,18 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
   onSave?: (entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
 }) {
   const titleId = useId()
-  const editable = Boolean(onSave)
+  const editable = Boolean(onSave) && !match.lineup_published
   const limit = lineupLimit(match)
   const starters = match.rugby_format === 'sevens' ? 7 : 15
   const eligible = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
     membership.player_id === profile.id && membership.season_id === match.season_id && membershipCoversDate(membership, match.match_date)
   )))
   const availableIds = new Set(availability.filter((item) => item.status === 'available').map((item) => item.player_id))
-  const [slots, setSlots] = useState<Record<number, string>>(() => Object.fromEntries(entries.filter((entry) => availableIds.has(entry.player_id)).map((entry) => [entry.slot_number, entry.player_id])))
+  const [slots, setSlots] = useState<Record<number, string>>(() => Object.fromEntries(
+    entries
+      .filter((entry) => !editable || availableIds.has(entry.player_id))
+      .map((entry) => [entry.slot_number, entry.player_id]),
+  ))
   const [published, setPublished] = useState(match.lineup_published)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

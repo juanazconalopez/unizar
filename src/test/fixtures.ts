@@ -32,6 +32,7 @@ export function makeSeason(overrides: Partial<Season> = {}): Season {
     end_date: '2026-12-31',
     created_by: 'owner-1',
     created_at: createdAt,
+    updated_at: createdAt,
     ...overrides,
   }
 }
@@ -43,6 +44,7 @@ export function makeMembership(overrides: Partial<SeasonPlayer> = {}): SeasonPla
     player_id: 'player-1',
     active_from: '2026-01-01',
     active_until: null,
+    created_at: createdAt,
     ...overrides,
   }
 }
@@ -79,9 +81,11 @@ export function makeResult(overrides: Partial<TaskResult> = {}): TaskResult {
 export function makeSession(overrides: Partial<TrainingSession> = {}): TrainingSession {
   return {
     id: 'session-1',
+    season_id: 'season-1',
     session_date: '2026-08-05',
     created_by: 'owner-1',
     created_at: createdAt,
+    updated_at: createdAt,
     ...overrides,
   }
 }

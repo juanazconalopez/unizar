@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey =
@@ -8,7 +9,7 @@ if (!supabaseUrl || !supabasePublishableKey) {
   throw new Error('Faltan las variables de configuración de Supabase')
 }
 
-export const supabase = createClient(
+export const supabase = createClient<Database>(
   supabaseUrl,
   supabasePublishableKey,
 )

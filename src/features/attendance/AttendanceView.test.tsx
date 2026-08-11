@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { todayIso } from '../../lib/dates'
-import { makeAttendance, makeProfile, makeSession } from '../../test/fixtures'
+import { makeAttendance, makeMembership, makeProfile, makeSession } from '../../test/fixtures'
 import { AttendanceView } from './AttendanceView'
 
 describe('AttendanceView', () => {
@@ -21,6 +21,10 @@ describe('AttendanceView', () => {
     render(
       <AttendanceView
         profiles={profiles}
+        memberships={[
+          makeMembership(),
+          makeMembership({ id: 'membership-2', player_id: 'player-2' }),
+        ]}
         sessions={[makeSession({ session_date: today })]}
         attendance={[makeAttendance({ training_sessions: { session_date: today } })]}
         onSave={onSave}
