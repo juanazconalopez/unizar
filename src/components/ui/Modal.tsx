@@ -21,8 +21,11 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
+    const pageContent = document.querySelector<HTMLElement>('.content')
+    const previousContentOverflow = pageContent?.style.overflow ?? ''
     const previousFocus = document.activeElement as HTMLElement | null
     document.body.style.overflow = 'hidden'
+    if (pageContent) pageContent.style.overflow = 'hidden'
     const frame = window.requestAnimationFrame(() => {
       const focusable = dialogRef.current?.querySelector<HTMLElement>('[autofocus], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
       focusable?.focus()
@@ -41,6 +44,7 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
     return () => {
       window.cancelAnimationFrame(frame)
       document.body.style.overflow = previousOverflow
+      if (pageContent) pageContent.style.overflow = previousContentOverflow
       window.removeEventListener('keydown', handleKey)
       previousFocus?.focus()
     }

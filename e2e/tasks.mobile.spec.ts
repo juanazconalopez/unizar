@@ -22,6 +22,14 @@ test('player fatigue options remain horizontal on mobile', async ({ page }) => {
   const box = await page.locator('.fatigue-options').boundingBox()
   expect(box?.width).toBeGreaterThan(250)
   expect(box?.height).toBeLessThan(100)
+  await page.locator('.fatigue-options label').last().click()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+  const header = await page.locator('.mobile-header').boundingBox()
+  const navigation = await page.locator('.mobile-nav').boundingBox()
+  expect(header?.y).toBeGreaterThanOrEqual(0)
+  expect(header?.y).toBeLessThan(2)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
 })
 
 test('match availability and lineup flows work on mobile', async ({ page }) => {
@@ -82,4 +90,49 @@ test('player browses the 2025–26 competition on mobile', async ({ page }) => {
   await expect(page.getByRole('table')).toContainText('32')
   await page.getByRole('button', { name: 'Estadísticas' }).click()
   await expect(page.getByText('Ariadna Acirón Matute')).toBeVisible()
+})
+
+test('selecting attendance keeps the mobile header and navigation fixed', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Asistencia' }).click()
+  await expect(page.getByRole('heading', { name: 'Asistencia de hoy' })).toBeVisible()
+
+  const players = page.locator('.attendance-player')
+  await players.nth(0).click()
+  await players.nth(1).click()
+
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+  const header = await page.locator('.mobile-header').boundingBox()
+  const navigation = await page.locator('.mobile-nav').boundingBox()
+  expect(header?.y).toBeGreaterThanOrEqual(0)
+  expect(header?.y).toBeLessThan(2)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+})
+
+test('scrolling the lineup modal does not move the screen behind it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Gestionar alineación' }).first().click()
+
+  const content = page.locator('.content')
+  const initialScroll = await content.evaluate((element) => element.scrollTop)
+  await expect(content).toHaveCSS('overflow-y', 'hidden')
+
+  const dialog = page.locator('.lineup-dialog')
+  await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight })
+  await dialog.hover()
+  await page.mouse.wheel(0, 1800)
+
+  expect(await content.evaluate((element) => element.scrollTop)).toBe(initialScroll)
+  const header = await page.locator('.mobile-header').boundingBox()
+  const navigation = await page.locator('.mobile-nav').boundingBox()
+  expect(header?.y).toBeGreaterThanOrEqual(0)
+  expect(header?.y).toBeLessThan(2)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
+  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+
+  await page.getByRole('button', { name: 'Cerrar' }).click()
+  await expect(content).toHaveCSS('overflow-y', 'auto')
 })
