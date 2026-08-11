@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import clubLogo from '../../assets/BFCZgzPP.png'
 
-const launchPhotos = Object.values(import.meta.glob('../../assets/finalLiga2026/*.jpg', {
+const launchPhotos = Object.values(import.meta.glob('../../assets/finalLiga2026/*.webp', {
   eager: true,
   import: 'default',
 })) as string[]
