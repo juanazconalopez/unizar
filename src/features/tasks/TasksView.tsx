@@ -2,32 +2,40 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { addDays, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
+import { addDays, formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TrainingTask } from '../../types'
+import type { AnnouncementValues, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TeamAnnouncement, TrainingTask } from '../../types'
+import { AnnouncementCard } from './AnnouncementCard'
+import { AnnouncementForm } from './AnnouncementForm'
 import { TaskCard } from './TaskCard'
 import { TaskAlerts } from './TaskAlerts'
 import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, results, teamResults, userId, loadingRange = false, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange }: {
+export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
   canManage: boolean
   isOwner?: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
   profiles?: Profile[]
   tasks: TrainingTask[]
+  announcements?: TeamAnnouncement[]
   results: TaskResult[]
   teamResults?: TaskResult[]
   userId: string
   loadingRange?: boolean
+  focusedDate?: string
+  focusedAnnouncementId?: string
   onCreate: (values: TaskValues) => Promise<void>
   onDelete: (task: TrainingTask) => Promise<void>
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
   onLoadRange?: (fromWeek: string, toWeek: string) => Promise<void>
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>
+  onSaveAnnouncement?: (announcement: TeamAnnouncement | undefined, values: AnnouncementValues) => Promise<void>
+  onDeleteAnnouncement?: (announcement: TeamAnnouncement) => Promise<void>
+  onAnnouncementStatusChange?: (id: string, status: TaskStatus) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingTask, setEditingTask] = useState<TrainingTask | null>(null)
@@ -36,9 +44,10 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [search, setSearch] = useState('')
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
-  const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
-  const [selectedPlanningDate, setSelectedPlanningDate] = useState(todayIso())
-  const [planningMonth, setPlanningMonth] = useState(`${todayIso().slice(0, 7)}-01`)
+  const [managementView, setManagementView] = useState<'calendar' | 'list'>(canManage || focusedDate ? 'calendar' : 'list')
+  const [announcementForm, setAnnouncementForm] = useState<TeamAnnouncement | null | undefined>(undefined)
+  const [selectedPlanningDate, setSelectedPlanningDate] = useState(focusedDate ?? todayIso())
+  const [planningMonth, setPlanningMonth] = useState(`${(focusedDate ?? todayIso()).slice(0, 7)}-01`)
   const currentWeekRef = useRef<HTMLElement>(null)
   const resultIds = new Set(results.map((result) => result.task_id))
   const normalizedSearch = search.trim().toLocaleLowerCase('es')
@@ -53,6 +62,9 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     return true
   })
   const currentWeek = mondayFor(new Date())
+  const visiblePlanningTasks = canManage ? tasks : tasks.filter((task) => (
+    task.status === 'published' && canUserCompleteTask(task, memberships, userId)
+  ))
   const oldestVisibleWeek = addDays(currentWeek, -(visibleWeekCount - 1) * 7)
   const visibleTasks = filteredTasks.filter((task) => {
     if (!canManage && filter === 'pending') return task.week_start === currentWeek
@@ -69,11 +81,20 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   )
   const selectedPlanningWeek = mondayFor(selectedPlanningDate)
   const selectedWeekTasks = groupTasksByWeek(
-    tasks.filter((task) => task.week_start === selectedPlanningWeek),
+    visiblePlanningTasks.filter((task) => task.week_start === selectedPlanningWeek),
     resultIds,
   )[0]?.weekTasks ?? []
+  const visibleAnnouncements = announcements.filter((announcement) => canManage || announcement.status === 'published')
+  const selectedDayAnnouncements = visibleAnnouncements.filter((announcement) => announcement.announcement_date === selectedPlanningDate)
   const formOpen = showForm || editingTask !== null || copyingTask !== null
   const managerResults = teamResults ?? results
+
+  useEffect(() => {
+    if (focusedDate && onLoadRange) {
+      const week = mondayFor(focusedDate)
+      void onLoadRange(week, week).catch(() => undefined)
+    }
+  }, [focusedDate, onLoadRange])
 
   useEffect(() => {
     if (!canManage || managementView !== 'list') return
@@ -181,26 +202,58 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
     )
   }
 
+  function announcementActionsFor(announcement: TeamAnnouncement) {
+    if (!canManage) return undefined
+    const canEdit = isOwner || announcement.created_by === userId
+    if (!canEdit) return <span className={`status-select ${announcement.status}`}>{statusLabel(announcement.status)}</span>
+    return <>
+      <StatusControl status={announcement.status} onChange={async (status) => {
+        await onAnnouncementStatusChange?.(announcement.id, status)
+        if (onLoadRange) await onLoadRange(mondayFor(announcement.announcement_date), mondayFor(announcement.announcement_date))
+      }} />
+      <button className="secondary-button compact" onClick={() => setAnnouncementForm(announcement)} type="button">Editar aviso</button>
+    </>
+  }
+
+  async function saveAnnouncement(values: AnnouncementValues) {
+    if (!onSaveAnnouncement) return
+    await onSaveAnnouncement(announcementForm ?? undefined, values)
+    if (onLoadRange) await onLoadRange(mondayFor(values.date), mondayFor(values.date))
+    setSelectedPlanningDate(values.date)
+    setPlanningMonth(`${values.date.slice(0, 7)}-01`)
+    setAnnouncementForm(undefined)
+  }
+
   return (
     <div className="page">
       <PageHeader
         eyebrow="PLANIFICACIÓN"
         title="Tareas"
         subtitle={canManage ? 'Crea, publica y revisa los entrenamientos.' : 'Consulta y completa tus entrenamientos.'}
-        action={canManage ? (
+        action={(
           <div className="task-view-actions">
             <button className="secondary-button" onClick={() => { closeForm(); setManagementView((view) => view === 'calendar' ? 'list' : 'calendar') }}>
               <Icon name={managementView === 'calendar' ? 'tasks' : 'calendar'} size={18} />
               {managementView === 'calendar' ? 'Vista de lista' : 'Vista calendario'}
             </button>
-            {managementView === 'list' && !formOpen && (
+            {canManage && managementView === 'list' && !formOpen && (
               <button className="primary-button" onClick={openCreateForm}><Icon name="plus" size={18} />Nueva tarea</button>
             )}
           </div>
-        ) : undefined}
+        )}
       />
       {canManage && <TaskAlerts currentWeek={currentWeek} onViewResults={setAlertResultsTask} profiles={profiles} results={managerResults} tasks={tasks} />}
       {alertResultsTask && <TaskResultsDialog onClose={() => setAlertResultsTask(null)} profiles={profiles} results={managerResults} task={alertResultsTask} />}
+      {announcementForm !== undefined && onSaveAnnouncement && (
+        <AnnouncementForm
+          announcement={announcementForm ?? undefined}
+          initialDate={selectedPlanningDate}
+          seasons={seasons}
+          onCancel={() => setAnnouncementForm(undefined)}
+          onDelete={onDeleteAnnouncement ? async (announcement) => { await onDeleteAnnouncement(announcement); setAnnouncementForm(undefined) } : undefined}
+          onSubmit={saveAnnouncement}
+        />
+      )}
       {formOpen && managementView === 'list' && (
         <TaskForm
           key={editingTask?.id ?? copyingTask?.id ?? 'new-list-task'}
@@ -228,7 +281,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           ))}
         </div>
       )}
-      {canManage && managementView === 'calendar' ? (
+      {managementView === 'calendar' ? (
         <div className="task-calendar-view">
           <div className="planning-current-action">
             <button className="secondary-button compact" onClick={goToCurrentWeek} type="button">
@@ -238,11 +291,16 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           <TaskPlanningCalendar
             month={planningMonth}
             selectedDate={selectedPlanningDate}
-            tasks={tasks}
+            tasks={visiblePlanningTasks}
+            announcements={visibleAnnouncements}
             onMonthChange={changePlanningMonth}
             onSelectDate={setSelectedPlanningDate}
           />
           <section className="selected-planning-week">
+            {selectedDayAnnouncements.length > 0 && <div className="selected-day-announcements">
+              <div className="task-week-heading"><div><span className="eyebrow">AVISOS DEL DÍA</span><h2>{formatDate(selectedPlanningDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedDayAnnouncements.length}</span></div>
+              <div className="task-list">{selectedDayAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActionsFor(announcement)} announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
+            </div>}
             <div className="task-week-heading">
               <div><span className="eyebrow">SEMANA SELECCIONADA</span><h2>{formatWeek(selectedPlanningWeek)}</h2></div>
               <span>{selectedWeekTasks.length} {selectedWeekTasks.length === 1 ? 'tarea' : 'tareas'}</span>
@@ -253,22 +311,27 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
                   hideWeek
                   key={task.id}
                   managerActions={managerActionsFor(task)}
-                  managementSummary={<TaskResultsSummary profiles={profiles} results={managerResults} task={task} />}
+                  managementSummary={canManage ? <TaskResultsSummary profiles={profiles} results={managerResults} task={task} /> : undefined}
                   onSave={task.week_start === currentWeek && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
                   result={results.find((item) => item.task_id === task.id)}
                   task={task}
                 />
               ))}
-              {!selectedWeekTasks.length && <EmptyState title="Semana sin tareas" text="Crea una tarea para empezar a planificar esta semana." />}
+              {!selectedWeekTasks.length && <EmptyState title="Semana sin tareas" text={canManage ? 'Crea una tarea para empezar a planificar esta semana.' : 'No hay entrenamientos publicados para esta semana.'} />}
             </div>
             <div className="selected-week-actions">
-              {!formOpen && (
+              {canManage && !formOpen && (
+                <button className="secondary-button" onClick={() => setAnnouncementForm(null)} type="button">
+                  <Icon name="bell" size={18} />Nuevo aviso para este día
+                </button>
+              )}
+              {canManage && !formOpen && (
                 <button className="primary-button" onClick={openCreateForm} type="button">
                   <Icon name="plus" size={18} />Nueva tarea en esta semana
                 </button>
               )}
             </div>
-            {formOpen && (
+            {canManage && formOpen && (
               <TaskForm
                 key={editingTask?.id ?? copyingTask?.id ?? 'new-calendar-task'}
                 initialDate={copyingTask?.week_start ?? selectedPlanningDate}
@@ -291,6 +354,9 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
               <span>{weekTasks.length} {weekTasks.length === 1 ? 'tarea' : 'tareas'}</span>
             </div>
             <div className="task-list">
+              {filter === 'all' && visibleAnnouncements.filter((announcement) => mondayFor(announcement.announcement_date) === weekStart).map((announcement) => (
+                <AnnouncementCard actions={announcementActionsFor(announcement)} announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />
+              ))}
               {weekTasks.map((task) => (
                 <TaskCard
                   hideWeek
@@ -302,7 +368,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
                   task={task}
                 />
               ))}
-              {canManage && !weekTasks.length && <EmptyState title="Semana sin tareas" text="No hay tareas planificadas para la semana actual." />}
+              {canManage && !weekTasks.length && !visibleAnnouncements.some((announcement) => mondayFor(announcement.announcement_date) === weekStart) && <EmptyState title="Semana sin planificación" text="No hay tareas ni avisos planificados para esta semana." />}
             </div>
           </section>
         ))}

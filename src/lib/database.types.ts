@@ -609,6 +609,57 @@ export type Database = {
           },
         ]
       }
+      team_announcements: {
+        Row: {
+          announcement_date: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          season_id: string
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          announcement_date: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          season_id: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          announcement_date?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          season_id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_announcements_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_attendance: {
         Row: {
           attended: boolean

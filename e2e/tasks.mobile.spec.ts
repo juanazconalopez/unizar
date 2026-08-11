@@ -14,6 +14,24 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
   }
 })
 
+test('owner publishes a dated announcement and a player opens it from home', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Tareas' }).click()
+  await page.getByRole('button', { name: 'Nuevo aviso para este día' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Crear aviso' })
+  await dialog.getByLabel('Título').fill('Reunión rápida del equipo')
+  await dialog.getByLabel('Temporada').selectOption('season-current')
+  await dialog.getByLabel('Descripción').fill('Nos reuniremos al terminar el entrenamiento.')
+  await dialog.getByRole('button', { name: 'Crear aviso' }).click()
+  await expect(page.getByText('Reunión rápida del equipo')).toBeVisible()
+
+  await page.getByLabel('Ver como').selectOption('player')
+  await page.getByText('Para tener en cuenta').click()
+  await page.getByRole('button', { name: /Reunión rápida del equipo/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Reunión rápida del equipo' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Calendario de planificación' })).toBeVisible()
+})
+
 test('player fatigue options remain horizontal on mobile', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('player')

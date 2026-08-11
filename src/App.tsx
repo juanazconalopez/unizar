@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AppLayout } from './components/layout/AppLayout'
 import { Icon } from './components/Icon'
 import { SectionError, SectionLoading, ViewErrorBoundary } from './components/AsyncViewState'
@@ -12,6 +12,8 @@ import { useTrainingData } from './hooks/useTrainingData'
 import { errorText } from './lib/errors'
 import { todayIso } from './lib/dates'
 import { activeMembershipFor, membershipCoversDate } from './lib/selectors'
+import { navigationFromLocation, urlForNavigation } from './lib/navigation'
+import type { NavigationTarget } from './lib/navigation'
 import {
   createSeason,
   deleteSeason,
@@ -22,7 +24,9 @@ import {
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
 import { createMatch, deleteMatch, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
+import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './services/announcementsService'
 import type {
+  AnnouncementValues,
   Profile,
   AvailabilityStatus,
   Match,
@@ -34,6 +38,7 @@ import type {
   SeasonValues,
   TaskStatus,
   TaskValues,
+  TeamAnnouncement,
   TrainingTask,
   ViewName,
 } from './types'
@@ -63,7 +68,8 @@ function preloadView(view: ViewName) {
 }
 
 function App() {
-  const [view, setView] = useState<ViewName>('home')
+  const [navigation, setNavigation] = useState<NavigationTarget>(() => navigationFromLocation())
+  const view = navigation.view
   const [message, setMessage] = useState('')
   const [operationError, setOperationError] = useState('')
   const auth = useAuth()
@@ -83,11 +89,23 @@ function App() {
     throw error
   }
 
-  function navigate(nextView: ViewName) {
-    preloadView(nextView)
+  function navigate(next: ViewName | NavigationTarget, replace = false) {
+    const target = typeof next === 'string' ? { view: next } : next
+    preloadView(target.view)
     setOperationError('')
-    setView(nextView)
+    window.history[replace ? 'replaceState' : 'pushState'](target, '', urlForNavigation(target))
+    setNavigation(target)
   }
+
+  useEffect(() => {
+    function restoreNavigation() {
+      const target = navigationFromLocation()
+      preloadView(target.view)
+      setNavigation(target)
+    }
+    window.addEventListener('popstate', restoreNavigation)
+    return () => window.removeEventListener('popstate', restoreNavigation)
+  }, [])
 
   function notify(text: string) {
     setMessage(text)
@@ -147,6 +165,29 @@ function App() {
       setOperationError(errorText(error))
       throw error
     }
+  }
+
+  async function handleSaveAnnouncement(announcement: TeamAnnouncement | undefined, values: AnnouncementValues) {
+    requireConnection()
+    if (!auth.session?.user) return
+    if (announcement) await updateTeamAnnouncement(announcement.id, values)
+    else await createTeamAnnouncement(values, auth.session.user.id)
+    notify(announcement ? 'Aviso actualizado.' : 'Aviso creado.')
+    await reloadData()
+  }
+
+  async function handleDeleteAnnouncement(announcement: TeamAnnouncement) {
+    requireConnection()
+    await deleteTeamAnnouncement(announcement.id)
+    notify('Aviso eliminado.')
+    await reloadData()
+  }
+
+  async function handleAnnouncementStatus(id: string, status: TaskStatus) {
+    requireConnection()
+    await updateTeamAnnouncementStatus(id, status)
+    notify('Estado del aviso actualizado.')
+    await reloadData()
   }
 
   async function handleSaveMatch(match: Match | undefined, values: MatchValues) {
@@ -226,7 +267,7 @@ function App() {
   }
 
   async function handleSignOut() {
-    setView('home')
+    navigate('home', true)
     await auth.signOut()
   }
 
@@ -260,13 +301,18 @@ function App() {
       notificationReadIds={notifications.readIds}
       notificationUnreadCount={notifications.unreadCount}
       onNotificationRead={notifications.markRead}
+      onNotificationOpen={(notification) => navigate({
+        view: notification.view,
+        date: notification.targetDate,
+        announcementId: notification.kind === 'announcement' ? notification.targetId : undefined,
+      })}
       onNotificationsReadAll={notifications.markAllRead}
     >
       {data.loadedView !== view ? (
         data.errorMessage && !data.loading
           ? <SectionError message={online ? data.errorMessage : 'No hay conexión a Internet.'} onRetry={() => void data.reload()} />
           : <SectionLoading />
-      ) : <ViewErrorBoundary key={view}><Suspense fallback={<SectionLoading />}>
+      ) : <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}`}><Suspense fallback={<SectionLoading />}>
       {view !== 'competition' && !hasWorkingSeason(data.profile, data.seasons, data.memberships, userId) && (
         <SeasonContextNotice profile={data.profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
@@ -277,14 +323,13 @@ function App() {
           profile={data.profile}
           results={personalResults}
           tasks={data.tasks}
-          notifications={notifications.notifications}
+          announcements={data.announcements}
+          matches={data.matches}
           userId={userId}
           onGoToTasks={() => navigate('tasks')}
-          onOpenNotification={(notification) => {
-            notifications.markRead(notification)
-            navigate(notification.view)
-          }}
           onSaveResult={handleSaveResult}
+          onOpenMatch={(match) => navigate({ view: 'matches', date: match.match_date })}
+          onOpenAnnouncement={(announcement) => navigate({ view: 'tasks', date: announcement.announcement_date, announcementId: announcement.id })}
         />
       )}
       {view === 'statistics' && data.profile.is_owner && (
@@ -321,6 +366,7 @@ function App() {
           results={personalResults}
           seasons={data.seasons}
           tasks={data.tasks}
+          announcements={data.announcements}
           teamResults={canManageTasks ? data.results : undefined}
           userId={userId}
           loadingRange={data.loadingRange}
@@ -330,6 +376,11 @@ function App() {
           onLoadRange={data.loadTaskRange}
           onSaveResult={handleSaveResult}
           onStatusChange={handleTaskStatus}
+          onSaveAnnouncement={handleSaveAnnouncement}
+          onDeleteAnnouncement={handleDeleteAnnouncement}
+          onAnnouncementStatusChange={handleAnnouncementStatus}
+          focusedDate={navigation.date}
+          focusedAnnouncementId={navigation.announcementId}
         />
       )}
       {view === 'matches' && (
@@ -347,6 +398,7 @@ function App() {
           onSaveAvailability={handleMatchAvailability}
           onSaveLineup={handleMatchLineup}
           onSaveMatch={handleSaveMatch}
+          focusedDate={navigation.date}
         />
       )}
       {view === 'competition' && (

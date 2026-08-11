@@ -10,6 +10,7 @@ import type {
   SeasonPlayer,
   SeasonValues,
   TaskResult,
+  TeamAnnouncement,
   TrainingSession,
   TrainingTask,
   ViewName,
@@ -27,6 +28,7 @@ export type TrainingData = {
   matches: Match[]
   matchAvailability: MatchAvailability[]
   matchLineups: MatchLineup[]
+  announcements?: TeamAnnouncement[]
 }
 
 export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
@@ -41,16 +43,17 @@ export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
       || scope === 'settings'
       || (scope === 'tasks' && canManageTasks),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
-    matches: scope === 'matches',
+    matches: scope === 'home' || scope === 'matches',
+    announcements: scope === 'home' || scope === 'tasks',
     seasons: scope !== 'competition',
   }
 }
 
-type TaskWindowData = Pick<TrainingData, 'tasks' | 'results'>
+type TaskWindowData = Pick<TrainingData, 'tasks' | 'results'> & { announcements?: TeamAnnouncement[] }
 type AttendanceWindowData = Pick<TrainingData, 'trainingSessions' | 'attendance'>
 type MatchWindowData = Pick<TrainingData, 'matches' | 'matchAvailability' | 'matchLineups'>
 
-const emptyTaskWindow: TaskWindowData = { tasks: [], results: [] }
+const emptyTaskWindow: TaskWindowData = { tasks: [], results: [], announcements: [] }
 const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [] }
 const emptyMatchWindow: MatchWindowData = { matches: [], matchAvailability: [], matchLineups: [] }
 
@@ -61,21 +64,59 @@ export async function fetchTaskWindow(
   fromWeek: string,
   toWeek: string,
 ): Promise<TaskWindowData> {
-  const { data: taskRows, error: tasksError } = await supabase
-    .from('tasks')
-    .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
-    .gte('week_start', fromWeek)
-    .lte('week_start', toWeek)
-    .order('week_start', { ascending: false })
+  const [tasksResponse, announcementsResponse] = await Promise.all([
+    supabase
+      .from('tasks')
+      .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
+      .gte('week_start', fromWeek)
+      .lte('week_start', toWeek)
+      .order('week_start', { ascending: false }),
+    fetchAnnouncementWindow(fromWeek, addDays(toWeek, 6)),
+  ])
+  const { data: taskRows, error: tasksError } = tasksResponse
   if (tasksError) throw tasksError
 
   const tasks = taskRows ?? []
-  if (!tasks.length) return emptyTaskWindow
+  if (!tasks.length) return { ...emptyTaskWindow, announcements: announcementsResponse }
   let resultsQuery = supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id))
   if (!canManageTasks) resultsQuery = resultsQuery.eq('player_id', userId)
   const { data: resultRows, error: resultsError } = await resultsQuery
   if (resultsError) throw resultsError
-  return { tasks, results: resultRows ?? [] }
+  return { tasks, results: resultRows ?? [], announcements: announcementsResponse }
+}
+
+export async function fetchAnnouncementWindow(fromDate: string, toDate: string): Promise<TeamAnnouncement[]> {
+  const { data, error } = await supabase
+    .from('team_announcements')
+    .select('*, seasons(name)')
+    .gte('announcement_date', fromDate)
+    .lte('announcement_date', toDate)
+    .order('announcement_date', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+async function fetchHomeAttention(today: string, seasonEnd: string) {
+  const [matchesResponse, announcementsResponse] = await Promise.all([
+    supabase
+      .from('matches')
+      .select('*, seasons(name)')
+      .eq('status', 'published')
+      .gte('match_date', today)
+      .order('match_date', { ascending: true })
+      .limit(1),
+    supabase
+      .from('team_announcements')
+      .select('*, seasons(name)')
+      .eq('status', 'published')
+      .gte('announcement_date', today)
+      .lte('announcement_date', seasonEnd)
+      .order('announcement_date', { ascending: true })
+      .limit(4),
+  ])
+  if (matchesResponse.error) throw matchesResponse.error
+  if (announcementsResponse.error) throw announcementsResponse.error
+  return { matches: matchesResponse.data ?? [], announcements: announcementsResponse.data ?? [] }
 }
 
 async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
@@ -177,6 +218,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     matches: [],
     matchAvailability: [],
     matchLineups: [],
+    announcements: [],
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
@@ -207,6 +249,12 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
 
   if (scope === 'home') {
     taskData = await fetchTaskWindow(userId, false, currentWeek, currentWeek)
+    const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
+    if (activeSeason) {
+      const attention = await fetchHomeAttention(todayIso(), activeSeason.end_date)
+      taskData.announcements = attention.announcements
+      matchData = { ...emptyMatchWindow, matches: attention.matches }
+    }
     // The home percentage is seasonal, not a lifetime download across every season.
     const dashboardSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso()) ?? seasons[0]
     if (dashboardSeason) {
@@ -249,6 +297,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     matches: matchData.matches,
     matchAvailability: matchData.matchAvailability,
     matchLineups: matchData.matchLineups,
+    announcements: taskData.announcements,
   }
 }
 
@@ -264,7 +313,7 @@ export async function createSeason(values: SeasonValues, userId: string) {
 
 export async function updateSeason(seasonId: string, values: SeasonValues) {
   await validateSeasonChange(values, seasonId)
-  const [tasksResponse, matchesResponse, sessionsResponse] = await Promise.all([
+  const [tasksResponse, matchesResponse, sessionsResponse, announcementsResponse] = await Promise.all([
     supabase
       .from('tasks')
       .select('title, week_start')
@@ -283,13 +332,21 @@ export async function updateSeason(seasonId: string, values: SeasonValues) {
       .eq('season_id', seasonId)
       .or(`session_date.lt.${values.start_date},session_date.gt.${values.end_date}`)
       .limit(1),
+    supabase
+      .from('team_announcements')
+      .select('title, announcement_date')
+      .eq('season_id', seasonId)
+      .or(`announcement_date.lt.${values.start_date},announcement_date.gt.${values.end_date}`)
+      .limit(1),
   ])
   if (tasksResponse.error) throw tasksResponse.error
   if (matchesResponse.error) throw matchesResponse.error
   if (sessionsResponse.error) throw sessionsResponse.error
+  if (announcementsResponse.error) throw announcementsResponse.error
   const invalidTask = tasksResponse.data?.[0]
   const invalidMatch = matchesResponse.data?.[0]
   const invalidSession = sessionsResponse.data?.[0]
+  const invalidAnnouncement = announcementsResponse.data?.[0]
   if (invalidTask) {
     throw new Error(`No se pueden aplicar esas fechas porque la tarea “${invalidTask.title}” está programada el ${invalidTask.week_start}.`)
   }
@@ -298,6 +355,9 @@ export async function updateSeason(seasonId: string, values: SeasonValues) {
   }
   if (invalidSession) {
     throw new Error(`No se pueden aplicar esas fechas porque hay un entrenamiento de campo registrado el ${invalidSession.session_date}.`)
+  }
+  if (invalidAnnouncement) {
+    throw new Error(`No se pueden aplicar esas fechas porque el aviso “${invalidAnnouncement.title}” está programado el ${invalidAnnouncement.announcement_date}.`)
   }
 
   const { error } = await supabase

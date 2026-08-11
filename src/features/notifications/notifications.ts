@@ -1,14 +1,16 @@
 import { addDays, mondayFor } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TrainingTask, ViewName } from '../../types'
+import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
   id: string
-  kind: 'task' | 'match' | 'availability' | 'lineup'
+  kind: 'task' | 'match' | 'availability' | 'lineup' | 'announcement'
   title: string
   text: string
   view: ViewName
   occurredAt: string
+  targetDate?: string
+  targetId?: string
 }
 
 export type NotificationFeedData = {
@@ -18,6 +20,7 @@ export type NotificationFeedData = {
   matches: Match[]
   availability: MatchAvailability[]
   lineups: MatchLineup[]
+  announcements?: TeamAnnouncement[]
 }
 
 export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string): AppNotification[] {
@@ -34,6 +37,20 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
     .map((result) => result.task_id))
   const items: AppNotification[] = []
 
+  for (const announcement of (data.announcements ?? []).filter((item) => item.status === 'published')) {
+    if (announcement.updated_at.slice(0, 10) < recentFrom) continue
+    items.push({
+      id: `announcement-published:${announcement.id}:${announcement.updated_at}`,
+      kind: 'announcement',
+      title: 'Nuevo aviso del equipo',
+      text: announcement.title,
+      view: 'tasks',
+      occurredAt: announcement.updated_at,
+      targetDate: announcement.announcement_date,
+      targetId: announcement.id,
+    })
+  }
+
   for (const task of eligibleTasks) {
     const publishedAt = task.updated_at ?? task.created_at
     if (publishedAt.slice(0, 10) >= recentFrom) {
@@ -44,6 +61,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         text: task.title,
         view: 'tasks',
         occurredAt: publishedAt,
+        targetDate: task.week_start,
       })
     }
     if (isPlayer && task.week_start === currentWeek && today >= addDays(currentWeek, 4) && !completedTaskIds.has(task.id)) {
@@ -54,6 +72,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         text: `${task.title} · termina este domingo`,
         view: 'tasks',
         occurredAt: `${today}T12:00:00`,
+        targetDate: task.week_start,
       })
     }
   }
@@ -73,6 +92,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
       text: `${match.opponent} · ${match.match_date}`,
       view: 'matches',
       occurredAt: isNew ? match.created_at : `${match.match_date}T00:00:00`,
+      targetDate: match.match_date,
     })
   }
 
@@ -86,6 +106,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         text: `Indica si asistirás al partido contra ${match.opponent}.`,
         view: 'matches',
         occurredAt: match.updated_at,
+        targetDate: match.match_date,
       })
     }
     if (match.lineup_published && data.lineups.some((entry) => entry.match_id === match.id)) {
@@ -96,6 +117,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         text: `Ya puedes consultar la convocatoria contra ${match.opponent}.`,
         view: 'matches',
         occurredAt: match.updated_at,
+        targetDate: match.match_date,
       })
     }
     if (match.updated_at > match.created_at && match.updated_at.slice(0, 10) >= recentFrom) {
@@ -106,6 +128,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         text: `Revisa los datos actualizados del partido contra ${match.opponent}.`,
         view: 'matches',
         occurredAt: match.updated_at,
+        targetDate: match.match_date,
       })
     }
   }

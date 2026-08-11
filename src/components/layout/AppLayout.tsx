@@ -25,6 +25,7 @@ export function AppLayout({
   notificationReadIds = new Set<string>(),
   notificationUnreadCount = 0,
   onNotificationRead,
+  onNotificationOpen,
   onNotificationsReadAll,
   children,
 }: {
@@ -40,6 +41,7 @@ export function AppLayout({
   notificationReadIds?: Set<string>
   notificationUnreadCount?: number
   onNotificationRead?: (notification: AppNotification) => void
+  onNotificationOpen?: (notification: AppNotification) => void
   onNotificationsReadAll?: () => void
   children: ReactNode
 }) {
@@ -183,7 +185,8 @@ export function AppLayout({
             onOpen={(notification) => {
               onNotificationRead?.(notification)
               setNotificationsOpen(false)
-              navigate(notification.view)
+              if (onNotificationOpen) onNotificationOpen(notification)
+              else navigate(notification.view)
             }}
           />
         </Modal>

@@ -1,22 +1,23 @@
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { mondayFor } from '../../lib/dates'
+import { formatDate, mondayFor, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { AttendanceRecord, Profile, ResultValues, SeasonPlayer, TaskResult, TrainingTask } from '../../types'
-import type { AppNotification } from '../notifications/notifications'
+import type { AttendanceRecord, Match, Profile, ResultValues, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask } from '../../types'
 import { TaskCard } from '../tasks/TaskCard'
 
-export function Dashboard({ profile, memberships, tasks, results, attendance, notifications = [], userId, onGoToTasks, onOpenNotification, onSaveResult }: {
+export function Dashboard({ profile, memberships, tasks, announcements = [], matches = [], results, attendance, userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onSaveResult }: {
   profile: Profile
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
   attendance: AttendanceRecord[]
-  notifications?: AppNotification[]
+  announcements?: TeamAnnouncement[]
+  matches?: Match[]
   userId: string
   onGoToTasks: () => void
-  onOpenNotification?: (notification: AppNotification) => void
+  onOpenMatch?: (match: Match) => void
+  onOpenAnnouncement?: (announcement: TeamAnnouncement) => void
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const currentMonday = mondayFor(new Date())
@@ -45,9 +46,15 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, no
     ? Math.round((attendedSessions / personalAttendance.length) * 100)
     : 0
   const motivation = attendanceMotivation(attendanceRate, personalAttendance.length)
-  const nextItems = notifications.filter((notification, index) => (
-    notifications.findIndex((item) => item.view === notification.view && item.text === notification.text) === index
-  )).slice(0, 3)
+  const today = todayIso()
+  const nextMatch = matches
+    .filter((match) => match.status === 'published' && match.match_date >= today)
+    .sort((first, second) => first.match_date.localeCompare(second.match_date))[0]
+  const nextAnnouncements = announcements
+    .filter((announcement) => announcement.status === 'published' && announcement.announcement_date >= today)
+    .sort((first, second) => first.announcement_date.localeCompare(second.announcement_date))
+    .slice(0, 4)
+  const attentionCount = Number(Boolean(nextMatch)) + nextAnnouncements.length
 
   return (
     <div className="page">
@@ -66,17 +73,14 @@ export function Dashboard({ profile, memberships, tasks, results, attendance, no
         <span><Icon name="spark" size={22} /></span>
         <div><strong>{motivation.title}</strong><p>{motivation.text}</p></div>
       </section>
-      {nextItems.length > 0 && (
-        <section className="dashboard-next" aria-labelledby="dashboard-next-title">
-          <div className="section-heading"><div><span className="eyebrow">LO PRÓXIMO</span><h2 id="dashboard-next-title">Para tener en cuenta</h2></div></div>
-          <div className="dashboard-next-list">{nextItems.map((notification) => (
-            <button key={notification.id} onClick={() => onOpenNotification?.(notification)} type="button">
-              <span className={`dashboard-next-icon ${notification.kind}`}><Icon name={notification.kind === 'task' ? 'tasks' : notification.kind === 'lineup' ? 'check' : 'calendar'} size={17} /></span>
-              <span><strong>{notification.title}</strong><small>{notification.text}</small></span>
-              <Icon name="arrow" size={16} />
-            </button>
-          ))}</div>
-        </section>
+      {attentionCount > 0 && (
+        <details className="dashboard-next dashboard-attention">
+          <summary><span><span className="eyebrow">AGENDA</span><strong>Para tener en cuenta</strong></span><small>{attentionCount} {attentionCount === 1 ? 'elemento' : 'elementos'}</small><Icon name="arrow" size={16} /></summary>
+          <div className="dashboard-next-list">
+            {nextMatch && <button onClick={() => onOpenMatch?.(nextMatch)} type="button"><span className="dashboard-next-icon match"><Icon name="calendar" size={17} /></span><span><strong>Próximo partido · {nextMatch.opponent}</strong><small>{formatDate(nextMatch.match_date, { weekday: 'long', day: 'numeric', month: 'long' })}</small></span><Icon name="arrow" size={16} /></button>}
+            {nextAnnouncements.map((announcement) => <button key={announcement.id} onClick={() => onOpenAnnouncement?.(announcement)} type="button"><span className="dashboard-next-icon announcement"><Icon name="bell" size={17} /></span><span><strong>{announcement.title}</strong><small>{formatDate(announcement.announcement_date, { weekday: 'long', day: 'numeric', month: 'long' })}</small></span><Icon name="arrow" size={16} /></button>)}
+          </div>
+        </details>
       )}
       <section className="section-block">
         <div className="section-heading">

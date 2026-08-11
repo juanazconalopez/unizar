@@ -29,6 +29,7 @@ type MatchesViewProps = {
   profiles: Profile[]
   seasons: Season[]
   userId: string
+  focusedDate?: string
   onDelete: (match: Match) => Promise<void>
   onLoadMonth?: (month: string) => Promise<void>
   onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
@@ -49,6 +50,7 @@ export function MatchesView({
   profiles,
   seasons,
   userId,
+  focusedDate,
   onDelete,
   onLoadMonth,
   onSaveAvailability,
@@ -58,8 +60,8 @@ export function MatchesView({
   const today = todayIso()
   const currentWeek = mondayFor(today)
   const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
-  const [selectedDate, setSelectedDate] = useState(today)
-  const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
+  const [selectedDate, setSelectedDate] = useState(focusedDate ?? today)
+  const [month, setMonth] = useState(`${(focusedDate ?? today).slice(0, 7)}-01`)
   const [formMatch, setFormMatch] = useState<Match | null | undefined>(undefined)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
@@ -71,6 +73,11 @@ export function MatchesView({
   )
   const futureMatches = visibleMatches.filter((match) => match.match_date >= currentWeek)
   const weeks = groupMatchesByWeek(futureMatches, currentWeek)
+
+  useEffect(() => {
+    if (!focusedDate || !onLoadMonth) return
+    void onLoadMonth(`${focusedDate.slice(0, 7)}-01`).catch(() => undefined)
+  }, [focusedDate, onLoadMonth])
 
   useEffect(() => {
     if (managementView !== 'list') return

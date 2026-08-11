@@ -40,7 +40,8 @@ describe('training data queries', () => {
       task_id: 'task-1', player_id: 'player-1', result_text: 'Hecho', fatigue_level: 3,
       performed_on: '2026-08-05', completed_at: '2026-08-05T10:00:00Z', updated_at: '2026-08-05T10:00:00Z',
     }])
-    mocks.from.mockImplementation((table: string) => table === 'tasks' ? tasks : results)
+    const announcements = query([])
+    mocks.from.mockImplementation((table: string) => table === 'tasks' ? tasks : table === 'team_announcements' ? announcements : results)
 
     const data = await fetchTaskWindow('player-1', false, '2026-08-03', '2026-08-10')
     expect(tasks.gte).toHaveBeenCalledWith('week_start', '2026-08-03')
@@ -49,6 +50,8 @@ describe('training data queries', () => {
     expect(results.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(data.tasks).toHaveLength(1)
     expect(data.results).toHaveLength(1)
+    expect(announcements.gte).toHaveBeenCalledWith('announcement_date', '2026-08-03')
+    expect(announcements.lte).toHaveBeenCalledWith('announcement_date', '2026-08-16')
   })
 
   test('loads related availability and lineup only for matches in the range', async () => {

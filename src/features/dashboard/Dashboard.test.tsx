@@ -45,10 +45,12 @@ describe('Dashboard', () => {
 
   test('offers direct access to the next actionable alert', async () => {
     const user = userEvent.setup()
-    const onOpenNotification = vi.fn()
-    const notification = { id: 'next-match', kind: 'match' as const, title: 'Próximo partido', text: 'Rival Rugby', view: 'matches' as const, occurredAt: '2026-08-12T10:00:00.000Z' }
-    render(<Dashboard profile={makeProfile()} memberships={[makeMembership()]} tasks={[]} results={[]} attendance={[]} notifications={[notification]} userId="player-1" onGoToTasks={vi.fn()} onOpenNotification={onOpenNotification} onSaveResult={vi.fn()} />)
+    const onOpenMatch = vi.fn()
+    const nextMatch = { id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: '2026-08-12', kickoff_time: null, venue: null, is_home: true, notes: null, status: 'published' as const, match_kind: 'official' as const, rugby_format: 'xv' as const, lineup_published: false, created_by: 'owner-1', created_at: '2026-08-01T10:00:00.000Z', updated_at: '2026-08-01T10:00:00.000Z', seasons: { name: '2026/2027' } }
+    render(<Dashboard profile={makeProfile()} memberships={[makeMembership()]} tasks={[]} results={[]} attendance={[]} matches={[nextMatch]} userId="player-1" onGoToTasks={vi.fn()} onOpenMatch={onOpenMatch} onSaveResult={vi.fn()} />)
+    expect(screen.getByText('Para tener en cuenta').closest('details')).not.toHaveAttribute('open')
+    await user.click(screen.getByText('Para tener en cuenta'))
     await user.click(screen.getByRole('button', { name: /Próximo partido/ }))
-    expect(onOpenNotification).toHaveBeenCalledWith(notification)
+    expect(onOpenMatch).toHaveBeenCalledWith(nextMatch)
   })
 })

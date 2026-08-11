@@ -1,10 +1,11 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
-import type { TrainingTask } from '../../types'
+import type { TeamAnnouncement, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange, onSelectDate }: {
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
+  announcements?: TeamAnnouncement[]
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
@@ -35,11 +36,13 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange
           if (!date) return <span className="calendar-empty" key={`empty-${index}`} />
           const plannedTasks = tasks.filter((task) => task.status !== 'cancelled' && task.week_start === date)
           const taskCount = plannedTasks.length
+          const dayAnnouncements = announcements.filter((announcement) => announcement.status !== 'cancelled' && announcement.announcement_date === date)
+          const announcementCount = dayAnnouncements.length
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}`}
               aria-pressed={selectedDate === date}
-              className={`${taskCount ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
+              className={`${taskCount || announcementCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
@@ -51,12 +54,19 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, onMonthChange
                   {taskCount > 6 && <small>+{taskCount - 6}</small>}
                 </span>
               )}
+              {announcementCount > 0 && (
+                <span className="day-announcement-bubbles" aria-hidden="true">
+                  {dayAnnouncements.slice(0, 3).map((announcement) => <i key={announcement.id}>A</i>)}
+                  {announcementCount > 3 && <small>+{announcementCount - 3}</small>}
+                </span>
+              )}
             </button>
           )
         })}
       </div>
       <div className="calendar-legend">
         <span><i className="task-dot" />T · Tareas publicadas o en borrador guardadas en el lunes de su semana</span>
+        <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
       </div>
     </section>
   )

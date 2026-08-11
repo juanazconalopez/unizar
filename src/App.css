@@ -32,6 +32,7 @@
 .notification-item.match > i { background: var(--blue); }
 .notification-item.availability > i { background: #d5aa32; }
 .notification-item.lineup > i { background: #8b6ab4; }
+.notification-item.announcement > i { background: #e6932e; }
 .notification-item > span { min-width: 0; display: grid; gap: 3px; }
 .notification-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .notification-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 10px; }
@@ -63,6 +64,15 @@
 .motivation-card strong { display: block; font-family: 'Manrope',system-ui,sans-serif; font-size: 14px; }
 .motivation-card p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
 .dashboard-next { margin: -18px 0 40px; }
+.dashboard-attention { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: white; }
+.dashboard-attention > summary { min-height: 58px; padding: 12px 15px; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; cursor: pointer; list-style: none; }
+.dashboard-attention > summary::-webkit-details-marker { display: none; }
+.dashboard-attention > summary > span { display: grid; gap: 3px; }
+.dashboard-attention > summary > span strong { font-size: 13px; }
+.dashboard-attention > summary > small { color: var(--muted); font-size: 10px; }
+.dashboard-attention > summary > svg { transition: transform .18s; }
+.dashboard-attention[open] > summary > svg { transform: rotate(90deg); }
+.dashboard-attention .dashboard-next-list { padding: 0 12px 12px; }
 .dashboard-next-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
 .dashboard-next-list > button { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; color: var(--ink); background: white; text-align: left; }
 .dashboard-next-list > button:hover { border-color: #b9cec5; box-shadow: 0 7px 20px rgba(31,63,54,.06); }
@@ -74,6 +84,7 @@
 .dashboard-next-icon.match { color: var(--blue); background: #eaf4f6; }
 .dashboard-next-icon.availability { color: #82691e; background: #fff6d8; }
 .dashboard-next-icon.lineup { color: #6c4f91; background: #f1eafb; }
+.dashboard-next-icon.announcement { color: #a96110; background: #fff0d9; }
 .section-block + .section-block { margin-top: 44px; }
 .section-heading { margin-bottom: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .section-heading h2 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.5px; }
@@ -242,11 +253,12 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .lineup-roster span { font-size: 12px; font-weight: 700; }
 .match-week-list { display: grid; gap: 30px; }
 .match-list-create { display: flex; justify-content: flex-end; }
-.match-planning-calendar > button.has-match { border-color: #70ad95; background: #f1faf5; box-shadow: inset 0 0 0 1px #70ad95; }
+.match-planning-calendar > button.has-match { border-color: #9a87cf; background: #f5f1ff; box-shadow: inset 0 0 0 1px #9a87cf; }
+.match-planning-calendar > button.has-match[aria-pressed='true'] { box-shadow: inset 0 0 0 2px #644ca0; }
 .match-day-marks { display: flex; flex-wrap: wrap; gap: 3px; }
-.match-day-marks i { width: 19px; height: 19px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; background: var(--green); font-style: normal; font-size: 8px; font-weight: 900; }
-.match-day-marks small { color: var(--green); font-size: 8px; font-weight: 900; }
-.match-dot { background: var(--green); }
+.match-day-marks i { width: 19px; height: 19px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: white; background: #7459ae; font-style: normal; font-size: 8px; font-weight: 900; }
+.match-day-marks small { color: #644ca0; font-size: 8px; font-weight: 900; }
+.match-dot { background: #7459ae; }
 .settings-tabs { width: fit-content; margin-bottom: 28px; padding: 4px; border-radius: 11px; display: grid; grid-template-columns: repeat(2,minmax(130px,1fr)); gap: 4px; background: #e9eeeb; }
 .settings-tabs button { min-height: 38px; padding: 8px 17px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 800; }
 .settings-tabs button.active { color: var(--green); background: white; box-shadow: 0 2px 7px rgba(31,63,54,.08); }
@@ -283,12 +295,24 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .selected-planning-week .empty-state { padding: 23px 20px; }
 .selected-planning-week .empty-state > span { width: 36px; height: 36px; }
 .selected-planning-week .empty-state h3 { margin-top: 9px; }
-.selected-week-actions { margin-top: 14px; display: flex; justify-content: flex-end; }
+.selected-week-actions { margin-top: 14px; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .task-planning-panel { min-width: 0; }
 .task-planning-calendar > button { min-height: 100px; }
 .week-task-bubbles { max-width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
 .week-task-bubbles i { width: 17px; height: 17px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #356b74; background: #dff0f2; font-style: normal; font-size: 8px; font-weight: 900; }
 .week-task-bubbles small { padding: 0 2px; color: #356b74; font-size: 8px; font-weight: 800; }
+.day-announcement-bubbles { max-width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
+.day-announcement-bubbles i { width: 17px; height: 17px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; color: #884d08; background: #ffdba8; font-style: normal; font-size: 8px; font-weight: 900; }
+.day-announcement-bubbles small { color: #884d08; font-size: 8px; font-weight: 800; }
+.announcement-dot { background: #e6932e; }
+.selected-day-announcements { margin-bottom: 26px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
+.announcement-card { position: relative; min-width: 0; padding: 17px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 14px; border: 1px solid #ecd2ad; border-left: 4px solid #e6932e; border-radius: 14px; background: #fffaf2; }
+.announcement-card-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #9b5b0f; background: #ffe8c5; }
+.announcement-card-main { min-width: 0; }
+.announcement-card-main .eyebrow { color: #9b5b0f; }
+.announcement-card-main h3 { margin: 4px 0 5px; font-size: 15px; }
+.announcement-card-main p { margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.announcement-card .task-actions { position: relative; z-index: 2; }
 .task-week-group { min-width: 0; scroll-margin-top: 18px; }
 .task-week-heading { margin-bottom: 12px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .task-week-heading h2 { margin: 4px 0 0; color: var(--ink); font-size: 18px; }
@@ -631,6 +655,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .task-alerts { grid-template-columns: 1fr; }
   .task-view-actions .secondary-button { width: 100%; }
   .selected-week-actions .primary-button { width: 100%; }
+  .selected-week-actions .secondary-button { width: 100%; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 32px; }
   .stat-card { min-height: 125px; padding: 17px; }
   .stat-card strong { font-size: 31px; }
@@ -685,6 +710,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .task-planning-calendar > button { min-height: 76px; }
   .week-task-bubbles { gap: 2px; }
   .week-task-bubbles i { width: 14px; height: 14px; font-size: 7px; }
+  .day-announcement-bubbles i { width: 14px; height: 14px; font-size: 7px; }
+  .announcement-card { grid-template-columns: auto minmax(0,1fr); padding: 14px; gap: 10px; }
+  .announcement-card .task-actions { grid-column: 2; }
   .statistics-calendar > button.today strong { width: 22px; height: 22px; margin: -2px 0 0 -1px; }
   .statistics-calendar > button small { width: 100%; padding: 2px 3px; font-size: 7px; }
   .calendar-legend { padding: 10px 10px 13px; gap: 7px 12px; }

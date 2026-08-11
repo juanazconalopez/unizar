@@ -4,6 +4,7 @@ import type {
   Season,
   SeasonPlayer,
   TaskResult,
+  TeamAnnouncement,
   TrainingSession,
   TrainingTask,
 } from '../types'
@@ -62,6 +63,15 @@ export function makeTask(overrides: Partial<TrainingTask> = {}): TrainingTask {
     created_at: createdAt,
     seasons: { name: 'Temporada 2026' },
     ...overrides,
+  }
+}
+
+export function makeAnnouncement(overrides: Partial<TeamAnnouncement> = {}): TeamAnnouncement {
+  return {
+    id: 'announcement-1', season_id: 'season-1', announcement_date: '2026-08-11',
+    title: 'Cambio de horario', description: 'Empezamos media hora antes.', status: 'published',
+    created_by: 'owner-1', created_at: createdAt, updated_at: createdAt,
+    seasons: { name: 'Temporada 2026' }, ...overrides,
   }
 }
 

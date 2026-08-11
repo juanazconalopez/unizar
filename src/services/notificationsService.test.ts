@@ -44,9 +44,10 @@ describe('notificationsService', () => {
     const results = query([])
     const availability = query([])
     const lineups = query([])
+    const announcements = query([])
     mocks.from.mockImplementation((table: string) => ({
       tasks, season_players: memberships, matches, task_results: results,
-      match_availability: availability, match_lineup: lineups,
+      match_availability: availability, match_lineup: lineups, team_announcements: announcements,
     })[table])
 
     const data = await fetchNotificationFeed('player-1')
@@ -56,6 +57,7 @@ describe('notificationsService', () => {
     expect(results.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(availability.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(lineups.in).toHaveBeenCalledWith('match_id', ['match-1'])
+    expect(announcements.gte).toHaveBeenCalledWith('announcement_date', todayIso())
     expect(data.tasks).toHaveLength(1)
     expect(data.matches).toHaveLength(1)
   })

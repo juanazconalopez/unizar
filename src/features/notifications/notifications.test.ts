@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { makeMembership, makeProfile, makeTask } from '../../test/fixtures'
+import { makeAnnouncement, makeMembership, makeProfile, makeTask } from '../../test/fixtures'
 import type { Match } from '../../types'
 import { buildNotifications, type NotificationFeedData } from './notifications'
 
@@ -37,5 +37,11 @@ describe('buildNotifications', () => {
     }), makeProfile(), '2026-08-07')
     expect(notifications.some((item) => item.title === 'Próximo partido')).toBe(true)
     expect(notifications.some((item) => item.title === 'Nuevo partido publicado')).toBe(false)
+  })
+
+  test('links a newly published team announcement to its exact day', () => {
+    const announcement = makeAnnouncement({ announcement_date: '2026-08-11', updated_at: '2026-08-07T10:00:00.000Z' })
+    const notifications = buildNotifications(feed({ tasks: [], matches: [], lineups: [], announcements: [announcement] }), makeProfile(), '2026-08-07')
+    expect(notifications).toContainEqual(expect.objectContaining({ kind: 'announcement', targetDate: '2026-08-11', targetId: announcement.id }))
   })
 })

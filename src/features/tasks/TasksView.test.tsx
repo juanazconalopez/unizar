@@ -2,10 +2,23 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, formatDate, formatWeek, mondayFor, todayIso } from '../../lib/dates'
-import { makeMembership, makeResult, makeSeason, makeTask } from '../../test/fixtures'
+import { makeAnnouncement, makeMembership, makeResult, makeSeason, makeTask } from '../../test/fixtures'
 import { TasksView } from './TasksView'
 
 describe('TasksView', () => {
+  test('shows published announcements on their day but hides drafts from players', async () => {
+    const user = userEvent.setup()
+    render(<TasksView canManage={false} seasons={[makeSeason()]} memberships={[makeMembership()]} tasks={[makeTask({ title: 'Tarea borrador privada', status: 'draft', week_start: mondayFor(new Date()) })]} announcements={[
+      makeAnnouncement(), makeAnnouncement({ id: 'draft-announcement', title: 'Aviso privado', status: 'draft' }),
+    ]} results={[]} userId="player-1" onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onSaveResult={vi.fn()} onStatusChange={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Vista calendario' }))
+    expect(screen.getByText('Cambio de horario')).toBeInTheDocument()
+    expect(screen.queryByText('Aviso privado')).not.toBeInTheDocument()
+    expect(screen.queryByText('Tarea borrador privada')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/11 de agosto: 0 tareas planificadas y 1 aviso/)).toHaveClass('has-announcement')
+  })
+
   test('filters pending and completed tasks for a player', async () => {
     const user = userEvent.setup()
     const currentWeek = mondayFor(new Date())
@@ -160,11 +173,11 @@ describe('TasksView', () => {
 
     expect(screen.getByRole('region', { name: 'Calendario de planificación' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vista de lista' })).toBeInTheDocument()
-    const currentMondayLabel = `${formatDate(currentWeek, { day: 'numeric', month: 'long' })}: 1 tarea planificada`
+    const currentMondayLabel = `${formatDate(currentWeek, { day: 'numeric', month: 'long' })}: 1 tarea planificada y 0 avisos`
     expect(screen.getByRole('button', { name: currentMondayLabel })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', {
-      name: `${formatDate(selectedDate, { day: 'numeric', month: 'long' })}: 0 tareas planificadas`,
+      name: `${formatDate(selectedDate, { day: 'numeric', month: 'long' })}: 0 tareas planificadas y 0 avisos`,
     }))
     expect(screen.getByRole('heading', { name: formatWeek(mondayFor(selectedDate)) })).toBeInTheDocument()
 

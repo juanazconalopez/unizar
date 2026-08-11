@@ -5,7 +5,7 @@ import type { NotificationFeedData } from '../features/notifications/notificatio
 export async function fetchNotificationFeed(userId: string): Promise<NotificationFeedData> {
   const today = todayIso()
   const currentWeek = mondayFor(today)
-  const [tasksResponse, membershipsResponse, matchesResponse] = await Promise.all([
+  const [tasksResponse, membershipsResponse, matchesResponse, announcementsResponse] = await Promise.all([
     supabase
       .from('tasks')
       .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, updated_at, seasons(name)')
@@ -19,10 +19,18 @@ export async function fetchNotificationFeed(userId: string): Promise<Notificatio
       .eq('status', 'published')
       .gte('match_date', today)
       .order('match_date', { ascending: true }),
+    supabase
+      .from('team_announcements')
+      .select('*, seasons(name)')
+      .eq('status', 'published')
+      .gte('announcement_date', today)
+      .lte('announcement_date', addDays(today, 84))
+      .order('announcement_date', { ascending: true }),
   ])
   if (tasksResponse.error) throw tasksResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
   if (matchesResponse.error) throw matchesResponse.error
+  if (announcementsResponse.error) throw announcementsResponse.error
 
   const tasks = tasksResponse.data ?? []
   const matches = matchesResponse.data ?? []
@@ -48,5 +56,6 @@ export async function fetchNotificationFeed(userId: string): Promise<Notificatio
     results: resultsResponse.data ?? [],
     availability: availabilityResponse.data ?? [],
     lineups: lineupsResponse.data ?? [],
+    announcements: announcementsResponse.data ?? [],
   }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { monthEnd, monthStart } from '../lib/dates'
+import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { errorText } from '../lib/errors'
 import {
   fetchAttendanceDate,
@@ -9,7 +9,7 @@ import {
   fetchTaskWindow,
   fetchTrainingData,
 } from '../services/trainingService'
-import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask, ViewName } from '../types'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
 
@@ -25,6 +25,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [matches, setMatches] = useState<Match[]>([])
   const [matchAvailability, setMatchAvailability] = useState<MatchAvailability[]>([])
   const [matchLineups, setMatchLineups] = useState<MatchLineup[]>([])
+  const [announcements, setAnnouncements] = useState<TeamAnnouncement[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingRange, setLoadingRange] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -65,6 +66,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         tasksRef.current, currentResults, data, fromWeek, toWeek,
       ).results)
       setTasks((currentTasks) => replaceDateRange(currentTasks, data.tasks, 'week_start', fromWeek, toWeek))
+      setAnnouncements((current) => replaceDateRange(current, data.announcements ?? [], 'announcement_date', fromWeek, addDays(toWeek, 6)))
     } catch (error) {
       if (rangeRequestIds.current.tasks === requestId) setErrorMessage(errorText(error))
       throw error
@@ -189,6 +191,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setMatches(data.matches)
         setMatchAvailability(data.matchAvailability)
         setMatchLineups(data.matchLineups)
+        setAnnouncements(data.announcements ?? [])
         setLoadedView(view)
         setLoadedUserId(userId)
       } catch (error) {
@@ -251,6 +254,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     matches,
     matchAvailability,
     matchLineups,
+    announcements,
     loading,
     loadingRange,
     errorMessage,
@@ -308,6 +312,7 @@ async function restoreLoadedRanges(
   if (view === 'tasks' && ranges.taskRanges.length) {
     let tasks = base.tasks
     let results = base.results
+    let announcements = base.announcements ?? []
     const canManage = base.profile.is_owner || base.profile.is_collaborator
     const windows = await Promise.all(ranges.taskRanges.map(async ({ from, to }) => ({
       from,
@@ -318,8 +323,9 @@ async function restoreLoadedRanges(
       const merged = mergeTaskWindow(tasks, results, window.data, window.from, window.to)
       tasks = merged.tasks
       results = merged.results
+      announcements = replaceDateRange(announcements, window.data.announcements ?? [], 'announcement_date', window.from, addDays(window.to, 6))
     }
-    return { ...base, tasks, results }
+    return { ...base, tasks, results, announcements }
   }
 
   if (view === 'statistics' && ranges.statisticsMonth) {

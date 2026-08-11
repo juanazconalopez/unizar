@@ -12,6 +12,10 @@ export type TrainingTask = Omit<Tables<'tasks'>, 'updated_at'> & {
   seasons: { name: string } | null
 }
 
+export type TeamAnnouncement = Tables<'team_announcements'> & {
+  seasons: { name: string } | null
+}
+
 export type TaskResult = Tables<'task_results'>
 
 export type TrainingSession = Tables<'training_sessions'>
@@ -98,6 +102,14 @@ export type TaskValues = {
   title: string
   description: string
   trainingType: string
+  status: TaskStatus
+}
+
+export type AnnouncementValues = {
+  seasonId: string
+  date: string
+  title: string
+  description: string
   status: TaskStatus
 }
 

@@ -9,7 +9,8 @@ describe('training data requirements', () => {
       memberships: true,
       profiles: false,
       attendance: true,
-      matches: false,
+      matches: true,
+      announcements: true,
       seasons: true,
     })
   })
@@ -27,6 +28,7 @@ describe('training data requirements', () => {
       profiles: false,
       attendance: false,
       matches: false,
+      announcements: false,
       seasons: false,
     })
   })
