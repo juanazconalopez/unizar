@@ -30,8 +30,7 @@ export function discoverCalendarUrl(html: string, discoveryUrl: string) {
 }
 
 export function parseFixtures(html: string): ParsedFixture[] {
-  const roundMarkers = [...html.matchAll(/<h4>\s*(JORNADA[^<]*)<\/h4>/gi)]
-    .map((match) => ({ index: match.index, label: cleanText(match[1]) }))
+  const roundMarkers = parseRoundMarkers(html)
 
   return [...html.matchAll(/<tr class="eventRow[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi)].flatMap((match) => {
     const cells = [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) => cell[1])
@@ -40,6 +39,10 @@ export function parseFixtures(html: string): ParsedFixture[] {
     const homeTeam = fontText(cells[1])
     const awayTeam = fontText(cells[5])
     if (!dateTime || !homeTeam || !awayTeam) return []
+    // MatchReady represents bye slots as artificial matches (usually
+    // "Descanso" against "Descanso"). They are not fixtures and must not
+    // affect the calendar, round counts or statistics.
+    if (isByeTeam(homeTeam) || isByeTeam(awayTeam)) return []
     const score = fontText(cells[3]).match(/(\d+)\s*-\s*(\d+)/)
     const sourceMatchId = cells[3].match(/\/competition\/(\d+)\/match_statistics/i)?.[1] ?? null
     const marker = roundMarkers.filter((item) => item.index < match.index).at(-1)
@@ -48,7 +51,7 @@ export function parseFixtures(html: string): ParsedFixture[] {
     return [{
       sourceMatchId,
       round,
-      roundOrder: Number(round.match(/\d+/)?.[0] ?? 0),
+      roundOrder: marker?.order ?? 0,
       matchDate: spanishDate(dateTime[1]),
       kickoffTime: dateTime[2] ?? null,
       homeTeam,
@@ -57,6 +60,19 @@ export function parseFixtures(html: string): ParsedFixture[] {
       awayScore: score ? Number(score[2]) : null,
       status: postponed ? 'postponed' as const : score ? 'final' as const : 'scheduled' as const,
     }]
+  })
+}
+
+function parseRoundMarkers(html: string) {
+  // Limit headings to MatchReady working-day portlets. Other <h4> elements
+  // belong to classification/statistics sections and are not competition rounds.
+  const markers = [...html.matchAll(/<div\s+class=["'][^"']*\bworkingDayRow\b[^"']*["'][^>]*>[\s\S]*?<div\s+class=["'][^"']*\bportlet-title\b[^"']*["'][^>]*>[\s\S]*?<h4[^>]*>([\s\S]*?)<\/h4>/gi)]
+  let lastOrder = 0
+  return markers.map((match) => {
+    const label = cleanText(match[1])
+    const numberedRound = Number(label.match(/\d+/)?.[0] ?? 0)
+    lastOrder = numberedRound || lastOrder + 1
+    return { index: match.index, label, order: lastOrder }
   })
 }
 
@@ -143,6 +159,9 @@ function slug(value: string) {
 }
 
 function numeric(value: string) { return Number(value.replace(/[^\d-]/g, '')) || 0 }
+function isByeTeam(value: string) {
+  return /^(descanso|descansa|libre|bye)$/i.test(value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim())
+}
 function spanishDate(value: string) { const [day, month, year] = value.split('/'); return `${year}-${month}-${day}` }
 function fontText(html: string) { return cleanText(html.match(/<font[^>]*>([\s\S]*?)<\/font>/i)?.[1] ?? '') }
 function cleanText(html: string) { return decodeHtml(html.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() }

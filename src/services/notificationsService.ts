@@ -18,6 +18,7 @@ export async function fetchNotificationFeed(userId: string): Promise<Notificatio
       .select('*, seasons(name)')
       .eq('status', 'published')
       .gte('match_date', today)
+      .lte('match_date', addDays(today, 84))
       .order('match_date', { ascending: true }),
     supabase
       .from('team_announcements')

@@ -17,7 +17,7 @@ describe('MatchReady competition parser', () => {
     expect(url).toBe('https://rugbyaragon.matchready.es/es/public/calendar/abc/combined/')
 
     const fixtures = parseFixtures(`
-      <h4>JORNADA 3</h4>
+      <div class="row workingDayRow"><div class="portlet-title"><h4>JORNADA 3</h4></div></div>
       <tr class="eventRow">
         <td>08/11/2025 16:00</td>
         <td><font>CDU Rugby</font></td><td></td>
@@ -42,6 +42,24 @@ describe('MatchReady competition parser', () => {
     )).toThrow('calendario MatchReady reconocible')
   })
 
+  test('keeps the final separate from the last numbered round and removes bye placeholders', () => {
+    const fixtures = parseFixtures(`
+      <div class="row workingDayRow"><div class="portlet-title"><h4>JORNADA 14</h4></div></div>
+      <tr class="eventRow eventEnded"><td>28/03/2026 13:30</td>
+        <td><font>Unizar femenino</font></td><td></td><td><font>43 - 0</font></td><td></td><td><font>Ibero C.R.</font></td></tr>
+      <div class="row workingDayRow"><div class="portlet-title"><h4>FINAL</h4></div></div>
+      <tr class="eventRow eventEnded"><td>11/04/2026 14:00</td>
+        <td><font>Unizar femenino</font></td><td></td><td><font>51 - 0</font></td><td></td><td><font>Fénix C.R.</font></td></tr>
+      <tr class="eventRow eventPending"><td>11/04/2026</td>
+        <td><font>Descanso</font></td><td></td><td></td><td></td><td><font>Descanso</font></td></tr>
+    `)
+
+    expect(fixtures).toEqual([
+      expect.objectContaining({ round: 'JORNADA 14', roundOrder: 14, homeTeam: 'Unizar femenino' }),
+      expect.objectContaining({ round: 'FINAL', roundOrder: 15, homeTeam: 'Unizar femenino', awayTeam: 'Fénix C.R.' }),
+    ])
+  })
+
   test('parses standings and aggregates scoring statistics', () => {
     const standings = parseStandings(`
       <div id="classificationTab"><table><tr>
@@ -51,7 +69,7 @@ describe('MatchReady competition parser', () => {
     expect(standings).toEqual([expect.objectContaining({ team: 'CDU Rugby', played: 6, points: 24 })])
 
     const fixture = parseFixtures(`
-      <h4>JORNADA 1</h4><tr class="eventRow"><td>01/09/2025</td>
+      <div class="row workingDayRow"><div class="portlet-title"><h4>JORNADA 1</h4></div></div><tr class="eventRow"><td>01/09/2025</td>
       <td><font>CDU Rugby</font></td><td></td><td><font>5 - 0</font></td><td></td><td><font>Rival</font></td></tr>
     `)[0]
     const aggregate = new Map<string, PlayerStatistic>()

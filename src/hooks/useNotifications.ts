@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildNotifications } from '../features/notifications/notifications'
 import type { AppNotification, NotificationFeedData } from '../features/notifications/notifications'
 import { todayIso } from '../lib/dates'
@@ -6,6 +6,7 @@ import { fetchNotificationFeed } from '../services/notificationsService'
 import type { Profile } from '../types'
 
 const EMPTY_FEED: NotificationFeedData = { tasks: [], results: [], memberships: [], matches: [], availability: [], lineups: [] }
+export const NOTIFICATION_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
 export function useNotifications(profile: Profile | null, userId?: string) {
   const [feed, setFeed] = useState<NotificationFeedData>(EMPTY_FEED)
@@ -13,36 +14,51 @@ export function useNotifications(profile: Profile | null, userId?: string) {
     userId,
     ids: readNotificationIds(userId),
   }))
+  const lastReloadAt = useRef(0)
+  const inFlightReload = useRef<Promise<void> | null>(null)
   const readIds = readState.userId === userId ? readState.ids : readNotificationIds(userId)
 
-  const reload = useCallback(async () => {
+  const loadFeed = useCallback(async (force = false) => {
     if (!userId || !profile?.is_approved || profile.is_archived) return
-    try {
-      setFeed(await fetchNotificationFeed(userId))
-    } catch {
-      // Notifications are supplementary and must never block the application.
-    }
+    if (!force && Date.now() - lastReloadAt.current < NOTIFICATION_REFRESH_INTERVAL_MS) return
+    if (inFlightReload.current) return inFlightReload.current
+    lastReloadAt.current = Date.now()
+    const request = (async () => {
+      try {
+        setFeed(await fetchNotificationFeed(userId))
+      } catch {
+        // Notifications are supplementary and must never block the application.
+      }
+    })()
+    inFlightReload.current = request
+    try { await request } finally { if (inFlightReload.current === request) inFlightReload.current = null }
   }, [profile, userId])
 
+  const reload = useCallback(() => loadFeed(true), [loadFeed])
+
   useEffect(() => {
-    const timer = window.setTimeout(() => void reload(), 0)
+    const timer = window.setTimeout(() => void loadFeed(), 0)
     return () => window.clearTimeout(timer)
-  }, [reload])
+  }, [loadFeed])
 
   useEffect(() => {
     if (!userId) return
-    const refresh = () => { if (document.visibilityState === 'visible') void reload() }
+    const refresh = () => { if (document.visibilityState === 'visible') void loadFeed() }
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)
     return () => {
       window.removeEventListener('focus', refresh)
       document.removeEventListener('visibilitychange', refresh)
     }
-  }, [reload, userId])
+  }, [loadFeed, userId])
 
-  const notifications = useMemo(
+  const allNotifications = useMemo(
     () => profile ? buildNotifications(feed, profile, todayIso()) : [],
     [feed, profile],
+  )
+  const notifications = useMemo(
+    () => allNotifications.filter((notification) => !readIds.has(notification.id)),
+    [allNotifications, readIds],
   )
 
   function markRead(notification: AppNotification) {
@@ -51,13 +67,13 @@ export function useNotifications(profile: Profile | null, userId?: string) {
 
   function markAllRead() {
     const next = new Set(readIds)
-    notifications.forEach((notification) => next.add(notification.id))
+    allNotifications.forEach((notification) => next.add(notification.id))
     persistReadIds(userId, next, setReadState)
   }
 
   return {
     notifications,
-    unreadCount: notifications.filter((notification) => !readIds.has(notification.id)).length,
+    unreadCount: notifications.length,
     readIds,
     markRead,
     markAllRead,

@@ -54,6 +54,7 @@ describe('notificationsService', () => {
     const currentWeek = mondayFor(todayIso())
     expect(tasks.gte).toHaveBeenCalledWith('week_start', currentWeek)
     expect(tasks.lte).toHaveBeenCalledWith('week_start', addDays(currentWeek, 28))
+    expect(matches.lte).toHaveBeenCalledWith('match_date', addDays(todayIso(), 84))
     expect(results.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(availability.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(lineups.in).toHaveBeenCalledWith('match_id', ['match-1'])

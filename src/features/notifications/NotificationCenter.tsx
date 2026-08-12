@@ -11,7 +11,7 @@ export function NotificationCenter({ notifications, readIds, onOpen, onReadAll }
     <section className="notification-center" aria-label="Avisos">
       <header>
         <div><span className="eyebrow">ACTUALIDAD</span><h2 id="notification-center-title">Avisos</h2></div>
-        {notifications.length > 0 && <button className="text-button" onClick={onReadAll} type="button">Marcar todo como leído</button>}
+        {notifications.length > 0 && <button className="text-button" onClick={onReadAll} type="button">Limpiar avisos</button>}
       </header>
       <div className="notification-list">
         {notifications.map((notification) => (
