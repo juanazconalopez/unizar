@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -20,6 +21,7 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
   onOpenAnnouncement?: (announcement: TeamAnnouncement) => void
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
+  const [motivationVariant] = useState(() => Math.random())
   const currentMonday = mondayFor(new Date())
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const publishedResults = results.filter((result) => publishedTaskIds.has(result.task_id))
@@ -45,7 +47,13 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
   const attendanceRate = personalAttendance.length
     ? Math.round((attendedSessions / personalAttendance.length) * 100)
     : 0
-  const motivation = attendanceMotivation(attendanceRate, personalAttendance.length)
+  const motivation = playerMotivation({
+    attendanceRate,
+    attendanceTotal: personalAttendance.length,
+    completedTasks: completed,
+    totalTasks: weekTasks.length,
+    variant: motivationVariant,
+  })
   const today = todayIso()
   const nextMatch = matches
     .filter((match) => match.status === 'published' && match.match_date >= today)
@@ -104,12 +112,37 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
   )
 }
 
-function attendanceMotivation(rate: number, total: number) {
-  if (!total) return { title: 'Tu próxima sesión cuenta', text: 'Cuando empiecen los entrenamientos de campo podrás seguir aquí tu constancia.' }
-  if (rate >= 90) return { title: 'Tu constancia empuja al equipo', text: `Has estado en ${rate}% de los entrenamientos. ¡Sigue así!` }
-  if (rate >= 75) return { title: 'Vas por muy buen camino', text: `Llevas un ${rate}% de asistencia. Cada sesión te acerca un poco más.` }
-  if (rate >= 50) return { title: 'Cada entrenamiento suma', text: `Tu asistencia está en el ${rate}%. El próximo entrenamiento es una oportunidad para avanzar.` }
-  return { title: 'El siguiente paso empieza contigo', text: `Ahora estás en un ${rate}%. Volver al campo ya es progreso.` }
+function playerMotivation({ attendanceRate, attendanceTotal, completedTasks, totalTasks, variant }: {
+  attendanceRate: number
+  attendanceTotal: number
+  completedTasks: number
+  totalTasks: number
+  variant: number
+}) {
+  const messages = [
+    { title: 'Cada paso cuenta', text: 'Entrenar con el equipo y dedicar unos minutos a tus tareas te ayuda a seguir creciendo.' },
+    { title: 'Tu esfuerzo suma', text: 'Cada entrenamiento y cada tarea completada aportan al progreso de todo el equipo.' },
+    { title: 'Seguimos avanzando juntas', text: 'La próxima sesión y la siguiente tarea son nuevas oportunidades para mejorar.' },
+  ]
+
+  if (!attendanceTotal) {
+    messages.push({ title: 'El equipo te espera', text: 'Ven al próximo entrenamiento y empieza a construir tu constancia junto al equipo.' })
+  } else if (attendanceRate >= 90) {
+    messages.push({ title: 'Tu constancia empuja al equipo', text: `Has estado en el ${attendanceRate}% de los entrenamientos. ¡Sigue así!` })
+  } else if (attendanceRate >= 60) {
+    messages.push({ title: 'Vas por muy buen camino', text: `Llevas un ${attendanceRate}% de asistencia. Cada sesión te hace más fuerte.` })
+  } else {
+    messages.push({ title: 'El próximo entrenamiento cuenta', text: 'Cada vez que vienes, avanzas tú y ayudas a crecer al equipo.' })
+  }
+
+  if (totalTasks > 0 && completedTasks === totalTasks) {
+    messages.push({ title: '¡Semana completada!', text: `Has realizado las ${totalTasks} ${totalTasks === 1 ? 'tarea' : 'tareas'} de esta semana. Gran trabajo.` })
+  } else if (totalTasks > completedTasks) {
+    const pendingTasks = totalTasks - completedTasks
+    messages.push({ title: 'Un pequeño paso para hoy', text: `Completa ${pendingTasks === 1 ? 'la tarea que tienes pendiente' : `una de tus ${pendingTasks} tareas pendientes`} y sigue sumando a tu semana.` })
+  }
+
+  return messages[Math.min(Math.floor(variant * messages.length), messages.length - 1)]
 }
 
 function StatCard({ label, value, note, tone }: { label: string; value: string; note: string; tone: string }) {

@@ -1,11 +1,35 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { mondayFor, todayIso } from '../../lib/dates'
+import { addDays, mondayFor, todayIso } from '../../lib/dates'
 import { makeAttendance, makeMembership, makeProfile, makeResult, makeTask } from '../../test/fixtures'
 import { Dashboard } from './Dashboard'
 
 describe('Dashboard', () => {
+  test('varies the positive motivation when the player enters the dashboard', () => {
+    const random = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.999)
+    const props = {
+      profile: makeProfile(),
+      memberships: [makeMembership()],
+      tasks: [],
+      results: [],
+      attendance: [],
+      userId: 'player-1',
+      onGoToTasks: vi.fn(),
+      onSaveResult: vi.fn(),
+    }
+
+    const firstVisit = render(<Dashboard {...props} />)
+    expect(screen.getByText('Cada paso cuenta')).toBeInTheDocument()
+    firstVisit.unmount()
+
+    render(<Dashboard {...props} />)
+    expect(screen.getByText('El equipo te espera')).toBeInTheDocument()
+    random.mockRestore()
+  })
+
   test('calculates weekly progress and hides unavailable tasks', () => {
     const weekStart = mondayFor(new Date())
     const tasks = [
@@ -46,7 +70,7 @@ describe('Dashboard', () => {
   test('offers direct access to the next actionable alert', async () => {
     const user = userEvent.setup()
     const onOpenMatch = vi.fn()
-    const nextMatch = { id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: '2026-08-12', kickoff_time: null, venue: null, is_home: true, notes: null, status: 'published' as const, match_kind: 'official' as const, rugby_format: 'xv' as const, lineup_published: false, created_by: 'owner-1', created_at: '2026-08-01T10:00:00.000Z', updated_at: '2026-08-01T10:00:00.000Z', seasons: { name: '2026/2027' } }
+    const nextMatch = { id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 1), kickoff_time: null, venue: null, is_home: true, notes: null, status: 'published' as const, match_kind: 'official' as const, rugby_format: 'xv' as const, lineup_published: false, created_by: 'owner-1', created_at: '2026-08-01T10:00:00.000Z', updated_at: '2026-08-01T10:00:00.000Z', seasons: { name: '2026/2027' } }
     render(<Dashboard profile={makeProfile()} memberships={[makeMembership()]} tasks={[]} results={[]} attendance={[]} matches={[nextMatch]} userId="player-1" onGoToTasks={vi.fn()} onOpenMatch={onOpenMatch} onSaveResult={vi.fn()} />)
     expect(screen.getByText('Para tener en cuenta').closest('details')).not.toHaveAttribute('open')
     await user.click(screen.getByText('Para tener en cuenta'))

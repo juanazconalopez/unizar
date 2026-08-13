@@ -6,13 +6,11 @@ import { makeAnnouncement, makeMembership, makeResult, makeSeason, makeTask } fr
 import { TasksView } from './TasksView'
 
 describe('TasksView', () => {
-  test('shows published announcements on their day but hides drafts from players', async () => {
-    const user = userEvent.setup()
+  test('uses the calendar initially and hides private planning from players', () => {
     render(<TasksView canManage={false} seasons={[makeSeason()]} memberships={[makeMembership()]} tasks={[makeTask({ title: 'Tarea borrador privada', status: 'draft', week_start: mondayFor(new Date()) })]} announcements={[
       makeAnnouncement({ announcement_date: todayIso() }), makeAnnouncement({ id: 'draft-announcement', announcement_date: todayIso(), title: 'Aviso privado', status: 'draft' }),
     ]} results={[]} userId="player-1" onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onSaveResult={vi.fn()} onStatusChange={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Vista calendario' }))
     expect(screen.getByText('Cambio de horario')).toBeInTheDocument()
     expect(screen.queryByText('Aviso privado')).not.toBeInTheDocument()
     expect(screen.queryByText('Tarea borrador privada')).not.toBeInTheDocument()
@@ -45,6 +43,7 @@ describe('TasksView', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     await user.click(screen.getByRole('button', { name: 'Pendientes' }))
     expect(screen.getByText('Pendiente')).toBeInTheDocument()
     expect(screen.queryByText('Borrador privado')).not.toBeInTheDocument()
@@ -66,6 +65,7 @@ describe('TasksView', () => {
       makeTask({ id: 'speed', title: 'Cambios de ritmo', description: 'Series cortas', week_start: currentWeek }),
       makeTask({ id: 'mobility', title: 'Recuperación', description: 'Movilidad de cadera', week_start: currentWeek }),
     ]} results={[]} userId="player-1" onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onSaveResult={vi.fn()} onStatusChange={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     await user.type(screen.getByRole('searchbox', { name: 'Buscar tareas' }), 'cadera')
     expect(screen.getByText('Recuperación')).toBeInTheDocument()
     expect(screen.queryByText('Cambios de ritmo')).not.toBeInTheDocument()
@@ -218,6 +218,7 @@ describe('TasksView', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     expect(screen.getByText('SEMANA ACTUAL')).toBeInTheDocument()
     expect(screen.getByText('SEMANA ANTERIOR')).toBeInTheDocument()
     expect(screen.getByText('HACE 2 SEMANAS')).toBeInTheDocument()
@@ -337,7 +338,8 @@ describe('TasksView', () => {
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ title: task.title, date: task.week_start, status: 'draft' }))
   })
 
-  test('allows completing or editing only tasks from the current week', () => {
+  test('allows completing or editing only tasks from the current week', async () => {
+    const user = userEvent.setup()
     const currentWeek = mondayFor(new Date())
     const previousWeek = addDays(currentWeek, -7)
     render(
@@ -364,6 +366,7 @@ describe('TasksView', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     const currentPending = screen.getByText('Actual pendiente').closest('article')!
     const currentDone = screen.getByText('Actual completada').closest('article')!
     const pastPending = screen.getByText('Anterior pendiente').closest('article')!

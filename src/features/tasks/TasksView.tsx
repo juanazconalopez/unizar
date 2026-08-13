@@ -44,7 +44,7 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [search, setSearch] = useState('')
   const [visibleWeekCount, setVisibleWeekCount] = useState(3)
-  const [managementView, setManagementView] = useState<'calendar' | 'list'>(canManage || focusedDate ? 'calendar' : 'list')
+  const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
   const [announcementForm, setAnnouncementForm] = useState<TeamAnnouncement | null | undefined>(undefined)
   const [selectedPlanningDate, setSelectedPlanningDate] = useState(focusedDate ?? todayIso())
   const [planningMonth, setPlanningMonth] = useState(`${(focusedDate ?? todayIso()).slice(0, 7)}-01`)
@@ -266,13 +266,13 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
           onSubmit={saveTask}
         />
       )}
-      {(!canManage || managementView === 'list') && (
+      {managementView === 'list' && (
         <label className="task-search">
           <span>Buscar tareas</span>
           <span><Icon name="search" size={17} /><input onChange={(event) => setSearch(event.target.value)} placeholder="Título, descripción o tipo…" type="search" value={search} /></span>
         </label>
       )}
-      {!canManage && (
+      {!canManage && managementView === 'list' && (
         <div className="filter-tabs">
           {(['all', 'pending', 'completed'] as const).map((value) => (
             <button className={filter === value ? 'active' : ''} key={value} onClick={() => changeFilter(value)}>
