@@ -1,9 +1,35 @@
 -- Permisos acumulables del club. is_player decide si la persona participa en
 -- temporadas y estadísticas; owner, coach y viewer añaden capacidades.
-alter table public.profiles rename column is_collaborator to is_coach;
-alter table public.profiles add column is_viewer boolean not null default false;
-alter table public.profiles add column is_player boolean not null default true;
-update public.profiles set is_player = false where is_owner;
+-- El bloque es reejecutable porque una ejecución desde SQL Editor puede haber
+-- confirmado unas sentencias antes de detenerse en otra posterior.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_collaborator'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_coach'
+  ) then
+    alter table public.profiles rename column is_collaborator to is_coach;
+  end if;
+
+  alter table public.profiles add column if not exists is_viewer boolean not null default false;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_player'
+  ) then
+    alter table public.profiles add column is_player boolean not null default true;
+    update public.profiles set is_player = false where is_owner;
+  end if;
+end;
+$$;
+
+-- Limpia las reglas de la primera versión, donde los roles eran excluyentes.
+alter table public.profiles drop constraint if exists profiles_single_staff_role;
+drop trigger if exists profiles_remove_staff_season_memberships on public.profiles;
+drop function if exists public.remove_staff_season_memberships();
 
 create or replace function public.current_user_can_manage_sport()
 returns boolean language sql stable security definer set search_path = '' as $$
@@ -106,6 +132,7 @@ begin
 end;
 $$;
 
+drop trigger if exists season_players_guard_player_role on public.season_players;
 create trigger season_players_guard_player_role
 before insert or update of player_id on public.season_players
 for each row execute function public.guard_season_membership_player_role();
@@ -120,11 +147,14 @@ begin
 end;
 $$;
 
+drop trigger if exists profiles_remove_non_player_season_memberships on public.profiles;
 create trigger profiles_remove_non_player_season_memberships
 after insert or update of is_player on public.profiles
 for each row execute function public.remove_non_player_season_memberships();
 
 -- Temporadas y participantes: el staff consulta; solo owner configura.
+drop policy if exists "Team staff can read seasons" on public.seasons;
+drop policy if exists "Team staff can read season players" on public.season_players;
 create policy "Team staff can read seasons" on public.seasons
 for select to authenticated using ((select public.current_user_can_view_team_data()));
 create policy "Team staff can read season players" on public.season_players
@@ -135,6 +165,9 @@ for select to authenticated using ((select public.current_user_can_view_team_dat
 drop policy if exists "Collaborators can create tasks" on public.tasks;
 drop policy if exists "Creators and owners can update tasks" on public.tasks;
 drop policy if exists "Creators and owners can delete tasks" on public.tasks;
+drop policy if exists "Sport managers can create tasks" on public.tasks;
+drop policy if exists "Sport managers can update tasks" on public.tasks;
+drop policy if exists "Sport managers can delete tasks" on public.tasks;
 create policy "Sport managers can create tasks" on public.tasks for insert to authenticated
 with check ((select public.current_user_can_manage_sport()) and created_by = (select auth.uid()));
 create policy "Sport managers can update tasks" on public.tasks for update to authenticated
@@ -147,6 +180,10 @@ drop policy if exists "Owners and players can read matches" on public.matches;
 drop policy if exists "Owners can create matches" on public.matches;
 drop policy if exists "Owners can update matches" on public.matches;
 drop policy if exists "Owners can delete matches" on public.matches;
+drop policy if exists "Staff and players can read matches" on public.matches;
+drop policy if exists "Sport managers can create matches" on public.matches;
+drop policy if exists "Sport managers can update matches" on public.matches;
+drop policy if exists "Sport managers can delete matches" on public.matches;
 create policy "Staff and players can read matches" on public.matches for select to authenticated using (
   ((select public.current_user_can_manage_sport()))
   or ((select public.current_user_can_view_team_data()) and status <> 'draft')
@@ -160,11 +197,13 @@ create policy "Sport managers can delete matches" on public.matches for delete t
 using ((select public.current_user_can_manage_sport()));
 
 drop policy if exists "Players and owners can read availability" on public.match_availability;
+drop policy if exists "Players and staff can read availability" on public.match_availability;
 create policy "Players and staff can read availability" on public.match_availability for select to authenticated using (
   player_id = (select auth.uid()) or (select public.current_user_can_view_team_data())
 );
 
 drop policy if exists "Owners and selected players can read lineups" on public.match_lineup;
+drop policy if exists "Staff and selected players can read lineups" on public.match_lineup;
 create policy "Staff and selected players can read lineups" on public.match_lineup for select to authenticated using (
   (select public.current_user_can_manage_sport())
   or (
@@ -251,11 +290,15 @@ end;
 $$;
 
 -- Entrenamientos y asistencia: staff en lectura; owner y Entrenador escriben.
+drop policy if exists "Team staff can read training sessions" on public.training_sessions;
 create policy "Team staff can read training sessions" on public.training_sessions
 for select to authenticated using ((select public.current_user_can_view_team_data()));
 drop policy if exists "Owners can create training sessions" on public.training_sessions;
 drop policy if exists "Owners can update training sessions" on public.training_sessions;
 drop policy if exists "Owners can delete training sessions" on public.training_sessions;
+drop policy if exists "Sport managers can create training sessions" on public.training_sessions;
+drop policy if exists "Sport managers can update training sessions" on public.training_sessions;
+drop policy if exists "Sport managers can delete training sessions" on public.training_sessions;
 create policy "Sport managers can create training sessions" on public.training_sessions for insert to authenticated
 with check ((select public.current_user_can_manage_sport()) and created_by = (select auth.uid()));
 create policy "Sport managers can update training sessions" on public.training_sessions for update to authenticated
@@ -267,6 +310,10 @@ drop policy if exists "Players can read their own attendance" on public.training
 drop policy if exists "Owners can create attendance" on public.training_attendance;
 drop policy if exists "Owners can update attendance" on public.training_attendance;
 drop policy if exists "Owners can delete attendance" on public.training_attendance;
+drop policy if exists "Players and staff can read attendance" on public.training_attendance;
+drop policy if exists "Sport managers can create attendance" on public.training_attendance;
+drop policy if exists "Sport managers can update attendance" on public.training_attendance;
+drop policy if exists "Sport managers can delete attendance" on public.training_attendance;
 create policy "Players and staff can read attendance" on public.training_attendance for select to authenticated using (
   player_id = (select auth.uid()) or (select public.current_user_can_view_team_data())
 );
@@ -340,6 +387,10 @@ drop policy if exists "Players can read published team announcements" on public.
 drop policy if exists "Collaborators can create team announcements" on public.team_announcements;
 drop policy if exists "Creators and owners can update team announcements" on public.team_announcements;
 drop policy if exists "Creators and owners can delete team announcements" on public.team_announcements;
+drop policy if exists "Players and sport managers can read announcements" on public.team_announcements;
+drop policy if exists "Sport managers can create announcements" on public.team_announcements;
+drop policy if exists "Sport managers can update announcements" on public.team_announcements;
+drop policy if exists "Sport managers can delete announcements" on public.team_announcements;
 create policy "Players and sport managers can read announcements" on public.team_announcements for select to authenticated using (
   (select public.current_user_can_manage_sport())
   or (
