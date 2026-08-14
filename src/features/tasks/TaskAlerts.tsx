@@ -1,5 +1,6 @@
 import { Icon } from '../../components/Icon'
 import { profilesById, resultsByTask } from '../../lib/selectors'
+import { isPlayer } from '../../lib/permissions'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
 
 export function TaskAlerts({ currentWeek, profiles, results, tasks, onViewResults }: {
@@ -10,12 +11,16 @@ export function TaskAlerts({ currentWeek, profiles, results, tasks, onViewResult
   onViewResults: (task: TrainingTask) => void
 }) {
   const profileMap = profilesById(profiles)
-  const groupedResults = resultsByTask(results)
+  const playerResults = results.filter((result) => {
+    const profile = profileMap.get(result.player_id)
+    return !profile || isPlayer(profile)
+  })
+  const groupedResults = resultsByTask(playerResults)
   const currentTasks = tasks.filter((task) => task.week_start === currentWeek && task.status === 'published')
   const unanswered = currentTasks.filter((task) => !(groupedResults.get(task.id)?.length))
   const criticalTasks = currentTasks.map((task) => ({
     task,
-    count: (groupedResults.get(task.id) ?? []).filter((result) => result.fatigue_level === 5 && !profileMap.get(result.player_id)?.is_owner).length,
+    count: (groupedResults.get(task.id) ?? []).filter((result) => result.fatigue_level === 5).length,
   })).filter((item) => item.count > 0)
   const criticalCount = criticalTasks.reduce((total, item) => total + item.count, 0)
   if (!unanswered.length && !criticalCount) return null

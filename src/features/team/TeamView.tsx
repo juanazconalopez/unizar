@@ -97,14 +97,19 @@ function PersonRow({ person, currentUserId, onUpdate }: {
 }) {
   const [saving, setSaving] = useState(false)
 
-  async function change(field: 'is_approved' | 'is_active' | 'is_collaborator' | 'is_owner', value: boolean) {
+  async function change(field: 'is_approved' | 'is_active', value: boolean) {
     setSaving(true)
     try {
-      await onUpdate({
-        ...person,
-        [field]: value,
-        ...(field === 'is_owner' && value ? { is_collaborator: true } : {}),
-      })
+      await onUpdate({ ...person, [field]: value })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function changeRole(field: 'is_player' | 'is_coach' | 'is_viewer' | 'is_owner', value: boolean) {
+    setSaving(true)
+    try {
+      await onUpdate({ ...person, [field]: value })
     } finally {
       setSaving(false)
     }
@@ -118,7 +123,9 @@ function PersonRow({ person, currentUserId, onUpdate }: {
         ...person,
         is_approved: false,
         is_active: false,
-        is_collaborator: false,
+        is_player: false,
+        is_coach: false,
+        is_viewer: false,
         is_owner: false,
         is_archived: true,
       })
@@ -140,8 +147,10 @@ function PersonRow({ person, currentUserId, onUpdate }: {
         <div className="permission-toggles">
           <Toggle checked={person.is_approved} disabled={saving || person.id === currentUserId} label="Aprobado" onChange={(value) => change('is_approved', value)} />
           <Toggle checked={person.is_active} disabled={saving} label="Activo" onChange={(value) => change('is_active', value)} />
-          <Toggle checked={person.is_collaborator} disabled={saving || person.is_owner} label="Colaborador" onChange={(value) => change('is_collaborator', value)} />
-          <Toggle checked={person.is_owner} disabled={saving || person.id === currentUserId} label="Owner" onChange={(value) => change('is_owner', value)} />
+          <Toggle checked={person.is_player} disabled={saving} label="Jugadora" onChange={(value) => changeRole('is_player', value)} />
+          <Toggle checked={person.is_coach} disabled={saving} label="Entrenador" onChange={(value) => changeRole('is_coach', value)} />
+          <Toggle checked={person.is_viewer} disabled={saving} label="Dirección" onChange={(value) => changeRole('is_viewer', value)} />
+          <Toggle checked={person.is_owner} disabled={saving || person.id === currentUserId} label="Owner" onChange={(value) => changeRole('is_owner', value)} />
         </div>
         <button className="danger-button" disabled={saving || person.id === currentUserId} onClick={archive}>Desautorizar</button>
       </div>

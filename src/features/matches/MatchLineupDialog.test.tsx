@@ -23,10 +23,16 @@ describe('MatchLineupDialog', () => {
     expect(screen.queryByText('Suplentes')).not.toBeInTheDocument()
   })
 
-  test('keeps collaborators eligible when they are active players', () => {
-    const collaborator = makeProfile({ is_collaborator: true, display_name: 'Andrea López' })
-    render(<MatchLineupDialog availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match()} memberships={[makeMembership()]} profiles={[collaborator]} onClose={vi.fn()} onSave={vi.fn()} />)
+  test('keeps a player-coach eligible for the lineup', () => {
+    const coach = makeProfile({ is_coach: true, display_name: 'Andrea López' })
+    render(<MatchLineupDialog availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match()} memberships={[makeMembership()]} profiles={[coach]} onClose={vi.fn()} onSave={vi.fn()} />)
     expect(screen.getByText('Andrea López')).toBeInTheDocument()
+  })
+
+  test('excludes a coach-only profile even if an old membership remains', () => {
+    const coach = makeProfile({ is_coach: true, is_player: false, display_name: 'Andrea López' })
+    render(<MatchLineupDialog availability={[]} entries={[]} match={match()} memberships={[makeMembership()]} profiles={[coach]} onClose={vi.fn()} onSave={vi.fn()} />)
+    expect(screen.queryByText('Andrea López')).not.toBeInTheDocument()
   })
 
   test('removes a provisional selection when the player is no longer available', () => {

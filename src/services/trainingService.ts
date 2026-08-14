@@ -1,4 +1,5 @@
 import { addDays, mondayFor, monthEnd, monthStart, offsetMonth, todayIso } from '../lib/dates'
+import { canManageSport, canViewTeamData } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord,
@@ -200,7 +201,7 @@ export async function fetchMatchWindow(fromDate: string, toDate?: string): Promi
 export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
   const { data: ownProfile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
+    .select('id, display_name, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at')
     .eq('id', userId)
     .single()
 
@@ -222,7 +223,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
-  const canManageTasks = profile.is_owner || profile.is_collaborator
+  const canManageTasks = canManageSport(profile)
   const requirements = dataRequirementsFor(scope, canManageTasks)
   const currentWeek = mondayFor(new Date())
 
@@ -233,7 +234,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     requirements.profiles
       ? supabase
         .from('profiles')
-        .select('id, display_name, is_approved, is_active, is_collaborator, is_owner, is_archived, created_at')
+        .select('id, display_name, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at')
         .order('display_name')
       : emptyResponse,
   ])
@@ -274,11 +275,11 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       ? mondayFor(activeSeason.end_date)
       : addDays(currentWeek, 84)
     taskData = await fetchTaskWindow(userId, canManageTasks, start, canManageTasks ? managerEnd : currentWeek)
-  } else if (scope === 'statistics' && profile.is_owner) {
+  } else if (scope === 'statistics' && canViewTeamData(profile)) {
     const statisticsData = await fetchStatisticsWindow(monthStart(todayIso()))
     taskData = statisticsData
     attendanceData = statisticsData
-  } else if (scope === 'attendance' && profile.is_owner) {
+  } else if (scope === 'attendance' && canManageSport(profile)) {
     attendanceData = await fetchRecentAttendance()
   } else if (scope === 'matches') {
     // Keep the list useful while excluding completed seasons; older months load on demand.
@@ -399,7 +400,9 @@ export async function updateProfilePermissions(profile: Profile) {
     .update({
       is_approved: profile.is_approved,
       is_active: profile.is_active,
-      is_collaborator: profile.is_collaborator,
+      is_player: profile.is_player,
+      is_coach: profile.is_coach,
+      is_viewer: profile.is_viewer,
       is_owner: profile.is_owner,
       is_archived: profile.is_archived,
       updated_at: new Date().toISOString(),

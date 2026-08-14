@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { attendancePlayerIdsForDate, isActivePlayer, membershipCoversDate } from '../../lib/selectors'
+import { isPlayer } from '../../lib/permissions'
 import type { AttendanceRecord, Profile, Season, SeasonPlayer, TrainingSession } from '../../types'
 
 export function AttendanceView({ profiles, seasons, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
@@ -82,7 +83,7 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
     ))
     .map((membership) => membership.player_id))
   const visiblePlayers = profiles.filter((profile) => (
-    !profile.is_owner && ((isActivePlayer(profile) && eligibleIds.has(profile.id)) || historicalIds.has(profile.id))
+    isPlayer(profile) && ((isActivePlayer(profile) && eligibleIds.has(profile.id)) || historicalIds.has(profile.id))
   ))
   const visibleIds = new Set(visiblePlayers.map((player) => player.id))
   const visibleSelected = new Set([...selected].filter((id) => visibleIds.has(id)))

@@ -13,9 +13,8 @@ import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, isOwner = false, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
+export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
   canManage: boolean
-  isOwner?: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
   profiles?: Profile[]
@@ -186,8 +185,6 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
 
   function managerActionsFor(task: TrainingTask) {
     if (!canManage) return undefined
-    const canEdit = isOwner || task.created_by === userId
-    if (!canEdit) return <span className={`status-select ${task.status}`}>{statusLabel(task.status)}</span>
     return (
       <>
         <StatusControl status={task.status} onChange={async (status) => {
@@ -204,8 +201,6 @@ export function TasksView({ canManage, isOwner = false, seasons, memberships, pr
 
   function announcementActionsFor(announcement: TeamAnnouncement) {
     if (!canManage) return undefined
-    const canEdit = isOwner || announcement.created_by === userId
-    if (!canEdit) return <span className={`status-select ${announcement.status}`}>{statusLabel(announcement.status)}</span>
     return <>
       <StatusControl status={announcement.status} onChange={async (status) => {
         await onAnnouncementStatusChange?.(announcement.id, status)
@@ -433,10 +428,4 @@ function StatusControl({ status, onChange }: { status: TaskStatus; onChange: (st
       <option value="cancelled">Anulada</option>
     </select>
   )
-}
-
-function statusLabel(status: TaskStatus) {
-  if (status === 'published') return 'Publicada'
-  if (status === 'draft') return 'Borrador'
-  return 'Anulada'
 }

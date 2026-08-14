@@ -1,9 +1,11 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { SeasonContextField } from '../../components/SeasonContextField'
 import { Modal } from '../../components/ui/Modal'
 import { TRAINING_TYPES } from '../../constants/training'
 import { todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
+import { seasonForDate } from '../../lib/selectors'
 import type { Season, TaskStatus, TaskValues, TrainingTask } from '../../types'
 
 export function TaskForm({ seasons, initialDate = todayIso(), task, template, onCancel, onDelete, onSubmit }: {
@@ -22,6 +24,9 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
   const [dirty, setDirty] = useState(false)
   const busy = saving || deleting
   const source = task ?? template
+  const selectedSeason = task
+    ? seasons.find((season) => season.id === task.season_id)
+    : seasonForDate(seasons, todayIso())
   const trainingTypes: readonly string[] = source?.training_type && !TRAINING_TYPES.some((type) => type === source.training_type)
     ? [source.training_type, ...TRAINING_TYPES]
     : TRAINING_TYPES
@@ -72,13 +77,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
         </div>
         <div className="form-grid">
           <label>Título<input autoFocus defaultValue={source?.title} name="title" required placeholder="Ej. Rodaje suave" /></label>
-          <label>
-            Temporada
-            <select name="seasonId" required defaultValue={source?.season_id ?? ''}>
-              <option disabled value="">Seleccionar…</option>
-              {seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
-            </select>
-          </label>
+          <SeasonContextField creation={!task} season={selectedSeason} />
           {!task && <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>}
           <label>Tipo<select defaultValue={source?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{trainingTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
           <label className="full-field task-form-description">Descripción<textarea defaultValue={source?.description ?? ''} name="description" rows={7} placeholder="Indicaciones, distancia, repeticiones…" /></label>
@@ -88,7 +87,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
         <div className="form-actions">
           {task && onDelete && <button className="danger-button task-form-delete" disabled={busy} onClick={() => void deleteTask()} type="button">{deleting ? 'Eliminando…' : 'Eliminar tarea'}</button>}
           <button className="secondary-button" disabled={busy} onClick={requestCancel} type="button">Cancelar</button>
-          <button className="primary-button" disabled={busy || !seasons.length}>{saving ? 'Guardando…' : task ? 'Guardar cambios' : template ? 'Copiar tarea' : 'Crear tarea'}</button>
+          <button className="primary-button" disabled={busy || !selectedSeason}>{saving ? 'Guardando…' : task ? 'Guardar cambios' : template ? 'Copiar tarea' : 'Crear tarea'}</button>
         </div>
       </Modal>
   )

@@ -7,14 +7,14 @@ import type { MatchWeek } from './MatchWeekSection'
 export function MatchListView({
   currentWeek,
   currentWeekRef,
-  isOwner,
+  canManage,
   onCreate,
   renderMatch,
   weeks,
 }: {
   currentWeek: string
   currentWeekRef: Ref<HTMLElement>
-  isOwner: boolean
+  canManage: boolean
   onCreate: () => void
   renderMatch: (match: Match) => ReactNode
   weeks: MatchWeek[]
@@ -31,7 +31,7 @@ export function MatchListView({
           weekStart={weekStart}
         />
       ))}
-      {isOwner && (
+      {canManage && (
         <div className="match-list-create">
           <button className="primary-button" onClick={onCreate}>
             <Icon name="plus" size={18} />Nuevo partido

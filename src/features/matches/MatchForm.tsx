@@ -1,8 +1,10 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { SeasonContextField } from '../../components/SeasonContextField'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
 import { todayIso } from '../../lib/dates'
+import { seasonForDate } from '../../lib/selectors'
 import type { Match, MatchKind, MatchStatus, MatchValues, RugbyFormat, Season } from '../../types'
 
 export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onSubmit }: {
@@ -18,6 +20,9 @@ export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onS
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [dirty, setDirty] = useState(false)
+  const selectedSeason = match
+    ? seasons.find((season) => season.id === match.season_id)
+    : seasonForDate(seasons, todayIso())
   function requestCancel() {
     if (dirty && !window.confirm('Hay cambios sin guardar. ¿Quieres cerrar el formulario?')) return
     onCancel()
@@ -46,7 +51,7 @@ export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onS
     <div className="panel-form-heading"><div><span className="eyebrow">PARTIDO</span><h2 id={titleId}>{match ? 'Editar partido' : 'Nuevo partido'}</h2></div><button aria-label="Cerrar" className="icon-button" onClick={requestCancel} type="button">×</button></div>
     <div className="form-grid">
       <label>Rival<input autoFocus defaultValue={match?.opponent} name="opponent" required /></label>
-      <label>Temporada<select defaultValue={match?.season_id ?? ''} disabled={structureLocked} name="seasonId" required><option disabled value="">Seleccionar…</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select>{structureLocked && <input name="seasonId" type="hidden" value={match?.season_id} />}</label>
+      <SeasonContextField creation={!match} season={selectedSeason} />
       <label>Fecha<input defaultValue={match?.match_date ?? initialDate ?? todayIso()} disabled={structureLocked} name="matchDate" required type="date" />{structureLocked && <input name="matchDate" type="hidden" value={match?.match_date} />}</label>
       <label>Hora<input defaultValue={match?.kickoff_time?.slice(0, 5) ?? ''} name="kickoffTime" type="time" /></label>
       <label>Campo o localidad<input defaultValue={match?.venue ?? ''} name="venue" /></label>
@@ -58,6 +63,6 @@ export function MatchForm({ initialDate, match, seasons, onCancel, onDelete, onS
     </div>
     {structureLocked && <p className="form-hint">La temporada, fecha y formato están bloqueados porque la convocatoria ya se publicó.</p>}
     {error && <p className="form-error">{error}</p>}
-    <div className="form-actions">{match && onDelete && <button className="danger-button task-form-delete" onClick={() => void remove()} type="button">Eliminar partido</button>}<button className="secondary-button" onClick={requestCancel} type="button">Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar partido'}</button></div>
+    <div className="form-actions">{match && onDelete && <button className="danger-button task-form-delete" onClick={() => void remove()} type="button">Eliminar partido</button>}<button className="secondary-button" onClick={requestCancel} type="button">Cancelar</button><button className="primary-button" disabled={saving || !selectedSeason}>{saving ? 'Guardando…' : 'Guardar partido'}</button></div>
   </Modal>
 }

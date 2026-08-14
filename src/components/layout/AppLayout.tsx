@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal'
 import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
 import type { AppNotification } from '../../features/notifications/notifications'
+import { canAccessTasks, canManageSport, canViewTeamData } from '../../lib/permissions'
 
 type NavigationItem = { id: ViewName; label: string; icon: IconName }
 
@@ -52,21 +53,25 @@ export function AppLayout({
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
+  const canManage = canManageSport(profile)
+  const canViewTeam = canViewTeamData(profile)
   const navigation: NavigationItem[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
-    ...(profile.is_owner ? [
+    ...(canViewTeam ? [
       { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
     ] : []),
-    { id: 'tasks', label: 'Tareas', icon: 'tasks' },
+    ...(canAccessTasks(profile) ? [{ id: 'tasks' as const, label: 'Tareas', icon: 'tasks' as const }] : []),
     { id: 'matches', label: 'Partidos', icon: 'calendar' },
     { id: 'competition', label: 'Competición', icon: 'trophy' },
-    ...(profile.is_owner ? [
+    ...(canManage ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
+    ] : []),
+    ...(profile.is_owner ? [
       { id: 'settings' as const, label: 'Ajustes', icon: 'settings' as const },
     ] : []),
   ]
 
-  const role = profile.is_owner ? 'Owner' : profile.is_collaborator ? 'Colaboradora · Jugadora' : 'Jugadora'
+  const role = profileRoles(profile).join(' · ') || 'Miembro'
 
   function navigate(nextView: ViewName) {
     setProfileMenuOpen(false)
@@ -207,6 +212,15 @@ export function AppLayout({
       )}
     </div>
   )
+}
+
+function profileRoles(profile: Profile) {
+  return [
+    profile.is_owner ? 'Owner' : '',
+    profile.is_player ? 'Jugadora' : '',
+    profile.is_coach ? 'Entrenador' : '',
+    profile.is_viewer ? 'Dirección' : '',
+  ].filter(Boolean)
 }
 
 function NotificationButton({ count, onClick }: { count: number; onClick: () => void }) {

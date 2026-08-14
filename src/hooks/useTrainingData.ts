@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { errorText } from '../lib/errors'
+import { canManageSport } from '../lib/permissions'
 import {
   fetchAttendanceDate,
   fetchMatchWindow,
@@ -59,7 +60,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await fetchTaskWindow(userId, profile.is_owner || profile.is_collaborator, fromWeek, toWeek)
+      const data = await fetchTaskWindow(userId, canManageSport(profile), fromWeek, toWeek)
       if (rangeRequestIds.current.tasks !== requestId) return
       loadedTaskRanges.current.set(`${fromWeek}:${toWeek}`, { from: fromWeek, to: toWeek })
       setResults((currentResults) => mergeTaskWindow(
@@ -313,7 +314,7 @@ async function restoreLoadedRanges(
     let tasks = base.tasks
     let results = base.results
     let announcements = base.announcements ?? []
-    const canManage = base.profile.is_owner || base.profile.is_collaborator
+    const canManage = canManageSport(base.profile)
     const windows = await Promise.all(ranges.taskRanges.map(async ({ from, to }) => ({
       from,
       to,

@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, seasonState } from '../../lib/dates'
 import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
+import { isPlayer } from '../../lib/permissions'
 import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
@@ -84,7 +85,8 @@ function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle,
 }) {
   const state = seasonState(season)
   const seasonMemberships = memberships.filter((item) => item.season_id === season.id)
-  const activeMembers = seasonMemberships.filter((item) => !item.active_until)
+  const playerIds = new Set(profiles.filter(isPlayer).map((profile) => profile.id))
+  const activeMembers = seasonMemberships.filter((item) => !item.active_until && playerIds.has(item.player_id))
 
   return (
     <article className="season-card">
@@ -97,7 +99,7 @@ function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle,
       </div>
       {expanded && (
         <div className="member-list">
-          {profiles.filter((player) => player.is_approved && !player.is_archived && !player.is_owner).map((player) => {
+          {profiles.filter((player) => player.is_approved && !player.is_archived && isPlayer(player)).map((player) => {
             const membership = activeMembershipFor(seasonMemberships, season.id, player.id)
             const active = Boolean(membership)
             return (

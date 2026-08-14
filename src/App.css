@@ -49,6 +49,7 @@
 .page-header p { margin: 0; color: var(--muted); }
 .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+.dashboard-stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 16px; margin-bottom: 18px; }
 .stat-card { position: relative; overflow: hidden; min-height: 150px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 7px 22px rgba(31,63,54,.035); }
 .stat-card::after { content: ''; position: absolute; width: 92px; height: 92px; right: -30px; bottom: -34px; border-radius: 50%; opacity: .22; background: currentColor; }
 .stat-card > span, .stat-card small { display: block; color: var(--muted); }
@@ -59,6 +60,16 @@
 .stat-card.blue { color: var(--blue); border-top: 3px solid var(--blue); }
 .stat-card.coral { color: var(--coral); border-top: 3px solid var(--coral); }
 .stat-card.lime { color: #78a632; border-top: 3px solid var(--lime); }
+.stat-card.season { color: #7653a3; border-top: 3px solid #8c6ab5; }
+.week-progress-card > div:first-of-type { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; }
+.week-progress-card > div:first-of-type strong { margin-bottom: 0; }
+.week-progress-card > div:first-of-type b { color: var(--green); font-family: 'Manrope',system-ui,sans-serif; font-size: 19px; }
+.week-progress-track { position: relative; z-index: 1; height: 7px; margin: 13px 0 8px; overflow: hidden; border-radius: 10px; background: #e7eeeb; }
+.week-progress-track i { height: 100%; display: block; border-radius: inherit; background: var(--green); transition: width .25s ease; }
+.dashboard-season-card { width: 100%; color: #7653a3; font: inherit; text-align: left; cursor: pointer; }
+.dashboard-season-card > * { position: relative; z-index: 1; }
+.dashboard-season-card em { margin-top: 13px; display: flex; align-items: center; gap: 3px; color: #7653a3; font-size: 10px; font-style: normal; font-weight: 800; }
+.dashboard-season-card:not(:disabled):hover { border-color: #b9a5cf; box-shadow: 0 10px 28px rgba(72,48,99,.09); transform: translateY(-1px); }
 .motivation-card { margin-bottom: 42px; padding: 18px 21px; border: 1px solid #cfe2d6; border-radius: 14px; display: flex; align-items: center; gap: 14px; background: linear-gradient(100deg,#eef8f1,#f8fbef); }
 .motivation-card > span { width: 42px; height: 42px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; color: var(--green-dark); background: var(--lime); }
 .motivation-card strong { display: block; font-family: 'Manrope',system-ui,sans-serif; font-size: 14px; }
@@ -197,6 +208,53 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .availability-group article p { margin: 3px 0 0; overflow-wrap: anywhere; color: var(--muted); font-size: 9px; line-height: 1.4; }
 .availability-empty { margin: 0; padding: 15px 10px; color: var(--muted); font-size: 9px; }
 .match-actions { margin-top: 16px; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.match-view-actions, .callup-report-actions, .lineup-export-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.lineup-export-actions { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+.callup-report { min-width: 0; }
+.callup-report-heading { margin-bottom: 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.callup-report-heading h2 { margin: 5px 0 4px; font-size: 24px; }
+.callup-report-heading p, .callup-report-note { margin: 0; color: var(--muted); font-size: 11px; }
+.callup-report-table-wrap { max-height: min(620px,calc(100vh - 275px)); overflow: auto; border: 1px solid var(--line); border-radius: 14px; background: white; }
+.callup-report-table { width: 100%; min-width: 650px; border-collapse: separate; border-spacing: 0; }
+.callup-report-table th, .callup-report-table td { padding: 13px 16px; border-bottom: 1px solid var(--line); text-align: center; }
+.callup-report-table thead th { position: sticky; z-index: 2; top: 0; color: var(--green-dark); background: #edf6f1; font-size: 10px; letter-spacing: .4px; text-transform: uppercase; }
+.callup-report-table thead th:first-child { z-index: 3; left: 0; text-align: left; }
+.callup-report-table thead b { min-width: 25px; height: 25px; margin-left: 5px; border-radius: 50%; display: inline-grid; place-items: center; color: white; background: var(--green); }
+.callup-report-table tbody th { position: sticky; z-index: 1; left: 0; min-width: 210px; background: white; font-size: 12px; text-align: left; }
+.callup-report-table tbody td { font-size: 13px; font-weight: 800; }
+.callup-report-table tbody td strong, .callup-report-table tbody td span { display: block; }
+.callup-report-table tbody td span { margin-top: 2px; color: var(--green); font-size: 10px; }
+.callup-player-link { width: 100%; padding: 0; border: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.callup-player-link:hover { color: var(--green); }
+.callup-report-table tbody tr:last-child > * { border-bottom: 0; }
+.callup-report-note { margin-top: 10px; }
+.player-season-dialog { width: min(820px,100%); }
+.player-season-dialog .section-state { min-height: 390px; }
+.player-season-summary { margin-top: 22px; }
+.player-season-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.player-season-metrics article { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #f8faf9; }
+.player-season-metrics span, .player-season-metrics small { display: block; color: var(--muted); }
+.player-season-metrics span { font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.player-season-metrics strong { margin: 7px 0 4px; display: block; color: var(--ink); font-size: 25px; }
+.player-season-metrics small { min-height: 26px; font-size: 9px; line-height: 1.4; }
+.season-availability-detail, .season-match-history { margin-top: 22px; }
+.season-availability-detail h3, .season-match-history h3 { margin: 0 0 10px; font-size: 14px; }
+.season-availability-detail > div { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.season-availability-detail > div > span { padding: 10px; border-radius: 10px; display: grid; gap: 2px; color: var(--muted); background: #f1f4f2; font-size: 9px; }
+.season-availability-detail b { color: var(--ink); font-size: 17px; }
+.season-availability-detail .available { background: var(--green-soft); }
+.season-availability-detail .doubt { background: #fff6d8; }
+.season-availability-detail .unavailable { background: #fff0ed; }
+.season-match-history > div { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; }
+.season-match-history article { padding: 11px 13px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
+.season-match-history article:first-child { border-top: 0; }
+.season-match-icon { width: 31px; height: 31px; border-radius: 9px; display: grid; place-items: center; color: var(--green); background: var(--green-soft); }
+.season-match-history article > div:nth-child(2) strong, .season-match-history article > div:nth-child(2) small, .season-match-status span, .season-match-status b { display: block; }
+.season-match-history article > div:nth-child(2) strong { font-size: 11px; }
+.season-match-history article > div:nth-child(2) small, .season-match-status span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.season-match-status { text-align: right; }
+.season-match-status b { margin-top: 3px; color: var(--green); font-size: 9px; }
+.season-history-empty { margin: 0; padding: 20px; color: var(--muted); font-size: 10px; text-align: center; }
 .availability-response { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 11px; }
 .availability-response-actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
 .own-availability { min-width: 150px; padding: 8px 11px; border-radius: 9px; display: grid; gap: 1px; }
@@ -270,6 +328,11 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .panel-form-heading h2 { margin: 4px 0 0; font-size: 22px; }
 .panel-form-heading .icon-button:hover { background: var(--canvas); }
 .form-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 17px; }
+.season-context-field { display: grid; align-content: start; gap: 7px; }
+.season-context-field > span { color: var(--ink); font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.season-context-field > div { min-height: 42px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f5f8f6; }
+.season-context-field strong { font-size: 12px; }
+.season-context-field .season-state { flex: 0 0 auto; font-size: 9px; }
 .full-field { grid-column: 1 / -1; }
 .filter-tabs { margin-bottom: 18px; padding: 4px; display: inline-flex; gap: 3px; border-radius: 10px; background: #e9eeeb; }
 .filter-tabs button { padding: 7px 14px; border: 0; border-radius: 7px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 700; }
@@ -651,12 +714,23 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .page-header { margin-bottom: 27px; align-items: flex-start; flex-direction: column; }
   .page-header h1 { font-size: 34px; }
   .page-header .primary-button { width: 100%; }
+  .match-view-actions, .callup-report-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .match-view-actions button, .callup-report-actions button, .lineup-export-actions button { width: 100%; }
+  .callup-report-heading { align-items: stretch; flex-direction: column; }
+  .callup-report-table-wrap { max-height: calc(100vh - 330px); }
+  .callup-report-table th, .callup-report-table td { padding: 11px 12px; }
+  .callup-report-table tbody th { min-width: 165px; }
+  .player-season-metrics, .season-availability-detail > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .season-match-history article { grid-template-columns: auto minmax(0,1fr); }
+  .season-match-status { grid-column: 2; text-align: left; }
   .task-view-actions { width: 100%; align-items: stretch; flex-direction: column-reverse; }
   .task-alerts { grid-template-columns: 1fr; }
   .task-view-actions .secondary-button { width: 100%; }
   .selected-week-actions .primary-button { width: 100%; }
   .selected-week-actions .secondary-button { width: 100%; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 32px; }
+  .dashboard-stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+  .dashboard-stats-grid .week-progress-card { grid-column: 1 / -1; }
   .stat-card { min-height: 125px; padding: 17px; }
   .stat-card strong { font-size: 31px; }
   .task-card { grid-template-columns: auto minmax(0,1fr); padding: 15px; gap: 11px; }

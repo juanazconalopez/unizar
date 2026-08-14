@@ -13,6 +13,7 @@ import { errorText } from './lib/errors'
 import { todayIso } from './lib/dates'
 import { activeMembershipFor, membershipCoversDate } from './lib/selectors'
 import { navigationFromLocation, urlForNavigation } from './lib/navigation'
+import { canAccessTasks, canManageSport, canViewTeamData, isPlayer } from './lib/permissions'
 import type { NavigationTarget } from './lib/navigation'
 import {
   createSeason,
@@ -23,7 +24,7 @@ import {
   updateProfilePermissions,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
-import { createMatch, deleteMatch, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
+import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
 import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './services/announcementsService'
 import type {
   AnnouncementValues,
@@ -106,6 +107,16 @@ function App() {
     window.addEventListener('popstate', restoreNavigation)
     return () => window.removeEventListener('popstate', restoreNavigation)
   }, [])
+
+  useEffect(() => {
+    if (!data.profile || canAccessView(data.profile, view)) return
+    const timer = window.setTimeout(() => {
+      const target: NavigationTarget = { view: 'home' }
+      window.history.replaceState(target, '', urlForNavigation(target))
+      setNavigation(target)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [data.profile, view])
 
   function notify(text: string) {
     setMessage(text)
@@ -284,7 +295,8 @@ function App() {
 
   const userId = auth.session.user.id
   const personalResults = data.results.filter((result) => result.player_id === userId)
-  const canManageTasks = data.profile.is_owner || data.profile.is_collaborator
+  const canManage = canManageSport(data.profile)
+  const canViewTeam = canViewTeamData(data.profile)
   const errorMessage = operationError || data.errorMessage || auth.errorMessage
 
   return (
@@ -320,19 +332,22 @@ function App() {
         <Dashboard
           memberships={data.memberships}
           attendance={data.attendance}
+          trainingSessions={data.trainingSessions}
           profile={data.profile}
           results={personalResults}
           tasks={data.tasks}
           announcements={data.announcements}
           matches={data.matches}
           userId={userId}
-          onGoToTasks={() => navigate('tasks')}
+          season={data.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
+          onGoToTasks={canAccessTasks(data.profile) ? () => navigate('tasks') : undefined}
           onSaveResult={handleSaveResult}
           onOpenMatch={(match) => navigate({ view: 'matches', date: match.match_date })}
           onOpenAnnouncement={(announcement) => navigate({ view: 'tasks', date: announcement.announcement_date, announcementId: announcement.id })}
+          onLoadSeasonSummary={isPlayer(data.profile) ? fetchPlayerSeasonSummary : undefined}
         />
       )}
-      {view === 'statistics' && data.profile.is_owner && (
+      {view === 'statistics' && canViewTeam && (
         <StatisticsView
           attendance={data.attendance}
           memberships={data.memberships}
@@ -345,7 +360,7 @@ function App() {
           onLoadMonth={data.loadStatisticsMonth}
         />
       )}
-      {view === 'attendance' && data.profile.is_owner && (
+      {view === 'attendance' && canManage && (
         <AttendanceView
           attendance={data.attendance}
           memberships={data.memberships}
@@ -357,17 +372,16 @@ function App() {
           onSave={handleAttendance}
         />
       )}
-      {view === 'tasks' && (
+      {view === 'tasks' && canAccessTasks(data.profile) && (
         <TasksView
-          canManage={canManageTasks}
-          isOwner={data.profile.is_owner}
+          canManage={canManage}
           memberships={data.memberships}
           profiles={data.profiles}
           results={personalResults}
           seasons={data.seasons}
           tasks={data.tasks}
           announcements={data.announcements}
-          teamResults={canManageTasks ? data.results : undefined}
+          teamResults={canManage ? data.results : undefined}
           userId={userId}
           loadingRange={data.loadingRange}
           onCreate={handleCreateTask}
@@ -386,7 +400,9 @@ function App() {
       {view === 'matches' && (
         <MatchesView
           availability={data.matchAvailability}
-          isOwner={data.profile.is_owner}
+          canManage={canManage}
+          canViewAvailability={canViewTeam}
+          isPlayer={isPlayer(data.profile)}
           lineups={data.matchLineups}
           matches={data.matches}
           memberships={data.memberships}
@@ -399,6 +415,9 @@ function App() {
           onSaveLineup={handleMatchLineup}
           onSaveMatch={handleSaveMatch}
           focusedDate={navigation.date}
+          canViewReport={canViewTeam}
+          onLoadCallupReport={fetchSeasonCallupReport}
+          onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
         />
       )}
       {view === 'competition' && (
@@ -438,7 +457,7 @@ export default App
 function hasWorkingSeason(profile: Profile, seasons: Season[], memberships: SeasonPlayer[], userId: string) {
   const today = todayIso()
   const activeSeasons = seasons.filter((season) => season.start_date <= today && season.end_date >= today)
-  if (profile.is_owner || profile.is_collaborator) return activeSeasons.length > 0
+  if (canViewTeamData(profile)) return activeSeasons.length > 0
   return activeSeasons.some((season) => memberships.some((membership) => (
     membership.season_id === season.id
     && membership.player_id === userId
@@ -446,16 +465,28 @@ function hasWorkingSeason(profile: Profile, seasons: Season[], memberships: Seas
   )))
 }
 
+function canAccessView(profile: Profile, view: ViewName) {
+  if (view === 'settings') return profile.is_owner
+  if (view === 'attendance') return canManageSport(profile)
+  if (view === 'statistics') return canViewTeamData(profile)
+  if (view === 'tasks') return canAccessTasks(profile)
+  return true
+}
+
 function SeasonContextNotice({ profile, view, onOpenSettings }: { profile: Profile; view: ViewName; onOpenSettings: () => void }) {
   const title = profile.is_owner
     ? 'No hay ninguna temporada activa'
-    : profile.is_collaborator
+    : profile.is_coach
       ? 'No hay una temporada activa para planificar'
+      : profile.is_viewer
+        ? 'No hay ninguna temporada activa'
       : 'No tienes una temporada activa asignada'
   const text = profile.is_owner
     ? 'Crea una temporada o revisa sus fechas para volver a trabajar con tareas y partidos.'
-    : profile.is_collaborator
+    : profile.is_coach
       ? 'El owner debe crear una temporada o corregir sus fechas antes de continuar con la planificación.'
+      : profile.is_viewer
+        ? 'El cuerpo técnico debe crear una temporada o corregir sus fechas para poder consultar la información del equipo.'
       : 'Consulta con el cuerpo técnico para que revise la temporada y tu inscripción.'
   return (
     <div className="season-context-notice" role="status">

@@ -78,7 +78,7 @@ describe('TasksView', () => {
     render(
       <TasksView
         canManage
-        isOwner
+
         seasons={[makeSeason()]}
         memberships={[makeMembership()]}
         tasks={[makeTask({ week_start: mondayFor(new Date()) })]}
@@ -98,7 +98,8 @@ describe('TasksView', () => {
     await user.click(screen.getByRole('button', { name: 'Nueva tarea en esta semana' }))
     const form = screen.getByRole('heading', { name: 'Crear tarea' }).closest('form')!
     await user.type(within(form).getByLabelText('Título'), 'Trabajo de fuerza')
-    await user.selectOptions(within(form).getByLabelText('Temporada'), 'season-1')
+    expect(within(form).queryByRole('combobox', { name: 'Temporada' })).not.toBeInTheDocument()
+    expect(within(form).getByRole('group', { name: 'Temporada activa' })).toHaveTextContent('Temporada 2026Activa')
     await user.type(within(form).getByLabelText('Descripción'), 'Tres bloques progresivos')
     await user.selectOptions(within(form).getByLabelText('Estado'), 'draft')
     await user.click(within(form).getByRole('button', { name: 'Crear tarea' }))
@@ -117,7 +118,7 @@ describe('TasksView', () => {
     render(
       <TasksView
         canManage
-        isOwner
+
         seasons={[makeSeason()]}
         memberships={[makeMembership()]}
         tasks={[
@@ -157,7 +158,7 @@ describe('TasksView', () => {
     render(
       <TasksView
         canManage
-        isOwner
+
         seasons={[makeSeason()]}
         memberships={[makeMembership()]}
         tasks={[makeTask({ week_start: currentWeek })]}
@@ -246,7 +247,7 @@ describe('TasksView', () => {
     render(
       <TasksView
         canManage
-        isOwner
+
         seasons={[makeSeason()]}
         memberships={[makeMembership()]}
         tasks={[task]}
@@ -288,7 +289,7 @@ describe('TasksView', () => {
     confirm.mockRestore()
   })
 
-  test('allows collaborators to edit only tasks they created', () => {
+  test('allows coaches to edit tasks created by any sports manager', () => {
     const currentWeek = mondayFor(new Date())
     render(
       <TasksView
@@ -296,11 +297,11 @@ describe('TasksView', () => {
         seasons={[makeSeason()]}
         memberships={[]}
         tasks={[
-          makeTask({ id: 'own', title: 'Tarea propia', created_by: 'collaborator-1', week_start: currentWeek }),
+          makeTask({ id: 'own', title: 'Tarea propia', created_by: 'coach-1', week_start: currentWeek }),
           makeTask({ id: 'other', title: 'Tarea de otra persona', created_by: 'owner-1', week_start: currentWeek }),
         ]}
         results={[]}
-        userId="collaborator-1"
+        userId="coach-1"
         onCreate={vi.fn()}
         onDelete={vi.fn()}
         onUpdate={vi.fn()}
@@ -313,9 +314,8 @@ describe('TasksView', () => {
     const otherTask = screen.getByText('Tarea de otra persona').closest('article')!
     expect(within(ownTask).getByRole('button', { name: 'Editar tarea' })).toBeInTheDocument()
     expect(within(ownTask).getByRole('combobox', { name: 'Estado' })).toBeInTheDocument()
-    expect(within(otherTask).queryByRole('button', { name: 'Editar tarea' })).not.toBeInTheDocument()
-    expect(within(otherTask).queryByRole('combobox', { name: 'Estado' })).not.toBeInTheDocument()
-    expect(within(otherTask).getByText('Publicada')).toBeInTheDocument()
+    expect(within(otherTask).getByRole('button', { name: 'Editar tarea' })).toBeInTheDocument()
+    expect(within(otherTask).getByRole('combobox', { name: 'Estado' })).toBeInTheDocument()
   })
 
   test('copies an existing task into a selectable week as a draft', async () => {
@@ -324,7 +324,7 @@ describe('TasksView', () => {
     const onCreate = vi.fn().mockResolvedValue(undefined)
     render(
       <TasksView
-        canManage isOwner seasons={[makeSeason()]} memberships={[]} tasks={[task]} results={[]} userId="owner-1"
+        canManage seasons={[makeSeason()]} memberships={[]} tasks={[task]} results={[]} userId="owner-1"
         onCreate={onCreate} onDelete={vi.fn()} onUpdate={vi.fn()} onSaveResult={vi.fn()} onStatusChange={vi.fn()}
       />,
     )

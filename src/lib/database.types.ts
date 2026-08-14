@@ -402,8 +402,10 @@ export type Database = {
           is_active: boolean
           is_approved: boolean
           is_archived: boolean
-          is_collaborator: boolean
+          is_coach: boolean
           is_owner: boolean
+          is_player: boolean
+          is_viewer: boolean
           updated_at: string
         }
         Insert: {
@@ -413,8 +415,10 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_archived?: boolean
-          is_collaborator?: boolean
+          is_coach?: boolean
           is_owner?: boolean
+          is_player?: boolean
+          is_viewer?: boolean
           updated_at?: string
         }
         Update: {
@@ -424,8 +428,10 @@ export type Database = {
           is_active?: boolean
           is_approved?: boolean
           is_archived?: boolean
-          is_collaborator?: boolean
+          is_coach?: boolean
           is_owner?: boolean
+          is_player?: boolean
+          is_viewer?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -764,6 +770,14 @@ export type Database = {
       current_user_is_active_player: { Args: never; Returns: boolean }
       current_user_is_approved: { Args: never; Returns: boolean }
       current_user_is_owner: { Args: never; Returns: boolean }
+      get_season_callup_report: {
+        Args: { checked_season_id: string }
+        Returns: Json
+      }
+      get_player_season_summary: {
+        Args: { checked_player_id: string; checked_season_id: string }
+        Returns: Json
+      }
       normalize_display_name: { Args: { value: string }; Returns: string }
       player_can_access_match: {
         Args: { checked_match_id: string; checked_player_id: string }

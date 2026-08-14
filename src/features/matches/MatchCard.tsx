@@ -5,7 +5,9 @@ import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 export type MatchCardProps = {
   availability: MatchAvailability[]
   eligiblePlayerCount: number
-  isOwner: boolean
+  canManage: boolean
+  canViewAvailability: boolean
+  isPlayer: boolean
   lineup: MatchLineup[]
   match: Match
   ownAvailability?: MatchAvailability
@@ -19,7 +21,9 @@ export type MatchCardProps = {
 export function MatchCard({
   availability,
   eligiblePlayerCount,
-  isOwner,
+  canManage,
+  canViewAvailability,
+  isPlayer,
   lineup,
   match,
   ownAvailability,
@@ -54,24 +58,19 @@ export function MatchCard({
 
       {match.notes && <p className="match-notes">{match.notes}</p>}
 
-      {isOwner ? (
+      {canViewAvailability && (
         <>
           <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />
           <div className="match-actions">
-            <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>
+            {canManage && <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>}
             {canViewLineup && <button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button>}
-            {!match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
+            {canManage && !match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
           </div>
         </>
-      ) : (
-        <>
-          <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />
-          {canViewLineup && (
-            <div className="match-actions">
-              <button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button>
-            </div>
-          )}
-        </>
+      )}
+      {isPlayer && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
+      {!canViewAvailability && canViewLineup && (
+        <div className="match-actions"><button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button></div>
       )}
     </article>
   )

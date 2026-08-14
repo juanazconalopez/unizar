@@ -1,7 +1,8 @@
 import type { AttendanceRecord, Profile, Season, SeasonPlayer, TaskResult } from '../types'
 
 export function isActivePlayer(profile: Profile) {
-  return profile.is_approved && profile.is_active && !profile.is_archived && !profile.is_owner
+  return profile.is_approved && profile.is_active && !profile.is_archived
+    && profile.is_player
 }
 
 export function activePlayers(profiles: Profile[]) {
@@ -10,6 +11,10 @@ export function activePlayers(profiles: Profile[]) {
 
 export function membershipCoversDate(membership: SeasonPlayer, date: string) {
   return membership.active_from <= date && (!membership.active_until || membership.active_until >= date)
+}
+
+export function seasonForDate(seasons: Season[], date: string) {
+  return seasons.find((season) => season.start_date <= date && season.end_date >= date)
 }
 
 export function membershipOverlapsSeasonRange(

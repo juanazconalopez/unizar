@@ -24,8 +24,9 @@ describe('TeamView', () => {
     render(<TeamView profiles={[makeProfile(), member, archived]} currentUserId="player-1" onUpdate={onUpdate} />)
 
     const memberRow = screen.getByText('María López').closest('article')!
-    await user.click(within(memberRow).getByRole('checkbox', { name: 'Colaborador' }))
-    expect(onUpdate).toHaveBeenCalledWith({ ...member, is_collaborator: true })
+    await user.click(within(memberRow).getByRole('checkbox', { name: 'Entrenador' }))
+    expect(onUpdate).toHaveBeenCalledWith({ ...member, is_coach: true })
+    expect(within(memberRow).getByRole('checkbox', { name: 'Jugadora' })).toBeChecked()
 
     await user.click(screen.getByRole('button', { name: 'Ver usuarios desautorizados (1)' }))
     await user.click(screen.getByRole('button', { name: 'Restaurar acceso' }))

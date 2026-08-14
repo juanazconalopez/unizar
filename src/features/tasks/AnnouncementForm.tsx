@@ -1,7 +1,10 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { SeasonContextField } from '../../components/SeasonContextField'
 import { Modal } from '../../components/ui/Modal'
+import { todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
+import { seasonForDate } from '../../lib/selectors'
 import type { AnnouncementValues, Season, TaskStatus, TeamAnnouncement } from '../../types'
 
 export function AnnouncementForm({ announcement, initialDate, seasons, onCancel, onDelete, onSubmit }: {
@@ -16,6 +19,9 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
   const [busy, setBusy] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
+  const selectedSeason = announcement
+    ? seasons.find((season) => season.id === announcement.season_id)
+    : seasonForDate(seasons, todayIso())
 
   function close() {
     if (dirty && !window.confirm('Hay cambios sin guardar. ¿Quieres cerrar el formulario?')) return
@@ -56,7 +62,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
       </div>
       <div className="form-grid">
         <label>Título<input autoFocus defaultValue={announcement?.title} name="title" placeholder="Ej. Cambio de horario" required /></label>
-        <label>Temporada<select defaultValue={announcement?.season_id ?? ''} name="seasonId" required><option disabled value="">Seleccionar…</option>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
+        <SeasonContextField creation={!announcement} season={selectedSeason} />
         <label>Fecha<input defaultValue={announcement?.announcement_date ?? initialDate} name="date" required type="date" /></label>
         <label>Estado<select defaultValue={announcement?.status ?? 'published'} name="status"><option value="published">Publicado</option><option value="draft">Borrador</option>{announcement && <option value="cancelled">Anulado</option>}</select></label>
         <label className="full-field task-form-description">Descripción<textarea defaultValue={announcement?.description ?? ''} name="description" placeholder="Información que debe conocer el equipo…" rows={7} /></label>
@@ -65,7 +71,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
       <div className="form-actions">
         {announcement && onDelete && <button className="danger-button task-form-delete" disabled={busy} onClick={() => void remove()} type="button">Eliminar aviso</button>}
         <button className="secondary-button" disabled={busy} onClick={close} type="button">Cancelar</button>
-        <button className="primary-button" disabled={busy || !seasons.length}>{busy ? 'Guardando…' : announcement ? 'Guardar cambios' : 'Crear aviso'}</button>
+        <button className="primary-button" disabled={busy || !selectedSeason}>{busy ? 'Guardando…' : announcement ? 'Guardar cambios' : 'Crear aviso'}</button>
       </div>
     </Modal>
   )

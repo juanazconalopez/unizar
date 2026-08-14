@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatDate, mondayFor, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
+import { isPlayer } from '../../lib/permissions'
 import type {
   AttendanceRecord,
   Profile,
@@ -30,7 +31,7 @@ export function StatisticsView({ profiles, seasons, sessions, attendance, member
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
-  const historicalPlayers = useMemo(() => profiles.filter((profile) => !profile.is_owner), [profiles])
+  const historicalPlayers = useMemo(() => profiles.filter(isPlayer), [profiles])
   const playerIds = useMemo(() => new Set(historicalPlayers.map((profile) => profile.id)), [historicalPlayers])
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const playerAttendance = attendance.filter((record) => playerIds.has(record.player_id))

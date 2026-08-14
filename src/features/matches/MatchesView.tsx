@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { mondayFor, todayIso } from '../../lib/dates'
-import { activePlayers, membershipCoversDate } from '../../lib/selectors'
+import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import type {
   AvailabilityStatus,
   Match,
   MatchAvailability,
   MatchLineup,
   MatchValues,
+  PlayerSeasonSummary,
   Profile,
   Season,
   SeasonPlayer,
+  SeasonCallupReport,
 } from '../../types'
 import { MatchAvailabilityDialog } from './MatchAvailabilityDialog'
 import { MatchCalendarView } from './MatchCalendarView'
@@ -19,10 +21,13 @@ import { MatchCard } from './MatchCard'
 import { MatchForm } from './MatchForm'
 import { MatchLineupDialog } from './MatchLineupDialog'
 import { MatchListView } from './MatchListView'
+import { SeasonCallupReportView } from './SeasonCallupReportView'
 
 type MatchesViewProps = {
   availability: MatchAvailability[]
-  isOwner: boolean
+  canManage: boolean
+  canViewAvailability: boolean
+  isPlayer: boolean
   lineups: MatchLineup[]
   matches: Match[]
   memberships: SeasonPlayer[]
@@ -30,6 +35,7 @@ type MatchesViewProps = {
   seasons: Season[]
   userId: string
   focusedDate?: string
+  canViewReport?: boolean
   onDelete: (match: Match) => Promise<void>
   onLoadMonth?: (month: string) => Promise<void>
   onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
@@ -39,11 +45,15 @@ type MatchesViewProps = {
     published: boolean,
   ) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
+  onLoadCallupReport?: (seasonId: string) => Promise<SeasonCallupReport>
+  onLoadPlayerSeasonSummary?: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
 }
 
 export function MatchesView({
   availability,
-  isOwner,
+  canManage,
+  canViewAvailability,
+  isPlayer,
   lineups,
   matches,
   memberships,
@@ -51,11 +61,14 @@ export function MatchesView({
   seasons,
   userId,
   focusedDate,
+  canViewReport = false,
   onDelete,
   onLoadMonth,
   onSaveAvailability,
   onSaveLineup,
   onSaveMatch,
+  onLoadCallupReport,
+  onLoadPlayerSeasonSummary,
 }: MatchesViewProps) {
   const today = todayIso()
   const currentWeek = mondayFor(today)
@@ -65,14 +78,16 @@ export function MatchesView({
   const [formMatch, setFormMatch] = useState<Match | null | undefined>(undefined)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
+  const [reportOpen, setReportOpen] = useState(false)
   const currentWeekRef = useRef<HTMLElement>(null)
-  const visibleMatches = isOwner ? matches : matches.filter((match) => match.status !== 'draft')
+  const visibleMatches = canManage ? matches : matches.filter((match) => match.status !== 'draft')
   const selectedWeek = mondayFor(selectedDate)
   const selectedMatches = orderedMatches(
     visibleMatches.filter((match) => mondayFor(match.match_date) === selectedWeek),
   )
   const futureMatches = visibleMatches.filter((match) => match.match_date >= currentWeek)
   const weeks = groupMatchesByWeek(futureMatches, currentWeek)
+  const activeSeason = seasonForDate(seasons, today)
 
   useEffect(() => {
     if (!focusedDate || !onLoadMonth) return
@@ -116,7 +131,9 @@ export function MatchesView({
       <MatchCard
         availability={availability.filter((item) => item.match_id === match.id)}
         eligiblePlayerCount={eligibleProfiles.length}
-        isOwner={isOwner}
+        canManage={canManage}
+        canViewAvailability={canViewAvailability}
+        isPlayer={isPlayer}
         key={match.id}
         lineup={lineups.filter((entry) => entry.match_id === match.id)}
         match={match}
@@ -139,24 +156,21 @@ export function MatchesView({
     <div className="page">
       <PageHeader
         action={(
-          <button
-            className="secondary-button"
-            onClick={() => setManagementView((view) => view === 'calendar' ? 'list' : 'calendar')}
-          >
-            <Icon name={managementView === 'calendar' ? 'tasks' : 'calendar'} size={18} />
-            {managementView === 'calendar' ? 'Vista de lista' : 'Vista calendario'}
-          </button>
+          <div className="match-view-actions">
+            {canViewReport && onLoadCallupReport && <button className={reportOpen ? 'primary-button' : 'secondary-button'} onClick={() => setReportOpen((open) => !open)} type="button"><Icon name="statistics" size={18} />{reportOpen ? 'Volver a partidos' : 'Resumen de convocatorias'}</button>}
+            {!reportOpen && <button className="secondary-button" onClick={() => setManagementView((view) => view === 'calendar' ? 'list' : 'calendar')}><Icon name={managementView === 'calendar' ? 'tasks' : 'calendar'} size={18} />{managementView === 'calendar' ? 'Vista de lista' : 'Vista calendario'}</button>}
+          </div>
         )}
         eyebrow="COMPETICIÓN"
-        subtitle={isOwner
+        subtitle={canManage
           ? 'Planifica partidos, disponibilidad y alineaciones.'
-          : 'Indica tu disponibilidad y consulta la convocatoria.'}
+          : isPlayer ? 'Indica tu disponibilidad y consulta la convocatoria.' : 'Consulta partidos, disponibilidad y convocatorias publicadas.'}
         title="Partidos"
       />
 
-      {managementView === 'calendar' ? (
+      {reportOpen && onLoadCallupReport ? <SeasonCallupReportView key={activeSeason?.id ?? 'no-active-season'} onLoad={onLoadCallupReport} onLoadPlayer={onLoadPlayerSeasonSummary} season={activeSeason} /> : managementView === 'calendar' ? (
         <MatchCalendarView
-          isOwner={isOwner}
+          canManage={canManage}
           matches={visibleMatches}
           month={month}
           renderMatch={renderMatch}
@@ -172,14 +186,14 @@ export function MatchesView({
         <MatchListView
           currentWeek={currentWeek}
           currentWeekRef={currentWeekRef}
-          isOwner={isOwner}
+          canManage={canManage}
           renderMatch={renderMatch}
           weeks={weeks}
           onCreate={() => setFormMatch(null)}
         />
       )}
 
-      {formMatch !== undefined && (
+      {!reportOpen && formMatch !== undefined && (
         <MatchForm
           initialDate={managementView === 'calendar' ? selectedDate : today}
           match={formMatch ?? undefined}

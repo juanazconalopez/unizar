@@ -9,7 +9,7 @@ const seasons = [makeSeason()]
 describe('StatisticsView', () => {
   test('summarizes the current month and shows per-player detail', () => {
     const today = todayIso()
-    const owner = makeProfile({ id: 'owner-1', display_name: 'Owner Excluida', is_owner: true, is_collaborator: true })
+    const owner = makeProfile({ id: 'owner-1', display_name: 'Owner Excluida', is_owner: true, is_coach: true, is_player: false })
     const profiles = [makeProfile(), makeProfile({ id: 'player-2', display_name: 'María López' }), owner]
     render(
       <StatisticsView

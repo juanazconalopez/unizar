@@ -1,11 +1,32 @@
 begin;
-select plan(29);
+select plan(37);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
   'task managers have a read policy for results'
 );
 select ok(to_regclass('public.competition_seasons') is not null, 'competition seasons are persisted');
+
+select has_function('public', 'get_season_callup_report', array['uuid'], 'season callup report is available');
+select has_function('public', 'get_player_season_summary', array['uuid', 'uuid'], 'personal season summary is available');
+select has_function('public', 'current_user_can_manage_sport', array[]::text[], 'sports management permission is available');
+select has_function('public', 'current_user_can_view_team_data', array[]::text[], 'read-only team permission is available');
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_coach'),
+  'profiles identify coaches'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_viewer'),
+  'profiles identify Dirección viewers'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_player'),
+  'profiles identify players independently from staff roles'
+);
+select ok(
+  not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_collaborator'),
+  'legacy collaborator permission was renamed'
+);
 select ok(to_regclass('public.competition_fixtures') is not null, 'competition fixtures are persisted');
 select ok(to_regclass('public.competition_standings') is not null, 'competition standings are persisted');
 select ok(to_regclass('public.competition_player_stats') is not null, 'competition player statistics are persisted');

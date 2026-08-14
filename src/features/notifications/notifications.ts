@@ -1,5 +1,6 @@
 import { addDays, mondayFor } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
+import { canAccessTasks, isPlayer } from '../../lib/permissions'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
@@ -26,18 +27,19 @@ export type NotificationFeedData = {
 export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string): AppNotification[] {
   const currentWeek = mondayFor(today)
   const recentFrom = addDays(today, -7)
-  const isPlayer = !profile.is_owner
+  const playerRole = isPlayer(profile)
   const eligibleTasks = data.tasks.filter((task) => (
     task.status === 'published'
     && task.week_start >= currentWeek
-    && (!isPlayer || canUserCompleteTask(task, data.memberships, profile.id))
+    && canAccessTasks(profile)
+    && (!playerRole || canUserCompleteTask(task, data.memberships, profile.id))
   ))
   const completedTaskIds = new Set(data.results
     .filter((result) => result.player_id === profile.id)
     .map((result) => result.task_id))
   const items: AppNotification[] = []
 
-  for (const announcement of (data.announcements ?? []).filter((item) => item.status === 'published')) {
+  for (const announcement of (data.announcements ?? []).filter((item) => canAccessTasks(profile) && item.status === 'published')) {
     if (announcement.updated_at.slice(0, 10) < recentFrom) continue
     items.push({
       id: `announcement-published:${announcement.id}:${announcement.updated_at}`,
@@ -64,7 +66,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
         targetDate: task.week_start,
       })
     }
-    if (isPlayer && task.week_start === currentWeek && today >= addDays(currentWeek, 4) && !completedTaskIds.has(task.id)) {
+    if (playerRole && task.week_start === currentWeek && today >= addDays(currentWeek, 4) && !completedTaskIds.has(task.id)) {
       items.push({
         id: `task-due:${task.id}:${currentWeek}`,
         kind: 'task',
@@ -98,7 +100,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
 
   for (const match of futureMatches) {
     const ownAvailability = data.availability.some((item) => item.match_id === match.id && item.player_id === profile.id)
-    if (isPlayer && !ownAvailability) {
+    if (playerRole && !ownAvailability) {
       items.push({
         id: `availability-missing:${match.id}:${match.updated_at}`,
         kind: 'availability',

@@ -4,6 +4,7 @@ import { FatigueIcon } from '../../components/ui/FatigueIcon'
 import { Modal } from '../../components/ui/Modal'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { formatDate } from '../../lib/dates'
+import { isPlayer } from '../../lib/permissions'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
 
 export function TaskResultsSummary({ task, results, profiles }: {
@@ -14,7 +15,10 @@ export function TaskResultsSummary({ task, results, profiles }: {
   const [open, setOpen] = useState(false)
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
   const playerResults = results
-    .filter((result) => result.task_id === task.id && !profileById.get(result.player_id)?.is_owner)
+    .filter((result) => {
+      const profile = profileById.get(result.player_id)
+      return result.task_id === task.id && (!profile || isPlayer(profile))
+    })
     .sort((first, second) => second.performed_on.localeCompare(first.performed_on))
   const average = playerResults.length
     ? playerResults.reduce((total, result) => total + result.fatigue_level, 0) / playerResults.length
@@ -50,7 +54,10 @@ export function TaskResultsDialog({ task, results, profiles, onClose }: {
   const titleId = useId()
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
   const playerResults = results
-    .filter((result) => result.task_id === task.id && !profileById.get(result.player_id)?.is_owner)
+    .filter((result) => {
+      const profile = profileById.get(result.player_id)
+      return result.task_id === task.id && (!profile || isPlayer(profile))
+    })
     .sort((first, second) => second.performed_on.localeCompare(first.performed_on))
   const average = playerResults.reduce((total, result) => total + result.fatigue_level, 0) / playerResults.length
   return <Modal className="task-results-dialog" labelledBy={titleId} onClose={onClose}>

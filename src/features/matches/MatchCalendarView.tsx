@@ -6,7 +6,7 @@ import type { Match } from '../../types'
 import { MatchPlanningCalendar } from './MatchPlanningCalendar'
 
 export function MatchCalendarView({
-  isOwner,
+  canManage,
   matches,
   month,
   selectedDate,
@@ -18,7 +18,7 @@ export function MatchCalendarView({
   onSelectDate,
   renderMatch,
 }: {
-  isOwner: boolean
+  canManage: boolean
   matches: Match[]
   month: string
   selectedDate: string
@@ -56,7 +56,7 @@ export function MatchCalendarView({
           {selectedMatches.map(renderMatch)}
           {!selectedMatches.length && <EmptyState title="Semana sin partidos" text="No hay ningún partido programado esta semana." />}
         </div>
-        {isOwner && (
+        {canManage && (
           <div className="selected-week-actions">
             <button className="primary-button" onClick={onCreate}>
               <Icon name="plus" size={18} />Nuevo partido

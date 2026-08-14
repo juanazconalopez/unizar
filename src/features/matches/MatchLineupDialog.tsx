@@ -1,8 +1,11 @@
 import { useId, useState } from 'react'
 import type { DragEvent } from 'react'
+import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
+import { copyText, downloadText } from '../../lib/fileExport'
+import { lineupPlainText, lineupXml } from '../../lib/matchExports'
 import { activePlayers, membershipCoversDate } from '../../lib/selectors'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer } from '../../types'
 
@@ -32,6 +35,7 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [confirmMissing, setConfirmMissing] = useState(false)
+  const [copied, setCopied] = useState(false)
   const selectedIds = new Set(Object.values(slots))
   const selectable = eligible.filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id))
 
@@ -61,6 +65,16 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
     try { await onSave(lineup, published) } catch (caught) { setError(errorText(caught)); setSaving(false) }
   }
 
+  async function copyLineup() {
+    try {
+      await copyText(lineupPlainText(match, entries, profiles))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2500)
+    } catch (caught) {
+      setError(errorText(caught))
+    }
+  }
+
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>Partido contra {match.opponent}</h2><p>{matchTypeLabel(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
     {editable ? <div className="lineup-board">
@@ -73,7 +87,7 @@ export function MatchLineupDialog({ availability, entries, match, memberships, p
           <b>{slot}</b>{player ? <><Avatar name={player.display_name} /><strong>{player.display_name}</strong><select aria-label={`Dorsal de ${player.display_name}`} onChange={(event) => assign(player.id, Number(event.target.value))} value={slot}>{Array.from({ length: limit }, (_, option) => <option key={option + 1} value={option + 1}>{option + 1}</option>)}</select><button aria-label={`Quitar a ${player.display_name}`} className="icon-button" onClick={() => setSlots((current) => { const next = { ...current }; delete next[slot]; return next })} type="button">×</button></> : <span>Suelta aquí</span>}
         </div>
       })}</section>
-    </div> : <PublishedLineup entries={entries} profiles={profiles} starters={starters} />}
+    </div> : <><PublishedLineup entries={entries} profiles={profiles} starters={starters} /><div className="lineup-export-actions"><button className="secondary-button" onClick={() => void copyLineup()} type="button"><Icon name="copy" size={17} />{copied ? 'Convocatoria copiada' : 'Copiar convocatoria'}</button><button className="primary-button" onClick={() => downloadText(`convocatoria-${match.match_date}-${match.opponent}.xml`, lineupXml(match, entries, profiles), 'application/xml')} type="button"><Icon name="download" size={17} />Descargar XML</button></div>{error && <p className="form-error">{error}</p>}</>}
     {editable && <><label className="publish-lineup"><input checked={published} disabled={match.lineup_published} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{match.lineup_published ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
     {confirmMissing && <MissingStartersDialog missing={Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])} onCancel={() => setConfirmMissing(false)} onConfirm={() => { setConfirmMissing(false); void save(true) }} />}
   </Modal>

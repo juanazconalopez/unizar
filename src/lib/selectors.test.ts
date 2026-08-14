@@ -1,10 +1,17 @@
 import { describe, expect, test } from 'vitest'
-import { activeMembershipFor, activePlayers, membershipCoversDate, membershipOverlapsSeasonRange, resultsByTask } from './selectors'
+import { activeMembershipFor, activePlayers, membershipCoversDate, membershipOverlapsSeasonRange, resultsByTask, seasonForDate } from './selectors'
 import { makeMembership, makeProfile, makeResult, makeSeason } from '../test/fixtures'
 
 describe('domain selectors', () => {
-  test('excludes owners and keeps separate membership periods', () => {
-    expect(activePlayers([makeProfile(), makeProfile({ id: 'owner', is_owner: true })])).toHaveLength(1)
+  test('uses the player permission independently from staff roles', () => {
+    expect(activePlayers([
+      makeProfile(),
+      makeProfile({ id: 'owner', is_owner: true, is_player: false }),
+      makeProfile({ id: 'coach-only', is_coach: true, is_player: false }),
+      makeProfile({ id: 'viewer-only', is_viewer: true, is_player: false }),
+      makeProfile({ id: 'player-coach', is_coach: true }),
+      makeProfile({ id: 'player-viewer', is_viewer: true }),
+    ])).toHaveLength(3)
     const oldPeriod = makeMembership({ id: 'old', active_until: '2026-03-01' })
     const currentPeriod = makeMembership({ id: 'current', active_from: '2026-06-01' })
     expect(activeMembershipFor([oldPeriod, currentPeriod], 'season-1', 'player-1')).toEqual(currentPeriod)
@@ -24,5 +31,13 @@ describe('domain selectors', () => {
     expect(membershipOverlapsSeasonRange(membership, season, '2026-06-01', '2026-06-30')).toBe(true)
     expect(membershipOverlapsSeasonRange(membership, season, '2026-07-01', '2026-07-31')).toBe(false)
     expect(membershipOverlapsSeasonRange(membership, undefined, '2026-06-01', '2026-06-30')).toBe(false)
+  })
+
+  test('finds the only season that contains a date', () => {
+    const previous = makeSeason({ id: 'previous', start_date: '2025-07-01', end_date: '2026-06-30' })
+    const active = makeSeason({ id: 'active', start_date: '2026-07-01', end_date: '2027-06-30' })
+
+    expect(seasonForDate([previous, active], '2026-08-14')).toEqual(active)
+    expect(seasonForDate([previous, active], '2027-07-01')).toBeUndefined()
   })
 })

@@ -15,7 +15,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: { from: mocks.from, rpc: mocks.rpc },
 }))
 
-import { createMatch, deleteMatch, saveMatchAvailability, saveMatchLineup, updateMatch } from './matchesService'
+import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, updateMatch } from './matchesService'
 
 const values: MatchValues = {
   seasonId: 'season-1',
@@ -78,5 +78,23 @@ describe('matchesService', () => {
     await deleteMatch('match-1')
     expect(mocks.delete).toHaveBeenCalledOnce()
     expect(mocks.eq).toHaveBeenCalledWith('id', 'match-1')
+  })
+
+  test('loads the accumulated report through its protected database function', async () => {
+    const report = { seasonId: 'season-1', seasonName: '2026', generatedOn: '2026-08-14', totals: { officialMatches: 1, friendlyMatches: 0, trainingSessions: 2 }, players: [] }
+    mocks.rpc.mockResolvedValueOnce({ data: report, error: null })
+
+    await expect(fetchSeasonCallupReport('season-1')).resolves.toEqual(report)
+    expect(mocks.rpc).toHaveBeenCalledWith('get_season_callup_report', { checked_season_id: 'season-1' })
+  })
+
+  test('loads one player season summary through its protected database function', async () => {
+    const summary = { seasonId: 'season-1', playerId: 'player-1', matches: [] }
+    mocks.rpc.mockResolvedValueOnce({ data: summary, error: null })
+
+    await expect(fetchPlayerSeasonSummary('season-1', 'player-1')).resolves.toEqual(summary)
+    expect(mocks.rpc).toHaveBeenCalledWith('get_player_season_summary', {
+      checked_season_id: 'season-1', checked_player_id: 'player-1',
+    })
   })
 })

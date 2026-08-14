@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { AvailabilityStatus, Match, MatchLineup, MatchValues } from '../types'
+import type { AvailabilityStatus, Match, MatchLineup, MatchValues, PlayerSeasonSummary, SeasonCallupReport } from '../types'
 
 function matchPayload(values: MatchValues) {
   return {
@@ -45,4 +45,21 @@ export async function saveMatchLineup(match: Match, entries: Omit<MatchLineup, '
     publish_lineup: published,
   })
   if (error) throw error
+}
+
+export async function fetchSeasonCallupReport(seasonId: string): Promise<SeasonCallupReport> {
+  const { data, error } = await supabase.rpc('get_season_callup_report', { checked_season_id: seasonId })
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen de convocatorias no tiene un formato válido.')
+  return data as unknown as SeasonCallupReport
+}
+
+export async function fetchPlayerSeasonSummary(seasonId: string, playerId: string): Promise<PlayerSeasonSummary> {
+  const { data, error } = await supabase.rpc('get_player_season_summary', {
+    checked_season_id: seasonId,
+    checked_player_id: playerId,
+  })
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen personal no tiene un formato válido.')
+  return data as unknown as PlayerSeasonSummary
 }

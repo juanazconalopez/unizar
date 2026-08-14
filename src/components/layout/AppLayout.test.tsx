@@ -38,7 +38,7 @@ describe('AppLayout', () => {
   })
 
   test('shows every management area to owners', () => {
-    const { navigation } = renderLayout(makeProfile({ is_owner: true, is_collaborator: true }))
+    const { navigation } = renderLayout(makeProfile({ is_owner: true }))
 
     for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Competición', 'Asistencia', 'Ajustes']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
@@ -47,13 +47,33 @@ describe('AppLayout', () => {
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
   })
 
-  test('keeps player sections available when a player is also a collaborator', () => {
-    const { navigation } = renderLayout(makeProfile({ is_collaborator: true }))
+  test('gives coaches every sports area but not settings', () => {
+    const { navigation } = renderLayout(makeProfile({ is_coach: true }))
     expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
-    expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Resumen' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Asistencia' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument()
+  })
+
+  test('limits Dirección to read-only team areas', () => {
+    const { navigation } = renderLayout(makeProfile({ is_viewer: true, is_player: false }))
+    for (const label of ['Inicio', 'Resumen', 'Partidos', 'Competición']) {
+      expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
+    }
+    for (const label of ['Tareas', 'Asistencia', 'Ajustes']) {
+      expect(within(navigation).queryByRole('button', { name: label })).not.toBeInTheDocument()
+    }
+  })
+
+  test('keeps player navigation when Dirección is an additional role', () => {
+    const { navigation } = renderLayout(makeProfile({ is_viewer: true }))
+
+    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Competición']) {
+      expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
+    }
+    expect(within(navigation).queryByRole('button', { name: 'Asistencia' })).not.toBeInTheDocument()
   })
 
   test('offers the native PWA installation when the browser supports it', async () => {

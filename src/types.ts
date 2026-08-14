@@ -37,6 +37,66 @@ export type Match = Tables<'matches'> & {
 export type MatchAvailability = Tables<'match_availability'>
 export type MatchLineup = Tables<'match_lineup'>
 
+export type SeasonCallupReportPlayer = {
+  playerId: string
+  name: string
+  officialCallups: number
+  friendlyCallups: number
+  starterCallups: number
+  substituteCallups: number
+  eligibleMatches: number
+  availabilityResponded: number
+  availabilityPercentage: number | null
+  attendedSessions: number
+  eligibleSessions: number
+  attendancePercentage: number | null
+}
+
+export type PlayerSeasonMatch = {
+  matchId: string
+  date: string
+  opponent: string
+  kind: MatchKind
+  format: RugbyFormat
+  isHome: boolean
+  availabilityStatus: AvailabilityStatus | null
+  calledUp: boolean
+  lineupRole: LineupRole | null
+  slotNumber: number | null
+}
+
+export type PlayerSeasonSummary = {
+  seasonId: string
+  seasonName: string
+  playerId: string
+  playerName: string
+  generatedOn: string
+  callups: { official: number; friendly: number; starter: number; substitute: number }
+  availability: {
+    eligibleMatches: number
+    responded: number
+    available: number
+    doubt: number
+    unavailable: number
+    unanswered: number
+    percentage: number | null
+  }
+  attendance: { attended: number; eligibleSessions: number; percentage: number | null }
+  matches: PlayerSeasonMatch[]
+}
+
+export type SeasonCallupReport = {
+  seasonId: string
+  seasonName: string
+  generatedOn: string
+  totals: {
+    officialMatches: number
+    friendlyMatches: number
+    trainingSessions: number
+  }
+  players: SeasonCallupReportPlayer[]
+}
+
 export type CompetitionSeason = {
   id: string
   name: string
