@@ -38,12 +38,27 @@ export async function saveMatchAvailability(matchId: string, playerId: string, s
   if (error) throw error
 }
 
+export async function setPlayerMatchAvailability(matchId: string, playerId: string, status: AvailabilityStatus, comment: string) {
+  const { error } = await supabase.rpc('set_player_match_availability', {
+    checked_match_id: matchId,
+    checked_player_id: playerId,
+    checked_status: status,
+    checked_comment: comment.trim(),
+  })
+  if (error) throw error
+}
+
 export async function saveMatchLineup(match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) {
   const { error } = await supabase.rpc('save_match_lineup', {
     checked_match_id: match.id,
     lineup_entries: entries,
     publish_lineup: published,
   })
+  if (error) throw error
+}
+
+export async function unlockMatchLineup(matchId: string) {
+  const { error } = await supabase.rpc('unlock_match_lineup', { checked_match_id: matchId })
   if (error) throw error
 }
 

@@ -15,7 +15,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: { from: mocks.from, rpc: mocks.rpc },
 }))
 
-import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, updateMatch } from './matchesService'
+import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './matchesService'
 
 const values: MatchValues = {
   seasonId: 'season-1',
@@ -71,6 +71,14 @@ describe('matchesService', () => {
     await saveMatchLineup(match, entries, true)
     expect(mocks.rpc).toHaveBeenCalledWith('save_match_lineup', {
       checked_match_id: 'match-1', lineup_entries: entries, publish_lineup: true,
+    })
+
+    await unlockMatchLineup('match-1')
+    expect(mocks.rpc).toHaveBeenCalledWith('unlock_match_lineup', { checked_match_id: 'match-1' })
+
+    await setPlayerMatchAvailability('match-1', 'player-1', 'unavailable', '  Baja comunicada  ')
+    expect(mocks.rpc).toHaveBeenCalledWith('set_player_match_availability', {
+      checked_match_id: 'match-1', checked_player_id: 'player-1', checked_status: 'unavailable', checked_comment: 'Baja comunicada',
     })
   })
 

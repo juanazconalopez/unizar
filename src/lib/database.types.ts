@@ -280,6 +280,58 @@ export type Database = {
           },
         ]
       }
+      match_availability_coach_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          comment: string | null
+          id: string
+          match_id: string
+          player_id: string
+          status: Database["public"]["Enums"]["availability_status"]
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          comment?: string | null
+          id?: string
+          match_id: string
+          player_id: string
+          status: Database["public"]["Enums"]["availability_status"]
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          comment?: string | null
+          id?: string
+          match_id?: string
+          player_id?: string
+          status?: Database["public"]["Enums"]["availability_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_availability_coach_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_availability_coach_changes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_availability_coach_changes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_lineup: {
         Row: {
           match_id: string
@@ -817,12 +869,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      set_player_match_availability: {
+        Args: {
+          checked_comment: string
+          checked_match_id: string
+          checked_player_id: string
+          checked_status: Database["public"]["Enums"]["availability_status"]
+        }
+        Returns: undefined
+      }
       save_training_attendance: {
         Args: {
           attendance_date: string
           attended_player_ids: string[]
           checked_player_ids: string[]
         }
+        Returns: undefined
+      }
+      unlock_match_lineup: {
+        Args: { checked_match_id: string }
         Returns: undefined
       }
       update_own_display_name: {

@@ -25,7 +25,7 @@ import {
   updateOwnDisplayName,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
-import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
+import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './services/matchesService'
 import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './services/announcementsService'
 import type {
   AnnouncementValues,
@@ -221,9 +221,23 @@ function App() {
     await saveMatchAvailability(match.id, userId, status, comment); notify('Disponibilidad guardada.'); await reloadData()
   }
 
+  async function handlePlayerMatchAvailability(match: Match, playerId: string, status: AvailabilityStatus, comment: string) {
+    requireConnection()
+    await setPlayerMatchAvailability(match.id, playerId, status, comment)
+    notify('Disponibilidad de la jugadora actualizada.')
+    await reloadData()
+  }
+
   async function handleMatchLineup(match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) {
     requireConnection()
     await saveMatchLineup(match, entries, published); notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.'); await reloadData()
+  }
+
+  async function handleUnlockMatchLineup(match: Match) {
+    requireConnection()
+    await unlockMatchLineup(match.id)
+    notify('Convocatoria desbloqueada. Recuerda volver a publicarla cuando termines.')
+    await reloadData()
   }
 
   async function handleCreateSeason(values: SeasonValues) {
@@ -409,7 +423,9 @@ function App() {
       {view === 'matches' && (
         <MatchesView
           availability={data.matchAvailability}
+          canEditPlayerAvailability={data.profile.is_coach}
           canManage={canManage}
+          canUnlockLineup={data.profile.is_coach}
           canViewAvailability={canViewTeam}
           isPlayer={isPlayer(data.profile)}
           lineups={data.matchLineups}
@@ -421,7 +437,9 @@ function App() {
           onDelete={handleDeleteMatch}
           onLoadMonth={data.loadMatchMonth}
           onSaveAvailability={handleMatchAvailability}
+          onSavePlayerAvailability={handlePlayerMatchAvailability}
           onSaveLineup={handleMatchLineup}
+          onUnlockLineup={handleUnlockMatchLineup}
           onSaveMatch={handleSaveMatch}
           focusedDate={navigation.date}
           canViewReport={canViewTeam}

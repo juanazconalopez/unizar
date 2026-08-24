@@ -25,7 +25,9 @@ import { SeasonCallupReportView } from './SeasonCallupReportView'
 
 type MatchesViewProps = {
   availability: MatchAvailability[]
+  canEditPlayerAvailability?: boolean
   canManage: boolean
+  canUnlockLineup?: boolean
   canViewAvailability: boolean
   isPlayer: boolean
   lineups: MatchLineup[]
@@ -39,19 +41,23 @@ type MatchesViewProps = {
   onDelete: (match: Match) => Promise<void>
   onLoadMonth?: (month: string) => Promise<void>
   onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
+  onSavePlayerAvailability?: (match: Match, playerId: string, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveLineup: (
     match: Match,
     entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[],
     published: boolean,
   ) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
+  onUnlockLineup?: (match: Match) => Promise<void>
   onLoadCallupReport?: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary?: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
 }
 
 export function MatchesView({
   availability,
+  canEditPlayerAvailability = false,
   canManage,
+  canUnlockLineup = false,
   canViewAvailability,
   isPlayer,
   lineups,
@@ -65,8 +71,10 @@ export function MatchesView({
   onDelete,
   onLoadMonth,
   onSaveAvailability,
+  onSavePlayerAvailability,
   onSaveLineup,
   onSaveMatch,
+  onUnlockLineup,
   onLoadCallupReport,
   onLoadPlayerSeasonSummary,
 }: MatchesViewProps) {
@@ -147,7 +155,7 @@ export function MatchesView({
           await refreshMatchMonth(match.match_date)
         }}
         onViewAvailability={() => setAvailabilityMatch(match)}
-        onViewLineup={() => setLineupMatch({ match, editable: false })}
+        onViewLineup={() => setLineupMatch({ match, editable: canManage })}
       />
     )
   }
@@ -222,6 +230,10 @@ export function MatchesView({
           memberships={memberships}
           profiles={profiles}
           onClose={() => setLineupMatch(null)}
+          onUnlock={lineupMatch.editable && canUnlockLineup && onUnlockLineup ? async () => {
+            await onUnlockLineup(lineupMatch.match)
+            await refreshMatchMonth(lineupMatch.match.match_date)
+          } : undefined}
           onSave={lineupMatch.editable ? async (entries, published) => {
             await onSaveLineup(lineupMatch.match, entries, published)
             await refreshMatchMonth(lineupMatch.match.match_date)
@@ -233,6 +245,7 @@ export function MatchesView({
       {availabilityMatch && (
         <MatchAvailabilityDialog
           availability={availability.filter((item) => item.match_id === availabilityMatch.id)}
+          canEdit={canEditPlayerAvailability}
           eligibleProfiles={activePlayers(profiles).filter((profile) => memberships.some((membership) => (
             membership.player_id === profile.id
             && membership.season_id === availabilityMatch.season_id
@@ -241,6 +254,10 @@ export function MatchesView({
           match={availabilityMatch}
           profiles={profiles}
           onClose={() => setAvailabilityMatch(null)}
+          onSave={onSavePlayerAvailability ? async (playerId, status, comment) => {
+            await onSavePlayerAvailability(availabilityMatch, playerId, status, comment)
+            await refreshMatchMonth(availabilityMatch.match_date)
+          } : undefined}
         />
       )}
     </div>

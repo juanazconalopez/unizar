@@ -82,6 +82,28 @@ describe('MatchesView', () => {
     expect(screen.queryByRole('button', { name: 'Gestionar alineación' })).not.toBeInTheDocument()
   })
 
+  test('offers the explicit unlock flow only to a coach', async () => {
+    const user = userEvent.setup()
+    const onUnlockLineup = vi.fn().mockResolvedValue(undefined)
+    const lineup = [{ match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }]
+    render(<MatchesView
+      {...common}
+      canManage
+      canUnlockLineup
+      canViewAvailability
+      isPlayer={false}
+      lineups={lineup}
+      matches={[match({ lineup_published: true })]}
+      onSaveAvailability={vi.fn()}
+      onUnlockLineup={onUnlockLineup}
+    />)
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
+    await user.click(screen.getByRole('button', { name: 'Ver convocatoria' }))
+    await user.click(screen.getByRole('button', { name: 'Desbloquear para editar' }))
+    await user.click(screen.getByRole('button', { name: 'Sí, desbloquear' }))
+    expect(onUnlockLineup).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }))
+  })
+
   test('lets the owner open availability grouped by response', async () => {
     const user = userEvent.setup()
     const profiles = [

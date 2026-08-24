@@ -1,5 +1,5 @@
 begin;
-select plan(52);
+select plan(62);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -11,6 +11,39 @@ select has_function('public', 'get_season_callup_report', array['uuid'], 'season
 select has_function('public', 'get_player_season_summary', array['uuid', 'uuid'], 'personal season summary is available');
 select has_function('public', 'current_user_can_manage_sport', array[]::text[], 'sports management permission is available');
 select has_function('public', 'current_user_can_view_team_data', array[]::text[], 'read-only team permission is available');
+select has_function('public', 'unlock_match_lineup', array['uuid'], 'published lineups can be explicitly unlocked');
+select ok(to_regclass('public.match_availability_coach_changes') is not null, 'coach availability changes are audited');
+select has_function(
+  'public',
+  'set_player_match_availability',
+  array['uuid', 'uuid', 'availability_status', 'text'],
+  'coaches can register a player availability response'
+);
+select like(
+  pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),
+  '%and is_coach%and is_approved%and is_active%and not is_archived%',
+  'only active approved coaches can change another player availability'
+);
+select like(
+  pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),
+  '%if is_lineup_published then%Desbloquea la convocatoria%',
+  'a published lineup blocks coach availability changes'
+);
+select like(
+  pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),
+  '%insert into public.match_availability_coach_changes%',
+  'coach availability overrides leave an audit record'
+);
+select like(
+  pg_get_functiondef('public.unlock_match_lineup(uuid)'::regprocedure),
+  '%and is_coach%and is_approved%and is_active%and not is_archived%',
+  'only active approved coaches can unlock a published lineup'
+);
+select like(
+  pg_get_functiondef('public.unlock_match_lineup(uuid)'::regprocedure),
+  '%set lineup_published = false%',
+  'unlocking returns the lineup to draft editing'
+);
 select ok(
   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_coach'),
   'profiles identify coaches'
@@ -87,6 +120,15 @@ select like(
 select ok(to_regclass('public.matches') is not null, 'matches table exists');
 select ok(to_regclass('public.match_availability') is not null, 'match availability table exists');
 select ok(to_regclass('public.match_lineup') is not null, 'match lineup table exists');
+select ok(
+  exists (select 1 from pg_trigger where tgname = 'match_availability_guard_lineup' and not tgisinternal),
+  'availability changes guard provisional lineup places'
+);
+select like(
+  pg_get_functiondef('public.guard_match_availability()'::regprocedure),
+  '%new.status <> ''available''::public.availability_status%delete from public.match_lineup%',
+  'losing availability removes the player from the provisional lineup'
+);
 select ok(to_regprocedure('public.save_match_lineup(uuid,jsonb,boolean)') is not null, 'atomic lineup save function exists');
 select is(
   (select count(*)::integer from pg_constraint where confrelid = 'public.matches'::regclass and confdeltype = 'c'),

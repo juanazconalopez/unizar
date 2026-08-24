@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
@@ -49,6 +49,32 @@ describe('MatchLineupDialog', () => {
     expect(screen.queryByRole('button', { name: 'Guardar alineación' })).not.toBeInTheDocument()
   })
 
+  test('requires confirmation before a coach unlocks and edits a published lineup', async () => {
+    const user = userEvent.setup()
+    const onUnlock = vi.fn().mockResolvedValue(undefined)
+    const entry = { match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }
+    render(<MatchLineupDialog
+      availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]}
+      entries={[entry]}
+      match={match({ lineup_published: true })}
+      memberships={[makeMembership()]}
+      profiles={[makeProfile()]}
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+      onUnlock={onUnlock}
+    />)
+
+    await user.click(screen.getByRole('button', { name: 'Desbloquear para editar' }))
+    const confirmation = screen.getByRole('dialog', { name: '¿Volver a editar la convocatoria?' })
+    expect(confirmation).toHaveTextContent('tendrás que publicarla de nuevo')
+    expect(onUnlock).not.toHaveBeenCalled()
+
+    await user.click(within(confirmation).getByRole('button', { name: 'Sí, desbloquear' }))
+    expect(onUnlock).toHaveBeenCalledOnce()
+    expect(await screen.findByRole('button', { name: 'Guardar alineación' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Publicar convocatoria para las jugadoras' })).not.toBeChecked()
+  })
+
   test('shows the database message when saving a lineup fails', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn().mockRejectedValue({ message: 'La convocatoria contiene una jugadora que ya no está disponible' })
@@ -67,5 +93,41 @@ describe('MatchLineupDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Añadir' }))
     await user.click(screen.getByRole('button', { name: 'Guardar alineación' }))
     expect(await screen.findByText('La convocatoria contiene una jugadora que ya no está disponible')).toBeInTheDocument()
+  })
+
+  test('shows player identity above a position selector containing only free slots', async () => {
+    const user = userEvent.setup()
+    const ana = makeProfile({ id: 'player-1', display_name: 'Ana Martín' })
+    const bea = makeProfile({ id: 'player-2', display_name: 'Beatriz López' })
+    const entries = [
+      { match_id: 'match-1', player_id: ana.id, role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() },
+      { match_id: 'match-1', player_id: bea.id, role: 'starter' as const, position: null, slot_number: 2, sort_order: 2, updated_at: new Date().toISOString() },
+    ]
+    render(<MatchLineupDialog
+      availability={[
+        { match_id: 'match-1', player_id: ana.id, status: 'available', comment: null, updated_at: new Date().toISOString() },
+        { match_id: 'match-1', player_id: bea.id, status: 'available', comment: null, updated_at: new Date().toISOString() },
+      ]}
+      entries={entries}
+      match={match()}
+      memberships={[makeMembership(), makeMembership({ id: 'membership-2', player_id: bea.id })]}
+      profiles={[ana, bea]}
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+    />)
+
+    const anaSelector = screen.getByRole('combobox', { name: 'Posición de Ana Martín' })
+    expect(within(anaSelector).getByRole('option', { name: '1' })).toBeInTheDocument()
+    expect(within(anaSelector).queryByRole('option', { name: '2' })).not.toBeInTheDocument()
+    expect(within(anaSelector).getByRole('option', { name: '3' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Quitar a Ana Martín' })).toHaveClass('lineup-remove-button')
+
+    await user.selectOptions(anaSelector, '3')
+    const beaSelector = screen.getByRole('combobox', { name: 'Posición de Beatriz López' })
+    expect(within(beaSelector).getByRole('option', { name: '1' })).toBeInTheDocument()
+    expect(within(beaSelector).queryByRole('option', { name: '3' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Quitar a Ana Martín' }))
+    expect(within(screen.getByRole('combobox', { name: 'Posición de Beatriz López' })).getByRole('option', { name: '3' })).toBeInTheDocument()
   })
 })
