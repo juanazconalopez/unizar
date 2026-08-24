@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate, mondayFor, todayIso } from '../../lib/dates'
+import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import { membershipCoversDate } from '../../lib/selectors'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask } from '../../types'
@@ -65,11 +65,16 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
     variant: motivationVariant,
   })
   const today = todayIso()
+  const agendaEnd = addDays(currentMonday, 13)
   const nextMatch = matches
     .filter((match) => match.status === 'published' && match.match_date >= today)
     .sort((first, second) => first.match_date.localeCompare(second.match_date))[0]
   const nextAnnouncements = announcements
-    .filter((announcement) => announcement.status === 'published' && announcement.announcement_date >= today)
+    .filter((announcement) => (
+      announcement.status === 'published'
+      && announcement.announcement_date >= today
+      && announcement.announcement_date <= agendaEnd
+    ))
     .sort((first, second) => first.announcement_date.localeCompare(second.announcement_date))
     .slice(0, 4)
   const attentionCount = Number(Boolean(nextMatch)) + nextAnnouncements.length

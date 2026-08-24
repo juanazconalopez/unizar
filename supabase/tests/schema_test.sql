@@ -1,5 +1,5 @@
 begin;
-select plan(37);
+select plan(52);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -51,6 +51,39 @@ select ok(
   exists (select 1 from pg_trigger where tgname = 'profiles_normalize_display_name' and not tgisinternal),
   'profile name normalization trigger exists'
 );
+select has_function('public', 'update_own_display_name', array['text'], 'active users can update their own display name');
+select like(
+  pg_get_functiondef('public.update_own_display_name(text)'::regprocedure),
+  '%where id = (select auth.uid())%',
+  'display name updates are restricted to the authenticated profile'
+);
+select like(
+  pg_get_functiondef('public.update_own_display_name(text)'::regprocedure),
+  '%and is_approved%and is_active%and not is_archived%',
+  'only approved active profiles can edit their display name'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.update_own_display_name(text)', 'EXECUTE'),
+  'authenticated users can call the display name function'
+);
+select ok(
+  not has_function_privilege('anon', 'public.update_own_display_name(text)', 'EXECUTE'),
+  'anonymous users cannot call the display name function'
+);
+select ok(
+  exists (select 1 from pg_trigger where tgname = 'profiles_assign_active_season_on_authorization' and not tgisinternal),
+  'authorized players are automatically assigned to the active season'
+);
+select like(
+  pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure),
+  '%new.is_approved%new.is_active%new.is_player%not new.is_archived%',
+  'automatic season assignment requires an approved active player'
+);
+select like(
+  pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure),
+  '%s.start_date <= current_date%s.end_date >= current_date%',
+  'automatic assignment selects only the current season'
+);
 select ok(to_regclass('public.matches') is not null, 'matches table exists');
 select ok(to_regclass('public.match_availability') is not null, 'match availability table exists');
 select ok(to_regclass('public.match_lineup') is not null, 'match lineup table exists');
@@ -71,6 +104,40 @@ select ok(
 select ok(
   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'match_lineup' and column_name = 'slot_number'),
   'lineups store numbered slots'
+);
+select ok(
+  to_regprocedure('public.effective_callup_role(public.match_kind,boolean,public.availability_status,public.lineup_role)') is not null,
+  'effective callup role is available'
+);
+select is(
+  public.effective_callup_role('friendly', true, 'available', null),
+  'substitute'::public.lineup_role,
+  'an available friendly player without a slot is a substitute'
+);
+select is(
+  public.effective_callup_role('friendly', true, 'available', 'starter'),
+  'starter'::public.lineup_role,
+  'an explicit friendly starter remains a starter'
+);
+select is(
+  public.effective_callup_role('official', true, 'available', null),
+  null::public.lineup_role,
+  'availability alone does not create an official callup'
+);
+select is(
+  public.effective_callup_role('friendly', false, 'available', null),
+  null::public.lineup_role,
+  'an unpublished friendly lineup is not counted yet'
+);
+select like(
+  pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),
+  '%effective_callup_role%',
+  'team callup report uses effective friendly roles'
+);
+select like(
+  pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),
+  '%effective_callup_role%',
+  'player season summary uses effective friendly roles'
 );
 select ok(to_regclass('public.competition_sync_runs') is not null, 'competition synchronizations are audited');
 select ok(

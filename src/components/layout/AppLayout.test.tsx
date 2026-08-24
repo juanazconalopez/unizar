@@ -110,6 +110,49 @@ describe('AppLayout', () => {
     expect(screen.getByText(/Sin conexión. Puedes consultar/)).toBeInTheDocument()
   })
 
+  test('allows approved active users to edit their display name', async () => {
+    const user = userEvent.setup()
+    const onUpdateDisplayName = vi.fn().mockResolvedValue(undefined)
+    render(
+      <AppLayout
+        profile={makeProfile()}
+        email="ana@example.com"
+        view="home"
+        message=""
+        errorMessage=""
+        onNavigate={vi.fn()}
+        onSignOut={vi.fn()}
+        onUpdateDisplayName={onUpdateDisplayName}
+      ><p>Contenido</p></AppLayout>,
+    )
+
+    await user.click(screen.getAllByRole('button', { name: 'Editar mi nombre' })[0])
+    const dialog = screen.getByRole('dialog', { name: 'Editar mi nombre' })
+    const input = within(dialog).getByLabelText('Nombre y apellidos')
+    await user.clear(input)
+    await user.type(input, 'María López')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar nombre' }))
+
+    expect(onUpdateDisplayName).toHaveBeenCalledWith('María López')
+  })
+
+  test('does not offer name editing to inactive users', () => {
+    render(
+      <AppLayout
+        profile={makeProfile({ is_active: false })}
+        email="ana@example.com"
+        view="home"
+        message=""
+        errorMessage=""
+        onNavigate={vi.fn()}
+        onSignOut={vi.fn()}
+        onUpdateDisplayName={vi.fn()}
+      ><p>Contenido</p></AppLayout>,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Editar mi nombre' })).not.toBeInTheDocument()
+  })
+
   test('opens an alert and navigates to its related screen', async () => {
     const user = userEvent.setup()
     const onNavigate = vi.fn()

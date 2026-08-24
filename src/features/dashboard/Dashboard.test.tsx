@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, mondayFor, todayIso } from '../../lib/dates'
-import { makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
+import { makeAnnouncement, makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
 import { Dashboard } from './Dashboard'
 
 describe('Dashboard', () => {
@@ -95,5 +95,31 @@ describe('Dashboard', () => {
     await user.click(screen.getByText('Para tener en cuenta'))
     await user.click(screen.getByRole('button', { name: /Próximo partido/ }))
     expect(onOpenMatch).toHaveBeenCalledWith(nextMatch)
+  })
+
+  test('shows agenda notices from today through the end of next week only', () => {
+    const currentMonday = mondayFor(new Date())
+    render(
+      <Dashboard
+        profile={makeProfile()}
+        memberships={[makeMembership()]}
+        tasks={[]}
+        results={[]}
+        attendance={[]}
+        announcements={[
+          makeAnnouncement({ id: 'past', title: 'Aviso pasado', announcement_date: addDays(todayIso(), -1) }),
+          makeAnnouncement({ id: 'today', title: 'Aviso de hoy', announcement_date: todayIso() }),
+          makeAnnouncement({ id: 'next-week', title: 'Aviso próxima semana', announcement_date: addDays(currentMonday, 13) }),
+          makeAnnouncement({ id: 'later', title: 'Aviso posterior', announcement_date: addDays(currentMonday, 14) }),
+        ]}
+        userId="player-1"
+        onSaveResult={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('Aviso de hoy')).toBeInTheDocument()
+    expect(screen.getByText('Aviso próxima semana')).toBeInTheDocument()
+    expect(screen.queryByText('Aviso pasado')).not.toBeInTheDocument()
+    expect(screen.queryByText('Aviso posterior')).not.toBeInTheDocument()
   })
 })

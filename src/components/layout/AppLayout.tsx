@@ -8,6 +8,7 @@ import { ClubBrand } from '../ui/ClubBrand'
 import { Modal } from '../ui/Modal'
 import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
+import { ProfileNameDialog } from '../../features/profile/ProfileNameDialog'
 import type { AppNotification } from '../../features/notifications/notifications'
 import { canAccessTasks, canManageSport, canViewTeamData } from '../../lib/permissions'
 
@@ -22,6 +23,7 @@ export function AppLayout({
   online = true,
   onNavigate,
   onSignOut,
+  onUpdateDisplayName,
   notifications = [],
   notificationReadIds = new Set<string>(),
   notificationUnreadCount = 0,
@@ -38,6 +40,7 @@ export function AppLayout({
   online?: boolean
   onNavigate: (view: ViewName) => void
   onSignOut: () => void
+  onUpdateDisplayName?: (displayName: string) => Promise<void>
   notifications?: AppNotification[]
   notificationReadIds?: Set<string>
   notificationUnreadCount?: number
@@ -51,10 +54,12 @@ export function AppLayout({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [profileNameOpen, setProfileNameOpen] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
   const canManage = canManageSport(profile)
   const canViewTeam = canViewTeamData(profile)
+  const canEditProfileName = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateDisplayName)
   const navigation: NavigationItem[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
     ...(canViewTeam ? [
@@ -119,8 +124,10 @@ export function AppLayout({
         )}
         <NotificationButton count={notificationUnreadCount} onClick={() => setNotificationsOpen(true)} />
         <div className="sidebar-profile">
-          <Avatar name={profile.display_name} />
-          <div><strong>{profile.display_name}</strong><span>{role}</span></div>
+          {canEditProfileName ? <button aria-label="Editar mi nombre" className="sidebar-profile-edit" onClick={() => setProfileNameOpen(true)} type="button">
+            <Avatar name={profile.display_name} />
+            <span><strong>{profile.display_name}</strong><small>{role}</small></span>
+          </button> : <div className="sidebar-profile-summary"><Avatar name={profile.display_name} /><span><strong>{profile.display_name}</strong><small>{role}</small></span></div>}
           <button aria-label="Cerrar sesión" className="icon-button" onClick={onSignOut} title="Cerrar sesión">
             <Icon name="logout" size={18} />
           </button>
@@ -152,6 +159,11 @@ export function AppLayout({
                   </div>
                 </div>
                 <span className="mobile-role">{role}</span>
+                {canEditProfileName && (
+                  <button className="mobile-profile-edit-button" onClick={() => { setProfileMenuOpen(false); setProfileNameOpen(true) }} role="menuitem" type="button">
+                    Editar mi nombre
+                  </button>
+                )}
                 {showInstallAction && (
                   <button className="mobile-install-button" onClick={requestInstall} role="menuitem" type="button">
                     <Icon name="download" size={18} />Instalar aplicación
@@ -209,6 +221,9 @@ export function AppLayout({
           </ol>
           <div className="form-actions"><button className="primary-button" onClick={() => setIosInstructionsOpen(false)} type="button">Entendido</button></div>
         </Modal>
+      )}
+      {profileNameOpen && onUpdateDisplayName && (
+        <ProfileNameDialog currentName={profile.display_name} onClose={() => setProfileNameOpen(false)} onSave={onUpdateDisplayName} />
       )}
     </div>
   )

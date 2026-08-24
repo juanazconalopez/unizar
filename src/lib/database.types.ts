@@ -770,6 +770,15 @@ export type Database = {
       current_user_is_active_player: { Args: never; Returns: boolean }
       current_user_is_approved: { Args: never; Returns: boolean }
       current_user_is_owner: { Args: never; Returns: boolean }
+      effective_callup_role: {
+        Args: {
+          checked_availability: Database["public"]["Enums"]["availability_status"] | null
+          checked_lineup_published: boolean
+          checked_lineup_role: Database["public"]["Enums"]["lineup_role"] | null
+          checked_match_kind: Database["public"]["Enums"]["match_kind"]
+        }
+        Returns: Database["public"]["Enums"]["lineup_role"] | null
+      }
       get_season_callup_report: {
         Args: { checked_season_id: string }
         Returns: Json
@@ -815,6 +824,10 @@ export type Database = {
           checked_player_ids: string[]
         }
         Returns: undefined
+      }
+      update_own_display_name: {
+        Args: { new_display_name: string }
+        Returns: string
       }
     }
     Enums: {

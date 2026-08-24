@@ -22,6 +22,7 @@ import {
   setSeasonMembership,
   updateSeason,
   updateProfilePermissions,
+  updateOwnDisplayName,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
 import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, updateMatch } from './services/matchesService'
@@ -258,6 +259,13 @@ function App() {
     }
   }
 
+  async function handleUpdateDisplayName(displayName: string) {
+    requireConnection()
+    await updateOwnDisplayName(displayName)
+    notify('Nombre actualizado.')
+    await reloadData()
+  }
+
   async function handleAttendance(date: string, playerIds: string[], attendedPlayerIds: string[]) {
     requireConnection()
     await saveTrainingAttendance(date, playerIds, attendedPlayerIds)
@@ -309,6 +317,7 @@ function App() {
       view={view}
       onNavigate={navigate}
       onSignOut={handleSignOut}
+      onUpdateDisplayName={handleUpdateDisplayName}
       notifications={notifications.notifications}
       notificationReadIds={notifications.readIds}
       notificationUnreadCount={notifications.unreadCount}

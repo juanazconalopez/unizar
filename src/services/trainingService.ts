@@ -98,6 +98,7 @@ export async function fetchAnnouncementWindow(fromDate: string, toDate: string):
 }
 
 async function fetchHomeAttention(today: string, seasonEnd: string) {
+  const announcementEnd = homeAgendaEnd(today, seasonEnd)
   const [matchesResponse, announcementsResponse] = await Promise.all([
     supabase
       .from('matches')
@@ -111,13 +112,18 @@ async function fetchHomeAttention(today: string, seasonEnd: string) {
       .select('*, seasons(name)')
       .eq('status', 'published')
       .gte('announcement_date', today)
-      .lte('announcement_date', seasonEnd)
+      .lte('announcement_date', announcementEnd)
       .order('announcement_date', { ascending: true })
       .limit(4),
   ])
   if (matchesResponse.error) throw matchesResponse.error
   if (announcementsResponse.error) throw announcementsResponse.error
   return { matches: matchesResponse.data ?? [], announcements: announcementsResponse.data ?? [] }
+}
+
+export function homeAgendaEnd(today: string, seasonEnd: string) {
+  const endOfNextWeek = addDays(mondayFor(today), 13)
+  return seasonEnd < endOfNextWeek ? seasonEnd : endOfNextWeek
 }
 
 async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
@@ -409,6 +415,14 @@ export async function updateProfilePermissions(profile: Profile) {
     })
     .eq('id', profile.id)
   if (error) throw error
+}
+
+export async function updateOwnDisplayName(displayName: string) {
+  const { data, error } = await supabase.rpc('update_own_display_name', {
+    new_display_name: displayName,
+  })
+  if (error) throw error
+  return data
 }
 
 export async function saveTrainingAttendance(
