@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildNotifications } from '../features/notifications/notifications'
 import type { AppNotification, NotificationFeedData } from '../features/notifications/notifications'
 import { todayIso } from '../lib/dates'
+import { canManageSport } from '../lib/permissions'
 import { fetchNotificationFeed } from '../services/notificationsService'
 import type { Profile } from '../types'
 
@@ -25,7 +26,7 @@ export function useNotifications(profile: Profile | null, userId?: string) {
     lastReloadAt.current = Date.now()
     const request = (async () => {
       try {
-        setFeed(await fetchNotificationFeed(userId))
+        setFeed(await fetchNotificationFeed(userId, canManageSport(profile)))
       } catch {
         // Notifications are supplementary and must never block the application.
       }

@@ -2,7 +2,7 @@ import { addDays, mondayFor, todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type { NotificationFeedData } from '../features/notifications/notifications'
 
-export async function fetchNotificationFeed(userId: string): Promise<NotificationFeedData> {
+export async function fetchNotificationFeed(userId: string, canManageAvailability = false): Promise<NotificationFeedData> {
   const today = todayIso()
   const currentWeek = mondayFor(today)
   const [tasksResponse, membershipsResponse, matchesResponse, announcementsResponse] = await Promise.all([
@@ -35,13 +35,17 @@ export async function fetchNotificationFeed(userId: string): Promise<Notificatio
 
   const tasks = tasksResponse.data ?? []
   const matches = matchesResponse.data ?? []
+  const availabilityRequest = matches.length
+    ? (() => {
+      const query = supabase.from('match_availability').select('*').in('match_id', matches.map((match) => match.id))
+      return canManageAvailability ? query : query.eq('player_id', userId)
+    })()
+    : Promise.resolve({ data: [], error: null })
   const [resultsResponse, availabilityResponse, lineupsResponse] = await Promise.all([
     tasks.length
       ? supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id)).eq('player_id', userId)
       : Promise.resolve({ data: [], error: null }),
-    matches.length
-      ? supabase.from('match_availability').select('*').in('match_id', matches.map((match) => match.id)).eq('player_id', userId)
-      : Promise.resolve({ data: [], error: null }),
+    availabilityRequest,
     matches.length
       ? supabase.from('match_lineup').select('*').in('match_id', matches.map((match) => match.id))
       : Promise.resolve({ data: [], error: null }),

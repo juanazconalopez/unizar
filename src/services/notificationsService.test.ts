@@ -61,5 +61,10 @@ describe('notificationsService', () => {
     expect(announcements.gte).toHaveBeenCalledWith('announcement_date', todayIso())
     expect(data.tasks).toHaveLength(1)
     expect(data.matches).toHaveLength(1)
+
+    availability.eq.mockClear()
+    await fetchNotificationFeed('coach-1', true)
+    expect(availability.in).toHaveBeenLastCalledWith('match_id', ['match-1'])
+    expect(availability.eq).not.toHaveBeenCalled()
   })
 })

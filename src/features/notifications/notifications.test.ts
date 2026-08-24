@@ -44,4 +44,33 @@ describe('buildNotifications', () => {
     const notifications = buildNotifications(feed({ tasks: [], matches: [], lineups: [], announcements: [announcement] }), makeProfile(), '2026-08-07')
     expect(notifications).toContainEqual(expect.objectContaining({ kind: 'announcement', targetDate: '2026-08-11', targetId: announcement.id }))
   })
+
+  test('creates one availability-change notification per match for coaches', () => {
+    const notifications = buildNotifications(feed({
+      tasks: [],
+      lineups: [],
+      availability: [
+        { match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: '2026-08-06T10:00:00.000Z' },
+        { match_id: 'match-1', player_id: 'player-2', status: 'doubt', comment: null, updated_at: '2026-08-07T12:00:00.000Z' },
+      ],
+    }), makeProfile({ is_player: false, is_coach: true }), '2026-08-07')
+    const availabilityChanges = notifications.filter((item) => item.id.startsWith('availability-changed:'))
+
+    expect(availabilityChanges).toHaveLength(1)
+    expect(availabilityChanges[0]).toEqual(expect.objectContaining({
+      id: 'availability-changed:match-1:2026-08-07T12:00:00.000Z',
+      kind: 'availability',
+      title: 'Cambios en la disponibilidad',
+      targetDate: '2026-08-12',
+    }))
+  })
+
+  test('does not show team availability changes to regular players', () => {
+    const notifications = buildNotifications(feed({
+      tasks: [], lineups: [],
+      availability: [{ match_id: 'match-1', player_id: 'player-2', status: 'available', comment: null, updated_at: '2026-08-07T12:00:00.000Z' }],
+    }), makeProfile(), '2026-08-07')
+
+    expect(notifications.some((item) => item.id.startsWith('availability-changed:'))).toBe(false)
+  })
 })

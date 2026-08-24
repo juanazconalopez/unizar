@@ -1,6 +1,6 @@
 import { addDays, mondayFor } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
-import { canAccessTasks, isPlayer } from '../../lib/permissions'
+import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
@@ -28,6 +28,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
   const currentWeek = mondayFor(today)
   const recentFrom = addDays(today, -7)
   const playerRole = isPlayer(profile)
+  const managesAvailability = canManageSport(profile)
   const eligibleTasks = data.tasks.filter((task) => (
     task.status === 'published'
     && task.week_start >= currentWeek
@@ -99,6 +100,22 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
   }
 
   for (const match of futureMatches) {
+    const matchAvailability = data.availability.filter((item) => item.match_id === match.id)
+    const latestAvailabilityChange = matchAvailability.reduce<string | null>(
+      (latest, item) => !latest || item.updated_at > latest ? item.updated_at : latest,
+      null,
+    )
+    if (managesAvailability && latestAvailabilityChange && latestAvailabilityChange.slice(0, 10) >= recentFrom) {
+      items.push({
+        id: `availability-changed:${match.id}:${latestAvailabilityChange}`,
+        kind: 'availability',
+        title: 'Cambios en la disponibilidad',
+        text: `Ha cambiado la disponibilidad de las jugadoras para el partido contra ${match.opponent}.`,
+        view: 'matches',
+        occurredAt: latestAvailabilityChange,
+        targetDate: match.match_date,
+      })
+    }
     const ownAvailability = data.availability.some((item) => item.match_id === match.id && item.player_id === profile.id)
     if (playerRole && !ownAvailability) {
       items.push({

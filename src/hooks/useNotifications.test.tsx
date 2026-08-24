@@ -59,4 +59,12 @@ describe('useNotifications', () => {
     })
     expect(fetchNotificationFeed).toHaveBeenCalledTimes(2)
   })
+
+  test('requests team availability for coaches', async () => {
+    const profile = makeProfile({ is_player: false, is_coach: true })
+    renderHook(() => useNotifications(profile, profile.id))
+    await loadInitialFeed()
+
+    expect(fetchNotificationFeed).toHaveBeenCalledWith(profile.id, true)
+  })
 })
