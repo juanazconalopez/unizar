@@ -82,7 +82,7 @@ describe('MatchesView', () => {
     expect(screen.queryByRole('button', { name: 'Gestionar alineación' })).not.toBeInTheDocument()
   })
 
-  test('offers the explicit unlock flow only to a coach', async () => {
+  test('offers the explicit unlock flow to owners and coaches', async () => {
     const user = userEvent.setup()
     const onUnlockLineup = vi.fn().mockResolvedValue(undefined)
     const lineup = [{ match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }]

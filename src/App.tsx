@@ -425,7 +425,7 @@ function App() {
           availability={data.matchAvailability}
           canEditPlayerAvailability={canManage}
           canManage={canManage}
-          canUnlockLineup={data.profile.is_coach}
+          canUnlockLineup={canManage}
           canViewAvailability={canViewTeam}
           isPlayer={isPlayer(data.profile)}
           lineups={data.matchLineups}

@@ -36,8 +36,8 @@ select like(
 );
 select like(
   pg_get_functiondef('public.unlock_match_lineup(uuid)'::regprocedure),
-  '%and is_coach%and is_approved%and is_active%and not is_archived%',
-  'only active approved coaches can unlock a published lineup'
+  '%and (is_owner or is_coach)%and is_approved%and is_active%and not is_archived%',
+  'only active approved owners and coaches can unlock a published lineup'
 );
 select like(
   pg_get_functiondef('public.unlock_match_lineup(uuid)'::regprocedure),
