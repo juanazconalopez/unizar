@@ -17,17 +17,17 @@ select has_function(
   'public',
   'set_player_match_availability',
   array['uuid', 'uuid', 'availability_status', 'text'],
-  'coaches can register a player availability response'
+  'owners and coaches can register a player availability response'
 );
 select like(
   pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),
-  '%and is_coach%and is_approved%and is_active%and not is_archived%',
-  'only active approved coaches can change another player availability'
+  '%and (is_owner or is_coach)%and is_approved%and is_active%and not is_archived%',
+  'only active approved owners and coaches can change another player availability'
 );
 select like(
   pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),
   '%if is_lineup_published then%Desbloquea la convocatoria%',
-  'a published lineup blocks coach availability changes'
+  'a published lineup blocks staff availability changes'
 );
 select like(
   pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure),

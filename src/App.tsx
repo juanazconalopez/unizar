@@ -423,7 +423,7 @@ function App() {
       {view === 'matches' && (
         <MatchesView
           availability={data.matchAvailability}
-          canEditPlayerAvailability={data.profile.is_coach}
+          canEditPlayerAvailability={canManage}
           canManage={canManage}
           canUnlockLineup={data.profile.is_coach}
           canViewAvailability={canViewTeam}
