@@ -49,3 +49,8 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const { error } = await supabase.from('tasks').update({ status }).eq('id', taskId)
   if (error) throw error
 }
+
+export async function reorderTrainingTasks(taskIds: string[]) {
+  const { error } = await supabase.rpc('reorder_tasks', { ordered_task_ids: taskIds })
+  if (error) throw error
+}

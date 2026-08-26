@@ -61,6 +61,7 @@ export function makeTask(overrides: Partial<TrainingTask> = {}): TrainingTask {
     description: 'Completar seis series.',
     training_type: 'Físico',
     status: 'published',
+    sort_order: 1,
     created_by: 'owner-1',
     created_at: createdAt,
     seasons: { name: 'Temporada 2026' },

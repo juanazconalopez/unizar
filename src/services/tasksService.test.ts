@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeTask } from '../test/fixtures'
 
 const mocks = vi.hoisted(() => ({
-  delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), update: vi.fn(),
+  delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), rpc: vi.fn(), update: vi.fn(),
 }))
-vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
+vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
 
-import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTaskStatus, updateTrainingTask } from './tasksService'
+import { createTrainingTask, deleteTrainingTask, reorderTrainingTasks, saveTaskResult, updateTaskStatus, updateTrainingTask } from './tasksService'
 
 describe('tasksService', () => {
   beforeEach(() => {
@@ -15,6 +15,7 @@ describe('tasksService', () => {
     mocks.update.mockReturnValue({ eq: mocks.eq })
     mocks.delete.mockReturnValue({ eq: mocks.eq })
     mocks.insert.mockResolvedValue({ error: null })
+    mocks.rpc.mockResolvedValue({ error: null })
     mocks.from.mockReturnValue({ delete: mocks.delete, insert: mocks.insert, update: mocks.update })
   })
 
@@ -61,5 +62,12 @@ describe('tasksService', () => {
     await deleteTrainingTask('task-1')
     expect(mocks.delete).toHaveBeenCalledOnce()
     expect(mocks.eq).toHaveBeenCalledWith('id', 'task-1')
+  })
+
+  test('persists the complete task order atomically', async () => {
+    await reorderTrainingTasks(['power', 'speed', 'mobility'])
+    expect(mocks.rpc).toHaveBeenCalledWith('reorder_tasks', {
+      ordered_task_ids: ['power', 'speed', 'mobility'],
+    })
   })
 })

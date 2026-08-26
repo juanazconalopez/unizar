@@ -1,5 +1,5 @@
 begin;
-select plan(62);
+select plan(64);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -12,6 +12,8 @@ select has_function('public', 'get_player_season_summary', array['uuid', 'uuid']
 select has_function('public', 'current_user_can_manage_sport', array[]::text[], 'sports management permission is available');
 select has_function('public', 'current_user_can_view_team_data', array[]::text[], 'read-only team permission is available');
 select has_function('public', 'unlock_match_lineup', array['uuid'], 'published lineups can be explicitly unlocked');
+select has_function('public', 'reorder_tasks', array['uuid[]'], 'sports managers can persist the weekly task order');
+select has_column('public', 'tasks', 'sort_order', 'tasks keep an explicit weekly order');
 select ok(to_regclass('public.match_availability_coach_changes') is not null, 'coach availability changes are audited');
 select has_function(
   'public',

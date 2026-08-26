@@ -68,6 +68,27 @@ describe('Dashboard', () => {
     expect(screen.queryByText('Sin pertenencia')).not.toBeInTheDocument()
   })
 
+  test('shows weekly tasks in the order selected by the staff', () => {
+    const weekStart = mondayFor(new Date())
+    render(<Dashboard
+      profile={makeProfile()}
+      memberships={[makeMembership()]}
+      tasks={[
+        makeTask({ id: 'flexibility', title: 'Flexibilidad', sort_order: 3, week_start: weekStart }),
+        makeTask({ id: 'speed', title: 'Velocidad', sort_order: 1, week_start: weekStart }),
+        makeTask({ id: 'power', title: 'Potencia', sort_order: 2, week_start: weekStart }),
+      ]}
+      results={[]}
+      attendance={[]}
+      userId="player-1"
+      onSaveResult={vi.fn()}
+    />)
+
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      'Velocidad', 'Potencia', 'Flexibilidad',
+    ])
+  })
+
   test('opens the personal season summary from its dashboard card', async () => {
     const user = userEvent.setup()
     const summary = {

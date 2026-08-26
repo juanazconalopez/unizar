@@ -620,6 +620,7 @@ export type Database = {
           description: string | null
           id: string
           season_id: string
+          sort_order: number
           status: Database["public"]["Enums"]["task_status"]
           title: string
           training_type: string | null
@@ -632,6 +633,7 @@ export type Database = {
           description?: string | null
           id?: string
           season_id: string
+          sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           training_type?: string | null
@@ -644,6 +646,7 @@ export type Database = {
           description?: string | null
           id?: string
           season_id?: string
+          sort_order?: number
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           training_type?: string | null
@@ -859,6 +862,10 @@ export type Database = {
           checked_season: Json
           checked_standings: Json
         }
+        Returns: undefined
+      }
+      reorder_tasks: {
+        Args: { ordered_task_ids: string[] }
         Returns: undefined
       }
       save_match_lineup: {

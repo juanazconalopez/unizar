@@ -64,13 +64,15 @@ describe('MatchesView', () => {
     expect(screen.queryByRole('button', { name: 'Ver convocatoria' })).not.toBeInTheDocument()
 
     view.rerender(<MatchesView {...common} lineups={lineup} matches={[match({ lineup_published: true })]} onSaveAvailability={vi.fn()} />)
-    expect(screen.getByRole('button', { name: 'Ver convocatoria' })).toBeInTheDocument()
-    expect(screen.getByText('Disponibilidad cerrada')).toBeInTheDocument()
+    const lineupButton = screen.getByRole('button', { name: 'Ver convocatoria' })
+    const availabilityClosed = screen.getByText('Disponibilidad cerrada')
+    expect(lineupButton).toHaveClass('primary-button')
+    expect(lineupButton.compareDocumentPosition(availabilityClosed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Ver convocatoria' }))
+    await user.click(lineupButton)
     const dialog = screen.getByRole('dialog', { name: /Partido contra Rival Rugby/ })
-    expect(within(dialog).getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: 'Descargar XML' })).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Copiar convocatoria' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Descargar XML' })).not.toBeInTheDocument()
   })
 
   test('does not let the owner manage a lineup after publication', async () => {

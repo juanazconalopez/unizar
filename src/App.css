@@ -119,6 +119,8 @@
 .result-summary { display: inline-flex; align-items: center; gap: 3px; color: var(--green); font-weight: 700; }
 .fatigue-icon { display: block; flex: 0 0 auto; }
 .task-actions { position: relative; z-index: 2; display: flex; align-items: center; gap: 8px; }
+.task-order-actions { display: inline-flex; gap: 4px; }
+.task-order-actions .compact { min-width: 34px; padding-inline: 8px; font-size: 16px; }
 .primary-button, .secondary-button, .google-button { min-height: 42px; padding: 10px 17px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 13px; }
 .primary-button { border: 1px solid var(--green); color: white; background: var(--green); box-shadow: 0 6px 15px rgba(30,111,92,.14); }
 .primary-button:hover { background: var(--green-dark); }

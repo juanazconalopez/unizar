@@ -19,16 +19,15 @@ const feed = (overrides: Partial<NotificationFeedData> = {}): NotificationFeedDa
 })
 
 describe('buildNotifications', () => {
-  test('creates the six useful player alerts from current actionable data', () => {
+  test('creates player alerts without duplicating published tasks from home and the tasks section', () => {
     const notifications = buildNotifications(feed(), makeProfile(), '2026-08-07')
     expect(notifications.map((item) => item.title)).toEqual(expect.arrayContaining([
-      'Nueva tarea publicada',
-      'Tarea pendiente próxima a finalizar',
       'Nuevo partido publicado',
       'Disponibilidad sin responder',
       'Convocatoria publicada',
       'Cambio relevante en un partido',
     ]))
+    expect(notifications.some((item) => item.kind === 'task')).toBe(false)
   })
 
   test('shows the nearest match when there is no newly published match', () => {

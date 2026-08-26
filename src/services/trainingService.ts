@@ -68,7 +68,7 @@ export async function fetchTaskWindow(
   const [tasksResponse, announcementsResponse] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, seasons(name)')
+      .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)')
       .gte('week_start', fromWeek)
       .lte('week_start', toWeek)
       .order('week_start', { ascending: false }),

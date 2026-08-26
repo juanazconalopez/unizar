@@ -24,7 +24,7 @@ import {
   updateProfilePermissions,
   updateOwnDisplayName,
 } from './services/trainingService'
-import { createTrainingTask, deleteTrainingTask, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
+import { createTrainingTask, deleteTrainingTask, reorderTrainingTasks, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
 import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './services/matchesService'
 import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './services/announcementsService'
 import type {
@@ -149,6 +149,17 @@ function App() {
       requireConnection()
       await updateTaskStatus(taskId, status)
       notify(status === 'published' ? 'Tarea publicada.' : 'Estado de la tarea actualizado.')
+      await reloadData()
+    } catch (error) {
+      setOperationError(errorText(error))
+    }
+  }
+
+  async function handleReorderTasks(taskIds: string[]) {
+    try {
+      requireConnection()
+      await reorderTrainingTasks(taskIds)
+      notify('Orden de las tareas actualizado.')
       await reloadData()
     } catch (error) {
       setOperationError(errorText(error))
@@ -412,6 +423,7 @@ function App() {
           onUpdate={handleUpdateTask}
           onLoadRange={data.loadTaskRange}
           onSaveResult={handleSaveResult}
+          onReorder={handleReorderTasks}
           onStatusChange={handleTaskStatus}
           onSaveAnnouncement={handleSaveAnnouncement}
           onDeleteAnnouncement={handleDeleteAnnouncement}

@@ -1,5 +1,4 @@
-import { addDays, mondayFor } from '../../lib/dates'
-import { canUserCompleteTask } from '../../lib/tasks'
+import { addDays } from '../../lib/dates'
 import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
@@ -25,19 +24,9 @@ export type NotificationFeedData = {
 }
 
 export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string): AppNotification[] {
-  const currentWeek = mondayFor(today)
   const recentFrom = addDays(today, -7)
   const playerRole = isPlayer(profile)
   const managesAvailability = canManageSport(profile)
-  const eligibleTasks = data.tasks.filter((task) => (
-    task.status === 'published'
-    && task.week_start >= currentWeek
-    && canAccessTasks(profile)
-    && (!playerRole || canUserCompleteTask(task, data.memberships, profile.id))
-  ))
-  const completedTaskIds = new Set(data.results
-    .filter((result) => result.player_id === profile.id)
-    .map((result) => result.task_id))
   const items: AppNotification[] = []
 
   for (const announcement of (data.announcements ?? []).filter((item) => canAccessTasks(profile) && item.status === 'published')) {
@@ -52,32 +41,6 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
       targetDate: announcement.announcement_date,
       targetId: announcement.id,
     })
-  }
-
-  for (const task of eligibleTasks) {
-    const publishedAt = task.updated_at ?? task.created_at
-    if (publishedAt.slice(0, 10) >= recentFrom) {
-      items.push({
-        id: `task-published:${task.id}:${publishedAt}`,
-        kind: 'task',
-        title: 'Nueva tarea publicada',
-        text: task.title,
-        view: 'tasks',
-        occurredAt: publishedAt,
-        targetDate: task.week_start,
-      })
-    }
-    if (playerRole && task.week_start === currentWeek && today >= addDays(currentWeek, 4) && !completedTaskIds.has(task.id)) {
-      items.push({
-        id: `task-due:${task.id}:${currentWeek}`,
-        kind: 'task',
-        title: 'Tarea pendiente próxima a finalizar',
-        text: `${task.title} · termina este domingo`,
-        view: 'tasks',
-        occurredAt: `${today}T12:00:00`,
-        targetDate: task.week_start,
-      })
-    }
   }
 
   const futureMatches = data.matches

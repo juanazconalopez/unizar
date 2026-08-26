@@ -63,15 +63,15 @@ export function MatchCard({
           <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />
           <div className="match-actions">
             {canManage && <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>}
-            {canViewLineup && <button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button>}
+            {canViewLineup && <button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button>}
             {canManage && !match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
           </div>
         </>
       )}
-      {isPlayer && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
       {!canViewAvailability && canViewLineup && (
-        <div className="match-actions"><button className="secondary-button compact" onClick={onViewLineup}>Ver convocatoria</button></div>
+        <div className="match-actions"><button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button></div>
       )}
+      {isPlayer && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
     </article>
   )
 }

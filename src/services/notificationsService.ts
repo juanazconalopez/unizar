@@ -8,7 +8,7 @@ export async function fetchNotificationFeed(userId: string, canManageAvailabilit
   const [tasksResponse, membershipsResponse, matchesResponse, announcementsResponse] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, season_id, week_start, title, description, training_type, status, created_by, created_at, updated_at, seasons(name)')
+      .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, updated_at, seasons(name)')
       .eq('status', 'published')
       .gte('week_start', currentWeek)
       .lte('week_start', addDays(currentWeek, 28)),

@@ -112,6 +112,35 @@ describe('TasksView', () => {
     }))
   })
 
+  test('lets sports managers define the task order for a week', async () => {
+    const user = userEvent.setup()
+    const currentWeek = mondayFor(new Date())
+    const onReorder = vi.fn().mockResolvedValue(undefined)
+    render(<TasksView
+      canManage
+      seasons={[makeSeason()]}
+      memberships={[]}
+      tasks={[
+        makeTask({ id: 'speed', title: 'Velocidad', sort_order: 1, week_start: currentWeek }),
+        makeTask({ id: 'power', title: 'Potencia', sort_order: 2, week_start: currentWeek }),
+        makeTask({ id: 'mobility', title: 'Flexibilidad', sort_order: 3, week_start: currentWeek }),
+      ]}
+      results={[]}
+      userId="coach-1"
+      onCreate={vi.fn()}
+      onDelete={vi.fn()}
+      onReorder={onReorder}
+      onSaveResult={vi.fn()}
+      onStatusChange={vi.fn()}
+      onUpdate={vi.fn()}
+    />)
+
+    expect(screen.getByRole('button', { name: 'Subir Velocidad' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Bajar Flexibilidad' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Bajar Velocidad' }))
+    expect(onReorder).toHaveBeenCalledWith(['power', 'speed', 'mobility'])
+  })
+
   test('groups management tasks, keeps future planning visible and paginates older weeks', async () => {
     const user = userEvent.setup()
     const currentWeek = mondayFor(new Date())

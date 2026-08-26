@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
+import { compareTaskOrder } from '../../lib/taskOrder'
 import type { AnnouncementValues, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TaskStatus, TaskValues, TeamAnnouncement, TrainingTask } from '../../types'
 import { AnnouncementCard } from './AnnouncementCard'
 import { AnnouncementForm } from './AnnouncementForm'
@@ -13,7 +14,7 @@ import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 
-export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
+export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
   canManage: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
@@ -31,6 +32,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
   onLoadRange?: (fromWeek: string, toWeek: string) => Promise<void>
   onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
+  onReorder?: (taskIds: string[]) => Promise<void>
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>
   onSaveAnnouncement?: (announcement: TeamAnnouncement | undefined, values: AnnouncementValues) => Promise<void>
   onDeleteAnnouncement?: (announcement: TeamAnnouncement) => Promise<void>
@@ -46,6 +48,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
   const [managementView, setManagementView] = useState<'calendar' | 'list'>('calendar')
   const [announcementForm, setAnnouncementForm] = useState<TeamAnnouncement | null | undefined>(undefined)
   const [selectedPlanningDate, setSelectedPlanningDate] = useState(focusedDate ?? todayIso())
+  const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null)
   const [planningMonth, setPlanningMonth] = useState(`${(focusedDate ?? todayIso()).slice(0, 7)}-01`)
   const currentWeekRef = useRef<HTMLElement>(null)
   const resultIds = new Set(results.map((result) => result.task_id))
@@ -69,7 +72,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
     if (!canManage && filter === 'pending') return task.week_start === currentWeek
     return task.week_start >= oldestVisibleWeek && (canManage || task.week_start <= currentWeek)
   })
-  const taskWeeks = groupTasksByWeek(visibleTasks, resultIds)
+  const taskWeeks = groupTasksByWeek(visibleTasks)
   const displayedTaskWeeks = canManage ? includeCurrentWeek(taskWeeks, currentWeek) : taskWeeks
   const earliestSeasonStart = seasons.reduce<string | null>((earliest, season) => (
     !earliest || season.start_date < earliest ? season.start_date : earliest
@@ -81,7 +84,6 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
   const selectedPlanningWeek = mondayFor(selectedPlanningDate)
   const selectedWeekTasks = groupTasksByWeek(
     visiblePlanningTasks.filter((task) => task.week_start === selectedPlanningWeek),
-    resultIds,
   )[0]?.weekTasks ?? []
   const visibleAnnouncements = announcements.filter((announcement) => canManage || announcement.status === 'published')
   const selectedDayAnnouncements = visibleAnnouncements.filter((announcement) => announcement.announcement_date === selectedPlanningDate)
@@ -185,8 +187,14 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
 
   function managerActionsFor(task: TrainingTask) {
     if (!canManage) return undefined
+    const orderedWeekTasks = tasks.filter((item) => item.week_start === task.week_start).sort(compareTaskOrder)
+    const taskIndex = orderedWeekTasks.findIndex((item) => item.id === task.id)
     return (
       <>
+        {onReorder && orderedWeekTasks.length > 1 && !normalizedSearch && <div className="task-order-actions" aria-label={`Ordenar ${task.title}`} role="group">
+          <button aria-label={`Subir ${task.title}`} className="secondary-button compact" disabled={taskIndex <= 0 || reorderingTaskId !== null} onClick={() => void moveTask(task, -1)} title="Mover antes" type="button">↑</button>
+          <button aria-label={`Bajar ${task.title}`} className="secondary-button compact" disabled={taskIndex < 0 || taskIndex >= orderedWeekTasks.length - 1 || reorderingTaskId !== null} onClick={() => void moveTask(task, 1)} title="Mover después" type="button">↓</button>
+        </div>}
         <StatusControl status={task.status} onChange={async (status) => {
           await onStatusChange(task.id, status)
           if (onLoadRange) {
@@ -197,6 +205,25 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
         <button className="secondary-button compact" onClick={() => openCopyForm(task)} type="button">Copiar</button>
       </>
     )
+  }
+
+  async function moveTask(task: TrainingTask, offset: -1 | 1) {
+    if (!onReorder) return
+    const orderedWeekTasks = tasks.filter((item) => item.week_start === task.week_start).sort(compareTaskOrder)
+    const currentIndex = orderedWeekTasks.findIndex((item) => item.id === task.id)
+    const targetIndex = currentIndex + offset
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= orderedWeekTasks.length) return
+    const nextOrder = [...orderedWeekTasks]
+    const targetTask = nextOrder[targetIndex]
+    nextOrder[targetIndex] = nextOrder[currentIndex]
+    nextOrder[currentIndex] = targetTask
+    setReorderingTaskId(task.id)
+    try {
+      await onReorder(nextOrder.map((item) => item.id))
+      if (onLoadRange) await onLoadRange(task.week_start, task.week_start)
+    } finally {
+      setReorderingTaskId(null)
+    }
   }
 
   function announcementActionsFor(announcement: TeamAnnouncement) {
@@ -396,14 +423,12 @@ function includeCurrentWeek(taskWeeks: Array<{ weekStart: string; weekTasks: Tra
     .sort((first, second) => second.weekStart.localeCompare(first.weekStart))
 }
 
-function groupTasksByWeek(tasks: TrainingTask[], resultIds: Set<string>) {
+function groupTasksByWeek(tasks: TrainingTask[]) {
   const weeks = new Map<string, TrainingTask[]>()
   const orderedTasks = [...tasks].sort((first, second) => {
     const weekOrder = second.week_start.localeCompare(first.week_start)
     if (weekOrder !== 0) return weekOrder
-    const completionOrder = Number(resultIds.has(first.id)) - Number(resultIds.has(second.id))
-    if (completionOrder !== 0) return completionOrder
-    return first.created_at.localeCompare(second.created_at) || first.id.localeCompare(second.id)
+    return compareTaskOrder(first, second)
   })
   for (const task of orderedTasks) {
     weeks.set(task.week_start, [...(weeks.get(task.week_start) ?? []), task])

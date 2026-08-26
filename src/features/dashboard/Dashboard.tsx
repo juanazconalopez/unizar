@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import { membershipCoversDate } from '../../lib/selectors'
 import { canUserCompleteTask } from '../../lib/tasks'
+import { compareTaskOrder } from '../../lib/taskOrder'
 import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask } from '../../types'
 import { PlayerSeasonSummaryDialog } from '../matches/PlayerSeasonSummaryDialog'
 import { TaskCard } from '../tasks/TaskCard'
@@ -40,11 +41,7 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
       && task.status === 'published'
       && canUserCompleteTask(task, memberships, userId)
     ))
-    .sort((first, second) => {
-      const completionOrder = Number(completedIds.has(first.id)) - Number(completedIds.has(second.id))
-      if (completionOrder !== 0) return completionOrder
-      return first.created_at.localeCompare(second.created_at) || first.id.localeCompare(second.id)
-    })
+    .sort(compareTaskOrder)
   const completed = weekTasks.filter((task) => completedIds.has(task.id)).length
   const completion = weekTasks.length ? Math.round((completed / weekTasks.length) * 100) : 0
   const eligibleTrainingSessions = season ? trainingSessions.filter((session) => (

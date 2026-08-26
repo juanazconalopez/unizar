@@ -225,6 +225,7 @@ export function MatchesView({
       {lineupMatch && (
         <MatchLineupDialog
           availability={availability.filter((item) => item.match_id === lineupMatch.match.id)}
+          canExport={canManage || canViewReport}
           entries={lineups.filter((entry) => entry.match_id === lineupMatch.match.id)}
           match={lineupMatch.match}
           memberships={memberships}

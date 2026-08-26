@@ -1,8 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { mondayFor, todayIso } from '../lib/dates'
 import { fetchNotificationFeed } from '../services/notificationsService'
-import { makeMembership, makeProfile, makeTask } from '../test/fixtures'
+import { makeAnnouncement, makeProfile } from '../test/fixtures'
 import { NOTIFICATION_REFRESH_INTERVAL_MS, useNotifications } from './useNotifications'
 
 vi.mock('../services/notificationsService', () => ({ fetchNotificationFeed: vi.fn() }))
@@ -14,8 +13,8 @@ describe('useNotifications', () => {
     localStorage.clear()
     vi.mocked(fetchNotificationFeed).mockReset()
     vi.mocked(fetchNotificationFeed).mockResolvedValue({
-      tasks: [makeTask({ week_start: mondayFor(todayIso()), created_at: '2026-08-12T08:00:00.000Z' })],
-      results: [], memberships: [makeMembership()], matches: [], availability: [], lineups: [], announcements: [],
+      tasks: [], results: [], memberships: [], matches: [], availability: [], lineups: [],
+      announcements: [makeAnnouncement({ updated_at: '2026-08-12T08:00:00.000Z' })],
     })
   })
 
