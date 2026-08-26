@@ -29,13 +29,13 @@ describe('tasksService', () => {
 
   test('stores new tasks on the Monday of the chosen week', async () => {
     await createTrainingTask({
-      seasonId: 'season-1', date: '2026-08-06', title: '  Técnica de pase  ',
-      description: '  Trabajo por parejas  ', trainingType: 'Técnico', status: 'draft',
+      seasonId: 'season-1', date: '2026-08-06', title: '  Análisis de partido  ',
+      description: '  Ver el vídeo completo  ', trainingType: 'Vídeo', status: 'draft',
     }, 'owner-1')
 
     expect(mocks.insert).toHaveBeenCalledWith({
-      season_id: 'season-1', week_start: '2026-08-03', title: 'Técnica de pase',
-      description: 'Trabajo por parejas', training_type: 'Técnico', status: 'draft', created_by: 'owner-1',
+      season_id: 'season-1', week_start: '2026-08-03', title: 'Análisis de partido',
+      description: 'Ver el vídeo completo', training_type: 'Vídeo', status: 'draft', created_by: 'owner-1',
     })
   })
 

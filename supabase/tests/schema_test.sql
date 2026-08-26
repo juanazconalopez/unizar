@@ -1,5 +1,5 @@
 begin;
-select plan(64);
+select plan(66);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -68,6 +68,16 @@ select ok(to_regclass('public.competition_player_stats') is not null, 'competiti
 select ok(
   exists (select 1 from pg_constraint where conname = 'tasks_valid_training_type'),
   'task types are constrained'
+);
+select like(
+  (select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_valid_training_type'),
+  '%Vídeo%',
+  'video is an accepted task type'
+);
+select like(
+  (select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.tasks'::regclass and conname = 'tasks_valid_training_type'),
+  '%Táctico%Técnico%',
+  'legacy tactical and technical task types remain accepted'
 );
 select ok(
   exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'season_players_one_open_period_idx'),

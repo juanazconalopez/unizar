@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate } from '../../lib/dates'
+import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
 import type { Profile } from '../../types'
 
 export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }: {
@@ -12,43 +14,77 @@ export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }
   onUpdate: (profile: Profile) => Promise<void>
 }) {
   const [showArchived, setShowArchived] = useState(false)
-  const pending = profiles.filter((profile) => !profile.is_approved && !profile.is_archived)
-  const approved = profiles.filter((profile) => profile.is_approved && !profile.is_archived)
-  const archived = profiles.filter((profile) => profile.is_archived)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const normalizedSearch = normalizeDisplayName(search)
+  const matchesSearch = (profile: Profile) => !normalizedSearch || displayNameContains(profile.display_name, normalizedSearch)
+  const allPending = profiles.filter((profile) => !profile.is_approved && !profile.is_archived)
+  const allApproved = profiles.filter((profile) => profile.is_approved && !profile.is_archived)
+  const allArchived = profiles.filter((profile) => profile.is_archived)
+  const pending = allPending.filter(matchesSearch)
+  const approved = allApproved.filter(matchesSearch)
+  const archived = allArchived.filter(matchesSearch)
+  const hasSearchMatches = pending.length + approved.length + archived.length > 0
+  const searchControl = searchOpen ? (
+    <div className="team-search-field">
+      <Icon name="search" size={17} />
+      <input
+        aria-label="Buscar por nombre"
+        autoFocus
+        onChange={(event) => setSearch(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape') return
+          setSearch('')
+          setSearchOpen(false)
+        }}
+        placeholder="Buscar por nombre…"
+        type="search"
+        value={search}
+      />
+      <button aria-label="Cerrar búsqueda" onClick={() => { setSearch(''); setSearchOpen(false) }} type="button">×</button>
+    </div>
+  ) : (
+    <button aria-label="Buscar personas" className="icon-button team-search-toggle" onClick={() => setSearchOpen(true)} title="Buscar personas" type="button">
+      <Icon name="search" size={19} />
+    </button>
+  )
 
   return (
     <div className={embedded ? 'settings-section' : 'page'}>
-      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2><p>{approved.length} miembros aprobados · {pending.length} solicitudes pendientes</p></div></div> : <PageHeader
+      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2><p>{allApproved.length} miembros aprobados · {allPending.length} solicitudes pendientes</p></div>{searchControl}</div> : <PageHeader
+        action={searchControl}
         eyebrow="ADMINISTRACIÓN"
         title="Equipo"
-        subtitle={`${approved.length} miembros aprobados · ${pending.length} solicitudes pendientes`}
+        subtitle={`${allApproved.length} miembros aprobados · ${allPending.length} solicitudes pendientes`}
       />}
       {pending.length > 0 && (
         <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">
-          {pending.map((person) => <ApprovalRequestRow key={person.id} onUpdate={onUpdate} person={person} />)}
+          {pending.map((person) => <ApprovalRequestRow key={person.id} onUpdate={onUpdate} person={person} possibleMatches={profiles.filter((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name)).slice(0, 3)} />)}
         </PeopleSection>
       )}
-      <PeopleSection eyebrow="MIEMBROS" title="Permisos del equipo">
-        {approved.map((person) => <PersonRow currentUserId={currentUserId} key={person.id} onUpdate={onUpdate} person={person} />)}
-      </PeopleSection>
+      {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Permisos del equipo">
+          {approved.map((person) => <PersonRow currentUserId={currentUserId} key={person.id} onUpdate={onUpdate} person={person} />)}
+      </PeopleSection>}
       {archived.length > 0 && (
         <section className="archived-users">
-          <button className="text-button" onClick={() => setShowArchived((value) => !value)}>
+          {!normalizedSearch && <button className="text-button" onClick={() => setShowArchived((value) => !value)}>
             {showArchived ? 'Ocultar' : 'Ver'} usuarios desautorizados ({archived.length})
-          </button>
-          {showArchived && (
+          </button>}
+          {(showArchived || Boolean(normalizedSearch)) && (
             <div className="people-list">
               {archived.map((person) => <ArchivedPersonRow key={person.id} onUpdate={onUpdate} person={person} />)}
             </div>
           )}
         </section>
       )}
+      {normalizedSearch && !hasSearchMatches && <p className="team-search-empty">No hay personas que coincidan con “{search.trim()}”.</p>}
     </div>
   )
 }
 
-function ApprovalRequestRow({ person, onUpdate }: {
+function ApprovalRequestRow({ person, possibleMatches, onUpdate }: {
   person: Profile
+  possibleMatches: Profile[]
   onUpdate: (profile: Profile) => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
@@ -63,7 +99,7 @@ function ApprovalRequestRow({ person, onUpdate }: {
   }
 
   return (
-    <article className="person-row approval-request">
+    <article className={`person-row approval-request${possibleMatches.length ? ' has-possible-match' : ''}`}>
       <div className="person-identity">
         <Avatar name={person.display_name} />
         <div>
@@ -71,6 +107,13 @@ function ApprovalRequestRow({ person, onUpdate }: {
           <span>Solicitud recibida {formatDate(person.created_at.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' })}</span>
         </div>
       </div>
+      {possibleMatches.length > 0 && <div className="duplicate-profile-warning" role="status">
+        <Icon name="warning" size={18} />
+        <div>
+          <strong>Posible cuenta duplicada</strong>
+          <p>El nombre se parece a {possibleMatches.map((match, index) => <span key={match.id}>{index > 0 ? ', ' : ''}<b>{match.display_name}</b> ({profileState(match)})</span>)}. Revisa la coincidencia antes de autorizar.</p>
+        </div>
+      </div>}
       <div className="approval-actions">
         <span>Se habilitará como jugadora activa</span>
         <button className="primary-button" disabled={saving} onClick={approve}>
@@ -79,6 +122,12 @@ function ApprovalRequestRow({ person, onUpdate }: {
       </div>
     </article>
   )
+}
+
+function profileState(profile: Profile) {
+  if (profile.is_archived) return 'desautorizada'
+  if (!profile.is_approved) return 'otra solicitud pendiente'
+  return profile.is_active ? 'miembro activo' : 'miembro inactivo'
 }
 
 function PeopleSection({ eyebrow, title, children }: { eyebrow: string; title: string; children: ReactNode }) {
