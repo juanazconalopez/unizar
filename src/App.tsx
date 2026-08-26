@@ -368,7 +368,8 @@ function App() {
           attendance={data.attendance}
           trainingSessions={data.trainingSessions}
           profile={data.profile}
-          results={personalResults}
+          profiles={data.profiles}
+          results={canViewTeam ? data.results : personalResults}
           tasks={data.tasks}
           announcements={data.announcements}
           matches={data.matches}

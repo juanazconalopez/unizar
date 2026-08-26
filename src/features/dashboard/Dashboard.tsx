@@ -3,15 +3,18 @@ import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
+import { canViewTeamData, isPlayer } from '../../lib/permissions'
 import { membershipCoversDate } from '../../lib/selectors'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { compareTaskOrder } from '../../lib/taskOrder'
 import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask } from '../../types'
 import { PlayerSeasonSummaryDialog } from '../matches/PlayerSeasonSummaryDialog'
 import { TaskCard } from '../tasks/TaskCard'
+import { TaskResultsSummary } from '../tasks/TaskResultsSummary'
 
-export function Dashboard({ profile, memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onSaveResult }: {
+export function Dashboard({ profile, profiles = [], memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onSaveResult }: {
   profile: Profile
+  profiles?: Profile[]
   memberships: SeasonPlayer[]
   tasks: TrainingTask[]
   results: TaskResult[]
@@ -32,18 +35,33 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
   const [seasonSummaryUnavailable, setSeasonSummaryUnavailable] = useState(false)
   const [showSeasonSummary, setShowSeasonSummary] = useState(false)
   const currentMonday = mondayFor(new Date())
+  const isTeamDashboard = canViewTeamData(profile)
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const publishedResults = results.filter((result) => publishedTaskIds.has(result.task_id))
-  const completedIds = new Set(publishedResults.map((result) => result.task_id))
+  const personalPublishedResults = publishedResults.filter((result) => result.player_id === userId)
+  const completedIds = new Set(personalPublishedResults.map((result) => result.task_id))
   const weekTasks = tasks
     .filter((task) => (
       task.week_start === currentMonday
       && task.status === 'published'
-      && canUserCompleteTask(task, memberships, userId)
+      && (isTeamDashboard || canUserCompleteTask(task, memberships, userId))
     ))
     .sort(compareTaskOrder)
   const completed = weekTasks.filter((task) => completedIds.has(task.id)).length
   const completion = weekTasks.length ? Math.round((completed / weekTasks.length) * 100) : 0
+  const teamPlayers = profiles.filter((player) => (
+    isPlayer(player) && player.is_approved && player.is_active && !player.is_archived
+  ))
+  const eligiblePlayerIdsByTask = new Map(weekTasks.map((task) => [
+    task.id,
+    new Set(teamPlayers.filter((player) => canUserCompleteTask(task, memberships, player.id)).map((player) => player.id)),
+  ]))
+  const eligiblePlayerIds = new Set([...eligiblePlayerIdsByTask.values()].flatMap((ids) => [...ids]))
+  const validTeamResults = publishedResults.filter((result) => eligiblePlayerIdsByTask.get(result.task_id)?.has(result.player_id))
+  const activePlayerIds = new Set(validTeamResults.map((result) => result.player_id))
+  const expectedTeamResults = [...eligiblePlayerIdsByTask.values()].reduce((total, ids) => total + ids.size, 0)
+  const teamCompletion = expectedTeamResults ? Math.round((validTeamResults.length / expectedTeamResults) * 100) : 0
+  const insight = teamProgressInsight(weekTasks, eligiblePlayerIdsByTask, validTeamResults, eligiblePlayerIds.size, activePlayerIds.size)
   const eligibleTrainingSessions = season ? trainingSessions.filter((session) => (
     session.season_id === season.id
     && session.session_date <= todayIso()
@@ -78,24 +96,29 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
 
   useEffect(() => {
     let active = true
-    if (!season || !onLoadSeasonSummary) return () => { active = false }
+    if (isTeamDashboard || !season || !onLoadSeasonSummary) return () => { active = false }
     void onLoadSeasonSummary(season.id, userId)
       .then((summary) => { if (active) setSeasonSummary(summary) })
       .catch(() => { if (active) setSeasonSummaryUnavailable(true) })
     return () => { active = false }
-  }, [onLoadSeasonSummary, season, userId])
+  }, [isTeamDashboard, onLoadSeasonSummary, season, userId])
 
   return (
     <div className="page">
       <PageHeader
-        eyebrow="PANEL PERSONAL"
+        eyebrow={isTeamDashboard ? 'PANEL DEL EQUIPO' : 'PANEL PERSONAL'}
         title={`Hola, ${profile.display_name.split(' ')[0]}`}
-        subtitle="Este es el resumen de tu semana y de la temporada."
+        subtitle={isTeamDashboard ? 'Este es el seguimiento de las tareas publicadas para esta semana.' : 'Este es el resumen de tu semana y de la temporada.'}
       />
-      <section className="dashboard-stats-grid">
-        <WeekProgressCard completed={completed} completion={completion} total={weekTasks.length} />
-        <StatCard label="Asistencia a campo" value={eligibleTrainingSessions.length ? `${attendedSessions}/${eligibleTrainingSessions.length}` : '—'} note={eligibleTrainingSessions.length ? `${attendanceRate}% esta temporada` : 'Sin entrenamientos realizados'} tone="lime" />
-        {season && onLoadSeasonSummary && <button className="stat-card season dashboard-season-card" disabled={!seasonSummary} onClick={() => setShowSeasonSummary(true)} type="button">
+      <section className={`dashboard-stats-grid${isTeamDashboard ? ' staff-dashboard-stats' : ''}`}>
+        {isTeamDashboard ? <>
+          <StatCard label="Jugadoras activas" value={`${activePlayerIds.size}/${eligiblePlayerIds.size}`} note="Han realizado al menos una tarea" tone="blue" />
+          <TeamProgressCard completed={validTeamResults.length} completion={teamCompletion} total={expectedTeamResults} />
+        </> : <>
+          <WeekProgressCard completed={completed} completion={completion} total={weekTasks.length} />
+          <StatCard label="Asistencia a campo" value={eligibleTrainingSessions.length ? `${attendedSessions}/${eligibleTrainingSessions.length}` : '—'} note={eligibleTrainingSessions.length ? `${attendanceRate}% esta temporada` : 'Sin entrenamientos realizados'} tone="lime" />
+        </>}
+        {!isTeamDashboard && season && onLoadSeasonSummary && <button className="stat-card season dashboard-season-card" disabled={!seasonSummary} onClick={() => setShowSeasonSummary(true)} type="button">
           <span>Mi temporada</span>
           <strong>{seasonSummary ? seasonSummary.callups.official + seasonSummary.callups.friendly : '—'}</strong>
           <small>{seasonSummary ? `${seasonSummary.callups.official} oficiales · ${seasonSummary.callups.friendly} amistosas` : seasonSummaryUnavailable ? 'Resumen no disponible' : 'Cargando convocatorias…'}</small>
@@ -103,9 +126,9 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
         </button>}
       </section>
       {showSeasonSummary && season && onLoadSeasonSummary && seasonSummary && <PlayerSeasonSummaryDialog initialSummary={seasonSummary} onClose={() => setShowSeasonSummary(false)} onLoad={onLoadSeasonSummary} playerId={userId} season={season} />}
-      <section className="motivation-card">
+      <section className={`motivation-card${isTeamDashboard ? ' team-insight-card' : ''}`}>
         <span><Icon name="spark" size={22} /></span>
-        <div><strong>{motivation.title}</strong><p>{motivation.text}</p></div>
+        <div><strong>{isTeamDashboard ? insight.title : motivation.title}</strong><p>{isTeamDashboard ? insight.text : motivation.text}</p></div>
       </section>
       {attentionCount > 0 && (
         <details className="dashboard-next dashboard-attention">
@@ -118,7 +141,7 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
       )}
       <section className="section-block">
         <div className="section-heading">
-          <div><span className="eyebrow">SEMANA ACTUAL</span><h2>Tus entrenamientos</h2></div>
+          <div><span className="eyebrow">SEMANA ACTUAL</span><h2>{isTeamDashboard ? 'Entrenamientos del equipo' : 'Tus entrenamientos'}</h2></div>
           {onGoToTasks && <button className="text-button" onClick={onGoToTasks}>Ver todas <Icon name="arrow" size={17} /></button>}
         </div>
         {weekTasks.length ? (
@@ -126,9 +149,15 @@ export function Dashboard({ profile, memberships, tasks, announcements = [], mat
             {weekTasks.slice(0, 4).map((task) => (
               <TaskCard
                 key={task.id}
-                result={publishedResults.find((item) => item.task_id === task.id)}
+                managementSummary={isTeamDashboard ? <TaskResultsSummary
+                  eligibleCount={eligiblePlayerIdsByTask.get(task.id)?.size ?? 0}
+                  profiles={profiles}
+                  results={validTeamResults}
+                  task={task}
+                /> : undefined}
+                result={personalPublishedResults.find((item) => item.task_id === task.id)}
                 task={task}
-                onSave={onSaveResult}
+                onSave={isPlayer(profile) && canUserCompleteTask(task, memberships, userId) ? onSaveResult : undefined}
               />
             ))}
           </div>
@@ -178,4 +207,44 @@ function StatCard({ label, value, note, tone }: { label: string; value: string; 
 function WeekProgressCard({ completed, total, completion }: { completed: number; total: number; completion: number }) {
   const pending = Math.max(0, total - completed)
   return <article className="stat-card green week-progress-card"><span>Esta semana</span><div><strong>{completed}/{total}</strong><b>{completion}%</b></div><div aria-label={`${completion}% completado`} className="week-progress-track"><i style={{ width: `${completion}%` }} /></div><small>{pending ? `${pending} ${pending === 1 ? 'tarea pendiente' : 'tareas pendientes'}` : total ? 'Semana completada' : 'Sin tareas asignadas'}</small></article>
+}
+
+function TeamProgressCard({ completed, total, completion }: { completed: number; total: number; completion: number }) {
+  const pending = Math.max(0, total - completed)
+  return <article className="stat-card green week-progress-card"><span>Progreso del equipo</span><div><strong>{completed}/{total}</strong><b>{completion}%</b></div><div aria-label={`${completion}% completado`} className="week-progress-track"><i style={{ width: `${completion}%` }} /></div><small>{pending ? `${pending} ${pending === 1 ? 'realización pendiente' : 'realizaciones pendientes'}` : total ? 'Todas las tareas completadas' : 'Sin realizaciones esperadas'}</small></article>
+}
+
+function teamProgressInsight(
+  tasks: TrainingTask[],
+  eligiblePlayerIdsByTask: Map<string, Set<string>>,
+  results: TaskResult[],
+  eligiblePlayers: number,
+  activePlayers: number,
+) {
+  if (!tasks.length) {
+    return { title: 'Semana todavía sin tareas', text: 'Cuando se publique una tarea aparecerá aquí el seguimiento del equipo.' }
+  }
+  if (!eligiblePlayers) {
+    return { title: 'Sin jugadoras asignadas', text: 'Las tareas están publicadas, pero no hay jugadoras activas asignadas a esta semana.' }
+  }
+
+  const resultCountByTask = new Map<string, number>()
+  results.forEach((result) => resultCountByTask.set(result.task_id, (resultCountByTask.get(result.task_id) ?? 0) + 1))
+  const lowestParticipationTask = tasks.filter((task) => (eligiblePlayerIdsByTask.get(task.id)?.size ?? 0) > 0).sort((first, second) => {
+    const firstEligible = eligiblePlayerIdsByTask.get(first.id)?.size ?? 0
+    const secondEligible = eligiblePlayerIdsByTask.get(second.id)?.size ?? 0
+    const firstRate = firstEligible ? (resultCountByTask.get(first.id) ?? 0) / firstEligible : 1
+    const secondRate = secondEligible ? (resultCountByTask.get(second.id) ?? 0) / secondEligible : 1
+    return firstRate - secondRate
+  })[0]
+  const taskResponses = resultCountByTask.get(lowestParticipationTask.id) ?? 0
+  const taskEligiblePlayers = eligiblePlayerIdsByTask.get(lowestParticipationTask.id)?.size ?? 0
+  const pendingPlayers = eligiblePlayers - activePlayers
+
+  return {
+    title: pendingPlayers
+      ? `${pendingPlayers} ${pendingPlayers === 1 ? 'jugadora todavía no ha' : 'jugadoras todavía no han'} comenzado`
+      : 'Todo el equipo ha comenzado las tareas',
+    text: `“${lowestParticipationTask.title}” es la tarea con menor participación: ${taskResponses}/${taskEligiblePlayers} respuestas.`,
+  }
 }

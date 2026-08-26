@@ -21,7 +21,8 @@ describe('training data requirements', () => {
     })
   })
 
-  test('loads team profiles for task managers only', () => {
+  test('loads team profiles for staff dashboards and task management', () => {
+    expect(dataRequirementsFor('home', true).profiles).toBe(true)
     expect(dataRequirementsFor('tasks', false).profiles).toBe(false)
     expect(dataRequirementsFor('tasks', true).profiles).toBe(true)
   })

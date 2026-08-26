@@ -89,6 +89,69 @@ describe('Dashboard', () => {
     ])
   })
 
+  test('shows published tasks and team progress to staff without requiring a player assignment', () => {
+    const weekStart = mondayFor(new Date())
+    const profiles = [
+      makeProfile({ id: 'player-1', display_name: 'Ana' }),
+      makeProfile({ id: 'player-2', display_name: 'Bea' }),
+      makeProfile({ id: 'player-3', display_name: 'Clara' }),
+    ]
+    const memberships = profiles.map((player, index) => makeMembership({
+      id: `membership-${index}`,
+      player_id: player.id,
+    }))
+    const tasks = [
+      makeTask({ id: 'speed', title: 'Velocidad', week_start: weekStart }),
+      makeTask({ id: 'power', title: 'Potencia', sort_order: 2, week_start: weekStart }),
+      makeTask({ id: 'draft', title: 'Borrador oculto', status: 'draft', week_start: weekStart }),
+    ]
+
+    render(<Dashboard
+      profile={makeProfile({ id: 'owner-1', is_owner: true, is_player: false })}
+      profiles={profiles}
+      memberships={memberships}
+      tasks={tasks}
+      results={[
+        makeResult({ task_id: 'speed', player_id: 'player-1' }),
+        makeResult({ task_id: 'speed', player_id: 'player-2' }),
+        makeResult({ task_id: 'power', player_id: 'player-1' }),
+      ]}
+      attendance={[]}
+      userId="owner-1"
+      onSaveResult={vi.fn()}
+    />)
+
+    expect(screen.getByText('PANEL DEL EQUIPO')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Entrenamientos del equipo' })).toBeInTheDocument()
+    expect(screen.getByText('Jugadoras activas').closest('article')).toHaveTextContent('2/3')
+    expect(screen.getByText('Progreso del equipo').closest('article')).toHaveTextContent('3/650%')
+    expect(screen.getByText('1 jugadora todavía no ha comenzado')).toBeInTheDocument()
+    expect(screen.getByText('“Potencia” es la tarea con menor participación: 1/3 respuestas.')).toBeInTheDocument()
+    expect(screen.getByText('2/3 respuestas · 67%')).toBeInTheDocument()
+    expect(screen.getByText('1/3 respuestas · 33%')).toBeInTheDocument()
+    expect(screen.queryByText('Borrador oculto')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Completar' })).not.toBeInTheDocument()
+  })
+
+  test('gives directors the same read-only weekly overview', () => {
+    const weekStart = mondayFor(new Date())
+    render(<Dashboard
+      profile={makeProfile({ id: 'viewer-1', is_player: false, is_viewer: true })}
+      profiles={[makeProfile()]}
+      memberships={[makeMembership()]}
+      tasks={[makeTask({ week_start: weekStart })]}
+      results={[]}
+      attendance={[]}
+      userId="viewer-1"
+      onSaveResult={vi.fn()}
+    />)
+
+    expect(screen.getByRole('heading', { name: 'Entrenamientos del equipo' })).toBeInTheDocument()
+    expect(screen.getByText('Jugadoras activas').closest('article')).toHaveTextContent('0/1')
+    expect(screen.getByText('0/1 respuestas · 0%')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Completar' })).not.toBeInTheDocument()
+  })
+
   test('opens the personal season summary from its dashboard card', async () => {
     const user = userEvent.setup()
     const summary = {

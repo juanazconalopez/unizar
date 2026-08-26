@@ -5,13 +5,29 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
   await page.getByRole('button', { name: 'Tareas' }).click()
   await expect(page.getByRole('region', { name: 'Calendario de planificación' })).toBeVisible()
   await page.getByRole('button', { name: 'Nueva tarea en esta semana' }).click()
-  await expect(page.getByRole('dialog', { name: 'Crear tarea' })).toBeVisible()
+  const createDialog = page.getByRole('dialog', { name: 'Crear tarea' })
+  await expect(createDialog).toBeVisible()
+  await expect(createDialog.getByRole('option', { name: 'Vídeo' })).toHaveCount(1)
+  await expect(createDialog.getByRole('option', { name: 'Táctico' })).toHaveCount(0)
+  await expect(createDialog.getByRole('option', { name: 'Técnico' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Cerrar' }).click()
   const results = page.getByRole('button', { name: 'Ver resultados' }).first()
   if (await results.isVisible()) {
     await results.click()
     await expect(page.getByRole('dialog')).toContainText('Fatiga media del equipo')
   }
+})
+
+test('staff home shows team progress and exposes the linked video task', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText('PANEL DEL EQUIPO')).toBeVisible()
+  await expect(page.getByText('Jugadoras activas').locator('..')).toContainText('3/3')
+  await expect(page.getByText('Progreso del equipo').locator('..')).toContainText('5/9')
+
+  const videoTask = page.locator('.task-card').filter({ hasText: 'Ver partido · Nueva Zelanda contra Australia' })
+  const videoLink = videoTask.getByRole('link', { name: 'https://www.youtube.com/watch?v=PW46tR7Ka9Y' })
+  await expect(videoLink).toHaveAttribute('href', 'https://www.youtube.com/watch?v=PW46tR7Ka9Y')
+  await expect(videoLink).toHaveAttribute('target', '_blank')
 })
 
 test('owner publishes a dated announcement and a player opens it from home', async ({ page }) => {

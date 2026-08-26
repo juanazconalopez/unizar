@@ -76,4 +76,19 @@ describe('TaskCard', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar detalle' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+
+  test('turns URLs in the task description into links that open in a new tab', async () => {
+    const user = userEvent.setup()
+    const task = makeTask({ description: 'Mira el partido en https://youtu.be/abc123?si=test.' })
+    render(<TaskCard task={task} />)
+
+    const cardLink = screen.getByRole('link', { name: 'https://youtu.be/abc123?si=test' })
+    expect(cardLink).toHaveAttribute('href', 'https://youtu.be/abc123?si=test')
+    expect(cardLink).toHaveAttribute('target', '_blank')
+    expect(cardLink).toHaveAttribute('rel', 'noopener noreferrer')
+
+    await user.click(screen.getByRole('button', { name: `Ver detalle de ${task.title}` }))
+    const dialog = screen.getByRole('dialog', { name: task.title })
+    expect(within(dialog).getByRole('link', { name: 'https://youtu.be/abc123?si=test' })).toHaveAttribute('href', 'https://youtu.be/abc123?si=test')
+  })
 })

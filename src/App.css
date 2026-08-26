@@ -53,6 +53,7 @@
 .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
 .dashboard-stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 16px; margin-bottom: 18px; }
+.staff-dashboard-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .stat-card { position: relative; overflow: hidden; min-height: 150px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 7px 22px rgba(31,63,54,.035); }
 .stat-card::after { content: ''; position: absolute; width: 92px; height: 92px; right: -30px; bottom: -34px; border-radius: 50%; opacity: .22; background: currentColor; }
 .stat-card > span, .stat-card small { display: block; color: var(--muted); }
@@ -113,7 +114,8 @@
 .task-card.completed .task-status-icon { color: var(--green); background: var(--green-soft); }
 .task-main h3 { margin: 3px 0 5px; font-size: 16px; letter-spacing: -.2px; }
 .task-main > p { max-width: 670px; margin: 0 0 9px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-.task-card-description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.task-card-description { position: relative; z-index: 2; display: -webkit-box; overflow: hidden; pointer-events: none; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.task-description-link { color: var(--green); pointer-events: auto; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 2px; }
 .task-meta { display: flex; gap: 6px; color: var(--green); font-size: 10px; font-weight: 800; letter-spacing: .7px; text-transform: uppercase; }
 .task-footer { display: flex; flex-wrap: wrap; gap: 8px 18px; color: #8b9894; font-size: 11px; }
 .result-summary { display: inline-flex; align-items: center; gap: 3px; color: var(--green); font-weight: 700; }
@@ -747,6 +749,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .selected-week-actions .secondary-button { width: 100%; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 32px; }
   .dashboard-stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-bottom: 24px; }
+  .staff-dashboard-stats { grid-template-columns: 1fr; }
   .dashboard-stats-grid .week-progress-card { grid-column: 1 / -1; }
   .stat-card { min-height: 125px; padding: 17px; }
   .stat-card strong { font-size: 31px; }

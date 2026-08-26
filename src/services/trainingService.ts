@@ -32,7 +32,7 @@ export type TrainingData = {
   announcements?: TeamAnnouncement[]
 }
 
-export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
+export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
   const tasks = scope === 'home' || scope === 'tasks' || scope === 'statistics'
   return {
     tasks,
@@ -42,7 +42,7 @@ export function dataRequirementsFor(scope: ViewName, canManageTasks: boolean) {
       || scope === 'statistics'
       || scope === 'attendance'
       || scope === 'settings'
-      || (scope === 'tasks' && canManageTasks),
+      || ((scope === 'home' || scope === 'tasks') && canViewTeam),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
     matches: scope === 'home' || scope === 'matches',
     announcements: scope === 'home' || scope === 'tasks',
@@ -230,7 +230,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (!profile.is_approved || profile.is_archived) return emptyData
 
   const canManageTasks = canManageSport(profile)
-  const requirements = dataRequirementsFor(scope, canManageTasks)
+  const canViewTeam = canViewTeamData(profile)
+  const requirements = dataRequirementsFor(scope, canViewTeam)
   const currentWeek = mondayFor(new Date())
 
   const emptyResponse = Promise.resolve({ data: [], error: null })
@@ -255,7 +256,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   let matchData = emptyMatchWindow
 
   if (scope === 'home') {
-    taskData = await fetchTaskWindow(userId, false, currentWeek, currentWeek)
+    taskData = await fetchTaskWindow(userId, canViewTeam, currentWeek, currentWeek)
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     if (activeSeason) {
       const attention = await fetchHomeAttention(todayIso(), activeSeason.end_date)

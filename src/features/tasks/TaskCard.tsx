@@ -62,7 +62,7 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
           <span>{task.training_type || 'Entrenamiento'}</span><span>·</span><span>{task.seasons?.name}</span>
         </div>
         <h3>{task.title}</h3>
-        {task.description && <p className="task-card-description">{task.description}</p>}
+        {task.description && <p className="task-card-description"><LinkedText text={task.description} /></p>}
         {managementSummary}
         {(!hideWeek || result) && <div className="task-footer">
           {!hideWeek && <span>{formatWeek(task.week_start)}</span>}
@@ -121,9 +121,38 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
             <div className="task-detail-week"><Icon name="calendar" size={17} /><span>{formatWeek(task.week_start)}</span></div>
             <div className="task-detail-description">
               <span className="eyebrow">INDICACIONES</span>
-              <p>{task.description || 'Esta tarea no tiene indicaciones adicionales.'}</p>
+              <p>{task.description ? <LinkedText text={task.description} /> : 'Esta tarea no tiene indicaciones adicionales.'}</p>
             </div>
       </Modal>}
     </article>
   )
+}
+
+const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+/gi
+const TRAILING_URL_PUNCTUATION = /[),.;!?]$/
+
+function LinkedText({ text }: { text: string }) {
+  const parts: ReactNode[] = []
+  let lastIndex = 0
+
+  for (const match of text.matchAll(URL_PATTERN)) {
+    const matchIndex = match.index ?? 0
+    let label = match[0]
+    let trailing = ''
+    while (TRAILING_URL_PUNCTUATION.test(label)) {
+      trailing = label.slice(-1) + trailing
+      label = label.slice(0, -1)
+    }
+    parts.push(text.slice(lastIndex, matchIndex))
+    parts.push(
+      <a className="task-description-link" href={label.startsWith('www.') ? `https://${label}` : label} key={`${matchIndex}-${label}`} rel="noopener noreferrer" target="_blank">
+        {label}
+      </a>,
+    )
+    if (trailing) parts.push(trailing)
+    lastIndex = matchIndex + match[0].length
+  }
+
+  parts.push(text.slice(lastIndex))
+  return <>{parts}</>
 }

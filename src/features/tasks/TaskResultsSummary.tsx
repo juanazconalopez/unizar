@@ -7,10 +7,11 @@ import { formatDate } from '../../lib/dates'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
 
-export function TaskResultsSummary({ task, results, profiles }: {
+export function TaskResultsSummary({ task, results, profiles, eligibleCount }: {
   task: TrainingTask
   results: TaskResult[]
   profiles: Profile[]
+  eligibleCount?: number
 }) {
   const [open, setOpen] = useState(false)
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
@@ -28,12 +29,16 @@ export function TaskResultsSummary({ task, results, profiles }: {
     <>
       <div className={`task-results-summary${average === null ? ' empty' : ''}`}>
         {average === null ? (
-          <span>Sin resultados</span>
+          <span>{eligibleCount === undefined ? 'Sin resultados' : `0/${eligibleCount} respuestas · 0%`}</span>
         ) : (
           <span>
             <FatigueIcon level={Math.round(average)} size={19} />
             Fatiga media <strong>{average.toFixed(1)}/5</strong>
-            <small>{playerResults.length} {playerResults.length === 1 ? 'respuesta' : 'respuestas'}</small>
+            <small>
+              {eligibleCount === undefined
+                ? `${playerResults.length} ${playerResults.length === 1 ? 'respuesta' : 'respuestas'}`
+                : `${playerResults.length}/${eligibleCount} respuestas · ${eligibleCount ? Math.round((playerResults.length / eligibleCount) * 100) : 0}%`}
+            </small>
           </span>
         )}
         {playerResults.length > 0 && (

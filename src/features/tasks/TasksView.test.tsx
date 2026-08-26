@@ -100,6 +100,9 @@ describe('TasksView', () => {
     await user.type(within(form).getByLabelText('Título'), 'Trabajo de fuerza')
     expect(within(form).queryByRole('combobox', { name: 'Temporada' })).not.toBeInTheDocument()
     expect(within(form).getByRole('group', { name: 'Temporada activa' })).toHaveTextContent('Temporada 2026Activa')
+    expect(within(within(form).getByLabelText('Tipo')).getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'Físico', 'Gimnasio', 'Vídeo', 'Recuperación', 'Otro',
+    ])
     await user.type(within(form).getByLabelText('Descripción'), 'Tres bloques progresivos')
     await user.selectOptions(within(form).getByLabelText('Estado'), 'draft')
     await user.click(within(form).getByRole('button', { name: 'Crear tarea' }))
@@ -362,6 +365,7 @@ describe('TasksView', () => {
     const dialog = screen.getByRole('dialog', { name: 'Copiar tarea' })
     expect(within(dialog).getByLabelText('Título')).toHaveValue(task.title)
     expect(within(dialog).getByLabelText('Fecha de la semana')).toHaveValue(task.week_start)
+    expect(within(dialog).getByLabelText('Tipo')).toHaveValue('Táctico')
     expect(within(dialog).getByLabelText('Estado')).toHaveValue('draft')
     await user.click(within(dialog).getByRole('button', { name: 'Copiar tarea' }))
     expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ title: task.title, date: task.week_start, status: 'draft' }))

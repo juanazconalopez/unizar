@@ -1,8 +1,7 @@
 export const TRAINING_TYPES = [
   'Físico',
   'Gimnasio',
-  'Táctico',
-  'Técnico',
+  'Vídeo',
   'Recuperación',
   'Otro',
 ] as const
