@@ -5,6 +5,7 @@ import { addDays, formatDate, mondayFor, monthEnd, monthStart, offsetMonth, toda
 import { canUserCompleteTask } from '../../lib/tasks'
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
+import { SeasonAttendanceReport } from './SeasonAttendanceReport'
 import type {
   AttendanceRecord,
   Profile,
@@ -13,6 +14,7 @@ import type {
   TaskResult,
   TrainingSession,
   TrainingTask,
+  SeasonCallupReport,
 } from '../../types'
 
 type StatisticsProps = {
@@ -25,9 +27,10 @@ type StatisticsProps = {
   results: TaskResult[]
   loadingRange?: boolean
   onLoadMonth?: (month: string) => Promise<void>
+  onLoadSeasonReport?: (seasonId: string) => Promise<SeasonCallupReport>
 }
 
-export function StatisticsView({ profiles, seasons, sessions, attendance, memberships, tasks, results, loadingRange = false, onLoadMonth }: StatisticsProps) {
+export function StatisticsView({ profiles = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -106,6 +109,10 @@ export function StatisticsView({ profiles, seasons, sessions, attendance, member
           label="Media tareas realizadas"
           value={averageCompletedTasks === null ? '—' : formatAverage(averageCompletedTasks)}
         />
+        {onLoadSeasonReport && <SeasonAttendanceReport
+          onLoad={onLoadSeasonReport}
+          season={seasons.find((season) => season.start_date <= today && season.end_date >= today)}
+        />}
       </section>
       {attendanceDrop >= 10 && (
         <div className="monthly-alert" role="status">

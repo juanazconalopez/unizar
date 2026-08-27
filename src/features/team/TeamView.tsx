@@ -48,7 +48,6 @@ export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }
       <Icon name="search" size={19} />
     </button>
   )
-
   return (
     <div className={embedded ? 'settings-section' : 'page'}>
       {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2><p>{allApproved.length} miembros aprobados · {allPending.length} solicitudes pendientes</p></div>{searchControl}</div> : <PageHeader

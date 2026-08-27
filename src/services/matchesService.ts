@@ -69,6 +69,13 @@ export async function fetchSeasonCallupReport(seasonId: string): Promise<SeasonC
   return data as unknown as SeasonCallupReport
 }
 
+export async function fetchSeasonAttendanceReport(seasonId: string): Promise<SeasonCallupReport> {
+  const { data, error } = await supabase.rpc('get_season_attendance_report', { checked_season_id: seasonId })
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen de asistencia no tiene un formato válido.')
+  return data as unknown as SeasonCallupReport
+}
+
 export async function fetchPlayerSeasonSummary(seasonId: string, playerId: string): Promise<PlayerSeasonSummary> {
   const { data, error } = await supabase.rpc('get_player_season_summary', {
     checked_season_id: seasonId,

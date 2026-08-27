@@ -25,6 +25,8 @@ describe('SeasonsView', () => {
       />,
     )
 
+    expect(screen.getByRole('button', { name: 'Exportar jugadoras activas XML' })).toBeEnabled()
+
     await user.click(screen.getByRole('button', { name: 'Gestionar participantes' }))
     const card = screen.getByText('Temporada 2026').closest('article')!
     expect(within(card).getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
@@ -33,6 +35,24 @@ describe('SeasonsView', () => {
 
     await user.click(within(card).getByRole('checkbox', { name: /María López/ }))
     expect(onToggleMembership).toHaveBeenCalledWith(season, available, true)
+  })
+
+  test('shows the player export only inside the active season card', () => {
+    render(<SeasonsView
+      seasons={[
+        makeSeason(),
+        makeSeason({ id: 'past-season', name: 'Temporada pasada', start_date: '2025-01-01', end_date: '2025-12-31' }),
+      ]}
+      profiles={[makeProfile()]}
+      memberships={[makeMembership()]}
+      onCreate={vi.fn()}
+      onDelete={vi.fn()}
+      onUpdate={vi.fn()}
+      onToggleMembership={vi.fn()}
+    />)
+
+    expect(within(screen.getByText('Temporada 2026').closest('article')!).getByRole('button', { name: 'Exportar jugadoras activas XML' })).toBeInTheDocument()
+    expect(within(screen.getByText('Temporada pasada').closest('article')!).queryByRole('button', { name: /Exportar jugadoras/ })).not.toBeInTheDocument()
   })
 
   test('creates a season from the form', async () => {

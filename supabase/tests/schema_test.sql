@@ -1,5 +1,5 @@
 begin;
-select plan(66);
+select plan(68);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -8,6 +8,12 @@ select ok(
 select ok(to_regclass('public.competition_seasons') is not null, 'competition seasons are persisted');
 
 select has_function('public', 'get_season_callup_report', array['uuid'], 'season callup report is available');
+select has_function('public', 'get_season_attendance_report', array['uuid'], 'season attendance report is available');
+select like(
+  pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
+  '%current_user_can_view_team_data%',
+  'owners, coaches and management can load the season attendance report'
+);
 select has_function('public', 'get_player_season_summary', array['uuid', 'uuid'], 'personal season summary is available');
 select has_function('public', 'current_user_can_manage_sport', array[]::text[], 'sports management permission is available');
 select has_function('public', 'current_user_can_view_team_data', array[]::text[], 'read-only team permission is available');

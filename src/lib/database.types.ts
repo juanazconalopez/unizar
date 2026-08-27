@@ -838,6 +838,10 @@ export type Database = {
         Args: { checked_season_id: string }
         Returns: Json
       }
+      get_season_attendance_report: {
+        Args: { checked_season_id: string }
+        Returns: Json
+      }
       get_player_season_summary: {
         Args: { checked_player_id: string; checked_season_id: string }
         Returns: Json

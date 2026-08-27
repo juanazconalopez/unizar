@@ -3,8 +3,10 @@ import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate, seasonState } from '../../lib/dates'
+import { formatDate, seasonState, todayIso } from '../../lib/dates'
+import { downloadText } from '../../lib/fileExport'
 import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
+import { activePlayersXml, currentSeasonPlayers } from '../../lib/seasonExports'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
@@ -84,9 +86,11 @@ function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle,
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
 }) {
   const state = seasonState(season)
+  const today = todayIso()
   const seasonMemberships = memberships.filter((item) => item.season_id === season.id)
   const playerIds = new Set(profiles.filter(isPlayer).map((profile) => profile.id))
   const activeMembers = seasonMemberships.filter((item) => !item.active_until && playerIds.has(item.player_id))
+  const exportPlayers = state === 'Activa' ? currentSeasonPlayers(profiles, memberships, season, today) : []
 
   return (
     <article className="season-card">
@@ -97,6 +101,12 @@ function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle,
         <button className="secondary-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
         <button className="secondary-button" onClick={onEdit}>Editar</button>
       </div>
+      {state === 'Activa' && <button
+        className="secondary-button season-card-export"
+        disabled={!exportPlayers.length}
+        onClick={() => downloadText(`jugadoras-activas-${season.name}.xml`, activePlayersXml(season, exportPlayers, today), 'application/xml')}
+        type="button"
+      ><Icon name="download" size={17} />Exportar jugadoras activas XML</button>}
       {expanded && (
         <div className="member-list">
           {profiles.filter((player) => player.is_approved && !player.is_archived && isPlayer(player)).map((player) => {

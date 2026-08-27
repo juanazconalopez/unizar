@@ -25,7 +25,7 @@ import {
   updateOwnDisplayName,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, reorderTrainingTasks, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
-import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './services/matchesService'
+import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './services/matchesService'
 import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './services/announcementsService'
 import type {
   AnnouncementValues,
@@ -393,6 +393,7 @@ function App() {
           tasks={data.tasks}
           loadingRange={data.loadingRange}
           onLoadMonth={data.loadStatisticsMonth}
+          onLoadSeasonReport={canViewTeam ? fetchSeasonAttendanceReport : undefined}
         />
       )}
       {view === 'attendance' && canManage && (
@@ -455,7 +456,7 @@ function App() {
           onUnlockLineup={handleUnlockMatchLineup}
           onSaveMatch={handleSaveMatch}
           focusedDate={navigation.date}
-          canViewReport={canViewTeam}
+          canViewReport={canManage}
           onLoadCallupReport={fetchSeasonCallupReport}
           onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
         />

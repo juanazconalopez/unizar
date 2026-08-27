@@ -7,6 +7,22 @@ import { StatisticsView } from './StatisticsView'
 const seasons = [makeSeason()]
 
 describe('StatisticsView', () => {
+  test('tolerates incomplete collections while local demo data is loading', () => {
+    expect(() => render(
+      <StatisticsView
+        attendance={undefined as unknown as []}
+        memberships={undefined as unknown as []}
+        profiles={undefined as unknown as []}
+        results={undefined as unknown as []}
+        seasons={undefined as unknown as []}
+        sessions={undefined as unknown as []}
+        tasks={undefined as unknown as []}
+      />,
+    )).not.toThrow()
+
+    expect(screen.getByRole('heading', { name: 'Resumen mensual' })).toBeInTheDocument()
+  })
+
   test('summarizes the current month and shows per-player detail', () => {
     const today = todayIso()
     const owner = makeProfile({ id: 'owner-1', display_name: 'Owner Excluida', is_owner: true, is_coach: true, is_player: false })
