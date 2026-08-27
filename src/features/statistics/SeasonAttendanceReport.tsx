@@ -64,8 +64,8 @@ export function SeasonAttendanceReport({ season, onLoad }: {
     <article className="statistics-attendance-card">
       <span>Asistencia acumulada</span>
       <strong>{loading ? '…' : average === null ? '—' : `${average}%`}</strong>
-      <small>{error
-        ? 'No se ha podido cargar el acumulado.'
+      <small title={error || undefined}>{error
+        ? error
         : report
           ? `Media del equipo · ${report.totals.trainingSessions} entrenamientos hasta hoy`
           : season ? 'Sin datos de asistencia' : 'Sin temporada activa'}</small>
