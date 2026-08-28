@@ -328,7 +328,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .match-planning-calendar > button.has-match { border-color: #9a87cf; background: #f5f1ff; box-shadow: inset 0 0 0 1px #9a87cf; }
 .match-planning-calendar > button.has-match[aria-pressed='true'] { box-shadow: inset 0 0 0 2px #644ca0; }
 .match-day-marks { display: flex; flex-wrap: wrap; gap: 3px; }
-.match-day-marks i { width: 19px; height: 19px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: white; background: #7459ae; font-style: normal; font-size: 8px; font-weight: 900; }
+.match-day-marks i { width: 19px; height: 19px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; background: #7459ae; font-style: normal; font-size: 8px; font-weight: 900; }
 .match-day-marks small { color: #644ca0; font-size: 8px; font-weight: 900; }
 .match-dot { background: #7459ae; }
 .settings-tabs { width: fit-content; margin-bottom: 28px; padding: 4px; border-radius: 11px; display: grid; grid-template-columns: repeat(2,minmax(130px,1fr)); gap: 4px; background: #e9eeeb; }
@@ -391,6 +391,12 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .day-announcement-bubbles small { color: #884d08; font-size: 8px; font-weight: 800; }
 .announcement-dot { background: #e6932e; }
 .selected-day-announcements { margin-bottom: 26px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
+.selected-calendar-group + .selected-calendar-group { margin-top: 26px; padding-top: 25px; border-top: 1px solid var(--line); }
+.calendar-add-actions { position: relative; }
+.calendar-add-menu { position: relative; }
+.calendar-add-options { position: absolute; z-index: 12; right: 0; bottom: calc(100% + 8px); min-width: 190px; padding: 6px; border: 1px solid var(--line); border-radius: 11px; display: grid; gap: 2px; background: white; box-shadow: 0 14px 35px rgba(31,63,54,.15); }
+.calendar-add-options button { padding: 10px 12px; border: 0; border-radius: 7px; color: var(--ink); background: transparent; font-size: 12px; font-weight: 750; text-align: left; }
+.calendar-add-options button:hover { color: var(--green); background: var(--green-soft); }
 .announcement-card { position: relative; min-width: 0; padding: 17px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 14px; border: 1px solid #ecd2ad; border-left: 4px solid #e6932e; border-radius: 14px; background: #fffaf2; }
 .announcement-card-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #9b5b0f; background: #ffe8c5; }
 .announcement-card-main { min-width: 0; }
@@ -523,6 +529,10 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .day-status-badge.attendance.absent { color: #a04d40; border-color: #edc8c0; background: #fff0ed; }
 .day-status-badge.attendance.unregistered { color: #7c8884; border-color: #d7dfdb; background: #f0f3f1; }
 .day-status-badge.task.done { color: #356b74; border-color: #bedadd; background: #dff0f2; }
+.statistics-player-groups { display: grid; gap: 22px; }
+.statistics-player-group-heading { margin: 0 2px 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.statistics-player-group-heading h3 { margin: 0; color: var(--ink); font-size: 14px; }
+.statistics-player-group-heading span { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
 .statistics-player-metrics { display: flex; justify-content: flex-end; gap: 8px; }
 .statistics-player-metrics > div { min-width: 91px; padding: 8px 10px; border-radius: 9px; text-align: center; background: var(--canvas); }
 .statistics-player-metrics span, .statistics-player-metrics strong { display: block; }

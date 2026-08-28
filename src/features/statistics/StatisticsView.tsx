@@ -233,6 +233,25 @@ function DayDetail({ players, attendance, date, memberships, results, seasons, s
   const weeklyCompletion = weeklyAssignments.length
     ? Math.round((completedAssignments / weeklyAssignments.length) * 100)
     : 0
+  const playerRows = activePlayers.map((player) => {
+    const assignedTasks = weeklyTasks.filter((task) => canUserCompleteTask(task, memberships, player.id))
+    const assignedIds = new Set(assignedTasks.map((task) => task.id))
+    const completedTasks = results.filter(
+      (result) => result.player_id === player.id && assignedIds.has(result.task_id) && weeklyTaskIds.has(result.task_id),
+    )
+    const completedToday = completedTasks.filter((result) => result.performed_on === date).length
+    return {
+      player,
+      assignedTasks,
+      completedTasks,
+      completedToday,
+      complete: assignedTasks.length > 0 && completedTasks.length === assignedTasks.length,
+      dailyAttendance: attendance.find((record) => record.player_id === player.id && recordDate(record) === date),
+    }
+  }).sort(comparePlayerDayRows)
+  const visibleTaskRows = playerRows.filter((row) => row.completedToday > 0 || row.complete)
+  const attendedRows = playerRows.filter((row) => row.dailyAttendance?.attended)
+  const absentRows = playerRows.filter((row) => row.dailyAttendance?.attended === false)
 
   return (
     <section className="day-detail">
@@ -257,45 +276,63 @@ function DayDetail({ players, attendance, date, memberships, results, seasons, s
         <span><i className="task">T</i> Tarea realizada ese día</span>
       </div>
 
-      <div className="statistics-player-list">
-        {activePlayers.map((player) => {
-          const assignedTasks = weeklyTasks.filter((task) => canUserCompleteTask(task, memberships, player.id))
-          const assignedIds = new Set(assignedTasks.map((task) => task.id))
-          const completedTasks = results.filter(
-            (result) => result.player_id === player.id && assignedIds.has(result.task_id) && weeklyTaskIds.has(result.task_id),
-          )
-          const completedToday = completedTasks.filter((result) => result.performed_on === date).length
-          const complete = assignedTasks.length > 0 && completedTasks.length === assignedTasks.length
-          const dailyAttendance = attendance.find(
-            (record) => record.player_id === player.id && recordDate(record) === date,
-          )
-
-          return (
-            <article className={`statistics-player ${complete ? 'complete' : completedTasks.length ? 'partial' : ''}`} key={player.id}>
-              <div className="statistics-player-name">
-                <Avatar name={player.display_name} />
-                <div>
-                  <div className="statistics-player-title">
-                    <strong>{player.display_name}</strong>
-                    <div className="day-status-badges" aria-label={`Estado de ${player.display_name}`}>
-                      {hasSession && <DayStatusBadge status={attendanceBadgeStatus(dailyAttendance)} type="attendance" />}
-                      {completedToday > 0 && <DayStatusBadge count={completedToday} status="done" type="task" />}
-                    </div>
-                  </div>
-                  <span>{attendanceLabel(hasSession, dailyAttendance)}</span>
-                </div>
-              </div>
-              <div className="statistics-player-metrics">
-                <PlayerMetric label="Tareas semana" tone={complete ? 'good' : completedTasks.length ? 'partial' : ''} value={`${completedTasks.length}/${assignedTasks.length}`} />
-                <PlayerMetric label="Hechas este día" value={completedToday.toString()} />
-              </div>
-            </article>
-          )
-        })}
-        {!activePlayers.length && <p className="statistics-empty">No hay jugadoras activas para mostrar.</p>}
-      </div>
+      {hasSession ? <div className="statistics-player-groups">
+        <PlayerDayGroup hasSession label="Asistieron" rows={attendedRows} />
+        <PlayerDayGroup hasSession label="No asistieron" rows={absentRows} />
+      </div> : <div className="statistics-player-list">
+        {visibleTaskRows.map((row) => <PlayerDayRow hasSession={false} key={row.player.id} row={row} />)}
+        {!visibleTaskRows.length && <p className="statistics-empty">Ninguna jugadora hizo tareas este día ni tiene completa la semana.</p>}
+      </div>}
     </section>
   )
+}
+
+type PlayerDayRowData = {
+  player: Profile
+  assignedTasks: TrainingTask[]
+  completedTasks: TaskResult[]
+  completedToday: number
+  complete: boolean
+  dailyAttendance?: AttendanceRecord
+}
+
+function comparePlayerDayRows(first: PlayerDayRowData, second: PlayerDayRowData) {
+  const firstPriority = first.completedToday > 0 ? 0 : first.complete ? 1 : 2
+  const secondPriority = second.completedToday > 0 ? 0 : second.complete ? 1 : 2
+  return firstPriority - secondPriority || first.player.display_name.localeCompare(second.player.display_name, 'es')
+}
+
+function PlayerDayGroup({ hasSession, label, rows }: { hasSession: boolean; label: string; rows: PlayerDayRowData[] }) {
+  return <section aria-label={`${label}: ${rows.length} jugadoras`} className="statistics-player-group">
+    <div className="statistics-player-group-heading"><h3>{label}</h3><span>{rows.length} {rows.length === 1 ? 'jugadora' : 'jugadoras'}</span></div>
+    <div className="statistics-player-list">
+      {rows.map((row) => <PlayerDayRow hasSession={hasSession} key={row.player.id} row={row} />)}
+      {!rows.length && <p className="statistics-empty">No hay jugadoras en este grupo.</p>}
+    </div>
+  </section>
+}
+
+function PlayerDayRow({ hasSession, row }: { hasSession: boolean; row: PlayerDayRowData }) {
+  const { assignedTasks, completedTasks, completedToday, complete, dailyAttendance, player } = row
+  return <article className={`statistics-player ${complete ? 'complete' : completedTasks.length ? 'partial' : ''}`}>
+    <div className="statistics-player-name">
+      <Avatar name={player.display_name} />
+      <div>
+        <div className="statistics-player-title">
+          <strong>{player.display_name}</strong>
+          <div className="day-status-badges" aria-label={`Estado de ${player.display_name}`}>
+            {hasSession && <DayStatusBadge status={attendanceBadgeStatus(dailyAttendance)} type="attendance" />}
+            {completedToday > 0 && <DayStatusBadge count={completedToday} status="done" type="task" />}
+          </div>
+        </div>
+        <span>{attendanceLabel(hasSession, dailyAttendance)}</span>
+      </div>
+    </div>
+    <div className="statistics-player-metrics">
+      <PlayerMetric label="Tareas semana" tone={complete ? 'good' : completedTasks.length ? 'partial' : ''} value={`${completedTasks.length}/${assignedTasks.length}`} />
+      <PlayerMetric label="Hechas este día" value={completedToday.toString()} />
+    </div>
+  </article>
 }
 
 function DayStatusBadge({ type, status, count }: {

@@ -1,16 +1,19 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
-import type { TeamAnnouncement, TrainingTask } from '../../types'
+import type { Match, TeamAnnouncement, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], onMonthChange, onSelectDate }: {
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
   announcements?: TeamAnnouncement[]
+  matches?: Match[]
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
   const days = calendarDays(month)
   const today = todayIso()
+  const visibleMatches = matches ?? []
+  const includesMatches = matches !== undefined
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -38,9 +41,11 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const taskCount = plannedTasks.length
           const dayAnnouncements = announcements.filter((announcement) => announcement.status !== 'cancelled' && announcement.announcement_date === date)
           const announcementCount = dayAnnouncements.length
+          const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date)
+          const matchCount = dayMatches.length
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}`}
               aria-pressed={selectedDate === date}
               className={`${taskCount || announcementCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
               key={date}
@@ -60,6 +65,12 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
                   {announcementCount > 3 && <small>+{announcementCount - 3}</small>}
                 </span>
               )}
+              {matchCount > 0 && (
+                <span className="match-day-marks" aria-hidden="true">
+                  {dayMatches.slice(0, 3).map((match) => <i key={match.id}>P</i>)}
+                  {matchCount > 3 && <small>+{matchCount - 3}</small>}
+                </span>
+              )}
             </button>
           )
         })}
@@ -67,6 +78,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
       <div className="calendar-legend">
         <span><i className="task-dot" />T · Tareas publicadas o en borrador guardadas en el lunes de su semana</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
+        {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
       </div>
     </section>
   )

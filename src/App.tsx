@@ -51,6 +51,7 @@ const loadSettingsView = () => import('./features/settings/SettingsView')
 const loadStatisticsView = () => import('./features/statistics/StatisticsView')
 const loadTasksView = () => import('./features/tasks/TasksView')
 const loadMatchesView = () => import('./features/matches/MatchesView')
+const loadCalendarView = () => import('./features/calendar/CalendarView')
 const loadCompetitionView = () => import('./features/competition/CompetitionView')
 
 const AttendanceView = lazy(() => loadAttendanceView().then((module) => ({ default: module.AttendanceView })))
@@ -58,11 +59,13 @@ const SettingsView = lazy(() => loadSettingsView().then((module) => ({ default: 
 const StatisticsView = lazy(() => loadStatisticsView().then((module) => ({ default: module.StatisticsView })))
 const TasksView = lazy(() => loadTasksView().then((module) => ({ default: module.TasksView })))
 const MatchesView = lazy(() => loadMatchesView().then((module) => ({ default: module.MatchesView })))
+const CalendarView = lazy(() => loadCalendarView().then((module) => ({ default: module.CalendarView })))
 const CompetitionView = lazy(() => loadCompetitionView().then((module) => ({ default: module.CompetitionView })))
 
 function preloadView(view: ViewName) {
   if (view === 'tasks') void loadTasksView()
   if (view === 'matches') void loadMatchesView()
+  if (view === 'calendar') void loadCalendarView()
   if (view === 'competition') void loadCompetitionView()
   if (view === 'statistics') void loadStatisticsView()
   if (view === 'attendance') void loadAttendanceView()
@@ -112,12 +115,14 @@ function App() {
   useEffect(() => {
     if (!data.profile || canAccessView(data.profile, view)) return
     const timer = window.setTimeout(() => {
-      const target: NavigationTarget = { view: 'home' }
+      const target: NavigationTarget = canManageSport(data.profile!) && (view === 'tasks' || view === 'matches')
+        ? { ...navigation, view: 'calendar' }
+        : { view: 'home' }
       window.history.replaceState(target, '', urlForNavigation(target))
       setNavigation(target)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [data.profile, view])
+  }, [data.profile, navigation, view])
 
   function notify(text: string) {
     setMessage(text)
@@ -348,7 +353,7 @@ function App() {
       notificationUnreadCount={notifications.unreadCount}
       onNotificationRead={notifications.markRead}
       onNotificationOpen={(notification) => navigate({
-        view: notification.view,
+        view: canManage && (notification.view === 'tasks' || notification.view === 'matches') ? 'calendar' : notification.view,
         date: notification.targetDate,
         announcementId: notification.kind === 'announcement' ? notification.targetId : undefined,
       })}
@@ -375,10 +380,10 @@ function App() {
           matches={data.matches}
           userId={userId}
           season={data.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
-          onGoToTasks={canAccessTasks(data.profile) ? () => navigate('tasks') : undefined}
+          onGoToTasks={canAccessTasks(data.profile) ? () => navigate(canManage ? 'calendar' : 'tasks') : undefined}
           onSaveResult={handleSaveResult}
-          onOpenMatch={(match) => navigate({ view: 'matches', date: match.match_date })}
-          onOpenAnnouncement={(announcement) => navigate({ view: 'tasks', date: announcement.announcement_date, announcementId: announcement.id })}
+          onOpenMatch={(match) => navigate({ view: canManage ? 'calendar' : 'matches', date: match.match_date })}
+          onOpenAnnouncement={(announcement) => navigate({ view: canManage ? 'calendar' : 'tasks', date: announcement.announcement_date, announcementId: announcement.id })}
           onLoadSeasonSummary={isPlayer(data.profile) ? fetchPlayerSeasonSummary : undefined}
         />
       )}
@@ -406,6 +411,38 @@ function App() {
           loadingRange={data.loadingRange}
           onLoadDate={data.loadAttendanceDate}
           onSave={handleAttendance}
+        />
+      )}
+      {view === 'calendar' && canManage && (
+        <CalendarView
+          announcements={data.announcements}
+          availability={data.matchAvailability}
+          focusedAnnouncementId={navigation.announcementId}
+          focusedDate={navigation.date}
+          lineups={data.matchLineups}
+          matches={data.matches}
+          memberships={data.memberships}
+          profiles={data.profiles}
+          results={data.results}
+          seasons={data.seasons}
+          tasks={data.tasks}
+          onAnnouncementStatusChange={handleAnnouncementStatus}
+          onCreateTask={handleCreateTask}
+          onDeleteAnnouncement={handleDeleteAnnouncement}
+          onDeleteMatch={handleDeleteMatch}
+          onDeleteTask={handleDeleteTask}
+          onLoadCallupReport={fetchSeasonCallupReport}
+          onLoadMatchMonth={data.loadMatchMonth}
+          onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
+          onLoadTaskRange={data.loadTaskRange}
+          onReorderTasks={handleReorderTasks}
+          onSaveAnnouncement={handleSaveAnnouncement}
+          onSaveLineup={handleMatchLineup}
+          onSaveMatch={handleSaveMatch}
+          onSavePlayerAvailability={handlePlayerMatchAvailability}
+          onTaskStatusChange={handleTaskStatus}
+          onUnlockLineup={handleUnlockMatchLineup}
+          onUpdateTask={handleUpdateTask}
         />
       )}
       {view === 'tasks' && canAccessTasks(data.profile) && (
@@ -507,6 +544,8 @@ function hasWorkingSeason(profile: Profile, seasons: Season[], memberships: Seas
 }
 
 function canAccessView(profile: Profile, view: ViewName) {
+  if (view === 'calendar') return canManageSport(profile)
+  if ((view === 'tasks' || view === 'matches') && canManageSport(profile)) return false
   if (view === 'settings') return profile.is_owner
   if (view === 'attendance') return canManageSport(profile)
   if (view === 'statistics') return canViewTeamData(profile)

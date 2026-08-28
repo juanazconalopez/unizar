@@ -148,7 +148,7 @@ export type CompetitionPlayerStat = {
   redCards: number
 }
 
-export type ViewName = 'home' | 'statistics' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
+export type ViewName = 'home' | 'statistics' | 'calendar' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
 
 export type ResultValues = {
   resultText: string

@@ -40,17 +40,20 @@ describe('AppLayout', () => {
   test('shows every management area to owners', () => {
     const { navigation } = renderLayout(makeProfile({ is_owner: true }))
 
-    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Competición', 'Asistencia', 'Ajustes']) {
+    for (const label of ['Inicio', 'Resumen', 'Calendario', 'Competición', 'Asistencia', 'Ajustes']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
+    expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
   })
 
   test('gives coaches every sports area but not settings', () => {
     const { navigation } = renderLayout(makeProfile({ is_coach: true }))
-    expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
-    expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Calendario' })).toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Resumen' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Asistencia' })).toBeInTheDocument()

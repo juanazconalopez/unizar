@@ -163,10 +163,10 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
 
     while (inFlightReload.current) await inFlightReload.current
 
-    if (view === 'tasks') rangeRequestIds.current.tasks += 1
+    if (view === 'tasks' || view === 'calendar') rangeRequestIds.current.tasks += 1
     if (view === 'statistics') rangeRequestIds.current.statistics += 1
     if (view === 'attendance') rangeRequestIds.current.attendance += 1
-    if (view === 'matches') rangeRequestIds.current.matches += 1
+    if (view === 'matches' || view === 'calendar') rangeRequestIds.current.matches += 1
 
     lastReloadAttempt.current = Date.now()
     const request = (async () => {
@@ -310,7 +310,7 @@ async function restoreLoadedRanges(
   userId: string,
   ranges: LoadedRanges,
 ) {
-  if (view === 'tasks' && ranges.taskRanges.length) {
+  if ((view === 'tasks' || view === 'calendar') && ranges.taskRanges.length) {
     let tasks = base.tasks
     let results = base.results
     let announcements = base.announcements ?? []
@@ -326,7 +326,8 @@ async function restoreLoadedRanges(
       results = merged.results
       announcements = replaceDateRange(announcements, window.data.announcements ?? [], 'announcement_date', window.from, addDays(window.to, 6))
     }
-    return { ...base, tasks, results, announcements }
+    base = { ...base, tasks, results, announcements }
+    if (view === 'tasks') return base
   }
 
   if (view === 'statistics' && ranges.statisticsMonth) {
@@ -351,7 +352,7 @@ async function restoreLoadedRanges(
     return { ...base, trainingSessions, attendance }
   }
 
-  if (view === 'matches' && ranges.matchMonth) {
+  if ((view === 'matches' || view === 'calendar') && ranges.matchMonth) {
     let matches = base.matches
     let matchAvailability = base.matchAvailability
     let matchLineups = base.matchLineups

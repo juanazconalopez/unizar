@@ -15,4 +15,10 @@ describe('contextual navigation', () => {
   test('creates shareable contextual URLs', () => {
     expect(urlForNavigation({ view: 'matches', date: '2026-09-12' })).toContain('?view=matches&date=2026-09-12')
   })
+
+  test('accepts the unified staff calendar route', () => {
+    expect(navigationFromLocation({ search: '?view=calendar&date=2026-09-12' } as Location)).toEqual({
+      view: 'calendar', date: '2026-09-12',
+    })
+  })
 })

@@ -13,6 +13,7 @@ import { TaskAlerts } from './TaskAlerts'
 import { TaskForm } from './TaskForm'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
+import { StatusControl } from './StatusControl'
 
 export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
   canManage: boolean
@@ -443,14 +444,4 @@ function weekRelativeLabel(weekStart: string, currentWeek: string) {
   const weeksAgo = Math.round((Date.parse(`${currentWeek}T12:00:00`) - Date.parse(`${weekStart}T12:00:00`)) / 604_800_000)
   if (weeksAgo < 0) return `DENTRO DE ${Math.abs(weeksAgo)} SEMANAS`
   return `HACE ${weeksAgo} SEMANAS`
-}
-
-function StatusControl({ status, onChange }: { status: TaskStatus; onChange: (status: TaskStatus) => void | Promise<void> }) {
-  return (
-    <select aria-label="Estado" className={`status-select ${status}`} onChange={(event) => void onChange(event.target.value as TaskStatus)} value={status}>
-      <option value="draft">Borrador</option>
-      <option value="published">Publicada</option>
-      <option value="cancelled">Anulada</option>
-    </select>
-  )
 }

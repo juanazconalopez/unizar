@@ -33,19 +33,20 @@ export type TrainingData = {
 }
 
 export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
-  const tasks = scope === 'home' || scope === 'tasks' || scope === 'statistics'
+  const tasks = scope === 'home' || scope === 'calendar' || scope === 'tasks' || scope === 'statistics'
   return {
     tasks,
     results: tasks,
-    memberships: ['home', 'tasks', 'matches', 'statistics', 'attendance', 'settings'].includes(scope),
-    profiles: scope === 'matches'
+    memberships: ['home', 'calendar', 'tasks', 'matches', 'statistics', 'attendance', 'settings'].includes(scope),
+    profiles: scope === 'calendar'
+      || scope === 'matches'
       || scope === 'statistics'
       || scope === 'attendance'
       || scope === 'settings'
       || ((scope === 'home' || scope === 'tasks') && canViewTeam),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
-    matches: scope === 'home' || scope === 'matches',
-    announcements: scope === 'home' || scope === 'tasks',
+    matches: scope === 'home' || scope === 'calendar' || scope === 'matches',
+    announcements: scope === 'home' || scope === 'calendar' || scope === 'tasks',
     seasons: scope !== 'competition',
   }
 }
@@ -275,13 +276,14 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       if (error) throw error
       attendanceData = await fetchAttendanceForSessions(data ?? [], userId)
     }
-  } else if (scope === 'tasks') {
+  } else if (scope === 'tasks' || scope === 'calendar') {
     const start = addDays(currentWeek, -14)
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     const managerEnd = activeSeason?.end_date && activeSeason.end_date >= currentWeek
       ? mondayFor(activeSeason.end_date)
       : addDays(currentWeek, 84)
     taskData = await fetchTaskWindow(userId, canManageTasks, start, canManageTasks ? managerEnd : currentWeek)
+    if (scope === 'calendar') matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))
   } else if (scope === 'statistics' && canViewTeamData(profile)) {
     const statisticsData = await fetchStatisticsWindow(monthStart(todayIso()))
     taskData = statisticsData

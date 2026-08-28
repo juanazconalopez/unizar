@@ -192,12 +192,83 @@ describe('StatisticsView', () => {
       />,
     )
 
-    const playerRow = screen.getByText('Ana Martín').closest('article')!
-    expect(within(playerRow).getByText('Sin entrenamiento de campo')).toBeInTheDocument()
-    expect(within(playerRow).queryByLabelText('Asistió al entrenamiento de campo')).not.toBeInTheDocument()
-    expect(within(playerRow).queryByLabelText('No asistió al entrenamiento de campo')).not.toBeInTheDocument()
-    expect(within(playerRow).queryByLabelText('Asistencia sin registrar')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ana Martín')).not.toBeInTheDocument()
+    expect(screen.getByText('Ninguna jugadora hizo tareas este día ni tiene completa la semana.')).toBeInTheDocument()
     expect(screen.queryByText('Asistió', { selector: '.day-badge-legend span' })).not.toBeInTheDocument()
+  })
+
+  test('shows only daily task finishers followed by weekly completers when there is no attendance', () => {
+    const today = todayIso()
+    const players = [
+      makeProfile({ id: 'daily', display_name: 'Zoe Tarea Hoy' }),
+      makeProfile({ id: 'complete', display_name: 'Ana Semana Completa' }),
+      makeProfile({ id: 'partial', display_name: 'Bea Parcial Anterior' }),
+      makeProfile({ id: 'empty', display_name: 'Carla Sin Tareas' }),
+    ]
+    render(<StatisticsView
+      attendance={[]}
+      memberships={players.map((player, index) => makeMembership({ id: `membership-${index}`, player_id: player.id }))}
+      profiles={players}
+      results={[
+        makeResult({ task_id: 'task-1', player_id: 'daily', performed_on: today }),
+        makeResult({ task_id: 'task-1', player_id: 'complete', performed_on: mondayFor(today) }),
+        makeResult({ task_id: 'task-2', player_id: 'complete', performed_on: mondayFor(today) }),
+        makeResult({ task_id: 'task-1', player_id: 'partial', performed_on: mondayFor(today) }),
+      ]}
+      seasons={seasons}
+      sessions={[]}
+      tasks={[makeTask({ id: 'task-1', week_start: mondayFor(today) }), makeTask({ id: 'task-2', week_start: mondayFor(today) })]}
+    />)
+
+    const rows = document.querySelectorAll('.statistics-player')
+    expect([...rows].map((row) => row.querySelector('.statistics-player-title strong')?.textContent)).toEqual([
+      'Zoe Tarea Hoy',
+      'Ana Semana Completa',
+    ])
+    expect(screen.queryByText('Bea Parcial Anterior')).not.toBeInTheDocument()
+    expect(screen.queryByText('Carla Sin Tareas')).not.toBeInTheDocument()
+  })
+
+  test('separates attendance and applies task priority inside both lists', () => {
+    const today = todayIso()
+    const players = [
+      makeProfile({ id: 'present-daily', display_name: 'Zoe Presente Hoy' }),
+      makeProfile({ id: 'present-complete', display_name: 'Ana Presente Completa' }),
+      makeProfile({ id: 'present-rest', display_name: 'Bea Presente Resto' }),
+      makeProfile({ id: 'absent-daily', display_name: 'Zoe Ausente Hoy' }),
+      makeProfile({ id: 'absent-complete', display_name: 'Ana Ausente Completa' }),
+      makeProfile({ id: 'absent-rest', display_name: 'Bea Ausente Resto' }),
+    ]
+    const results = [
+      makeResult({ task_id: 'task-1', player_id: 'present-daily', performed_on: today }),
+      makeResult({ task_id: 'task-1', player_id: 'present-complete', performed_on: mondayFor(today) }),
+      makeResult({ task_id: 'task-2', player_id: 'present-complete', performed_on: mondayFor(today) }),
+      makeResult({ task_id: 'task-1', player_id: 'absent-daily', performed_on: today }),
+      makeResult({ task_id: 'task-1', player_id: 'absent-complete', performed_on: mondayFor(today) }),
+      makeResult({ task_id: 'task-2', player_id: 'absent-complete', performed_on: mondayFor(today) }),
+    ]
+    render(<StatisticsView
+      attendance={players.map((player, index) => makeAttendance({
+        player_id: player.id,
+        attended: index < 3,
+        training_sessions: { session_date: today },
+      }))}
+      memberships={players.map((player, index) => makeMembership({ id: `membership-${index}`, player_id: player.id }))}
+      profiles={players}
+      results={results}
+      seasons={seasons}
+      sessions={[makeSession({ session_date: today })]}
+      tasks={[makeTask({ id: 'task-1', week_start: mondayFor(today) }), makeTask({ id: 'task-2', week_start: mondayFor(today) })]}
+    />)
+
+    const present = screen.getByRole('region', { name: 'Asistieron: 3 jugadoras' })
+    const absent = screen.getByRole('region', { name: 'No asistieron: 3 jugadoras' })
+    expect([...present.querySelectorAll('.statistics-player-title strong')].map((node) => node.textContent)).toEqual([
+      'Zoe Presente Hoy', 'Ana Presente Completa', 'Bea Presente Resto',
+    ])
+    expect([...absent.querySelectorAll('.statistics-player-title strong')].map((node) => node.textContent)).toEqual([
+      'Zoe Ausente Hoy', 'Ana Ausente Completa', 'Bea Ausente Resto',
+    ])
   })
 
   test('does not treat an open membership from an ended season as currently active', () => {

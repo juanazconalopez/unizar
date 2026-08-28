@@ -65,8 +65,12 @@ export function AppLayout({
     ...(canViewTeam ? [
       { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
     ] : []),
-    ...(canAccessTasks(profile) ? [{ id: 'tasks' as const, label: 'Tareas', icon: 'tasks' as const }] : []),
-    { id: 'matches', label: 'Partidos', icon: 'calendar' },
+    ...(canManage
+      ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }]
+      : [
+          ...(canAccessTasks(profile) ? [{ id: 'tasks' as const, label: 'Tareas', icon: 'tasks' as const }] : []),
+          { id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const },
+        ]),
     { id: 'competition', label: 'Competición', icon: 'trophy' },
     ...(canManage ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },

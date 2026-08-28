@@ -27,6 +27,19 @@ describe('training data requirements', () => {
     expect(dataRequirementsFor('tasks', true).profiles).toBe(true)
   })
 
+  test('loads all planning data for the staff calendar', () => {
+    expect(dataRequirementsFor('calendar', true)).toEqual({
+      tasks: true,
+      results: true,
+      memberships: true,
+      profiles: true,
+      attendance: false,
+      matches: true,
+      announcements: true,
+      seasons: true,
+    })
+  })
+
   test('does not load operational tables for competition', () => {
     expect(dataRequirementsFor('competition', false)).toEqual({
       tasks: false,
