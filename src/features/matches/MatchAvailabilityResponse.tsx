@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
-import { addDays, formatDate, todayIso } from '../../lib/dates'
+import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import type { AvailabilityStatus, Match, MatchAvailability } from '../../types'
 
 export function MatchAvailabilityResponse({ initial, match, onSave }: {
@@ -15,6 +15,7 @@ export function MatchAvailabilityResponse({ initial, match, onSave }: {
   const [error, setError] = useState('')
   if (match.status !== 'published' || match.match_date < todayIso()) return null
   if (match.lineup_published) return <div className="availability-locked"><strong>Disponibilidad cerrada</strong><span>La convocatoria ya está publicada y no admite cambios.</span></div>
+  const responseWednesday = addDays(mondayFor(match.match_date), 2)
 
   async function accept() {
     setSaving(true); setError('')
@@ -22,7 +23,7 @@ export function MatchAvailabilityResponse({ initial, match, onSave }: {
   }
 
   return <div className="availability-response">
-    <p className="availability-deadline">Responde, si es posible, antes del {formatDate(addDays(match.match_date, -2), { day: 'numeric', month: 'long' })}.</p>
+    <p className="availability-deadline">Responde, si es posible, antes del {formatDate(responseWednesday, { weekday: 'long', day: 'numeric', month: 'long' })}.</p>
     {initial && <div className={`own-availability ${initial.status}`}><span>Tu respuesta</span><strong>{responseLabel(initial.status)}</strong>{initial.comment && <small>{initial.comment}</small>}</div>}
     <div className="availability-response-actions">
       {(!initial || initial.status !== 'available') && <button className="primary-button compact" disabled={saving} onClick={() => void accept()}>{saving ? 'Guardando…' : 'Asistiré'}</button>}

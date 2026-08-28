@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { addDays, todayIso } from '../../lib/dates'
+import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import { makeMembership, makeProfile, makeSeason } from '../../test/fixtures'
 import type { Match } from '../../types'
 import { MatchesView } from './MatchesView'
@@ -13,6 +13,13 @@ const match = (overrides: Partial<Match> = {}): Match => ({
 const common = { seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', canManage: false, canViewAvailability: false, isPlayer: true, onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
 
 describe('MatchesView', () => {
+  test('always asks for availability before Wednesday of the match week', () => {
+    const wednesday = addDays(mondayFor(todayIso()), 2)
+    render(<MatchesView {...common} matches={[match({ match_date: addDays(mondayFor(todayIso()), 5) })]} onSaveAvailability={vi.fn()} />)
+
+    expect(screen.getByText(`Responde, si es posible, antes del ${formatDate(wednesday, { weekday: 'long', day: 'numeric', month: 'long' })}.`)).toBeInTheDocument()
+  })
+
   test('opens the accumulated report for owners and coaches', async () => {
     const user = userEvent.setup()
     const onLoadCallupReport = vi.fn().mockResolvedValue({

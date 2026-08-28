@@ -1,5 +1,6 @@
-import { addDays } from '../../lib/dates'
+import { addDays, mondayFor } from '../../lib/dates'
 import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
+import { membershipCoversDate } from '../../lib/selectors'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
@@ -80,14 +81,21 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
       })
     }
     const ownAvailability = data.availability.some((item) => item.match_id === match.id && item.player_id === profile.id)
-    if (playerRole && !ownAvailability) {
+    const matchMonday = mondayFor(match.match_date)
+    const reminderDay = today === matchMonday ? 'monday' : today === addDays(matchMonday, 2) ? 'wednesday' : null
+    const eligibleForMatch = data.memberships.some((membership) => (
+      membership.player_id === profile.id
+      && membership.season_id === match.season_id
+      && membershipCoversDate(membership, match.match_date)
+    ))
+    if (playerRole && eligibleForMatch && !match.lineup_published && !ownAvailability && reminderDay) {
       items.push({
-        id: `availability-missing:${match.id}:${match.updated_at}`,
+        id: `availability-missing:${match.id}:${reminderDay}:${today}`,
         kind: 'availability',
-        title: 'Disponibilidad sin responder',
+        title: reminderDay === 'wednesday' ? 'Último recordatorio de disponibilidad' : 'Disponibilidad sin responder',
         text: `Indica si asistirás al partido contra ${match.opponent}.`,
         view: 'matches',
-        occurredAt: match.updated_at,
+        occurredAt: `${today}T08:00:00`,
         targetDate: match.match_date,
       })
     }

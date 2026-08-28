@@ -23,10 +23,10 @@ describe('buildNotifications', () => {
     const notifications = buildNotifications(feed(), makeProfile(), '2026-08-07')
     expect(notifications.map((item) => item.title)).toEqual(expect.arrayContaining([
       'Nuevo partido publicado',
-      'Disponibilidad sin responder',
       'Convocatoria publicada',
       'Cambio relevante en un partido',
     ]))
+    expect(notifications.some((item) => item.kind === 'availability')).toBe(false)
     expect(notifications.some((item) => item.kind === 'task')).toBe(false)
   })
 
@@ -71,5 +71,48 @@ describe('buildNotifications', () => {
     }), makeProfile(), '2026-08-07')
 
     expect(notifications.some((item) => item.id.startsWith('availability-changed:'))).toBe(false)
+  })
+
+  test('reminds unanswered eligible players on Monday and repeats on Wednesday', () => {
+    const saturdayMatch = match({
+      match_date: '2026-08-15',
+      lineup_published: false,
+      created_at: '2026-08-09T10:00:00.000Z',
+      updated_at: '2026-08-09T10:00:00.000Z',
+    })
+    const monday = buildNotifications(feed({ matches: [saturdayMatch], lineups: [] }), makeProfile(), '2026-08-10')
+    const wednesday = buildNotifications(feed({ matches: [saturdayMatch], lineups: [] }), makeProfile(), '2026-08-12')
+
+    expect(monday).toContainEqual(expect.objectContaining({
+      id: 'availability-missing:match-1:monday:2026-08-10',
+      title: 'Disponibilidad sin responder',
+    }))
+    expect(wednesday).toContainEqual(expect.objectContaining({
+      id: 'availability-missing:match-1:wednesday:2026-08-12',
+      title: 'Último recordatorio de disponibilidad',
+    }))
+  })
+
+  test('does not show availability reminders on publication day or other weekdays', () => {
+    const saturdayMatch = match({ match_date: '2026-08-15', lineup_published: false })
+    const sunday = buildNotifications(feed({ matches: [saturdayMatch], lineups: [] }), makeProfile(), '2026-08-09')
+    const tuesday = buildNotifications(feed({ matches: [saturdayMatch], lineups: [] }), makeProfile(), '2026-08-11')
+
+    expect(sunday.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
+    expect(tuesday.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
+  })
+
+  test('does not remind players who answered, are ineligible or have a published lineup', () => {
+    const saturdayMatch = match({ match_date: '2026-08-15', lineup_published: false })
+    const answered = buildNotifications(feed({
+      matches: [saturdayMatch], lineups: [],
+      availability: [{ match_id: saturdayMatch.id, player_id: 'player-1', status: 'available', comment: null, updated_at: '2026-08-09T10:00:00.000Z' }],
+    }), makeProfile(), '2026-08-10')
+    const ineligible = buildNotifications(feed({ matches: [saturdayMatch], memberships: [], lineups: [] }), makeProfile(), '2026-08-10')
+    const closed = buildNotifications(feed({ matches: [{ ...saturdayMatch, lineup_published: true }] }), makeProfile(), '2026-08-10')
+
+    expect(answered.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
+    expect(ineligible.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
+    expect(closed.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
   })
 })
