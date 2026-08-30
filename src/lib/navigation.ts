@@ -6,7 +6,7 @@ export type NavigationTarget = {
   announcementId?: string
 }
 
-const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'tasks', 'matches', 'competition', 'attendance', 'settings'])
+const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings'])
 
 export function navigationFromLocation(location: Pick<Location, 'search'> = window.location): NavigationTarget {
   const params = new URLSearchParams(location.search)

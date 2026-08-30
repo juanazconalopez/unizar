@@ -14,8 +14,9 @@ const common = { seasons: [makeSeason()], memberships: [makeMembership()], profi
 
 describe('MatchesView', () => {
   test('always asks for availability before Wednesday of the match week', () => {
-    const wednesday = addDays(mondayFor(todayIso()), 2)
-    render(<MatchesView {...common} matches={[match({ match_date: addDays(mondayFor(todayIso()), 5) })]} onSaveAvailability={vi.fn()} />)
+    const matchWeekMonday = mondayFor(todayIso())
+    const wednesday = addDays(matchWeekMonday, 2)
+    render(<MatchesView {...common} matches={[match({ match_date: todayIso() })]} onSaveAvailability={vi.fn()} />)
 
     expect(screen.getByText(`Responde, si es posible, antes del ${formatDate(wednesday, { weekday: 'long', day: 'numeric', month: 'long' })}.`)).toBeInTheDocument()
   })

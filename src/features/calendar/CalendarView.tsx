@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import { compareTaskOrder } from '../../lib/taskOrder'
+import { fetchPublishedTrainingPlans } from '../../services/trainingPlansService'
 import type {
   AnnouncementValues,
   AvailabilityStatus,
@@ -21,6 +22,7 @@ import type {
   TaskStatus,
   TaskValues,
   TeamAnnouncement,
+  TrainingPlanCalendarItem,
   TrainingTask,
 } from '../../types'
 import { MatchAvailabilityDialog } from '../matches/MatchAvailabilityDialog'
@@ -80,6 +82,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
+  const [publishedTrainingPlans, setPublishedTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
   const selectedWeek = mondayFor(selectedDate)
   const selectedTasks = props.tasks
     .filter((task) => task.week_start === selectedWeek)
@@ -88,13 +91,28 @@ export function CalendarView(props: CalendarViewProps) {
   const selectedMatches = props.matches
     .filter((match) => match.match_date === selectedDate)
     .sort((first, second) => (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? ''))
+  const selectedTrainingPlans = publishedTrainingPlans.filter((plan) => plan.session_date === selectedDate)
   const activeSeason = seasonForDate(props.seasons, today)
+
+  const loadPublishedTrainingPlans = useCallback(async (targetMonth: string) => {
+    try {
+      setPublishedTrainingPlans(await fetchPublishedTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
+    } catch {
+      setPublishedTrainingPlans([])
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadPublishedTrainingPlans(month), 0)
+    return () => window.clearTimeout(timer)
+  }, [loadPublishedTrainingPlans, month])
 
   async function changeMonth(nextMonth: string) {
     setMonth(nextMonth)
     await Promise.all([
       props.onLoadTaskRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))),
       props.onLoadMatchMonth(nextMonth),
+      loadPublishedTrainingPlans(nextMonth),
     ]).catch(() => undefined)
   }
 
@@ -108,6 +126,7 @@ export function CalendarView(props: CalendarViewProps) {
     await Promise.all([
       props.onLoadTaskRange(mondayFor(date), mondayFor(date)),
       props.onLoadMatchMonth(`${date.slice(0, 7)}-01`),
+      loadPublishedTrainingPlans(`${date.slice(0, 7)}-01`),
     ])
   }
 
@@ -178,13 +197,13 @@ export function CalendarView(props: CalendarViewProps) {
     />
   }
 
-  const hasSelectedContent = selectedAnnouncements.length + selectedMatches.length + selectedTasks.length > 0
+  const hasSelectedContent = selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedTasks.length > 0
 
   return <div className="page">
     <PageHeader
       action={<button className={reportOpen ? 'primary-button' : 'secondary-button'} onClick={() => setReportOpen((open) => !open)} type="button"><Icon name="statistics" size={18} />{reportOpen ? 'Volver al calendario' : 'Resumen de convocatorias'}</button>}
       eyebrow="PLANIFICACIÓN"
-      subtitle="Organiza tareas, avisos y partidos desde una única vista."
+      subtitle="Organiza tareas, avisos, partidos y entrenamientos publicados desde una única vista."
       title="Calendario"
     />
 
@@ -198,6 +217,7 @@ export function CalendarView(props: CalendarViewProps) {
           month={month}
           selectedDate={selectedDate}
           tasks={props.tasks}
+          trainingPlans={publishedTrainingPlans}
           onMonthChange={(nextMonth) => void changeMonth(nextMonth)}
           onSelectDate={setSelectedDate}
         />
@@ -210,11 +230,15 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-week-heading"><div><span className="eyebrow">PARTIDOS DEL DÍA</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedMatches.length}</span></div>
             <div className="match-list">{selectedMatches.map(renderMatch)}</div>
           </div>}
+          {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
+            <div className="task-week-heading"><div><span className="eyebrow">ENTRENAMIENTOS PUBLICADOS</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedTrainingPlans.length}</span></div>
+            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div></article>)}</div>
+          </div>}
           <div className="selected-calendar-group">
             <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>
             <div className="task-list">{selectedTasks.map((task) => <TaskCard hideWeek key={task.id} managerActions={taskActions(task)} managementSummary={<TaskResultsSummary profiles={props.profiles} results={props.results} task={task} />} result={undefined} task={task} />)}</div>
           </div>
-          {!hasSelectedContent && <EmptyState text="No hay tareas, avisos ni partidos en este periodo." title="Sin planificación" />}
+          {!hasSelectedContent && <EmptyState text="No hay tareas, avisos, partidos ni entrenamientos publicados en este periodo." title="Sin planificación" />}
           <div className="selected-week-actions calendar-add-actions">
             <div className="calendar-add-menu">
               <button aria-expanded={addMenuOpen} className="primary-button" onClick={() => setAddMenuOpen((open) => !open)} type="button"><Icon name="plus" size={18} />Añadir</button>

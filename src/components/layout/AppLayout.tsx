@@ -66,7 +66,10 @@ export function AppLayout({
       { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
     ] : []),
     ...(canManage
-      ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }]
+      ? [
+          { id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const },
+          { id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const },
+        ]
       : [
           ...(canAccessTasks(profile) ? [{ id: 'tasks' as const, label: 'Tareas', icon: 'tasks' as const }] : []),
           { id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const },

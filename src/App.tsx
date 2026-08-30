@@ -52,6 +52,7 @@ const loadStatisticsView = () => import('./features/statistics/StatisticsView')
 const loadTasksView = () => import('./features/tasks/TasksView')
 const loadMatchesView = () => import('./features/matches/MatchesView')
 const loadCalendarView = () => import('./features/calendar/CalendarView')
+const loadTrainingPlansView = () => import('./features/trainingPlans/TrainingPlansView')
 const loadCompetitionView = () => import('./features/competition/CompetitionView')
 
 const AttendanceView = lazy(() => loadAttendanceView().then((module) => ({ default: module.AttendanceView })))
@@ -60,12 +61,14 @@ const StatisticsView = lazy(() => loadStatisticsView().then((module) => ({ defau
 const TasksView = lazy(() => loadTasksView().then((module) => ({ default: module.TasksView })))
 const MatchesView = lazy(() => loadMatchesView().then((module) => ({ default: module.MatchesView })))
 const CalendarView = lazy(() => loadCalendarView().then((module) => ({ default: module.CalendarView })))
+const TrainingPlansView = lazy(() => loadTrainingPlansView().then((module) => ({ default: module.TrainingPlansView })))
 const CompetitionView = lazy(() => loadCompetitionView().then((module) => ({ default: module.CompetitionView })))
 
 function preloadView(view: ViewName) {
   if (view === 'tasks') void loadTasksView()
   if (view === 'matches') void loadMatchesView()
   if (view === 'calendar') void loadCalendarView()
+  if (view === 'training') void loadTrainingPlansView()
   if (view === 'competition') void loadCompetitionView()
   if (view === 'statistics') void loadStatisticsView()
   if (view === 'attendance') void loadAttendanceView()
@@ -413,6 +416,9 @@ function App() {
           onSave={handleAttendance}
         />
       )}
+      {view === 'training' && canManage && (
+        <TrainingPlansView seasons={data.seasons} userId={userId} onNotify={notify} />
+      )}
       {view === 'calendar' && canManage && (
         <CalendarView
           announcements={data.announcements}
@@ -545,6 +551,7 @@ function hasWorkingSeason(profile: Profile, seasons: Season[], memberships: Seas
 
 function canAccessView(profile: Profile, view: ViewName) {
   if (view === 'calendar') return canManageSport(profile)
+  if (view === 'training') return canManageSport(profile)
   if ((view === 'tasks' || view === 'matches') && canManageSport(profile)) return false
   if (view === 'settings') return profile.is_owner
   if (view === 'attendance') return canManageSport(profile)

@@ -21,4 +21,8 @@ describe('contextual navigation', () => {
       view: 'calendar', date: '2026-09-12',
     })
   })
+
+  test('accepts the private training plans route', () => {
+    expect(navigationFromLocation({ search: '?view=training' } as Location)).toEqual({ view: 'training' })
+  })
 })

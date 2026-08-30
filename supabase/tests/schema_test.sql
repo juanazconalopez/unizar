@@ -1,5 +1,5 @@
 begin;
-select plan(68);
+select plan(78);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -227,6 +227,56 @@ select ok(
 select ok(
   to_regprocedure('public.save_training_attendance(date,uuid[],uuid[])') is not null,
   'attendance is saved atomically'
+);
+select ok(to_regclass('public.training_plans') is not null, 'private training plans are persisted');
+select ok(to_regclass('public.training_exercises') is not null, 'training plan exercises are persisted');
+select ok(to_regclass('public.training_exercise_presets') is not null, 'reusable training exercises are persisted');
+select ok(
+  exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'training_plans' and column_name = 'material'
+  ),
+  'training plans store session material'
+);
+select ok(
+  not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'training_exercises'
+      and column_name in ('coaching_points', 'participants', 'equipment')
+  ),
+  'training exercises only store the simplified exercise fields'
+);
+select ok(
+  to_regprocedure('public.save_training_plan(uuid,uuid,date,text,text,text,public.task_status,jsonb)') is not null,
+  'training plans and exercises are saved atomically'
+);
+select like(
+  pg_get_functiondef('public.save_training_plan(uuid,uuid,date,text,text,text,public.task_status,jsonb)'::regprocedure),
+  '%checked_material%',
+  'training plan save function receives the session material'
+);
+select like(
+  pg_get_functiondef('public.save_training_plan(uuid,uuid,date,text,text,text,public.task_status,jsonb)'::regprocedure),
+  '%current_user_can_manage_sport%',
+  'only owner and coaches can save tactical training plans'
+);
+select ok(
+  exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'training_plans'
+      and policyname = 'Sport managers can read training plans'
+      and qual like '%current_user_can_manage_sport%'
+  ),
+  'training plans are not readable by players or Dirección'
+);
+select ok(
+  exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'training_exercise_presets'
+      and policyname = 'Sport managers can read training exercise presets'
+      and qual like '%current_user_can_manage_sport%'
+  ),
+  'exercise presets are private to owner and coaches'
 );
 select ok(
   to_regprocedure('public.replace_competition_snapshot(jsonb,jsonb,jsonb,jsonb)') is not null,

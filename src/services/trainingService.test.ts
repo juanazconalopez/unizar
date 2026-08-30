@@ -53,6 +53,19 @@ describe('training data requirements', () => {
     })
   })
 
+  test('loads only season context for the private training planner', () => {
+    expect(dataRequirementsFor('training', true)).toEqual({
+      tasks: false,
+      results: false,
+      memberships: false,
+      profiles: false,
+      attendance: false,
+      matches: false,
+      announcements: false,
+      seasons: true,
+    })
+  })
+
   test('loads memberships when attendance needs date-based eligibility', () => {
     expect(dataRequirementsFor('attendance', false).memberships).toBe(true)
   })

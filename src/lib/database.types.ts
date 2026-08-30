@@ -770,6 +770,145 @@ export type Database = {
           },
         ]
       }
+      training_exercises: {
+        Row: {
+          created_at: string
+          description: string | null
+          diagram_data: Json
+          duration_minutes: number
+          id: string
+          sort_order: number
+          title: string
+          training_plan_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          diagram_data?: Json
+          duration_minutes?: number
+          id?: string
+          sort_order?: number
+          title: string
+          training_plan_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          diagram_data?: Json
+          duration_minutes?: number
+          id?: string
+          sort_order?: number
+          title?: string
+          training_plan_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_exercises_training_plan_id_fkey"
+            columns: ["training_plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_exercise_presets: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          diagram_data: Json
+          duration_minutes: number
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          diagram_data?: Json
+          duration_minutes?: number
+          id?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          diagram_data?: Json
+          duration_minutes?: number
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_exercise_presets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          material: string | null
+          objectives: string | null
+          season_id: string
+          session_date: string
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          material?: string | null
+          objectives?: string | null
+          season_id: string
+          session_date: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          material?: string | null
+          objectives?: string | null
+          season_id?: string
+          session_date?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_sessions: {
         Row: {
           created_at: string
@@ -896,6 +1035,19 @@ export type Database = {
           checked_player_ids: string[]
         }
         Returns: undefined
+      }
+      save_training_plan: {
+        Args: {
+          checked_exercises: Json
+          checked_material: string
+          checked_objectives: string
+          checked_plan_id: string | null
+          checked_season_id: string
+          checked_session_date: string
+          checked_status: Database["public"]["Enums"]["task_status"]
+          checked_title: string
+        }
+        Returns: string
       }
       unlock_match_lineup: {
         Args: { checked_match_id: string }

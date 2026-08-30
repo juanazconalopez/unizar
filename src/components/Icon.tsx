@@ -20,6 +20,8 @@ export type IconName =
   | 'refresh'
   | 'bell'
   | 'search'
+  | 'strategy'
+  | 'save'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></>,
@@ -41,6 +43,8 @@ const paths: Record<IconName, ReactNode> = {
   refresh: <><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></>,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
   search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
+  strategy: <><path d="M4 5h16v14H4z"/><path d="M12 5v14M4 12h16"/><circle cx="8" cy="9" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="m7 16 3-2m4-4 3-2"/></>,
+  save: <><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></>,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

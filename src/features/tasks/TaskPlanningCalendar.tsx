@@ -1,12 +1,13 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
-import type { Match, TeamAnnouncement, TrainingTask } from '../../types'
+import type { Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, onMonthChange, onSelectDate }: {
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, trainingPlans, onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
   announcements?: TeamAnnouncement[]
   matches?: Match[]
+  trainingPlans?: TrainingPlanCalendarItem[]
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
@@ -14,6 +15,8 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
   const today = todayIso()
   const visibleMatches = matches ?? []
   const includesMatches = matches !== undefined
+  const visibleTrainingPlans = trainingPlans ?? []
+  const includesTrainingPlans = trainingPlans !== undefined
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -43,9 +46,11 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const announcementCount = dayAnnouncements.length
           const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date)
           const matchCount = dayMatches.length
+          const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.status === 'published' && plan.session_date === date)
+          const trainingPlanCount = dayTrainingPlans.length
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}`}
               aria-pressed={selectedDate === date}
               className={`${taskCount || announcementCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
               key={date}
@@ -65,6 +70,12 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
                   {announcementCount > 3 && <small>+{announcementCount - 3}</small>}
                 </span>
               )}
+              {trainingPlanCount > 0 && (
+                <span className="day-training-bubbles" aria-hidden="true">
+                  {dayTrainingPlans.slice(0, 3).map((plan) => <i key={plan.id}>E</i>)}
+                  {trainingPlanCount > 3 && <small>+{trainingPlanCount - 3}</small>}
+                </span>
+              )}
               {matchCount > 0 && (
                 <span className="match-day-marks" aria-hidden="true">
                   {dayMatches.slice(0, 3).map((match) => <i key={match.id}>P</i>)}
@@ -78,6 +89,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
       <div className="calendar-legend">
         <span><i className="task-dot" />T · Tareas publicadas o en borrador guardadas en el lunes de su semana</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
+        {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
         {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
       </div>
     </section>

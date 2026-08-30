@@ -20,6 +20,58 @@ export type TaskResult = Tables<'task_results'>
 
 export type TrainingSession = Tables<'training_sessions'>
 
+export type TacticsElementType = 'player' | 'opponent' | 'cone' | 'ball' | 'shield' | 'run' | 'pass' | 'defense' | 'zone' | 'text'
+
+export type TacticsElement = {
+  id: string
+  type: TacticsElementType
+  x: number
+  y: number
+  rotation?: number
+  scaleX?: number
+  scaleY?: number
+  label?: string
+  color?: string
+}
+
+export type TacticsBoardData = {
+  version: 1
+  template: 'full' | 'half' | '22'
+  elements: TacticsElement[]
+}
+
+export type TrainingExercise = Omit<Tables<'training_exercises'>, 'diagram_data'> & {
+  diagram_data: TacticsBoardData
+}
+
+export type TrainingExercisePreset = Omit<Tables<'training_exercise_presets'>, 'diagram_data'> & {
+  diagram_data: TacticsBoardData
+}
+
+export type TrainingPlan = Tables<'training_plans'> & {
+  seasons: { name: string } | null
+  training_exercises: TrainingExercise[]
+}
+
+export type TrainingPlanCalendarItem = Pick<Tables<'training_plans'>, 'id' | 'session_date' | 'title' | 'status'>
+
+export type TrainingExerciseValues = {
+  title: string
+  description: string
+  durationMinutes: number
+  diagramData: TacticsBoardData
+}
+
+export type TrainingPlanValues = {
+  seasonId: string
+  sessionDate: string
+  title: string
+  objectives: string
+  material: string
+  status: TaskStatus
+  exercises: TrainingExerciseValues[]
+}
+
 export type AttendanceRecord = Omit<Tables<'training_attendance'>, 'created_at'> & {
   training_sessions: { session_date: string } | null
 }
@@ -148,7 +200,7 @@ export type CompetitionPlayerStat = {
   redCards: number
 }
 
-export type ViewName = 'home' | 'statistics' | 'calendar' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
+export type ViewName = 'home' | 'statistics' | 'calendar' | 'training' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
 
 export type ResultValues = {
   resultText: string
