@@ -161,6 +161,7 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
       plan={editor.plan}
       seasons={seasons}
       template={editor.template}
+      userId={userId}
       onCancel={() => setEditor(null)}
       onDelete={editor.plan ? async () => { await remove(editor.plan!); setEditor(null) } : undefined}
       onSavePlan={async (values) => {

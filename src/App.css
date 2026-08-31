@@ -884,6 +884,14 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .training-duration { min-width: 145px; padding: 13px 16px; border: 1px solid #cfe2d6; border-radius: 12px; display: flex; align-items: center; gap: 10px; color: var(--green); background: var(--green-soft); }
 .training-duration strong { font-family: 'Manrope',system-ui,sans-serif; font-size: 28px; }
 .training-duration span { color: #60736c; font-size: 9px; font-weight: 700; line-height: 1.4; }
+.training-draft-notice { margin: -8px 0 20px; padding: 13px 15px; border: 1px solid #d9c372; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: #67571e; background: #fffaf0; }
+.training-draft-notice > div { min-width: 0; display: flex; align-items: center; gap: 10px; }
+.training-draft-notice strong, .training-draft-notice small { display: block; }
+.training-draft-notice strong { font-size: 12px; }
+.training-draft-notice small { margin-top: 2px; color: #807343; font-size: 9px; line-height: 1.4; }
+.training-draft-actions { flex: 0 0 auto; display: flex; gap: 7px; }
+.training-draft-status { width: fit-content; margin: -10px 0 17px auto; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 700; }
+.training-draft-status.error { color: #984e42; }
 .training-editor-section { margin-bottom: 20px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: var(--shadow); }
 .training-section-heading { margin-bottom: 20px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; }
 .training-section-heading > span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: white; background: var(--green); font-size: 12px; font-weight: 800; }
@@ -1004,6 +1012,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .training-editor-heading { grid-template-columns: 1fr; }
   .training-editor-heading h1 { font-size: 29px; }
   .training-duration { width: 100%; }
+  .training-draft-notice { align-items: stretch; flex-direction: column; }
+  .training-draft-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .training-draft-actions button { min-width: 0; padding-inline: 8px; }
   .training-editor-section { padding: 17px 13px; }
   .training-section-heading { grid-template-columns: auto minmax(0,1fr); }
   .training-section-heading > button { grid-column: 1 / -1; width: 100%; }

@@ -6,11 +6,13 @@ import { seasonForDate } from '../../lib/selectors'
 import type { Season, TacticsBoardData, TrainingExercisePreset, TrainingExerciseValues, TrainingPlan, TrainingPlanValues } from '../../types'
 import { TacticsBoard, TacticsBoardPreview } from './TacticsBoard'
 import { emptyTrainingExercise, exerciseValuesFromPreset, initialTrainingPlanValues } from './trainingPlanMappers'
+import { trainingPlanDraftKey, useTrainingPlanDraft } from './useTrainingPlanDraft'
 
-export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete, onSavePlan, onLoadPresets, onSavePreset, onNotify, onSaved }: {
+export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, onDelete, onSavePlan, onLoadPresets, onSavePreset, onNotify, onSaved }: {
   plan?: TrainingPlan
   template?: TrainingPlan
   seasons: Season[]
+  userId: string
   onCancel: () => void
   onDelete?: () => Promise<void>
   onSavePlan: (values: TrainingPlanValues) => Promise<void>
@@ -19,7 +21,8 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
   onNotify: (message: string) => void
   onSaved: (message: string) => Promise<void>
 }) {
-  const [values, setValues] = useState<TrainingPlanValues>(() => initialTrainingPlanValues(plan, template, seasons))
+  const [initialValues] = useState<TrainingPlanValues>(() => initialTrainingPlanValues(plan, template, seasons))
+  const [values, setValues] = useState<TrainingPlanValues>(initialValues)
   const [boardExercise, setBoardExercise] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -33,6 +36,12 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
   const totalDuration = useMemo(() => values.exercises.reduce((total, exercise) => total + exercise.durationMinutes, 0), [values.exercises])
   const selectedSeason = seasons.find((season) => season.id === values.seasonId)
   const selectedPreset = presets.find((preset) => preset.id === selectedPresetId)
+  const draft = useTrainingPlanDraft({
+    storageKey: trainingPlanDraftKey(userId, plan?.id, template?.id),
+    initialValues,
+    values,
+    onRecover: setValues,
+  })
 
   function update<K extends keyof TrainingPlanValues>(key: K, value: TrainingPlanValues[K]) {
     setValues((current) => ({ ...current, [key]: value }))
@@ -128,6 +137,7 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
       }
       if (values.exercises.some((exercise) => !exercise.title.trim())) throw new Error('Todos los ejercicios necesitan un título.')
       await onSavePlan(values)
+      draft.clearDraft()
       await onSaved(plan ? 'Entrenamiento actualizado.' : template ? 'Entrenamiento duplicado.' : 'Entrenamiento creado.')
     } catch (error) {
       setFormError(errorText(error))
@@ -139,7 +149,7 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
     if (!onDelete || !window.confirm('Esta acción eliminará también todos los ejercicios y esquemas.')) return
     setDeleting(true)
     setFormError('')
-    try { await onDelete() } catch (error) { setFormError(errorText(error)); setDeleting(false) }
+    try { await onDelete(); draft.clearDraft() } catch (error) { setFormError(errorText(error)); setDeleting(false) }
   }
 
   const activeBoardExercise = boardExercise === null ? undefined : values.exercises[boardExercise]
@@ -152,7 +162,25 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
         <div className="training-duration"><strong>{totalDuration}</strong><span>minutos<br />planificados</span></div>
       </div>
 
-      <form onSubmit={submit}>
+      {draft.pendingDraft ? (
+        <div className="training-draft-notice" role="status">
+          <div><Icon name="save" size={18} /><span><strong>Hay un borrador sin guardar</strong><small>Puedes recuperar los cambios guardados anteriormente en este dispositivo.</small></span></div>
+          <span className="training-draft-actions">
+            <button className="secondary-button compact" onClick={draft.discardDraft} type="button">Descartar</button>
+            <button className="primary-button compact" onClick={draft.recoverDraft} type="button">Recuperar borrador</button>
+          </span>
+        </div>
+      ) : draft.status !== 'idle' && (
+        <div aria-live="polite" className={`training-draft-status ${draft.status === 'error' ? 'error' : ''}`}>
+          <Icon name="save" size={14} />
+          {draft.status === 'saving' && 'Guardando borrador…'}
+          {draft.status === 'saved' && 'Borrador guardado en este dispositivo'}
+          {draft.status === 'recovered' && 'Borrador recuperado'}
+          {draft.status === 'error' && 'No se ha podido guardar el borrador en este dispositivo'}
+        </div>
+      )}
+
+      <form onBlurCapture={draft.saveNow} onSubmit={submit}>
         <section className="training-editor-section training-basics">
           <div className="training-section-heading"><span>1</span><div><h2>Datos de la sesión</h2><p>Define cuándo se realiza y qué se quiere trabajar.</p></div></div>
           <div className="form-grid">
@@ -251,4 +279,3 @@ export function TrainingPlanEditor({ plan, template, seasons, onCancel, onDelete
     </div>
   )
 }
-

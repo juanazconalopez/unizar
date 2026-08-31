@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
 import type { Season, TrainingPlan } from '../../types'
 
 const mocks = vi.hoisted(() => ({
   deleteTrainingExercisePreset: vi.fn(), fetchTrainingPlans: vi.fn(), fetchTrainingExercisePresets: vi.fn(),
-  saveTrainingExercisePreset: vi.fn(), updateTrainingExercisePreset: vi.fn(),
+  saveTrainingExercisePreset: vi.fn(), saveTrainingPlan: vi.fn(), updateTrainingExercisePreset: vi.fn(),
 }))
 vi.mock('../../services/trainingPlansService', () => ({
   EMPTY_TACTICS_BOARD: { version: 1, template: 'full', elements: [] },
@@ -15,7 +15,7 @@ vi.mock('../../services/trainingPlansService', () => ({
   fetchTrainingExercisePresets: mocks.fetchTrainingExercisePresets,
   fetchTrainingPlans: mocks.fetchTrainingPlans,
   isTrainingPlansSchemaMissing: () => false,
-  saveTrainingPlan: vi.fn(),
+  saveTrainingPlan: mocks.saveTrainingPlan,
   saveTrainingExercisePreset: mocks.saveTrainingExercisePreset,
   updateTrainingExercisePreset: mocks.updateTrainingExercisePreset,
 }))
@@ -25,6 +25,7 @@ vi.mock('./TacticsBoard', () => ({
 }))
 
 import { TrainingPlansView } from './TrainingPlansView'
+import { trainingPlanDraftKey } from './useTrainingPlanDraft'
 
 const season: Season = {
   id: 'season-1', name: 'Temporada de prueba', start_date: '2020-01-01', end_date: '2099-12-31',
@@ -51,6 +52,11 @@ const preset = {
 }
 
 describe('training plan reading view', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    vi.clearAllMocks()
+  })
+
   test('shows today first, then future sessions, and hides past sessions', async () => {
     const today = todayIso()
     mocks.fetchTrainingPlans.mockResolvedValue([
@@ -90,6 +96,34 @@ describe('training plan reading view', () => {
     expect(screen.getByLabelText('Material')).toHaveValue('Preparar conos.')
     expect(screen.queryByLabelText('Participantes')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Puntos técnicos')).not.toBeInTheDocument()
+  })
+
+  test('preserves an exercise draft on blur, recovers it, and clears it after saving', async () => {
+    mocks.fetchTrainingPlans.mockResolvedValue([plan])
+    const user = userEvent.setup()
+    render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    const description = screen.getByLabelText('Descripción')
+    await user.clear(description)
+    await user.type(description, 'Descripción que no quiero perder.')
+    await user.tab()
+
+    const storageKey = trainingPlanDraftKey('owner-1', plan.id)
+    expect(localStorage.getItem(storageKey)).toContain('Descripción que no quiero perder.')
+
+    await user.click(screen.getByRole('button', { name: '← Volver a entrenamientos' }))
+    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    expect(screen.getByText('Hay un borrador sin guardar')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Recuperar borrador' }))
+    expect(screen.getByLabelText('Descripción')).toHaveValue('Descripción que no quiero perder.')
+
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({
+      exercises: [expect.objectContaining({ description: 'Descripción que no quiero perder.' })],
+    }))
+    expect(localStorage.getItem(storageKey)).toBeNull()
   })
 
   test('saves and reuses a predefined exercise with its preview', async () => {
