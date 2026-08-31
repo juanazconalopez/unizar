@@ -4,7 +4,7 @@ import { makeMembership, makeProfile, makeSeason } from '../test/fixtures'
 const mocks = vi.hoisted(() => ({ eq: vi.fn(), from: vi.fn(), update: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
 
-import { setSeasonMembership } from './trainingService'
+import { setSeasonMembership } from './trainingMembershipService'
 
 describe('season membership persistence', () => {
   beforeEach(() => {

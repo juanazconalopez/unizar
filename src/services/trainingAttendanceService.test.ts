@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { supabase } from '../lib/supabase'
-import { saveTrainingAttendance } from './trainingService'
+import { saveTrainingAttendance } from './trainingAttendanceService'
 
 vi.mock('../lib/supabase', () => ({
   supabase: { rpc: vi.fn() },

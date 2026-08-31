@@ -3,14 +3,10 @@ import type { Session } from '@supabase/supabase-js'
 import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
-import {
-  fetchAttendanceDate,
-  fetchMatchWindow,
-  fetchStatisticsWindow,
-  fetchTaskWindow,
-  fetchTrainingData,
-} from '../services/trainingService'
+import { fetchTrainingData } from '../services/trainingDataService'
+import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
 
@@ -278,129 +274,5 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     loadStatisticsMonth,
     loadAttendanceDate,
     loadMatchMonth,
-  }
-}
-
-function mergeByKey<T>(current: T[], incoming: T[], key: (item: T) => string) {
-  const merged = new Map(current.map((item) => [key(item), item]))
-  incoming.forEach((item) => merged.set(key(item), item))
-  return [...merged.values()]
-}
-
-function replaceDateRange<T, K extends keyof T>(current: T[], incoming: T[], field: K, from: string, to: string) {
-  return [...current.filter((item) => {
-    const value = String(item[field])
-    return value < from || value > to
-  }), ...incoming]
-}
-
-function replaceRelated<T>(
-  current: T[],
-  incoming: T[],
-  affectedIds: Set<string>,
-  relationId: (item: T) => string,
-  key: (item: T) => string,
-) {
-  return mergeByKey(current.filter((item) => !affectedIds.has(relationId(item))), incoming, key)
-}
-
-const resultKey = (result: TaskResult) => `${result.task_id}:${result.player_id}`
-const attendanceKey = (record: AttendanceRecord) => `${record.session_id}:${record.player_id}`
-const availabilityKey = (item: MatchAvailability) => `${item.match_id}:${item.player_id}`
-const lineupKey = (item: MatchLineup) => `${item.match_id}:${item.position}:${item.player_id}`
-
-type LoadedRanges = {
-  taskRanges: { from: string; to: string }[]
-  statisticsMonth: string | null
-  attendanceDate: string | null
-  matchMonth: string | null
-}
-
-async function restoreLoadedRanges(
-  base: Awaited<ReturnType<typeof fetchTrainingData>>,
-  view: ViewName,
-  userId: string,
-  ranges: LoadedRanges,
-) {
-  if ((view === 'tasks' || view === 'calendar') && ranges.taskRanges.length) {
-    let tasks = base.tasks
-    let results = base.results
-    let announcements = base.announcements ?? []
-    const canManage = canManageSport(base.profile)
-    const windows = await Promise.all(ranges.taskRanges.map(async ({ from, to }) => ({
-      from,
-      to,
-      data: await fetchTaskWindow(userId, canManage, from, to),
-    })))
-    for (const window of windows) {
-      const merged = mergeTaskWindow(tasks, results, window.data, window.from, window.to)
-      tasks = merged.tasks
-      results = merged.results
-      announcements = replaceDateRange(announcements, window.data.announcements ?? [], 'announcement_date', window.from, addDays(window.to, 6))
-    }
-    base = { ...base, tasks, results, announcements }
-    if (view === 'tasks') return base
-  }
-
-  if (view === 'statistics' && ranges.statisticsMonth) {
-    const statistics = await fetchStatisticsWindow(ranges.statisticsMonth)
-    return { ...base, ...statistics }
-  }
-
-  if (view === 'attendance' && ranges.attendanceDate) {
-    let trainingSessions = base.trainingSessions
-    let attendance = base.attendance
-    const window = await fetchAttendanceDate(ranges.attendanceDate)
-    const oldIds = new Set(trainingSessions
-      .filter((session) => session.session_date === ranges.attendanceDate)
-      .map((session) => session.id))
-    const affectedIds = new Set([...oldIds, ...window.trainingSessions.map((session) => session.id)])
-    trainingSessions = replaceDateRange(
-      trainingSessions, window.trainingSessions, 'session_date', ranges.attendanceDate, ranges.attendanceDate,
-    )
-    attendance = replaceRelated(
-      attendance, window.attendance, affectedIds, (item) => item.session_id, attendanceKey,
-    )
-    return { ...base, trainingSessions, attendance }
-  }
-
-  if ((view === 'matches' || view === 'calendar') && ranges.matchMonth) {
-    let matches = base.matches
-    let matchAvailability = base.matchAvailability
-    let matchLineups = base.matchLineups
-    const from = monthStart(ranges.matchMonth)
-    const to = monthEnd(ranges.matchMonth)
-    const window = await fetchMatchWindow(from, to)
-    const oldIds = new Set(matches
-      .filter((match) => match.match_date >= from && match.match_date <= to)
-      .map((match) => match.id))
-    const affectedIds = new Set([...oldIds, ...window.matches.map((match) => match.id)])
-    matches = replaceDateRange(matches, window.matches, 'match_date', from, to)
-    matchAvailability = replaceRelated(
-      matchAvailability, window.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey,
-    )
-    matchLineups = replaceRelated(
-      matchLineups, window.matchLineups, affectedIds, (item) => item.match_id, lineupKey,
-    )
-    return { ...base, matches, matchAvailability, matchLineups }
-  }
-
-  return base
-}
-
-function mergeTaskWindow(
-  tasks: TrainingTask[],
-  results: TaskResult[],
-  incoming: { tasks: TrainingTask[]; results: TaskResult[] },
-  from: string,
-  to: string,
-) {
-  const affectedIds = new Set([
-    ...tasks.filter((task) => task.week_start >= from && task.week_start <= to).map((task) => task.id),
-    ...incoming.tasks.map((task) => task.id),
-  ])
-  return {
-    tasks: replaceDateRange(tasks, incoming.tasks, 'week_start', from, to),
-    results: replaceRelated(results, incoming.results, affectedIds, (result) => result.task_id, resultKey),
   }
 }

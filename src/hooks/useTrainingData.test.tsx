@@ -2,12 +2,16 @@ import { act, renderHook } from '@testing-library/react'
 import type { Session } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeProfile, makeResult, makeTask } from '../test/fixtures'
-import { fetchTaskWindow, fetchTrainingData } from '../services/trainingService'
+import { fetchTrainingData } from '../services/trainingDataService'
+import { fetchTaskWindow } from '../services/trainingQueriesService'
 import type { ViewName } from '../types'
 import { AUTO_REFRESH_INTERVAL_MS, useTrainingData } from './useTrainingData'
 
-vi.mock('../services/trainingService', () => ({
+vi.mock('../services/trainingDataService', () => ({
   fetchTrainingData: vi.fn(),
+}))
+
+vi.mock('../services/trainingQueriesService', () => ({
   fetchTaskWindow: vi.fn(),
   fetchStatisticsWindow: vi.fn(),
   fetchAttendanceDate: vi.fn(),

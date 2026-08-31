@@ -13,7 +13,7 @@ type QueryBuilder = {
 const mocks = vi.hoisted(() => ({ from: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
 
-import { fetchAttendanceDate, fetchMatchWindow, fetchTaskWindow } from './trainingService'
+import { fetchAttendanceDate, fetchMatchWindow, fetchTaskWindow } from './trainingQueriesService'
 
 function query(data: unknown[]): QueryBuilder {
   const builder = {} as QueryBuilder
