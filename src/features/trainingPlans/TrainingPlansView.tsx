@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate } from '../../lib/dates'
+import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import {
   deleteTrainingPlan,
@@ -30,6 +30,7 @@ import {
   demoPresetFromExercise,
   demoTrainingPlans,
   trainingPlanStatusLabel,
+  upcomingTrainingPlans,
 } from './trainingPlanMappers'
 
 type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
@@ -51,6 +52,7 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
   const [libraryLoading, setLibraryLoading] = useState(false)
   const [libraryError, setLibraryError] = useState('')
   const [presetEditor, setPresetEditor] = useState<'new' | TrainingExercisePreset | null>(null)
+  const visiblePlans = upcomingTrainingPlans(plans, todayIso())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -210,9 +212,9 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
       {demoMode && <div className="training-demo-banner"><Icon name="spark" size={17} /><span><strong>Modo de muestra local.</strong> Puedes editar y guardar en memoria; aplica la migración 029 para persistir en Supabase.</span></div>}
 
       {loadError && <div className="training-load-error"><p>{loadError}</p><button className="secondary-button compact" onClick={() => void load()}>Reintentar</button></div>}
-      {loading ? <div className="training-loading">Cargando entrenamientos…</div> : plans.length ? (
+      {loading ? <div className="training-loading">Cargando entrenamientos…</div> : visiblePlans.length ? (
         <div className="training-plan-list">
-          {plans.map((plan) => {
+          {visiblePlans.map((plan) => {
             const duration = plan.training_exercises.reduce((total, exercise) => total + exercise.duration_minutes, 0)
             return (
               <article className="training-plan-card" key={plan.id}>
@@ -236,7 +238,7 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
             )
           })}
         </div>
-      ) : !loadError && <EmptyState title="Todavía no hay entrenamientos" text="Crea la primera sesión y añade ejercicios con su esquema táctico." />}
+      ) : !loadError && <EmptyState title="No hay próximos entrenamientos" text="Crea una nueva sesión o consulta las anteriores desde el calendario." />}
     </div>
   )
 }

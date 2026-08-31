@@ -1,4 +1,5 @@
 import type { Json } from '../lib/database.types'
+import { todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type {
   TacticsBoardData,
@@ -44,7 +45,8 @@ export async function fetchTrainingPlans(): Promise<TrainingPlan[]> {
   const { data, error } = await supabase
     .from('training_plans')
     .select('*, seasons(name), training_exercises(*)')
-    .order('session_date', { ascending: false })
+    .gte('session_date', todayIso())
+    .order('session_date', { ascending: true })
     .order('sort_order', { ascending: true, referencedTable: 'training_exercises' })
   if (error) throw error
   return (data ?? []).map((plan) => ({

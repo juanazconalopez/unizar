@@ -76,3 +76,8 @@ export function trainingPlanStatusLabel(status: TrainingPlan['status']) {
   if (status === 'cancelled') return 'Cancelado'
   return 'Borrador'
 }
+
+export function upcomingTrainingPlans(plans: TrainingPlan[], today: string) {
+  return plans.filter((plan) => plan.session_date >= today)
+    .sort((first, second) => first.session_date.localeCompare(second.session_date))
+}

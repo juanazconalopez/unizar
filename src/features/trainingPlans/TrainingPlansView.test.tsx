@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
+import { addDays, todayIso } from '../../lib/dates'
 import type { Season, TrainingPlan } from '../../types'
 
 const mocks = vi.hoisted(() => ({
@@ -26,12 +27,12 @@ vi.mock('./TacticsBoard', () => ({
 import { TrainingPlansView } from './TrainingPlansView'
 
 const season: Season = {
-  id: 'season-1', name: '2026/27', start_date: '2026-08-01', end_date: '2027-06-30',
+  id: 'season-1', name: 'Temporada de prueba', start_date: '2020-01-01', end_date: '2099-12-31',
   created_by: 'owner-1', created_at: '2026-01-01', updated_at: '2026-01-01',
 }
 
 const plan: TrainingPlan = {
-  id: 'plan-1', season_id: season.id, session_date: '2026-09-01',
+  id: 'plan-1', season_id: season.id, session_date: todayIso(),
   title: 'Pretemporada divertida', objectives: 'Correr y disfrutar.', material: 'Preparar conos.',
   status: 'draft', created_by: 'owner-1', created_at: '2026-01-01', updated_at: '2026-01-01',
   seasons: { name: season.name },
@@ -50,6 +51,25 @@ const preset = {
 }
 
 describe('training plan reading view', () => {
+  test('shows today first, then future sessions, and hides past sessions', async () => {
+    const today = todayIso()
+    mocks.fetchTrainingPlans.mockResolvedValue([
+      { ...plan, id: 'later', title: 'Entrenamiento posterior', session_date: addDays(today, 3) },
+      { ...plan, id: 'past', title: 'Entrenamiento pasado', session_date: addDays(today, -1) },
+      { ...plan, id: 'today', title: 'Entrenamiento de hoy', session_date: today },
+      { ...plan, id: 'next', title: 'Entrenamiento próximo', session_date: addDays(today, 1) },
+    ])
+    render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    const cards = await screen.findAllByRole('button', { name: /Ver entrenamiento/ })
+    expect(cards.map((button) => button.getAttribute('aria-label'))).toEqual([
+      'Ver entrenamiento Entrenamiento de hoy',
+      'Ver entrenamiento Entrenamiento próximo',
+      'Ver entrenamiento Entrenamiento posterior',
+    ])
+    expect(screen.queryByText('Entrenamiento pasado')).not.toBeInTheDocument()
+  })
+
   test('opens the card in read mode and keeps Editar for the form', async () => {
     mocks.fetchTrainingPlans.mockResolvedValue([plan])
     const user = userEvent.setup()
