@@ -385,6 +385,7 @@ function App() {
           matches={data.matches}
           userId={userId}
           season={data.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
+          todayBirthdays={data.todayBirthdays}
           onGoToTasks={canAccessTasks(data.profile) ? () => navigate(canManage ? 'calendar' : 'tasks') : undefined}
           onSaveResult={handleSaveResult}
           onOpenMatch={(match) => navigate({ view: canManage ? 'calendar' : 'matches', date: match.match_date })}
@@ -401,6 +402,7 @@ function App() {
           seasons={data.seasons}
           sessions={data.trainingSessions}
           tasks={data.tasks}
+          birthdays={data.seasonBirthdays}
           loadingRange={data.loadingRange}
           onLoadMonth={data.loadStatisticsMonth}
           onLoadSeasonReport={canViewTeam ? fetchSeasonAttendanceReport : undefined}

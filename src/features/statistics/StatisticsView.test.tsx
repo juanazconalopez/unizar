@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
 import { makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
 import { StatisticsView } from './StatisticsView'
@@ -7,6 +7,33 @@ import { StatisticsView } from './StatisticsView'
 const seasons = [makeSeason()]
 
 describe('StatisticsView', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-12T10:00:00+02:00'))
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  test('marks season birthdays and shows the selected day detail', () => {
+    const today = todayIso()
+    render(<StatisticsView
+      attendance={[]}
+      birthdays={[{
+        season_id: 'season-1', player_id: 'player-1', display_name: 'Ana Martín', birthday_on: today, age_turning: 28,
+      }]}
+      memberships={[makeMembership()]}
+      profiles={[makeProfile()]}
+      results={[]}
+      seasons={seasons}
+      sessions={[]}
+      tasks={[]}
+    />)
+
+    expect(screen.getByLabelText(/cumpleaños de Ana Martín/)).toHaveTextContent('🎂 1')
+    expect(screen.getByText('Ana Martín cumple 28 años')).toBeInTheDocument()
+    expect(screen.getByText('Ana Martín cumple 28 años').closest('.birthday-day-detail')).toBeInTheDocument()
+  })
+
   test('tolerates incomplete collections while local demo data is loading', () => {
     expect(() => render(
       <StatisticsView

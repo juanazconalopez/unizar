@@ -10,7 +10,7 @@ import {
   fetchTaskWindow,
   fetchTrainingData,
 } from '../services/trainingService'
-import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
 
@@ -29,6 +29,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [matchAvailability, setMatchAvailability] = useState<MatchAvailability[]>([])
   const [matchLineups, setMatchLineups] = useState<MatchLineup[]>([])
   const [announcements, setAnnouncements] = useState<TeamAnnouncement[]>([])
+  const [todayBirthdays, setTodayBirthdays] = useState<TodayBirthday[]>([])
+  const [seasonBirthdays, setSeasonBirthdays] = useState<SeasonBirthday[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingRange, setLoadingRange] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -197,6 +199,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setMatchAvailability(data.matchAvailability)
         setMatchLineups(data.matchLineups)
         setAnnouncements(data.announcements ?? [])
+        setTodayBirthdays(data.todayBirthdays)
+        setSeasonBirthdays(data.seasonBirthdays)
         setLoadedView(view)
         setLoadedUserId(userId)
       } catch (error) {
@@ -262,6 +266,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     matchAvailability,
     matchLineups,
     announcements,
+    todayBirthdays,
+    seasonBirthdays,
     loading,
     loadingRange,
     errorMessage,

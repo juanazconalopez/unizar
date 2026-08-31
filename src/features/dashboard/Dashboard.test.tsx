@@ -6,6 +6,21 @@ import { makeAnnouncement, makeAttendance, makeMembership, makeProfile, makeResu
 import { Dashboard } from './Dashboard'
 
 describe('Dashboard', () => {
+  test('shows a lightweight banner when an active player has a birthday today', () => {
+    render(<Dashboard
+      profile={makeProfile()}
+      memberships={[makeMembership()]}
+      tasks={[]}
+      results={[]}
+      attendance={[]}
+      todayBirthdays={[{ player_id: 'player-2', display_name: 'Laura García' }]}
+      userId="player-1"
+      onSaveResult={vi.fn()}
+    />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Hoy es el cumpleaños de Laura García')
+  })
+
   test('varies the positive motivation when the player enters the dashboard', () => {
     const random = vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0)

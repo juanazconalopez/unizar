@@ -1,6 +1,7 @@
 import { addDays, mondayFor, monthEnd, monthStart, offsetMonth, todayIso } from '../lib/dates'
 import { canManageSport, canViewTeamData } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
+import { fetchActiveSeasonBirthdays, fetchTodayBirthdays, invalidateBirthdayCache } from './birthdayService'
 import type {
   AttendanceRecord,
   Match,
@@ -10,10 +11,12 @@ import type {
   ProfileDetailsValues,
   ProfilePrivateDetails,
   Season,
+  SeasonBirthday,
   SeasonPlayer,
   SeasonValues,
   TaskResult,
   TeamAnnouncement,
+  TodayBirthday,
   TrainingSession,
   TrainingTask,
   ViewName,
@@ -34,6 +37,8 @@ export type TrainingData = {
   matchAvailability: MatchAvailability[]
   matchLineups: MatchLineup[]
   announcements?: TeamAnnouncement[]
+  todayBirthdays: TodayBirthday[]
+  seasonBirthdays: SeasonBirthday[]
 }
 
 export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
@@ -241,6 +246,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     matchAvailability: [],
     matchLineups: [],
     announcements: [],
+    todayBirthdays: [],
+    seasonBirthdays: [],
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
@@ -276,8 +283,11 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   let taskData = emptyTaskWindow
   let attendanceData = emptyAttendanceWindow
   let matchData = emptyMatchWindow
+  let todayBirthdays: TodayBirthday[] = []
+  let seasonBirthdays: SeasonBirthday[] = []
 
   if (scope === 'home') {
+    todayBirthdays = await fetchTodayBirthdays(userId, todayIso())
     taskData = await fetchTaskWindow(userId, canViewTeam, currentWeek, currentWeek)
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     if (activeSeason) {
@@ -309,6 +319,10 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     const statisticsData = await fetchStatisticsWindow(monthStart(todayIso()))
     taskData = statisticsData
     attendanceData = statisticsData
+    const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
+    if (profile.is_owner && activeSeason) {
+      seasonBirthdays = await fetchActiveSeasonBirthdays(activeSeason.id, todayIso())
+    }
   } else if (scope === 'attendance' && canManageSport(profile)) {
     attendanceData = await fetchRecentAttendance()
   } else if (scope === 'matches') {
@@ -331,6 +345,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     matchAvailability: matchData.matchAvailability,
     matchLineups: matchData.matchLineups,
     announcements: taskData.announcements,
+    todayBirthdays,
+    seasonBirthdays,
   }
 }
 
@@ -342,6 +358,7 @@ export async function createSeason(values: SeasonValues, userId: string) {
     created_by: userId,
   })
   if (error) throw error
+  invalidateBirthdayCache()
 }
 
 export async function updateSeason(seasonId: string, values: SeasonValues) {
@@ -402,11 +419,13 @@ export async function updateSeason(seasonId: string, values: SeasonValues) {
     })
     .eq('id', seasonId)
   if (error) throw error
+  invalidateBirthdayCache()
 }
 
 export async function deleteSeason(seasonId: string) {
   const { error } = await supabase.from('seasons').delete().eq('id', seasonId)
   if (error) throw error
+  invalidateBirthdayCache()
 }
 
 async function validateSeasonChange(values: SeasonValues, excludedSeasonId?: string) {
@@ -441,6 +460,7 @@ export async function updateProfilePermissions(profile: Profile) {
     })
     .eq('id', profile.id)
   if (error) throw error
+  invalidateBirthdayCache()
 }
 
 export async function updateOwnProfileDetails(values: ProfileDetailsValues) {
@@ -450,6 +470,7 @@ export async function updateOwnProfileDetails(values: ProfileDetailsValues) {
     new_birth_date: values.birthDate || null,
   })
   if (error) throw error
+  invalidateBirthdayCache()
 }
 
 export async function saveTrainingAttendance(
@@ -482,6 +503,7 @@ export async function setSeasonMembership(
       active_until: activeUntil,
     })
     if (error) throw error
+    invalidateBirthdayCache()
     return
   }
 
@@ -493,5 +515,6 @@ export async function setSeasonMembership(
       .update({ active_until: activeUntil })
       .eq('id', existing.id)
     if (error) throw error
+    invalidateBirthdayCache()
   }
 }

@@ -54,6 +54,11 @@
 .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
 .dashboard-stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 16px; margin-bottom: 18px; }
+.birthday-today-banner { margin: -8px 0 18px; padding: 11px 15px; border: 1px solid #ead8a9; border-radius: 12px; display: flex; align-items: center; gap: 10px; color: #74571a; background: #fff9e8; }
+.birthday-today-banner > span { font-size: 22px; }
+.birthday-today-banner p { margin: 0; display: grid; gap: 2px; }
+.birthday-today-banner strong { font-size: 12px; }
+.birthday-today-banner small { color: var(--muted); font-size: 9px; }
 .staff-dashboard-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .stat-card { position: relative; overflow: hidden; min-height: 150px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 7px 22px rgba(31,63,54,.035); }
 .stat-card::after { content: ''; position: absolute; width: 92px; height: 92px; right: -30px; bottom: -34px; border-radius: 50%; opacity: .22; background: currentColor; }
@@ -502,6 +507,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .statistics-calendar > button small { max-width: 100%; padding: 3px 5px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; font-weight: 800; }
 .attendance-mark { color: #206b51; background: #e1f1e7; }
 .task-mark { color: #3f6970; background: #e3f0f2; }
+.birthday-mark { color: #7a5817; background: #fff0bd; }
 .calendar-legend { padding: 0 20px 15px; display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 10px; }
 .calendar-legend span { display: flex; align-items: center; gap: 6px; }
 .calendar-legend i { width: 8px; height: 8px; border-radius: 50%; }
@@ -512,6 +518,10 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .day-detail-heading h2 { margin: 5px 0 0; font-size: 23px; text-transform: capitalize; }
 .day-detail-heading > span { color: var(--muted); font-size: 11px; }
 .weekly-team-summary { margin-bottom: 13px; padding: 17px 20px; border: 1px solid #cfe2d6; border-radius: 13px; display: flex; align-items: center; gap: 20px; background: linear-gradient(100deg,#eef8f1,#edf5f6); }
+.birthday-day-detail { margin-bottom: 10px; padding: 12px 16px; border: 1px solid #ead8a9; border-radius: 12px; display: flex; align-items: center; gap: 11px; color: #74571a; background: #fff9e8; }
+.birthday-day-detail > span { font-size: 22px; }
+.birthday-day-detail p { margin: 0; display: grid; gap: 2px; font-size: 11px; }
+.birthday-day-detail strong { font-size: 9px; letter-spacing: .7px; text-transform: uppercase; }
 .weekly-team-summary > div { flex: 0 0 auto; }
 .weekly-team-summary span { display: block; color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .8px; }
 .weekly-team-summary strong { display: block; margin-top: 3px; font-family: 'Manrope',system-ui,sans-serif; font-size: 28px; }

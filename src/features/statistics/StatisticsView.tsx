@@ -15,6 +15,7 @@ import type {
   TrainingSession,
   TrainingTask,
   SeasonCallupReport,
+  SeasonBirthday,
 } from '../../types'
 
 type StatisticsProps = {
@@ -28,9 +29,10 @@ type StatisticsProps = {
   loadingRange?: boolean
   onLoadMonth?: (month: string) => Promise<void>
   onLoadSeasonReport?: (seasonId: string) => Promise<SeasonCallupReport>
+  birthdays?: SeasonBirthday[]
 }
 
-export function StatisticsView({ profiles = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
+export function StatisticsView({ profiles = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -141,10 +143,11 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
             const dayAttendance = playerAttendance.filter((record) => recordDate(record) === date)
             const attended = dayAttendance.filter((record) => record.attended).length
             const taskPlayers = new Set(playerResults.filter((result) => result.performed_on === date).map((result) => result.player_id)).size
-            const hasData = dayAttendance.length > 0 || taskPlayers > 0
+            const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
+            const hasData = dayAttendance.length > 0 || taskPlayers > 0 || dayBirthdays.length > 0
             return (
               <button
-                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${attended} asistencias y ${taskPlayers} jugadoras con tareas`}
+                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${attended} asistencias, ${taskPlayers} jugadoras con tareas${dayBirthdays.length ? ` y cumpleaños de ${dayBirthdays.map((birthday) => birthday.display_name).join(', ')}` : ''}`}
                 aria-pressed={selectedDate === date}
                 className={`${hasData ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
                 key={date}
@@ -154,6 +157,7 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
                 <strong>{Number(date.slice(-2))}</strong>
                 {dayAttendance.length > 0 && <small className="attendance-mark">A {attended}/{dayAttendance.length}</small>}
                 {taskPlayers > 0 && <small className="task-mark">T {taskPlayers}</small>}
+                {dayBirthdays.length > 0 && <small className="birthday-mark">🎂 {dayBirthdays.length}</small>}
               </button>
             )
           })}
@@ -173,6 +177,7 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
         results={playerResults}
         sessions={sessions}
         tasks={tasks}
+        birthdays={birthdays}
       />
     </div>
   )
@@ -191,7 +196,7 @@ function attendancePercentage(records: AttendanceRecord[]) {
   return (records.filter((record) => record.attended).length / records.length) * 100
 }
 
-function DayDetail({ players, attendance, date, memberships, results, seasons, sessions, tasks }: {
+function DayDetail({ players, attendance, date, memberships, results, seasons, sessions, tasks, birthdays }: {
   players: Profile[]
   attendance: AttendanceRecord[]
   date: string
@@ -200,6 +205,7 @@ function DayDetail({ players, attendance, date, memberships, results, seasons, s
   seasons: Season[]
   sessions: TrainingSession[]
   tasks: TrainingTask[]
+  birthdays: SeasonBirthday[]
 }) {
   const weekStart = mondayFor(date)
   const weekEnd = addDays(weekStart, 6)
@@ -252,6 +258,7 @@ function DayDetail({ players, attendance, date, memberships, results, seasons, s
   const visibleTaskRows = playerRows.filter((row) => row.completedToday > 0 || row.complete)
   const attendedRows = playerRows.filter((row) => row.dailyAttendance?.attended)
   const absentRows = playerRows.filter((row) => row.dailyAttendance?.attended === false)
+  const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
 
   return (
     <section className="day-detail">
@@ -262,6 +269,11 @@ function DayDetail({ players, attendance, date, memberships, results, seasons, s
         </div>
         <span>{weeklyTasks.length} {weeklyTasks.length === 1 ? 'tarea publicada' : 'tareas publicadas'} esta semana</span>
       </div>
+
+      {dayBirthdays.length > 0 && <div className="birthday-day-detail" role="status">
+        <span aria-hidden="true">🎂</span>
+        <p><strong>Cumpleaños del día</strong>{dayBirthdays.map((birthday) => `${birthday.display_name} cumple ${birthday.age_turning} años`).join(' · ')}</p>
+      </div>}
 
       <div className="weekly-team-summary">
         <div><span>CUMPLIMIENTO SEMANAL DEL EQUIPO</span><strong>{weeklyAssignments.length ? `${weeklyCompletion}%` : '—'}</strong></div>

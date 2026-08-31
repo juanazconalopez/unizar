@@ -995,6 +995,23 @@ export type Database = {
         Args: never
         Returns: boolean
       }
+      get_today_active_player_birthdays: {
+        Args: never
+        Returns: {
+          display_name: string
+          player_id: string
+        }[]
+      }
+      get_active_season_birthdays: {
+        Args: never
+        Returns: {
+          age_turning: number
+          birthday_on: string
+          display_name: string
+          player_id: string
+          season_id: string
+        }[]
+      }
       current_user_can_edit_match: {
         Args: { checked_match_id: string }
         Returns: boolean

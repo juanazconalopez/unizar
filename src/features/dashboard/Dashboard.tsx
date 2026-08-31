@@ -7,12 +7,12 @@ import { canViewTeamData, isPlayer } from '../../lib/permissions'
 import { membershipCoversDate } from '../../lib/selectors'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { compareTaskOrder } from '../../lib/taskOrder'
-import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask } from '../../types'
+import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask } from '../../types'
 import { PlayerSeasonSummaryDialog } from '../matches/PlayerSeasonSummaryDialog'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskResultsSummary } from '../tasks/TaskResultsSummary'
 
-export function Dashboard({ profile, profiles = [], memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onSaveResult }: {
+export function Dashboard({ profile, profiles = [], memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, todayBirthdays = [], userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onSaveResult }: {
   profile: Profile
   profiles?: Profile[]
   memberships: SeasonPlayer[]
@@ -23,6 +23,7 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
   announcements?: TeamAnnouncement[]
   matches?: Match[]
   season?: Season
+  todayBirthdays?: TodayBirthday[]
   userId: string
   onGoToTasks?: () => void
   onOpenMatch?: (match: Match) => void
@@ -110,6 +111,10 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
         title={`Hola, ${profile.display_name.split(' ')[0]}`}
         subtitle={isTeamDashboard ? 'Este es el seguimiento de las tareas publicadas para esta semana.' : 'Este es el resumen de tu semana y de la temporada.'}
       />
+      {todayBirthdays.length > 0 && <div className="birthday-today-banner" role="status">
+        <span aria-hidden="true">🎂</span>
+        <p><strong>{birthdayHeading(todayBirthdays)}</strong><small>¡Que pase un día estupendo!</small></p>
+      </div>}
       <section className={`dashboard-stats-grid${isTeamDashboard ? ' staff-dashboard-stats' : ''}`}>
         {isTeamDashboard ? <>
           <StatCard label="Jugadoras activas" value={`${activePlayerIds.size}/${eligiblePlayerIds.size}`} note="Han realizado al menos una tarea" tone="blue" />
@@ -165,6 +170,12 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
       </section>
     </div>
   )
+}
+
+function birthdayHeading(birthdays: TodayBirthday[]) {
+  const names = birthdays.map((birthday) => birthday.display_name)
+  if (names.length === 1) return `Hoy es el cumpleaños de ${names[0]}`
+  return `Hoy es el cumpleaños de ${new Intl.ListFormat('es', { style: 'long', type: 'conjunction' }).format(names)}`
 }
 
 function playerMotivation({ attendanceRate, attendanceTotal, completedTasks, totalTasks, variant }: {

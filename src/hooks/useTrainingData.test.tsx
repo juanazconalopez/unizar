@@ -32,6 +32,8 @@ const trainingData = {
   matches: [],
   matchAvailability: [],
   matchLineups: [],
+  todayBirthdays: [],
+  seasonBirthdays: [],
 }
 
 async function flushInitialLoad() {

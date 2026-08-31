@@ -14,6 +14,17 @@ export type Season = Tables<'seasons'>
 
 export type SeasonPlayer = Tables<'season_players'>
 
+export type TodayBirthday = {
+  player_id: string
+  display_name: string
+}
+
+export type SeasonBirthday = TodayBirthday & {
+  season_id: string
+  birthday_on: string
+  age_turning: number
+}
+
 export type TaskStatus = Enums<'task_status'>
 
 export type TrainingTask = Omit<Tables<'tasks'>, 'updated_at'> & {

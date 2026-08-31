@@ -1,5 +1,5 @@
 begin;
-select plan(90);
+select plan(98);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -112,6 +112,36 @@ select ok(
 select ok(
   exists (select 1 from pg_trigger where tgname = 'auth_user_email_sync' and not tgisinternal),
   'Google account email changes are synchronized to private profile details'
+);
+select has_function('public', 'get_today_active_player_birthdays', array[]::text[], 'today birthdays are available');
+select has_function('public', 'get_active_season_birthdays', array[]::text[], 'active season birthdays are available');
+select like(
+  pg_get_functiondef('public.get_today_active_player_birthdays()'::regprocedure),
+  '%today_in_madrid%between season.start_date and season.end_date%',
+  'today birthdays are limited to the active season'
+);
+select like(
+  pg_get_functiondef('public.get_today_active_player_birthdays()'::regprocedure),
+  '%profile.is_player%profile.is_approved%profile.is_active%not profile.is_archived%',
+  'today birthdays include only active approved players'
+);
+select like(
+  pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
+  '%current_user_can_view_private_profile_details%',
+  'the season birthday calendar is owner-only'
+);
+select like(
+  pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
+  '%birthday_on >= membership.active_from%',
+  'season birthdays respect the player membership period'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.get_today_active_player_birthdays()', 'EXECUTE'),
+  'authenticated users can request today birthdays'
+);
+select ok(
+  not has_function_privilege('anon', 'public.get_active_season_birthdays()', 'EXECUTE'),
+  'anonymous users cannot request the season birthday calendar'
 );
 select ok(to_regclass('public.competition_fixtures') is not null, 'competition fixtures are persisted');
 select ok(to_regclass('public.competition_standings') is not null, 'competition standings are persisted');
