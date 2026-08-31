@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { makeAnnouncement, makeMembership, makeProfile, makeTask } from '../../test/fixtures'
+import { makeAnnouncement, makeMembership, makeProfile, makeProfilePrivateDetails, makeTask } from '../../test/fixtures'
 import type { Match } from '../../types'
 import { buildNotifications, type NotificationFeedData } from './notifications'
 
@@ -19,6 +19,39 @@ const feed = (overrides: Partial<NotificationFeedData> = {}): NotificationFeedDa
 })
 
 describe('buildNotifications', () => {
+  test('keeps a profile reminder until phone and birth date are complete', () => {
+    const incomplete = buildNotifications(
+      feed({ tasks: [], matches: [], lineups: [] }),
+      makeProfile(),
+      '2026-08-07',
+      makeProfilePrivateDetails({ phone: null, birth_date: null }),
+    )
+    expect(incomplete).toContainEqual(expect.objectContaining({
+      kind: 'profile',
+      persistent: true,
+      title: 'Completa tus datos de perfil',
+      text: 'Falta añadir teléfono y fecha de nacimiento.',
+    }))
+
+    const complete = buildNotifications(
+      feed({ tasks: [], matches: [], lineups: [] }),
+      makeProfile(),
+      '2026-08-07',
+      makeProfilePrivateDetails(),
+    )
+    expect(complete.some((item) => item.kind === 'profile')).toBe(false)
+  })
+
+  test('does not ask staff-only users to complete player details', () => {
+    const notifications = buildNotifications(
+      feed({ tasks: [], matches: [], lineups: [] }),
+      makeProfile({ is_player: false, is_coach: true }),
+      '2026-08-07',
+      makeProfilePrivateDetails({ phone: null, birth_date: null }),
+    )
+    expect(notifications.some((item) => item.kind === 'profile')).toBe(false)
+  })
+
   test('creates player alerts without duplicating published tasks from home and the tasks section', () => {
     const notifications = buildNotifications(feed(), makeProfile(), '2026-08-07')
     expect(notifications.map((item) => item.title)).toEqual(expect.arrayContaining([

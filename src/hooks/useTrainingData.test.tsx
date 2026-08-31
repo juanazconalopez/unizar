@@ -20,6 +20,8 @@ const session = {
 
 const trainingData = {
   profile: makeProfile({ id: 'player-1' }),
+  ownProfileDetails: null,
+  profilePrivateDetails: [],
   seasons: [],
   memberships: [],
   profiles: [],

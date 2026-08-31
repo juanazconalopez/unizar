@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { addDays, mondayFor, monthEnd, monthStart, offsetMonth, seasonState, toIsoDate, todayIso } from './dates'
+import { addDays, ageOnDate, mondayFor, monthEnd, monthStart, offsetMonth, seasonState, toIsoDate, todayIso } from './dates'
 
 afterEach(() => vi.useRealTimers())
 
@@ -20,6 +20,13 @@ describe('date helpers', () => {
   test('adds days across month and year boundaries', () => {
     expect(addDays('2026-12-30', 3)).toBe('2027-01-02')
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+  })
+
+  test('calculates age according to whether the birthday has passed', () => {
+    expect(ageOnDate('2000-08-30', '2026-08-31')).toBe(26)
+    expect(ageOnDate('2000-09-01', '2026-08-31')).toBe(25)
+    expect(ageOnDate('2030-01-01', '2026-08-31')).toBeNull()
+    expect(ageOnDate('fecha inválida', '2026-08-31')).toBeNull()
   })
 
   test('uses the current day to classify seasons', () => {

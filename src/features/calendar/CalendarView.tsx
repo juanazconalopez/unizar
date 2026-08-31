@@ -216,6 +216,7 @@ export function CalendarView(props: CalendarViewProps) {
           matches={props.matches}
           month={month}
           selectedDate={selectedDate}
+          showLegend={false}
           tasks={props.tasks}
           trainingPlans={publishedTrainingPlans}
           onMonthChange={(nextMonth) => void changeMonth(nextMonth)}

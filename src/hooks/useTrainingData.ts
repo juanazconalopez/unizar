@@ -10,12 +10,14 @@ import {
   fetchTaskWindow,
   fetchTrainingData,
 } from '../services/trainingService'
-import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingSession, TrainingTask, ViewName } from '../types'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
 
 export function useTrainingData(session: Session | null, view: ViewName = 'home') {
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [ownProfileDetails, setOwnProfileDetails] = useState<ProfilePrivateDetails | null>(null)
+  const [profilePrivateDetails, setProfilePrivateDetails] = useState<ProfilePrivateDetails[]>([])
   const [seasons, setSeasons] = useState<Season[]>([])
   const [memberships, setMemberships] = useState<SeasonPlayer[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
@@ -182,6 +184,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
           matchMonth: loadedMatchMonth.current,
         })
         setProfile(data.profile)
+        setOwnProfileDetails(data.ownProfileDetails)
+        setProfilePrivateDetails(data.profilePrivateDetails)
         setSeasons(data.seasons)
         setTasks(data.tasks)
         setResults(data.results)
@@ -245,6 +249,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
 
   return {
     profile,
+    ownProfileDetails,
+    profilePrivateDetails,
     seasons,
     memberships,
     profiles,

@@ -3,13 +3,14 @@ import type { ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate } from '../../lib/dates'
+import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
-import type { Profile } from '../../types'
+import type { Profile, ProfilePrivateDetails } from '../../types'
 
-export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }: {
+export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], currentUserId, onUpdate }: {
   embedded?: boolean
   profiles: Profile[]
+  profilePrivateDetails?: ProfilePrivateDetails[]
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
 }) {
@@ -62,7 +63,7 @@ export function TeamView({ embedded = false, profiles, currentUserId, onUpdate }
         </PeopleSection>
       )}
       {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Permisos del equipo">
-          {approved.map((person) => <PersonRow currentUserId={currentUserId} key={person.id} onUpdate={onUpdate} person={person} />)}
+          {approved.map((person) => <PersonRow currentUserId={currentUserId} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onUpdate={onUpdate} person={person} />)}
       </PeopleSection>}
       {archived.length > 0 && (
         <section className="archived-users">
@@ -138,8 +139,9 @@ function PeopleSection({ eyebrow, title, children }: { eyebrow: string; title: s
   )
 }
 
-function PersonRow({ person, currentUserId, onUpdate }: {
+function PersonRow({ person, details, currentUserId, onUpdate }: {
   person: Profile
+  details?: ProfilePrivateDetails
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
 }) {
@@ -191,6 +193,7 @@ function PersonRow({ person, currentUserId, onUpdate }: {
           <span>Desde {formatDate(person.created_at.slice(0, 10), { month: 'long', year: 'numeric' })}</span>
         </div>
       </div>
+      <ProfileContactDetails details={details} />
       <div className="person-controls">
         <div className="permission-toggles">
           <Toggle checked={person.is_approved} disabled={saving || person.id === currentUserId} label="Aprobado" onChange={(value) => change('is_approved', value)} />
@@ -203,6 +206,22 @@ function PersonRow({ person, currentUserId, onUpdate }: {
         <button className="danger-button" disabled={saving || person.id === currentUserId} onClick={archive}>Desautorizar</button>
       </div>
     </article>
+  )
+}
+
+function ProfileContactDetails({ details }: { details?: ProfilePrivateDetails }) {
+  const complete = Boolean(details?.email && details.phone && details.birth_date)
+  const age = ageOnDate(details?.birth_date, todayIso())
+  return (
+    <div className={`person-profile-details${complete ? ' complete' : ' incomplete'}`}>
+      <span className="profile-completion-state">{complete ? 'Datos completos' : 'Datos incompletos'}</span>
+      <div>
+        <span><b>Email</b>{details?.email ? <a href={`mailto:${details.email}`}>{details.email}</a> : <em>Sin email</em>}</span>
+        <span><b>Teléfono</b>{details?.phone ? <a href={`tel:${details.phone}`}>{details.phone}</a> : <em>Sin teléfono</em>}</span>
+        <span><b>Edad</b>{age === null ? <em>Sin edad</em> : <strong>{age} años</strong>}</span>
+        <span><b>Nacimiento</b>{details?.birth_date ? <strong>{formatDate(details.birth_date, { day: 'numeric', month: 'short', year: 'numeric' })}</strong> : <em>Sin fecha</em>}</span>
+      </div>
+    </div>
   )
 }
 

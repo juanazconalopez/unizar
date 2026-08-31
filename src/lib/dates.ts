@@ -11,6 +11,20 @@ export function todayIso() {
   return toIsoDate(new Date())
 }
 
+export function ageOnDate(birthDate: string | null | undefined, date: string) {
+  if (!birthDate || !isValidIsoDate(birthDate) || !isValidIsoDate(date) || birthDate > date) return null
+  const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number)
+  const [year, month, day] = date.split('-').map(Number)
+  let age = year - birthYear
+  if (month < birthMonth || (month === birthMonth && day < birthDay)) age -= 1
+  return age
+}
+
+function isValidIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  return toIsoDate(dateFromIso(value)) === value
+}
+
 export function mondayFor(value: string | Date) {
   const date = typeof value === 'string' ? dateFromIso(value) : new Date(value)
   const day = date.getDay() || 7

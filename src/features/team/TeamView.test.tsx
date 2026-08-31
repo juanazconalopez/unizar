@@ -1,10 +1,29 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
-import { makeProfile } from '../../test/fixtures'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { makeProfile, makeProfilePrivateDetails } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
+afterEach(() => vi.useRealTimers())
+
 describe('TeamView', () => {
+  test('shows the private contact details only supplied to the owner list', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-31T12:00:00'))
+    render(<TeamView
+      profiles={[makeProfile()]}
+      profilePrivateDetails={[makeProfilePrivateDetails()]}
+      currentUserId="owner-1"
+      onUpdate={vi.fn()}
+    />)
+
+    expect(screen.getByRole('link', { name: 'ana@example.com' })).toHaveAttribute('href', 'mailto:ana@example.com')
+    expect(screen.getByRole('link', { name: '+34 600 000 000' })).toHaveAttribute('href', 'tel:+34 600 000 000')
+    expect(screen.getByText('28 años')).toBeInTheDocument()
+    expect(screen.getByText('15 abr 1998')).toBeInTheDocument()
+    expect(screen.getByText('Datos completos')).toBeInTheDocument()
+  })
+
   test('opens an accent-insensitive name search and filters every account state', async () => {
     const user = userEvent.setup()
     render(<TeamView profiles={[

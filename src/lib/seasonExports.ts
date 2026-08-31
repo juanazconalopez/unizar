@@ -1,6 +1,7 @@
 import { escapeXml } from './fileExport'
+import { ageOnDate } from './dates'
 import { isActivePlayer, membershipCoversDate } from './selectors'
-import type { Profile, Season, SeasonCallupReport, SeasonPlayer } from '../types'
+import type { Profile, ProfilePrivateDetails, Season, SeasonCallupReport, SeasonPlayer } from '../types'
 
 export function currentSeasonPlayers(
   profiles: Profile[],
@@ -17,10 +18,15 @@ export function currentSeasonPlayers(
     .sort((first, second) => first.display_name.localeCompare(second.display_name, 'es'))
 }
 
-export function activePlayersXml(season: Season, players: Profile[], generatedOn: string) {
+export function activePlayersXml(season: Season, players: Profile[], generatedOn: string, privateDetails: ProfilePrivateDetails[] = []) {
+  const detailsByPlayer = new Map(privateDetails.map((details) => [details.profile_id, details]))
   return `<?xml version="1.0" encoding="UTF-8"?>
 <jugadoras-activas temporada="${escapeXml(season.name)}" fecha="${escapeXml(generatedOn)}" total="${players.length}">
-${players.map((player) => `  <jugadora id="${escapeXml(player.id)}" nombre="${escapeXml(player.display_name)}" />`).join('\n')}
+${players.map((player) => {
+    const details = detailsByPlayer.get(player.id)
+    const age = ageOnDate(details?.birth_date, generatedOn)
+    return `  <jugadora id="${escapeXml(player.id)}" nombre="${escapeXml(player.display_name)}" email="${escapeXml(details?.email)}" telefono="${escapeXml(details?.phone)}" edad="${escapeXml(age)}" fecha-nacimiento="${escapeXml(details?.birth_date)}" />`
+  }).join('\n')}
 </jugadoras-activas>`
 }
 

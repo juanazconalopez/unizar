@@ -1,6 +1,7 @@
 import type {
   AttendanceRecord,
   Profile,
+  ProfilePrivateDetails,
   Season,
   SeasonPlayer,
   TaskResult,
@@ -23,6 +24,16 @@ export function makeProfile(overrides: Partial<Profile> = {}): Profile {
     is_viewer: false,
     is_archived: false,
     created_at: createdAt,
+    ...overrides,
+  }
+}
+
+export function makeProfilePrivateDetails(overrides: Partial<ProfilePrivateDetails> = {}): ProfilePrivateDetails {
+  return {
+    profile_id: 'player-1',
+    email: 'ana@example.com',
+    phone: '+34 600 000 000',
+    birth_date: '1998-04-15',
     ...overrides,
   }
 }

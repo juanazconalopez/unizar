@@ -1,13 +1,14 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import type { Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, trainingPlans, onMonthChange, onSelectDate }: {
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, trainingPlans, showLegend = true, onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
   announcements?: TeamAnnouncement[]
   matches?: Match[]
   trainingPlans?: TrainingPlanCalendarItem[]
+  showLegend?: boolean
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
@@ -86,12 +87,12 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           )
         })}
       </div>
-      <div className="calendar-legend">
+      {showLegend && <div className="calendar-legend">
         <span><i className="task-dot" />T · Tareas publicadas o en borrador guardadas en el lunes de su semana</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
         {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
-      </div>
+      </div>}
     </section>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Profile, ViewName } from '../../types'
+import type { Profile, ProfileDetailsValues, ProfilePrivateDetails, ViewName } from '../../types'
 import { Icon } from '../Icon'
 import type { IconName } from '../Icon'
 import { Avatar } from '../ui/Avatar'
@@ -8,7 +8,7 @@ import { ClubBrand } from '../ui/ClubBrand'
 import { Modal } from '../ui/Modal'
 import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
-import { ProfileNameDialog } from '../../features/profile/ProfileNameDialog'
+import { ProfileDetailsDialog } from '../../features/profile/ProfileDetailsDialog'
 import type { AppNotification } from '../../features/notifications/notifications'
 import { canAccessTasks, canManageSport, canViewTeamData } from '../../lib/permissions'
 
@@ -16,6 +16,7 @@ type NavigationItem = { id: ViewName; label: string; icon: IconName }
 
 export function AppLayout({
   profile,
+  profileDetails,
   email,
   view,
   message,
@@ -23,7 +24,7 @@ export function AppLayout({
   online = true,
   onNavigate,
   onSignOut,
-  onUpdateDisplayName,
+  onUpdateProfileDetails,
   notifications = [],
   notificationReadIds = new Set<string>(),
   notificationUnreadCount = 0,
@@ -33,6 +34,7 @@ export function AppLayout({
   children,
 }: {
   profile: Profile
+  profileDetails?: ProfilePrivateDetails | null
   email: string
   view: ViewName
   message: string
@@ -40,7 +42,7 @@ export function AppLayout({
   online?: boolean
   onNavigate: (view: ViewName) => void
   onSignOut: () => void
-  onUpdateDisplayName?: (displayName: string) => Promise<void>
+  onUpdateProfileDetails?: (values: ProfileDetailsValues) => Promise<void>
   notifications?: AppNotification[]
   notificationReadIds?: Set<string>
   notificationUnreadCount?: number
@@ -54,12 +56,13 @@ export function AppLayout({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
-  const [profileNameOpen, setProfileNameOpen] = useState(false)
+  const [profileDetailsOpen, setProfileDetailsOpen] = useState(false)
+  const [highlightMissingProfileDetails, setHighlightMissingProfileDetails] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
   const canManage = canManageSport(profile)
   const canViewTeam = canViewTeamData(profile)
-  const canEditProfileName = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateDisplayName)
+  const canEditProfile = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateProfileDetails)
   const navigation: NavigationItem[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
     ...(canViewTeam ? [
@@ -131,7 +134,7 @@ export function AppLayout({
         )}
         <NotificationButton count={notificationUnreadCount} onClick={() => setNotificationsOpen(true)} />
         <div className="sidebar-profile">
-          {canEditProfileName ? <button aria-label="Editar mi nombre" className="sidebar-profile-edit" onClick={() => setProfileNameOpen(true)} type="button">
+          {canEditProfile ? <button aria-label="Editar mis datos" className="sidebar-profile-edit" onClick={() => { setHighlightMissingProfileDetails(false); setProfileDetailsOpen(true) }} type="button">
             <Avatar name={profile.display_name} />
             <span><strong>{profile.display_name}</strong><small>{role}</small></span>
           </button> : <div className="sidebar-profile-summary"><Avatar name={profile.display_name} /><span><strong>{profile.display_name}</strong><small>{role}</small></span></div>}
@@ -166,9 +169,9 @@ export function AppLayout({
                   </div>
                 </div>
                 <span className="mobile-role">{role}</span>
-                {canEditProfileName && (
-                  <button className="mobile-profile-edit-button" onClick={() => { setProfileMenuOpen(false); setProfileNameOpen(true) }} role="menuitem" type="button">
-                    Editar mi nombre
+                {canEditProfile && (
+                  <button className="mobile-profile-edit-button" onClick={() => { setProfileMenuOpen(false); setHighlightMissingProfileDetails(false); setProfileDetailsOpen(true) }} role="menuitem" type="button">
+                    Editar mis datos
                   </button>
                 )}
                 {showInstallAction && (
@@ -207,8 +210,13 @@ export function AppLayout({
             readIds={notificationReadIds}
             onReadAll={() => onNotificationsReadAll?.()}
             onOpen={(notification) => {
-              onNotificationRead?.(notification)
               setNotificationsOpen(false)
+              if (notification.kind === 'profile' && canEditProfile) {
+                setHighlightMissingProfileDetails(true)
+                setProfileDetailsOpen(true)
+                return
+              }
+              onNotificationRead?.(notification)
               if (onNotificationOpen) onNotificationOpen(notification)
               else navigate(notification.view)
             }}
@@ -229,8 +237,16 @@ export function AppLayout({
           <div className="form-actions"><button className="primary-button" onClick={() => setIosInstructionsOpen(false)} type="button">Entendido</button></div>
         </Modal>
       )}
-      {profileNameOpen && onUpdateDisplayName && (
-        <ProfileNameDialog currentName={profile.display_name} onClose={() => setProfileNameOpen(false)} onSave={onUpdateDisplayName} />
+      {profileDetailsOpen && onUpdateProfileDetails && (
+        <ProfileDetailsDialog
+          currentBirthDate={profileDetails?.birth_date ?? ''}
+          currentName={profile.display_name}
+          currentPhone={profileDetails?.phone ?? ''}
+          email={profileDetails?.email ?? email}
+          highlightMissing={highlightMissingProfileDetails}
+          onClose={() => { setProfileDetailsOpen(false); setHighlightMissingProfileDetails(false) }}
+          onSave={onUpdateProfileDetails}
+        />
       )}
     </div>
   )

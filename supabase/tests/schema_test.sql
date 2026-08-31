@@ -1,5 +1,5 @@
 begin;
-select plan(78);
+select plan(90);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -67,6 +67,51 @@ select ok(
 select ok(
   not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'is_collaborator'),
   'legacy collaborator permission was renamed'
+);
+select ok(to_regclass('public.profile_private_details') is not null, 'private profile details are persisted separately');
+select has_column('public', 'profile_private_details', 'email', 'private profile details store the Google email');
+select has_column('public', 'profile_private_details', 'phone', 'private profile details store the optional phone');
+select has_column('public', 'profile_private_details', 'birth_date', 'private profile details store the optional birth date');
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.profile_private_details'::regclass),
+  'private profile details use row level security'
+);
+select ok(
+  exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'profile_private_details'
+      and policyname = 'Users can read their own private profile details'
+      and qual like '%auth.uid()%'
+  ),
+  'users can read only their own private profile details'
+);
+select ok(
+  exists (
+    select 1 from pg_policies where schemaname = 'public' and tablename = 'profile_private_details'
+      and policyname = 'Owners can read private profile details'
+      and qual like '%current_user_can_view_private_profile_details%'
+  ),
+  'owners can read private profile details for team administration'
+);
+select has_function(
+  'public', 'update_own_profile_details', array['text', 'text', 'date'],
+  'active users can update their own profile details'
+);
+select like(
+  pg_get_functiondef('public.update_own_profile_details(text,text,date)'::regprocedure),
+  '%where id = (select auth.uid())%',
+  'profile detail updates are restricted to the authenticated profile'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.update_own_profile_details(text,text,date)', 'EXECUTE'),
+  'authenticated users can call the private profile update function'
+);
+select ok(
+  not has_function_privilege('anon', 'public.update_own_profile_details(text,text,date)', 'EXECUTE'),
+  'anonymous users cannot call the private profile update function'
+);
+select ok(
+  exists (select 1 from pg_trigger where tgname = 'auth_user_email_sync' and not tgisinternal),
+  'Google account email changes are synchronized to private profile details'
 );
 select ok(to_regclass('public.competition_fixtures') is not null, 'competition fixtures are persisted');
 select ok(to_regclass('public.competition_standings') is not null, 'competition standings are persisted');

@@ -11,12 +11,12 @@ export function NotificationCenter({ notifications, readIds, onOpen, onReadAll }
     <section className="notification-center" aria-label="Avisos">
       <header>
         <div><span className="eyebrow">ACTUALIDAD</span><h2 id="notification-center-title">Avisos</h2></div>
-        {notifications.length > 0 && <button className="text-button" onClick={onReadAll} type="button">Limpiar avisos</button>}
+        {notifications.some((notification) => !notification.persistent) && <button className="text-button" onClick={onReadAll} type="button">Limpiar avisos</button>}
       </header>
       <div className="notification-list">
         {notifications.map((notification) => (
           <button
-            className={readIds.has(notification.id) ? `notification-item ${notification.kind}` : `notification-item ${notification.kind} unread`}
+            className={readIds.has(notification.id) && !notification.persistent ? `notification-item ${notification.kind}` : `notification-item ${notification.kind} unread`}
             key={notification.id}
             onClick={() => onOpen(notification)}
             type="button"

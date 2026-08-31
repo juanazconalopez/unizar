@@ -1,8 +1,15 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { makeMembership, makeProfile, makeSeason } from '../../test/fixtures'
+import { todayIso } from '../../lib/dates'
+import { makeMembership, makeProfile, makeProfilePrivateDetails, makeSeason } from '../../test/fixtures'
 import { SeasonsView } from './SeasonsView'
+
+const fileMocks = vi.hoisted(() => ({ downloadText: vi.fn() }))
+vi.mock('../../lib/fileExport', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../lib/fileExport')>(),
+  downloadText: fileMocks.downloadText,
+}))
 
 describe('SeasonsView', () => {
   test('manages only eligible participants', async () => {
@@ -53,6 +60,28 @@ describe('SeasonsView', () => {
 
     expect(within(screen.getByText('Temporada 2026').closest('article')!).getByRole('button', { name: 'Exportar jugadoras activas XML' })).toBeInTheDocument()
     expect(within(screen.getByText('Temporada pasada').closest('article')!).queryByRole('button', { name: /Exportar jugadoras/ })).not.toBeInTheDocument()
+  })
+
+  test('exports contact details, age and birth date for active season players', async () => {
+    const user = userEvent.setup()
+    const birthDate = `${Number(todayIso().slice(0, 4)) - 20}-01-01`
+    render(<SeasonsView
+      seasons={[makeSeason()]}
+      profiles={[makeProfile()]}
+      profilePrivateDetails={[makeProfilePrivateDetails({ birth_date: birthDate })]}
+      memberships={[makeMembership()]}
+      onCreate={vi.fn()}
+      onDelete={vi.fn()}
+      onUpdate={vi.fn()}
+      onToggleMembership={vi.fn()}
+    />)
+
+    await user.click(screen.getByRole('button', { name: 'Exportar jugadoras activas XML' }))
+    expect(fileMocks.downloadText).toHaveBeenCalledWith(
+      'jugadoras-activas-Temporada 2026.xml',
+      expect.stringContaining(`email="ana@example.com" telefono="+34 600 000 000" edad="20" fecha-nacimiento="${birthDate}"`),
+      'application/xml',
+    )
   })
 
   test('creates a season from the form', async () => {

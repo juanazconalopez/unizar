@@ -22,7 +22,7 @@ import {
   setSeasonMembership,
   updateSeason,
   updateProfilePermissions,
-  updateOwnDisplayName,
+  updateOwnProfileDetails,
 } from './services/trainingService'
 import { createTrainingTask, deleteTrainingTask, reorderTrainingTasks, saveTaskResult, updateTrainingTask, updateTaskStatus } from './services/tasksService'
 import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './services/matchesService'
@@ -30,6 +30,7 @@ import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement,
 import type {
   AnnouncementValues,
   Profile,
+  ProfileDetailsValues,
   AvailabilityStatus,
   Match,
   MatchLineup,
@@ -83,7 +84,7 @@ function App() {
   const auth = useAuth()
   const online = useOnlineStatus()
   const data = useTrainingData(auth.session, view)
-  const notifications = useNotifications(data.profile, auth.session?.user.id)
+  const notifications = useNotifications(data.profile, auth.session?.user.id, data.ownProfileDetails)
   const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
 
   async function reloadData() {
@@ -292,10 +293,10 @@ function App() {
     }
   }
 
-  async function handleUpdateDisplayName(displayName: string) {
+  async function handleUpdateProfileDetails(values: ProfileDetailsValues) {
     requireConnection()
-    await updateOwnDisplayName(displayName)
-    notify('Nombre actualizado.')
+    await updateOwnProfileDetails(values)
+    notify('Datos de perfil actualizados.')
     await reloadData()
   }
 
@@ -346,11 +347,12 @@ function App() {
       errorMessage={errorMessage}
       message={message}
       profile={data.profile}
+      profileDetails={data.ownProfileDetails}
       online={online}
       view={view}
       onNavigate={navigate}
       onSignOut={handleSignOut}
-      onUpdateDisplayName={handleUpdateDisplayName}
+      onUpdateProfileDetails={handleUpdateProfileDetails}
       notifications={notifications.notifications}
       notificationReadIds={notifications.readIds}
       notificationUnreadCount={notifications.unreadCount}
@@ -522,6 +524,7 @@ function App() {
         <SettingsView
           currentUserId={userId}
           memberships={data.memberships}
+          profilePrivateDetails={data.profilePrivateDetails}
           profiles={data.profiles}
           seasons={data.seasons}
           onCreateSeason={handleCreateSeason}

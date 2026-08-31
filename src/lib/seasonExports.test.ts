@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { makeMembership, makeProfile, makeSeason } from '../test/fixtures'
+import { makeMembership, makeProfile, makeProfilePrivateDetails, makeSeason } from '../test/fixtures'
 import type { SeasonCallupReport } from '../types'
 import { activePlayersXml, attendanceReportXml, currentSeasonPlayers } from './seasonExports'
 
@@ -23,8 +23,12 @@ describe('season exports', () => {
     )
 
     expect(players).toEqual([active])
-    expect(activePlayersXml(season, players, '2026-08-27')).toContain('temporada="Temporada &amp; 2026"')
-    expect(activePlayersXml(season, players, '2026-08-27')).toContain('nombre="Inés &amp; Ana"')
+    const xml = activePlayersXml(season, players, '2026-08-27', [makeProfilePrivateDetails({
+      email: 'ines&ana@example.com', phone: '+34 600 123 123', birth_date: '2000-09-01',
+    })])
+    expect(xml).toContain('temporada="Temporada &amp; 2026"')
+    expect(xml).toContain('nombre="Inés &amp; Ana"')
+    expect(xml).toContain('email="ines&amp;ana@example.com" telefono="+34 600 123 123" edad="25" fecha-nacimiento="2000-09-01"')
   })
 
   test('exports accumulated attendance for only the filtered players', () => {

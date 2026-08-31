@@ -4,12 +4,12 @@ import type { AppNotification, NotificationFeedData } from '../features/notifica
 import { todayIso } from '../lib/dates'
 import { canManageSport } from '../lib/permissions'
 import { fetchNotificationFeed } from '../services/notificationsService'
-import type { Profile } from '../types'
+import type { Profile, ProfilePrivateDetails } from '../types'
 
 const EMPTY_FEED: NotificationFeedData = { tasks: [], results: [], memberships: [], matches: [], availability: [], lineups: [] }
 export const NOTIFICATION_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 
-export function useNotifications(profile: Profile | null, userId?: string) {
+export function useNotifications(profile: Profile | null, userId?: string, profileDetails?: ProfilePrivateDetails | null) {
   const [feed, setFeed] = useState<NotificationFeedData>(EMPTY_FEED)
   const [readState, setReadState] = useState<{ userId?: string; ids: Set<string> }>(() => ({
     userId,
@@ -54,21 +54,22 @@ export function useNotifications(profile: Profile | null, userId?: string) {
   }, [loadFeed, userId])
 
   const allNotifications = useMemo(
-    () => profile ? buildNotifications(feed, profile, todayIso()) : [],
-    [feed, profile],
+    () => profile ? buildNotifications(feed, profile, todayIso(), profileDetails) : [],
+    [feed, profile, profileDetails],
   )
   const notifications = useMemo(
-    () => allNotifications.filter((notification) => !readIds.has(notification.id)),
+    () => allNotifications.filter((notification) => notification.persistent || !readIds.has(notification.id)),
     [allNotifications, readIds],
   )
 
   function markRead(notification: AppNotification) {
+    if (notification.persistent) return
     persistReadIds(userId, new Set(readIds).add(notification.id), setReadState)
   }
 
   function markAllRead() {
     const next = new Set(readIds)
-    allNotifications.forEach((notification) => next.add(notification.id))
+    allNotifications.filter((notification) => !notification.persistent).forEach((notification) => next.add(notification.id))
     persistReadIds(userId, next, setReadState)
   }
 

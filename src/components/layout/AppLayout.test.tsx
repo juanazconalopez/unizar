@@ -113,9 +113,9 @@ describe('AppLayout', () => {
     expect(screen.getByText(/Sin conexión. Puedes consultar/)).toBeInTheDocument()
   })
 
-  test('allows approved active users to edit their display name', async () => {
+  test('allows approved active users to edit their profile details', async () => {
     const user = userEvent.setup()
-    const onUpdateDisplayName = vi.fn().mockResolvedValue(undefined)
+    const onUpdateProfileDetails = vi.fn().mockResolvedValue(undefined)
     render(
       <AppLayout
         profile={makeProfile()}
@@ -125,18 +125,19 @@ describe('AppLayout', () => {
         errorMessage=""
         onNavigate={vi.fn()}
         onSignOut={vi.fn()}
-        onUpdateDisplayName={onUpdateDisplayName}
+        onUpdateProfileDetails={onUpdateProfileDetails}
       ><p>Contenido</p></AppLayout>,
     )
 
-    await user.click(screen.getAllByRole('button', { name: 'Editar mi nombre' })[0])
-    const dialog = screen.getByRole('dialog', { name: 'Editar mi nombre' })
+    await user.click(screen.getAllByRole('button', { name: 'Editar mis datos' })[0])
+    const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
     const input = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(input)
     await user.type(input, 'María López')
-    await user.click(within(dialog).getByRole('button', { name: 'Guardar nombre' }))
+    await user.type(within(dialog).getByLabelText('Teléfono'), '+34 600 123 123')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
 
-    expect(onUpdateDisplayName).toHaveBeenCalledWith('María López')
+    expect(onUpdateProfileDetails).toHaveBeenCalledWith({ displayName: 'María López', phone: '+34 600 123 123', birthDate: '' })
   })
 
   test('does not offer name editing to inactive users', () => {
@@ -149,11 +150,43 @@ describe('AppLayout', () => {
         errorMessage=""
         onNavigate={vi.fn()}
         onSignOut={vi.fn()}
-        onUpdateDisplayName={vi.fn()}
+        onUpdateProfileDetails={vi.fn()}
       ><p>Contenido</p></AppLayout>,
     )
 
-    expect(screen.queryByRole('button', { name: 'Editar mi nombre' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Editar mis datos' })).not.toBeInTheDocument()
+  })
+
+  test('opens profile details from a persistent notification and highlights missing fields', async () => {
+    const user = userEvent.setup()
+    const onNotificationRead = vi.fn()
+    render(
+      <AppLayout
+        profile={makeProfile()}
+        profileDetails={null}
+        email="ana@example.com"
+        view="home"
+        message=""
+        errorMessage=""
+        notifications={[{
+          id: 'profile-incomplete:player-1', kind: 'profile', title: 'Completa tus datos de perfil',
+          text: 'Falta añadir teléfono y fecha de nacimiento.', view: 'home', occurredAt: '2026-08-12T07:00:00', persistent: true,
+        }]}
+        notificationUnreadCount={1}
+        onNavigate={vi.fn()}
+        onNotificationRead={onNotificationRead}
+        onSignOut={vi.fn()}
+        onUpdateProfileDetails={vi.fn()}
+      ><p>Contenido</p></AppLayout>,
+    )
+
+    await user.click(screen.getAllByRole('button', { name: 'Avisos, 1 sin leer' })[0])
+    await user.click(screen.getByRole('button', { name: /Completa tus datos de perfil/ }))
+
+    const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
+    expect(within(dialog).getByLabelText(/^Teléfono/).closest('label')).toHaveClass('profile-field-missing')
+    expect(within(dialog).getByLabelText(/^Fecha de nacimiento/).closest('label')).toHaveClass('profile-field-missing')
+    expect(onNotificationRead).not.toHaveBeenCalled()
   })
 
   test('opens an alert and navigates to its related screen', async () => {

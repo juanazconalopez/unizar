@@ -2,6 +2,14 @@ import type { Enums, Tables } from './lib/database.types'
 
 export type Profile = Omit<Tables<'profiles'>, 'updated_at'>
 
+export type ProfilePrivateDetails = Omit<Tables<'profile_private_details'>, 'created_at' | 'updated_at'>
+
+export type ProfileDetailsValues = {
+  displayName: string
+  phone: string
+  birthDate: string
+}
+
 export type Season = Tables<'seasons'>
 
 export type SeasonPlayer = Tables<'season_players'>

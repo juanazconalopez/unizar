@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { fetchNotificationFeed } from '../services/notificationsService'
-import { makeAnnouncement, makeProfile } from '../test/fixtures'
+import { makeAnnouncement, makeProfile, makeProfilePrivateDetails } from '../test/fixtures'
 import { NOTIFICATION_REFRESH_INTERVAL_MS, useNotifications } from './useNotifications'
 
 vi.mock('../services/notificationsService', () => ({ fetchNotificationFeed: vi.fn() }))
@@ -65,5 +65,17 @@ describe('useNotifications', () => {
     await loadInitialFeed()
 
     expect(fetchNotificationFeed).toHaveBeenCalledWith(profile.id, true)
+  })
+
+  test('does not clear the profile reminder until the details are complete', async () => {
+    const profile = makeProfile()
+    const details = makeProfilePrivateDetails({ phone: null, birth_date: null })
+    const reminder = renderHook(() => useNotifications(profile, profile.id, details))
+    await loadInitialFeed()
+
+    expect(reminder.result.current.notifications.some((item) => item.kind === 'profile')).toBe(true)
+    act(() => reminder.result.current.markAllRead())
+    expect(reminder.result.current.notifications).toHaveLength(1)
+    expect(reminder.result.current.notifications[0].kind).toBe('profile')
   })
 })

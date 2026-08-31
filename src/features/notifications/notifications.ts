@@ -1,17 +1,18 @@
 import { addDays, mondayFor } from '../../lib/dates'
 import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
 import { membershipCoversDate } from '../../lib/selectors'
-import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
+import type { Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
   id: string
-  kind: 'task' | 'match' | 'availability' | 'lineup' | 'announcement'
+  kind: 'task' | 'match' | 'availability' | 'lineup' | 'announcement' | 'profile'
   title: string
   text: string
   view: ViewName
   occurredAt: string
   targetDate?: string
   targetId?: string
+  persistent?: boolean
 }
 
 export type NotificationFeedData = {
@@ -24,11 +25,29 @@ export type NotificationFeedData = {
   announcements?: TeamAnnouncement[]
 }
 
-export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string): AppNotification[] {
+export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string, profileDetails?: ProfilePrivateDetails | null): AppNotification[] {
   const recentFrom = addDays(today, -7)
   const playerRole = isPlayer(profile)
   const managesAvailability = canManageSport(profile)
   const items: AppNotification[] = []
+
+  if (playerRole && profileDetails !== undefined) {
+    const missingFields = [
+      !profileDetails?.phone?.trim() ? 'teléfono' : '',
+      !profileDetails?.birth_date ? 'fecha de nacimiento' : '',
+    ].filter(Boolean)
+    if (missingFields.length) {
+      items.push({
+        id: `profile-incomplete:${profile.id}:${missingFields.join('-')}`,
+        kind: 'profile',
+        title: 'Completa tus datos de perfil',
+        text: `Falta añadir ${missingFields.length === 2 ? `${missingFields[0]} y ${missingFields[1]}` : missingFields[0]}.`,
+        view: 'home',
+        occurredAt: `${today}T07:00:00`,
+        persistent: true,
+      })
+    }
+  }
 
   for (const announcement of (data.announcements ?? []).filter((item) => canAccessTasks(profile) && item.status === 'published')) {
     if (announcement.updated_at.slice(0, 10) < recentFrom) continue
@@ -123,7 +142,10 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
     }
   }
 
-  return deduplicate(items).sort((first, second) => second.occurredAt.localeCompare(first.occurredAt))
+  return deduplicate(items).sort((first, second) => (
+    Number(Boolean(second.persistent)) - Number(Boolean(first.persistent))
+    || second.occurredAt.localeCompare(first.occurredAt)
+  ))
 }
 
 function deduplicate(items: AppNotification[]) {

@@ -488,6 +488,41 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_private_details: {
+        Row: {
+          birth_date: string | null
+          created_at: string
+          email: string | null
+          phone: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          created_at?: string
+          email?: string | null
+          phone?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          created_at?: string
+          email?: string | null
+          phone?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_private_details_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       season_players: {
         Row: {
           active_from: string
@@ -956,6 +991,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_can_view_private_profile_details: {
+        Args: never
+        Returns: boolean
+      }
       current_user_can_edit_match: {
         Args: { checked_match_id: string }
         Returns: boolean
@@ -1056,6 +1095,14 @@ export type Database = {
       update_own_display_name: {
         Args: { new_display_name: string }
         Returns: string
+      }
+      update_own_profile_details: {
+        Args: {
+          new_birth_date: string | null
+          new_display_name: string
+          new_phone: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

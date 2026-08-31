@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc } }))
 
-import { dataRequirementsFor, homeAgendaEnd, updateOwnDisplayName } from './trainingService'
+import { dataRequirementsFor, homeAgendaEnd, updateOwnProfileDetails } from './trainingService'
 
 describe('training data requirements', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -70,11 +70,13 @@ describe('training data requirements', () => {
     expect(dataRequirementsFor('attendance', false).memberships).toBe(true)
   })
 
-  test('updates the authenticated display name through the restricted function', async () => {
-    mocks.rpc.mockResolvedValue({ data: 'María López', error: null })
+  test('updates the authenticated profile details through the restricted function', async () => {
+    mocks.rpc.mockResolvedValue({ data: undefined, error: null })
 
-    await expect(updateOwnDisplayName('María López')).resolves.toBe('María López')
-    expect(mocks.rpc).toHaveBeenCalledWith('update_own_display_name', { new_display_name: 'María López' })
+    await expect(updateOwnProfileDetails({ displayName: 'María López', phone: '+34 600 123 123', birthDate: '1997-05-12' })).resolves.toBeUndefined()
+    expect(mocks.rpc).toHaveBeenCalledWith('update_own_profile_details', {
+      new_display_name: 'María López', new_phone: '+34 600 123 123', new_birth_date: '1997-05-12',
+    })
   })
 
   test('limits the home agenda to the end of next week and the active season', () => {

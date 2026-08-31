@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { todayIso } from '../../lib/dates'
-import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { Profile, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonsView } from '../seasons/SeasonsView'
 import { TeamView } from '../team/TeamView'
 
-export function SettingsView({ currentUserId, memberships, profiles, seasons, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateSeason }: {
+export function SettingsView({ currentUserId, memberships, profiles, profilePrivateDetails = [], seasons, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateSeason }: {
   currentUserId: string
   memberships: SeasonPlayer[]
   profiles: Profile[]
+  profilePrivateDetails?: ProfilePrivateDetails[]
   seasons: Season[]
   onCreateSeason: (values: SeasonValues) => Promise<void>
   onDeleteSeason: (season: Season) => Promise<void>
@@ -24,6 +25,6 @@ export function SettingsView({ currentUserId, memberships, profiles, seasons, on
       <button aria-selected={section === 'team'} className={section === 'team' ? 'active' : ''} onClick={() => setSection('team')} role="tab">Equipo</button>
       <button aria-selected={section === 'seasons'} className={section === 'seasons' ? 'active' : ''} onClick={() => setSection('seasons')} role="tab">Temporadas</button>
     </div>
-    {section === 'team' ? <TeamView currentUserId={currentUserId} embedded profiles={profiles} onUpdate={onUpdateProfile} /> : <SeasonsView embedded memberships={memberships} profiles={profiles} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
+    {section === 'team' ? <TeamView currentUserId={currentUserId} embedded profiles={profiles} profilePrivateDetails={profilePrivateDetails} onUpdate={onUpdateProfile} /> : <SeasonsView embedded memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
   </div>
 }

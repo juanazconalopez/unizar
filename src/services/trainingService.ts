@@ -7,6 +7,8 @@ import type {
   MatchAvailability,
   MatchLineup,
   Profile,
+  ProfileDetailsValues,
+  ProfilePrivateDetails,
   Season,
   SeasonPlayer,
   SeasonValues,
@@ -19,6 +21,8 @@ import type {
 
 export type TrainingData = {
   profile: Profile
+  ownProfileDetails: ProfilePrivateDetails | null
+  profilePrivateDetails: ProfilePrivateDetails[]
   seasons: Season[]
   memberships: SeasonPlayer[]
   profiles: Profile[]
@@ -206,16 +210,26 @@ export async function fetchMatchWindow(fromDate: string, toDate?: string): Promi
 }
 
 export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
-  const { data: ownProfile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, display_name, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at')
-    .eq('id', userId)
-    .single()
+  const [profileResponse, ownDetailsResponse] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, display_name, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at')
+      .eq('id', userId)
+      .single(),
+    supabase
+      .from('profile_private_details')
+      .select('profile_id, email, phone, birth_date')
+      .eq('profile_id', userId)
+      .maybeSingle(),
+  ])
 
-  if (profileError) throw profileError
-  const profile = ownProfile
+  if (profileResponse.error) throw profileResponse.error
+  if (ownDetailsResponse.error) throw ownDetailsResponse.error
+  const profile = profileResponse.data
   const emptyData = {
     profile,
+    ownProfileDetails: ownDetailsResponse.data,
+    profilePrivateDetails: [],
     seasons: [],
     memberships: [],
     profiles: [],
@@ -236,7 +250,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const currentWeek = mondayFor(new Date())
 
   const emptyResponse = Promise.resolve({ data: [], error: null })
-  const [seasonsResponse, membershipsResponse, profilesResponse] = await Promise.all([
+  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
     requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
     requirements.profiles
@@ -245,11 +259,18 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
         .select('id, display_name, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at')
         .order('display_name')
       : emptyResponse,
+    scope === 'settings'
+      ? supabase
+        .from('profile_private_details')
+        .select('profile_id, email, phone, birth_date')
+        .order('profile_id')
+      : emptyResponse,
   ])
 
   if (seasonsResponse.error) throw seasonsResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
   if (profilesResponse.error) throw profilesResponse.error
+  if (privateDetailsResponse.error) throw privateDetailsResponse.error
 
   const seasons = seasonsResponse.data ?? []
   let taskData = emptyTaskWindow
@@ -297,6 +318,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
 
   return {
     profile,
+    ownProfileDetails: ownDetailsResponse.data,
+    profilePrivateDetails: privateDetailsResponse.data ?? [],
     seasons,
     tasks: taskData.tasks,
     results: taskData.results,
@@ -420,12 +443,13 @@ export async function updateProfilePermissions(profile: Profile) {
   if (error) throw error
 }
 
-export async function updateOwnDisplayName(displayName: string) {
-  const { data, error } = await supabase.rpc('update_own_display_name', {
-    new_display_name: displayName,
+export async function updateOwnProfileDetails(values: ProfileDetailsValues) {
+  const { error } = await supabase.rpc('update_own_profile_details', {
+    new_display_name: values.displayName,
+    new_phone: values.phone,
+    new_birth_date: values.birthDate || null,
   })
   if (error) throw error
-  return data
 }
 
 export async function saveTrainingAttendance(

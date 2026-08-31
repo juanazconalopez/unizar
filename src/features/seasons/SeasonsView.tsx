@@ -8,13 +8,14 @@ import { downloadText } from '../../lib/fileExport'
 import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
 import { activePlayersXml, currentSeasonPlayers } from '../../lib/seasonExports'
 import { isPlayer } from '../../lib/permissions'
-import type { Profile, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { Profile, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
-export function SeasonsView({ embedded = false, seasons, profiles, memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
+export function SeasonsView({ embedded = false, seasons, profiles, profilePrivateDetails = [], memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
   embedded?: boolean
   seasons: Season[]
   profiles: Profile[]
+  profilePrivateDetails?: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
   onCreate: (values: SeasonValues) => Promise<void>
   onDelete: (season: Season) => Promise<void>
@@ -64,6 +65,7 @@ export function SeasonsView({ embedded = false, seasons, profiles, memberships, 
             key={season.id}
             memberships={memberships}
             profiles={profiles}
+            profilePrivateDetails={profilePrivateDetails}
             season={season}
             onEdit={() => { setShowForm(false); setEditingSeason(season) }}
             onToggle={() => setExpanded(expanded === season.id ? null : season.id)}
@@ -76,9 +78,10 @@ export function SeasonsView({ embedded = false, seasons, profiles, memberships, 
   )
 }
 
-function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle, onToggleMembership }: {
+function SeasonCard({ season, profiles, profilePrivateDetails, memberships, expanded, onEdit, onToggle, onToggleMembership }: {
   season: Season
   profiles: Profile[]
+  profilePrivateDetails: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
   expanded: boolean
   onEdit: () => void
@@ -104,7 +107,7 @@ function SeasonCard({ season, profiles, memberships, expanded, onEdit, onToggle,
       {state === 'Activa' && <button
         className="secondary-button season-card-export"
         disabled={!exportPlayers.length}
-        onClick={() => downloadText(`jugadoras-activas-${season.name}.xml`, activePlayersXml(season, exportPlayers, today), 'application/xml')}
+        onClick={() => downloadText(`jugadoras-activas-${season.name}.xml`, activePlayersXml(season, exportPlayers, today, profilePrivateDetails), 'application/xml')}
         type="button"
       ><Icon name="download" size={17} />Exportar jugadoras activas XML</button>}
       {expanded && (
