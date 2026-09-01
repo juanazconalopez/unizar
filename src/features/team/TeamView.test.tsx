@@ -4,79 +4,71 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { makeProfile, makeProfilePrivateDetails } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('TeamView', () => {
-  test('shows the private contact details only supplied to the owner list', () => {
-    vi.useFakeTimers()
+  test('keeps the owner list compact and opens the complete read-only profile', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-08-31T12:00:00'))
-    render(<TeamView
-      profiles={[makeProfile()]}
-      profilePrivateDetails={[makeProfilePrivateDetails()]}
-      currentUserId="owner-1"
-      onUpdate={vi.fn()}
-    />)
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
 
-    expect(screen.getByRole('link', { name: 'ana@example.com' })).toHaveAttribute('href', 'mailto:ana@example.com')
-    expect(screen.getByRole('link', { name: '+34 600 000 000' })).toHaveAttribute('href', 'tel:+34 600 000 000')
-    expect(screen.getByText('28 años')).toBeInTheDocument()
-    expect(screen.getByText('15 abr 1998')).toBeInTheDocument()
-    expect(screen.getByText('Datos completos')).toBeInTheDocument()
+    const card = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
+    expect(card).toHaveTextContent('ana@example.com')
+    expect(card).toHaveTextContent('+34 600 000 000')
+    expect(card).toHaveTextContent('28 años')
+    expect(card).toHaveTextContent('Activa')
+    expect(card).toHaveTextContent('Jugadora')
+    expect(card).toHaveTextContent('Datos completos')
+    expect(within(card).queryByRole('checkbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
+
+    await user.click(card)
+    const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(within(dialog).getByRole('link', { name: 'ana@example.com' })).toHaveAttribute('href', 'mailto:ana@example.com')
+    expect(within(dialog).getByText('15 de abril de 1998')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
-  test('opens owner editing from a pencil icon for approved and pending profiles', async () => {
+  test('edits details and permissions only after opening the detail pencil', async () => {
     const user = userEvent.setup()
-    const approved = makeProfile()
-    const pending = makeProfile({ id: 'pending-1', display_name: 'Nerea Ruiz', is_approved: false, is_active: false })
-    const onUpdateDetails = vi.fn().mockResolvedValue(undefined)
-    render(<TeamView
-      profiles={[approved, pending]}
-      profilePrivateDetails={[
-        makeProfilePrivateDetails(),
-        makeProfilePrivateDetails({ profile_id: pending.id, email: 'nerea@example.com', phone: null, birth_date: null }),
-      ]}
-      currentUserId="owner-1"
-      onUpdate={vi.fn()}
-      onUpdateDetails={onUpdateDetails}
-    />)
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const profile = makeProfile()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView currentUserId="owner-1" onSave={onSave} onUpdate={vi.fn()} profiles={[profile]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
 
-    const approvedEdit = screen.getByRole('button', { name: 'Editar datos de Ana Martín' })
-    expect(approvedEdit).toHaveAttribute('title', 'Editar datos de Ana Martín')
-    expect(approvedEdit.querySelector('svg')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Editar datos de Nerea Ruiz' })).toBeInTheDocument()
-
-    await user.click(approvedEdit)
-    const dialog = screen.getByRole('dialog', { name: 'Editar datos de Ana Martín' })
-    expect(within(dialog).getByLabelText('Email de Google')).toHaveValue('ana@example.com')
-    expect(within(dialog).getByLabelText('Email de Google')).toHaveAttribute('readonly')
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Editar datos de Ana Martín' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
     const name = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(name)
     await user.type(name, 'Ana Martín López')
-    await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Entrenadora' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }))
 
-    expect(onUpdateDetails).toHaveBeenCalledWith(approved, {
-      displayName: 'Ana Martín López',
-      phone: '+34 600 000 000',
-      birthDate: '1998-04-15',
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('estado o los permisos'))
+    expect(onSave).toHaveBeenCalledWith(profile, {
+      displayName: 'Ana Martín López', phone: '+34 600 000 000', birthDate: '1998-04-15',
+      isActive: true, isPlayer: true, isCoach: true, isViewer: false, isOwner: false,
     })
   })
 
   test('opens an accent-insensitive name search and filters every account state', async () => {
     const user = userEvent.setup()
-    render(<TeamView profiles={[
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[
       makeProfile({ id: 'maria', display_name: 'María López' }),
       makeProfile({ id: 'clara', display_name: 'Clara Pérez' }),
       makeProfile({ id: 'archived', display_name: 'María Luisa', is_approved: false, is_active: false, is_archived: true }),
-    ]} currentUserId="owner-1" onUpdate={vi.fn()} />)
-
+    ]} />)
     await user.click(screen.getByRole('button', { name: 'Buscar personas' }))
     const search = screen.getByRole('searchbox', { name: 'Buscar por nombre' })
     await user.type(search, 'maria')
-
     expect(screen.getByText('María López')).toBeInTheDocument()
     expect(screen.getByText('María Luisa')).toBeInTheDocument()
     expect(screen.queryByText('Clara Pérez')).not.toBeInTheDocument()
-
     await user.clear(search)
     await user.type(search, 'sin coincidencias')
     expect(screen.getByText('No hay personas que coincidan con “sin coincidencias”.')).toBeInTheDocument()
@@ -84,50 +76,38 @@ describe('TeamView', () => {
     expect(screen.queryByRole('searchbox', { name: 'Buscar por nombre' })).not.toBeInTheDocument()
   })
 
-  test('warns only for identical or globally very similar pending names', () => {
-    render(<TeamView profiles={[
-      makeProfile({ id: 'registered', display_name: 'María López' }),
-      makeProfile({ id: 'similar-pending', display_name: 'Maria Lopex', is_approved: false, is_active: false }),
-      makeProfile({ id: 'martinez', display_name: 'Ana Martínez' }),
-      makeProfile({ id: 'martin-pending', display_name: 'Ana Martín', is_approved: false, is_active: false }),
-    ]} currentUserId="owner-1" onUpdate={vi.fn()} />)
-
-    const similarRequest = screen.getByText('Maria Lopex').closest('article')!
-    expect(within(similarRequest).getByText('Posible cuenta duplicada')).toBeInTheDocument()
-    expect(similarRequest).toHaveTextContent('María López (miembro activo)')
-    expect(within(screen.getByText('Ana Martín').closest('article')!).queryByText('Posible cuenta duplicada')).not.toBeInTheDocument()
-  })
-
-  test('approves pending profiles with active player permissions', async () => {
+  test('moves duplicate review and approval into the pending profile detail', async () => {
     const user = userEvent.setup()
-    const pending = makeProfile({ id: 'pending', display_name: 'Nerea Ruiz', is_approved: false, is_active: false })
+    const registered = makeProfile({ id: 'registered', display_name: 'María López' })
+    const pending = makeProfile({ id: 'pending', display_name: 'Maria Lopex', is_approved: false, is_active: false })
     const onUpdate = vi.fn().mockResolvedValue(undefined)
-    render(<TeamView profiles={[makeProfile(), pending]} currentUserId="player-1" onUpdate={onUpdate} />)
+    render(<TeamView currentUserId="owner-1" onUpdate={onUpdate} profiles={[registered, pending]} />)
 
+    expect(screen.getByRole('button', { name: 'Ver datos de Maria Lopex' })).toHaveTextContent('Posible duplicado')
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Maria Lopex' }))
+    expect(screen.getByText('Posible cuenta duplicada')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Aprobar como jugadora' }))
-
-    expect(onUpdate).toHaveBeenCalledWith({ ...pending, is_approved: true, is_active: true })
+    expect(onUpdate).toHaveBeenCalledWith({ ...pending, is_approved: true, is_active: true, is_player: true })
   })
 
-  test('updates permissions and restores archived profiles', async () => {
+  test('keeps restore and deauthorization inside their profile details', async () => {
     const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
     const member = makeProfile({ id: 'member', display_name: 'María López' })
     const archived = makeProfile({ id: 'archived', display_name: 'Paula Romero', is_approved: false, is_active: false, is_archived: true })
     const onUpdate = vi.fn().mockResolvedValue(undefined)
-    render(<TeamView profiles={[makeProfile(), member, archived]} currentUserId="player-1" onUpdate={onUpdate} />)
+    const onArchive = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView currentUserId="owner-1" onArchive={onArchive} onSave={vi.fn()} onUpdate={onUpdate} profiles={[member, archived]} />)
 
-    const memberRow = screen.getByText('María López').closest('article')!
-    await user.click(within(memberRow).getByRole('checkbox', { name: 'Entrenador' }))
-    expect(onUpdate).toHaveBeenCalledWith({ ...member, is_coach: true })
-    expect(within(memberRow).getByRole('checkbox', { name: 'Jugadora' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Ver datos de María López' }))
+    expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar datos de María López' }))
+    await user.click(screen.getByRole('button', { name: 'Desautorizar' }))
+    expect(onArchive).toHaveBeenCalledWith(member)
 
     await user.click(screen.getByRole('button', { name: 'Ver usuarios desautorizados (1)' }))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Paula Romero' }))
     await user.click(screen.getByRole('button', { name: 'Restaurar acceso' }))
-    expect(onUpdate).toHaveBeenCalledWith({
-      ...archived,
-      is_archived: false,
-      is_approved: true,
-      is_active: false,
-    })
+    expect(onUpdate).toHaveBeenCalledWith({ ...archived, is_archived: false, is_approved: true, is_active: false })
   })
 })

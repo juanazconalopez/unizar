@@ -1,5 +1,5 @@
 begin;
-select plan(103);
+select plan(112);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -388,6 +388,35 @@ select like(
   '%if was_published then%',
   'lineup save rejects an already published lineup'
 );
+
+select has_column('public', 'profiles', 'avatar_path', 'profiles keep only the private photo path');
+select ok(
+  exists (select 1 from pg_constraint where conname = 'profiles_avatar_path_format'),
+  'profile photo paths are restricted to their profile folder'
+);
+select ok(
+  exists (
+    select 1 from storage.buckets
+    where id = 'player-avatars' and not public and file_size_limit = 307200
+      and allowed_mime_types = array['image/jpeg']
+  ),
+  'the private player photo bucket limits size and format'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners and players can read private player photos'),
+  'only owners and the player can read a private player photo'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners and players can upload private player photos'),
+  'owners and players have a restricted upload policy'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners and players can delete private player photos'),
+  'owners and players can remove obsolete photos'
+);
+select has_function('public', 'update_own_profile', array['text', 'text', 'date', 'text'], 'players can update their own details and photo path');
+select has_function('public', 'update_managed_profile', array['uuid', 'text', 'text', 'date', 'boolean', 'boolean', 'boolean', 'boolean', 'boolean', 'text'], 'owners update details and permissions atomically');
+select has_function('public', 'archive_profile_as_owner', array['uuid'], 'owners archive profiles through a protected function');
 
 select * from finish();
 rollback;

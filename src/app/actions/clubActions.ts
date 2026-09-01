@@ -1,9 +1,10 @@
 import { activeMembershipFor } from '../../lib/selectors'
-import { updateManagedProfileDetails, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { archiveManagedProfile, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
 import { setSeasonMembership } from '../../services/trainingMembershipService'
-import type { Profile, ProfileDetailsValues, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, Season, SeasonPlayer, SeasonValues } from '../../types'
 import type { ActionContext } from './actionContext'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
@@ -37,18 +38,25 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
         context.reportError(error)
       }
     },
-    updateOwnProfileDetails: async (values: ProfileDetailsValues) => {
+    updateOwnProfileDetails: async (profile: Profile, values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) => {
       context.requireConnection()
-      await updateOwnProfileDetails(values)
+      await updateOwnProfileDetails(profile, values, photoChange)
       context.notify('Datos de perfil actualizados.')
       await context.reloadData()
     },
-    updateManagedProfileDetails: async (profile: Profile, values: ProfileDetailsValues) => {
+    updateManagedProfile: async (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => {
       context.requireConnection()
-      await updateManagedProfileDetails(profile.id, values)
+      await updateManagedProfile(profile, values, photoChange)
       context.notify(`Datos de ${values.displayName} actualizados.`)
       await context.reloadData()
     },
+    archiveProfile: async (profile: Profile) => {
+      context.requireConnection()
+      await archiveManagedProfile(profile.id)
+      context.notify(`${profile.display_name} ha sido desautorizada.`)
+      await context.reloadData()
+    },
+    loadProfilePhoto: loadProfilePhotoUrl,
     saveAttendance: async (date: string, playerIds: string[], attendedPlayerIds: string[]) => {
       context.requireConnection()
       await saveTrainingAttendance(date, playerIds, attendedPlayerIds)

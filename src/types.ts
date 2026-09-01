@@ -10,6 +10,16 @@ export type ProfileDetailsValues = {
   birthDate: string
 }
 
+export type ManagedProfileValues = ProfileDetailsValues & {
+  isActive: boolean
+  isPlayer: boolean
+  isCoach: boolean
+  isViewer: boolean
+  isOwner: boolean
+}
+
+export type ProfilePhotoChange = File | null | undefined
+
 export type Season = Tables<'seasons'>
 
 export type SeasonPlayer = Tables<'season_players'>

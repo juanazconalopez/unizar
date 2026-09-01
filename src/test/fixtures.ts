@@ -14,6 +14,7 @@ const createdAt = '2026-08-01T10:00:00.000Z'
 
 export function makeProfile(overrides: Partial<Profile> = {}): Profile {
   return {
+    avatar_path: null,
     id: 'player-1',
     display_name: 'Ana Martín',
     is_approved: true,

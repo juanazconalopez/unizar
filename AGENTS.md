@@ -79,6 +79,8 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 - La modal se denomina “Datos de perfil”, no “Editar mi nombre”.
 - La campana muestra un aviso cuando faltan teléfono o fecha de nacimiento. Al abrirlo debe mostrarse la modal de perfil y señalar los campos incompletos.
 - La edad siempre se calcula desde la fecha de nacimiento; no se almacena.
+- Las fotografías de jugadoras viven en el bucket privado `player-avatars`; `profiles.avatar_path` conserva únicamente la ruta.
+- Las fotografías se comprimen en cliente, no usan transformaciones de Supabase y solo se solicitan al abrir Datos de perfil. Los avatares habituales continúan mostrando iniciales para reducir transferencia.
 
 ## Roles y permisos
 
@@ -103,7 +105,9 @@ Reglas importantes:
 - Owner y entrenador gestionan el ámbito deportivo.
 - Dirección consulta información del equipo, pero no debe adquirir permisos de escritura deportiva.
 - Solo el owner administra temporadas, permisos, vinculaciones y datos privados del equipo.
-- En Ajustes → Equipo, el owner puede corregir nombre, teléfono y fecha de nacimiento mediante el lápiz de cada perfil; el email de Google es siempre de solo lectura.
+- En Ajustes → Equipo, el listado es informativo y no contiene controles de permisos. Cada tarjeta abre Datos de perfil y el lápiz activa la edición de nombre, teléfono, fecha de nacimiento, fotografía, estado y roles; el email de Google es siempre de solo lectura.
+- Los cambios de estado o roles requieren confirmación. Desautorizar y restaurar se realizan dentro de la ficha, nunca desde el listado.
+- El owner no puede desactivarse, quitarse su propio rol ni dejar la aplicación sin otro owner activo; estas reglas se validan también en las RPC.
 - Las reglas comunes están en `src/lib/permissions.ts`, `src/lib/selectors.ts` y `src/app/appAccess.ts`. No duplicarlas en componentes.
 
 ## Temporadas y vinculaciones

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Profile, ProfileDetailsValues, ProfilePrivateDetails, ViewName } from '../../types'
+import type { Profile, ProfileDetailsValues, ProfilePhotoChange, ProfilePrivateDetails, ViewName } from '../../types'
 import { Icon } from '../Icon'
 import type { IconName } from '../Icon'
 import { Avatar } from '../ui/Avatar'
@@ -24,6 +24,7 @@ export function AppLayout({
   online = true,
   onNavigate,
   onSignOut,
+  onLoadProfilePhoto,
   onUpdateProfileDetails,
   notifications = [],
   notificationReadIds = new Set<string>(),
@@ -42,7 +43,8 @@ export function AppLayout({
   online?: boolean
   onNavigate: (view: ViewName) => void
   onSignOut: () => void
-  onUpdateProfileDetails?: (values: ProfileDetailsValues) => Promise<void>
+  onLoadProfilePhoto?: (path: string) => Promise<string>
+  onUpdateProfileDetails?: (values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) => Promise<void>
   notifications?: AppNotification[]
   notificationReadIds?: Set<string>
   notificationUnreadCount?: number
@@ -242,9 +244,12 @@ export function AppLayout({
           currentBirthDate={profileDetails?.birth_date ?? ''}
           currentName={profile.display_name}
           currentPhone={profileDetails?.phone ?? ''}
+          avatarPath={profile.avatar_path}
+          canEditPhoto={profile.is_player}
           email={profileDetails?.email ?? email}
           highlightMissing={highlightMissingProfileDetails}
           onClose={() => { setProfileDetailsOpen(false); setHighlightMissingProfileDetails(false) }}
+          onLoadPhoto={onLoadProfilePhoto}
           onSave={onUpdateProfileDetails}
         />
       )}

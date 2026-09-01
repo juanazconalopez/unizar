@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { ProfileDetailsDialog } from './ProfileDetailsDialog'
 
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('ProfileDetailsDialog', () => {
   test('shows the Google email as read-only and saves all editable details', async () => {
@@ -94,5 +97,18 @@ describe('ProfileDetailsDialog', () => {
     )
 
     expect(screen.getByText('Edad actual: 25 años.')).toBeInTheDocument()
+  })
+
+  test('keeps a selected player photo pending until all profile data is saved', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(<ProfileDetailsDialog canEditPhoto currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onSave={onSave} />)
+    const file = new File(['photo'], 'ana.png', { type: 'image/png' })
+
+    await user.upload(screen.getByLabelText('Seleccionar fotografía'), file)
+    expect(await screen.findByAltText('Fotografía de Ana Martín')).toHaveAttribute('src', expect.stringContaining('data:image/png;base64,'))
+    await user.click(screen.getByRole('button', { name: 'Guardar datos' }))
+
+    expect(onSave).toHaveBeenCalledWith({ displayName: 'Ana Martín', phone: '', birthDate: '' }, file)
   })
 })

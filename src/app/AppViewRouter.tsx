@@ -200,9 +200,11 @@ export function AppViewRouter({
         seasons={data.seasons}
         onCreateSeason={actions.club.createSeason}
         onDeleteSeason={actions.club.deleteSeason}
+        onArchiveProfile={actions.club.archiveProfile}
+        onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
-        onUpdateProfileDetails={actions.club.updateManagedProfileDetails}
+        onUpdateProfileDetails={actions.club.updateManagedProfile}
         onUpdateSeason={actions.club.updateSeason}
       />}
     </Suspense>

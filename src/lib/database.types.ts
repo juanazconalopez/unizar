@@ -448,6 +448,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_path: string | null
           created_at: string
           display_name: string
           id: string
@@ -461,6 +462,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_path?: string | null
           created_at?: string
           display_name: string
           id: string
@@ -474,6 +476,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_path?: string | null
           created_at?: string
           display_name?: string
           id?: string
@@ -1119,6 +1122,34 @@ export type Database = {
           new_display_name: string
           new_phone: string
         }
+        Returns: undefined
+      }
+      update_own_profile: {
+        Args: {
+          new_avatar_path: string | null
+          new_birth_date: string | null
+          new_display_name: string
+          new_phone: string
+        }
+        Returns: undefined
+      }
+      update_managed_profile: {
+        Args: {
+          checked_profile_id: string
+          new_avatar_path: string | null
+          new_birth_date: string | null
+          new_display_name: string
+          new_is_active: boolean
+          new_is_coach: boolean
+          new_is_owner: boolean
+          new_is_player: boolean
+          new_is_viewer: boolean
+          new_phone: string
+        }
+        Returns: undefined
+      }
+      archive_profile_as_owner: {
+        Args: { checked_profile_id: string }
         Returns: undefined
       }
       update_profile_details_as_owner: {

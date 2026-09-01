@@ -98,7 +98,8 @@ function App() {
     onNotificationRead={notifications.markRead}
     onNotificationsReadAll={notifications.markAllRead}
     onSignOut={handleSignOut}
-    onUpdateProfileDetails={actions.club.updateOwnProfileDetails}
+    onLoadProfilePhoto={actions.club.loadProfilePhoto}
+    onUpdateProfileDetails={(values, photoChange) => actions.club.updateOwnProfileDetails(profile, values, photoChange)}
   >
     <AppViewRouter
       actions={actions}
