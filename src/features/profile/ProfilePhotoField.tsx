@@ -48,11 +48,10 @@ export function ProfilePhotoField({ name, avatarPath, photoChange, editable = fa
         ? <img alt={`Fotografía de ${name}`} onError={() => setStoredUrl(null)} src={imageUrl} />
         : <Avatar name={name} />}
     </div>
-    <div className="profile-photo-copy">
+    {editable && <div className="profile-photo-copy">
       <strong>Fotografía de perfil</strong>
-      <span>{editable ? 'Se recortará y comprimirá antes de guardarse.' : imageUrl ? 'Visible únicamente dentro de Datos de perfil.' : 'Esta jugadora todavía no ha añadido fotografía.'}</span>
-      {loadError && <small>{loadError}</small>}
-      {editable && onChange && <div className="profile-photo-actions">
+      <span>Se recortará y comprimirá antes de guardarse.</span>
+      {onChange && <div className="profile-photo-actions">
         <label className="secondary-button compact">{imageUrl ? 'Cambiar foto' : 'Añadir foto'}
           <input accept="image/*" aria-label="Seleccionar fotografía" onChange={(event) => {
             const file = event.target.files?.[0]
@@ -62,6 +61,8 @@ export function ProfilePhotoField({ name, avatarPath, photoChange, editable = fa
         </label>
         {imageUrl && <button className="text-button danger-text" onClick={() => onChange(null)} type="button">Eliminar foto</button>}
       </div>}
-    </div>
+      {loadError && <small className="profile-photo-error" role="alert">{loadError}</small>}
+    </div>}
+    {!editable && loadError && <small className="profile-photo-error" role="alert">{loadError}</small>}
   </div>
 }

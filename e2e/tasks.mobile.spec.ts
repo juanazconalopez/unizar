@@ -68,6 +68,19 @@ test('player fatigue options remain horizontal on mobile', async ({ page }) => {
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
 })
 
+test('player opens her profile data and sees the private photo control', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Ver como').selectOption('player')
+  await page.getByRole('button', { name: 'Abrir menú de usuario' }).click()
+  await page.getByRole('menuitem', { name: 'Editar mis datos' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Datos de perfil' })
+  await expect(dialog.getByLabel('Email de Google')).toHaveValue('player@demo.local')
+  await expect(dialog.getByText('Fotografía de perfil')).toBeVisible()
+  await expect(dialog.getByLabel('Seleccionar fotografía')).toBeAttached()
+  await expect(dialog.getByRole('button', { name: 'Guardar datos' })).toBeDisabled()
+})
+
 test('match availability and lineup flows work on mobile', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
@@ -170,7 +183,11 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
   await expect(profileDialog.getByAltText('Fotografía de Claudia Pérez')).toBeVisible()
+  await expect(profileDialog.locator('.team-member-profile-summary')).toContainText('+34 600 100 104')
+  await expect(profileDialog.locator('.team-member-profile-summary')).toContainText('25 años')
+  await expect(profileDialog.locator('.team-member-profile-summary')).not.toContainText('claudia@demo.local')
   await profileDialog.getByRole('button', { name: 'Editar datos de Claudia Pérez' }).click()
+  await expect(profileDialog.getByText('Fotografía de perfil')).toBeVisible()
   await expect(profileDialog.getByLabel('Email de Google')).toHaveValue('claudia@demo.local')
   await expect(profileDialog.getByLabel('Email de Google')).toHaveAttribute('readonly', '')
   await profileDialog.getByLabel('Nombre y apellidos').fill('Claudia Pérez García')
