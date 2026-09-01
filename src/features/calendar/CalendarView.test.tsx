@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
 import { makeAnnouncement, makeMembership, makeProfile, makeResult, makeSeason, makeTask } from '../../test/fixtures'
 import type { Match } from '../../types'
+
 import { CalendarView } from './CalendarView'
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
@@ -37,6 +38,8 @@ function props() {
       totals: { officialMatches: 1, friendlyMatches: 0, trainingSessions: 0 }, players: [],
     }),
     onLoadPlayerSeasonSummary: vi.fn(),
+    onLoadPublishedTrainingPlans: vi.fn().mockResolvedValue([]),
+    onOpenTrainingPlan: vi.fn(),
   }
 }
 
@@ -67,6 +70,18 @@ describe('CalendarView', () => {
     expect(within(menu).getByRole('menuitem', { name: 'Nueva tarea' })).toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: 'Nuevo aviso' })).toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: 'Nuevo partido' })).toBeInTheDocument()
+  })
+
+  test('opens a published training plan from its calendar card', async () => {
+    const common = props()
+    common.onLoadPublishedTrainingPlans.mockResolvedValueOnce([{
+      id: 'training-1', session_date: todayIso(), title: 'Defensa organizada', status: 'published',
+    }])
+    const user = userEvent.setup()
+    render(<CalendarView {...common} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento' }))
+    expect(common.onOpenTrainingPlan).toHaveBeenCalledWith('training-1')
   })
 
   test('opens the callup report from the header', async () => {

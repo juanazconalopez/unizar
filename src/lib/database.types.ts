@@ -1121,6 +1121,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_profile_details_as_owner: {
+        Args: {
+          checked_profile_id: string
+          new_birth_date: string | null
+          new_display_name: string
+          new_phone: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       availability_status: "available" | "doubt" | "unavailable"

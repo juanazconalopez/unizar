@@ -5,7 +5,6 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import { compareTaskOrder } from '../../lib/taskOrder'
-import { fetchPublishedTrainingPlans } from '../../services/trainingPlansService'
 import type {
   AnnouncementValues,
   AvailabilityStatus,
@@ -68,9 +67,12 @@ type CalendarViewProps = {
   onUnlockLineup: (match: Match) => Promise<void>
   onLoadCallupReport: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
+  onLoadPublishedTrainingPlans: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
+  onOpenTrainingPlan: (trainingPlanId: string) => void
 }
 
 export function CalendarView(props: CalendarViewProps) {
+  const { onLoadPublishedTrainingPlans } = props
   const today = todayIso()
   const [selectedDate, setSelectedDate] = useState(props.focusedDate ?? today)
   const [month, setMonth] = useState(`${(props.focusedDate ?? today).slice(0, 7)}-01`)
@@ -96,11 +98,11 @@ export function CalendarView(props: CalendarViewProps) {
 
   const loadPublishedTrainingPlans = useCallback(async (targetMonth: string) => {
     try {
-      setPublishedTrainingPlans(await fetchPublishedTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
+      setPublishedTrainingPlans(await onLoadPublishedTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
     } catch {
       setPublishedTrainingPlans([])
     }
-  }, [])
+  }, [onLoadPublishedTrainingPlans])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadPublishedTrainingPlans(month), 0)
@@ -233,7 +235,7 @@ export function CalendarView(props: CalendarViewProps) {
           </div>}
           {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
             <div className="task-week-heading"><div><span className="eyebrow">ENTRENAMIENTOS PUBLICADOS</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedTrainingPlans.length}</span></div>
-            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div></article>)}</div>
+            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div><button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button></article>)}</div>
           </div>}
           <div className="selected-calendar-group">
             <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>

@@ -7,6 +7,7 @@ import { todayIso } from '../lib/dates'
 import type { NavigationTarget } from '../lib/navigation'
 import { canAccessTasks, isPlayer } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
+import { fetchPublishedTrainingPlans } from '../services/trainingPlansService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
@@ -50,7 +51,7 @@ export function AppViewRouter({
       : <SectionLoading />
   }
 
-  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}`}>
+  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}`}>
     <Suspense fallback={<SectionLoading />}>
       {view !== 'competition' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId) && (
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
@@ -97,7 +98,7 @@ export function AppViewRouter({
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
-      {view === 'training' && canManage && <TrainingPlansView seasons={data.seasons} userId={userId} onNotify={notify} />}
+      {view === 'training' && canManage && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} seasons={data.seasons} userId={userId} onNotify={notify} />}
       {view === 'calendar' && canManage && <CalendarView
         announcements={data.announcements}
         availability={data.matchAvailability}
@@ -118,7 +119,9 @@ export function AppViewRouter({
         onLoadCallupReport={fetchSeasonCallupReport}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
+        onLoadPublishedTrainingPlans={fetchPublishedTrainingPlans}
         onLoadTaskRange={data.loadTaskRange}
+        onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
         onReorderTasks={actions.tasks.reorder}
         onSaveAnnouncement={actions.announcements.save}
         onSaveLineup={actions.matches.saveLineup}
@@ -199,6 +202,7 @@ export function AppViewRouter({
         onDeleteSeason={actions.club.deleteSeason}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
+        onUpdateProfileDetails={actions.club.updateManagedProfileDetails}
         onUpdateSeason={actions.club.updateSeason}
       />}
     </Suspense>

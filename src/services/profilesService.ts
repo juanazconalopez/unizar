@@ -26,3 +26,14 @@ export async function updateOwnProfileDetails(values: ProfileDetailsValues) {
   if (error) throw error
   invalidateBirthdayCache()
 }
+
+export async function updateManagedProfileDetails(profileId: string, values: ProfileDetailsValues) {
+  const { error } = await supabase.rpc('update_profile_details_as_owner', {
+    checked_profile_id: profileId,
+    new_display_name: values.displayName,
+    new_phone: values.phone,
+    new_birth_date: values.birthDate || null,
+  })
+  if (error) throw error
+  invalidateBirthdayCache()
+}

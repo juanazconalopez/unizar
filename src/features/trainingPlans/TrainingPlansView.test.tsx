@@ -5,13 +5,14 @@ import { addDays, todayIso } from '../../lib/dates'
 import type { Season, TrainingPlan } from '../../types'
 
 const mocks = vi.hoisted(() => ({
-  deleteTrainingExercisePreset: vi.fn(), fetchTrainingPlans: vi.fn(), fetchTrainingExercisePresets: vi.fn(),
+  deleteTrainingExercisePreset: vi.fn(), fetchTrainingPlan: vi.fn(), fetchTrainingPlans: vi.fn(), fetchTrainingExercisePresets: vi.fn(),
   saveTrainingExercisePreset: vi.fn(), saveTrainingPlan: vi.fn(), updateTrainingExercisePreset: vi.fn(),
 }))
 vi.mock('../../services/trainingPlansService', () => ({
   EMPTY_TACTICS_BOARD: { version: 1, template: 'full', elements: [] },
   deleteTrainingPlan: vi.fn(),
   deleteTrainingExercisePreset: mocks.deleteTrainingExercisePreset,
+  fetchTrainingPlan: mocks.fetchTrainingPlan,
   fetchTrainingExercisePresets: mocks.fetchTrainingExercisePresets,
   fetchTrainingPlans: mocks.fetchTrainingPlans,
   isTrainingPlansSchemaMissing: () => false,
@@ -74,6 +75,18 @@ describe('training plan reading view', () => {
       'Ver entrenamiento Entrenamiento posterior',
     ])
     expect(screen.queryByText('Entrenamiento pasado')).not.toBeInTheDocument()
+  })
+
+  test('opens a past training plan linked from the calendar', async () => {
+    const pastPlan = { ...plan, id: 'past-plan', session_date: addDays(todayIso(), -10), title: 'Entrenamiento histórico' }
+    mocks.fetchTrainingPlans.mockResolvedValue([])
+    mocks.fetchTrainingPlan.mockResolvedValue(pastPlan)
+
+    render(<TrainingPlansView focusedPlanId={pastPlan.id} onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    expect(await screen.findByText('VISTA DEL ENTRENAMIENTO')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Entrenamiento histórico' })).toBeInTheDocument()
+    expect(mocks.fetchTrainingPlan).toHaveBeenCalledWith(pastPlan.id)
   })
 
   test('opens the card in read mode and keeps Editar for the form', async () => {

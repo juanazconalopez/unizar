@@ -25,4 +25,11 @@ describe('contextual navigation', () => {
   test('accepts the private training plans route', () => {
     expect(navigationFromLocation({ search: '?view=training' } as Location)).toEqual({ view: 'training' })
   })
+
+  test('keeps the selected training plan in a shareable URL', () => {
+    expect(navigationFromLocation({ search: '?view=training&training=plan-1' } as Location)).toEqual({
+      view: 'training', trainingPlanId: 'plan-1',
+    })
+    expect(urlForNavigation({ view: 'training', trainingPlanId: 'plan-1' })).toContain('?view=training&training=plan-1')
+  })
 })

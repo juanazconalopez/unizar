@@ -4,6 +4,7 @@ export type NavigationTarget = {
   view: ViewName
   date?: string
   announcementId?: string
+  trainingPlanId?: string
 }
 
 const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings'])
@@ -14,10 +15,12 @@ export function navigationFromLocation(location: Pick<Location, 'search'> = wind
   const view = candidate && views.has(candidate) ? candidate : 'home'
   const date = params.get('date') ?? undefined
   const announcementId = params.get('announcement') ?? undefined
+  const trainingPlanId = params.get('training') ?? undefined
   return {
     view,
     ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date } : {}),
     ...(announcementId ? { announcementId } : {}),
+    ...(trainingPlanId ? { trainingPlanId } : {}),
   }
 }
 
@@ -26,6 +29,7 @@ export function urlForNavigation(target: NavigationTarget) {
   if (target.view !== 'home') params.set('view', target.view)
   if (target.date) params.set('date', target.date)
   if (target.announcementId) params.set('announcement', target.announcementId)
+  if (target.trainingPlanId) params.set('training', target.trainingPlanId)
   const query = params.toString()
   return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
 }

@@ -1,11 +1,13 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { addDays, formatDate, formatWeek, mondayFor, todayIso } from '../../lib/dates'
 import { makeAnnouncement, makeMembership, makeResult, makeSeason, makeTask } from '../../test/fixtures'
 import { TasksView } from './TasksView'
 
 describe('TasksView', () => {
+  afterEach(() => vi.useRealTimers())
+
   test('uses the calendar initially and hides private planning from players', () => {
     render(<TasksView canManage={false} seasons={[makeSeason()]} memberships={[makeMembership()]} tasks={[makeTask({ title: 'Tarea borrador privada', status: 'draft', week_start: mondayFor(new Date()) })]} announcements={[
       makeAnnouncement({ announcement_date: todayIso() }), makeAnnouncement({ id: 'draft-announcement', announcement_date: todayIso(), title: 'Aviso privado', status: 'draft' }),
@@ -182,6 +184,7 @@ describe('TasksView', () => {
   })
 
   test('uses the calendar as the initial management view and creates in the selected week', async () => {
+    vi.setSystemTime(new Date('2026-08-20T12:00:00+02:00'))
     const user = userEvent.setup()
     const today = todayIso()
     const currentWeek = mondayFor(today)

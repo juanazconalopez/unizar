@@ -2,9 +2,10 @@ import { expect, test } from '@playwright/test'
 
 test('owner plans and reviews task results on mobile', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Tareas' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
   await expect(page.getByRole('region', { name: 'Calendario de planificación' })).toBeVisible()
-  await page.getByRole('button', { name: 'Nueva tarea en esta semana' }).click()
+  await page.getByRole('button', { name: 'Añadir' }).click()
+  await page.getByRole('menuitem', { name: 'Nueva tarea' }).click()
   const createDialog = page.getByRole('dialog', { name: 'Crear tarea' })
   await expect(createDialog).toBeVisible()
   await expect(createDialog.getByRole('option', { name: 'Vídeo' })).toHaveCount(1)
@@ -21,8 +22,8 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
 test('staff home shows team progress and exposes the linked video task', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('PANEL DEL EQUIPO')).toBeVisible()
-  await expect(page.getByText('Jugadoras activas').locator('..')).toContainText('3/3')
-  await expect(page.getByText('Progreso del equipo').locator('..')).toContainText('5/9')
+  await expect(page.getByText('Jugadoras activas').locator('..')).toContainText('4/4')
+  await expect(page.getByText('Progreso del equipo').locator('..')).toContainText('8/12')
 
   const videoTask = page.locator('.task-card').filter({ hasText: 'Ver partido · Nueva Zelanda contra Australia' })
   const videoLink = videoTask.getByRole('link', { name: 'https://www.youtube.com/watch?v=PW46tR7Ka9Y' })
@@ -32,8 +33,9 @@ test('staff home shows team progress and exposes the linked video task', async (
 
 test('owner publishes a dated announcement and a player opens it from home', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Tareas' }).click()
-  await page.getByRole('button', { name: 'Nuevo aviso para este día' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  await page.getByRole('button', { name: 'Añadir' }).click()
+  await page.getByRole('menuitem', { name: 'Nuevo aviso' }).click()
   const dialog = page.getByRole('dialog', { name: 'Crear aviso' })
   await dialog.getByLabel('Título').fill('Reunión rápida del equipo')
   await expect(dialog.getByRole('group', { name: 'Temporada activa' })).toContainText('Temporada 2026')
@@ -68,9 +70,9 @@ test('player fatigue options remain horizontal on mobile', async ({ page }) => {
 
 test('match availability and lineup flows work on mobile', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Partidos' }).click()
-  await expect(page.getByRole('heading', { name: 'Partidos', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
   await page.locator('.availability-summary button').first().click()
   await expect(page.getByRole('dialog', { name: /Partido contra/ })).toContainText('En duda')
   await page.getByRole('button', { name: 'Cerrar' }).click()
@@ -97,7 +99,7 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
 
 test('owner reviews the accumulated callup report on mobile', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
   await page.getByRole('button', { name: 'Resumen de convocatorias' }).click()
   const table = page.getByRole('table')
   await expect(table).toBeVisible()
@@ -126,9 +128,9 @@ test('coach manages sports areas without access to settings', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Resumen' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Asistencia' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ajustes' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Partidos' }).click()
-  await expect(page.getByRole('region', { name: 'Calendario de partidos' })).toBeVisible()
-  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
   await expect(page.getByRole('button', { name: 'Editar partido' }).first()).toBeVisible()
   await page.getByRole('button', { name: 'Competición' }).click()
   await expect(page.getByRole('heading', { name: 'Competición', exact: true })).toBeVisible()
@@ -163,6 +165,16 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await expect(page.getByText('Claudia Pérez')).toBeVisible()
   await expect(page.getByText('Marta Sánchez')).toHaveCount(0)
   await page.getByRole('button', { name: 'Cerrar búsqueda' }).click()
+
+  await page.getByRole('button', { name: 'Editar datos de Claudia Pérez' }).click()
+  const profileDialog = page.getByRole('dialog', { name: 'Editar datos de Claudia Pérez' })
+  await expect(profileDialog.getByLabel('Email de Google')).toHaveValue('claudia@demo.local')
+  await expect(profileDialog.getByLabel('Email de Google')).toHaveAttribute('readonly', '')
+  await profileDialog.getByLabel('Nombre y apellidos').fill('Claudia Pérez García')
+  await profileDialog.getByLabel('Teléfono').fill('+34 699 123 456')
+  await profileDialog.getByRole('button', { name: 'Guardar datos' }).click()
+  await expect(page.getByText('Claudia Pérez García', { exact: true })).toBeVisible()
+
   await page.getByRole('tab', { name: 'Temporadas' }).click()
   await expect(page.getByRole('heading', { name: 'Temporadas', exact: true })).toBeVisible()
 })
@@ -200,8 +212,8 @@ test('selecting attendance keeps the mobile header and navigation fixed', async 
 
 test('scrolling the lineup modal does not move the screen behind it', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Partidos' }).click()
-  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
   await page.getByRole('button', { name: 'Gestionar alineación' }).first().click()
 
   const content = page.locator('.content')

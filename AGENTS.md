@@ -34,7 +34,9 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 - Después de cambios relevantes ejecutar, como mínimo, pruebas, ESLint, build y `git diff --check`.
 - El build incluye TypeScript, Vite y generación de la PWA.
 - TypeScript está configurado en modo estricto, con comprobación de variables y parámetros sin utilizar.
-- El entorno local puede no disponer de acceso al socket de Docker. Si las pruebas locales de Supabase no pueden ejecutarse por este motivo, indicarlo claramente; no confundirlo con un error de la migración.
+- No hay Docker ni una instancia local de Supabase en este entorno. No intentar ejecutar `supabase start`, `supabase test db`, `supabase db reset` ni otras comprobaciones que requieran PostgreSQL local.
+- Las migraciones SQL se entregan como archivos numerados para que el usuario copie su contenido y lo ejecute manualmente en el editor SQL de la web de Supabase.
+- Revisar estáticamente cada migración, mantener actualizados los tipos y las pruebas pgTAP, pero dejar claro que dichas pruebas SQL no se ejecutan localmente.
 
 ## Tecnologías
 
@@ -101,6 +103,7 @@ Reglas importantes:
 - Owner y entrenador gestionan el ámbito deportivo.
 - Dirección consulta información del equipo, pero no debe adquirir permisos de escritura deportiva.
 - Solo el owner administra temporadas, permisos, vinculaciones y datos privados del equipo.
+- En Ajustes → Equipo, el owner puede corregir nombre, teléfono y fecha de nacimiento mediante el lápiz de cada perfil; el email de Google es siempre de solo lectura.
 - Las reglas comunes están en `src/lib/permissions.ts`, `src/lib/selectors.ts` y `src/app/appAccess.ts`. No duplicarlas en componentes.
 
 ## Temporadas y vinculaciones
@@ -134,6 +137,7 @@ Reglas importantes:
 - Vista unificada de gestión para owner y entrenadores.
 - Reúne tareas, avisos, partidos y entrenamientos publicados.
 - Permite editar estados, convocatorias, disponibilidad y planificación.
+- Las tarjetas de entrenamientos publicados enlazan con el detalle completo, incluidos entrenamientos de fechas pasadas.
 - Evitar leyendas inferiores redundantes cuando las marcas ya son conocidas por los usuarios de gestión.
 
 ### Entrenamientos
@@ -291,7 +295,15 @@ Reglas importantes:
   ```
 
 - Para cambios visuales relevantes añadir o actualizar pruebas de Testing Library y, cuando proceda, Playwright móvil.
-- Informar si una comprobación no puede ejecutarse por limitaciones del entorno.
+- Mantener `demo.local` sincronizada con las funcionalidades que deban poder probarse sin Supabase. Cuando se modifique una funcionalidad representada en la demo, comprobar también:
+
+  ```bash
+  npx tsc -p demo.local/tsconfig.json
+  npx vite build --config demo.local/vite.config.ts
+  npm run test:e2e
+  ```
+
+- No presentar la ausencia de pruebas locales de base de datos como un fallo pendiente: es el flujo de trabajo previsto. Informar únicamente de que la migración debe ejecutarse y validarse en Supabase web.
 
 ## Archivos generados y sensibles
 

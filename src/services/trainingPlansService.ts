@@ -58,6 +58,23 @@ export async function fetchTrainingPlans(): Promise<TrainingPlan[]> {
   }))
 }
 
+export async function fetchTrainingPlan(planId: string): Promise<TrainingPlan> {
+  const { data, error } = await supabase
+    .from('training_plans')
+    .select('*, seasons(name), training_exercises(*)')
+    .eq('id', planId)
+    .order('sort_order', { ascending: true, referencedTable: 'training_exercises' })
+    .single()
+  if (error) throw error
+  return {
+    ...data,
+    training_exercises: (data.training_exercises ?? []).map((exercise) => ({
+      ...exercise,
+      diagram_data: parseTacticsBoard(exercise.diagram_data),
+    })),
+  }
+}
+
 export async function fetchPublishedTrainingPlans(fromDate: string, toDate: string): Promise<TrainingPlanCalendarItem[]> {
   const { data, error } = await supabase
     .from('training_plans')

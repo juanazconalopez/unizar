@@ -7,6 +7,7 @@ import { errorText } from '../../lib/errors'
 import {
   deleteTrainingPlan,
   deleteTrainingExercisePreset,
+  fetchTrainingPlan,
   fetchTrainingExercisePresets,
   fetchTrainingPlans,
   isTrainingPlansSchemaMissing,
@@ -35,7 +36,8 @@ import {
 
 type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
 
-export function TrainingPlansView({ seasons, userId, onNotify }: {
+export function TrainingPlansView({ focusedPlanId, seasons, userId, onNotify }: {
+  focusedPlanId?: string
   seasons: Season[]
   userId: string
   onNotify: (message: string) => void
@@ -58,7 +60,12 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
     setLoading(true)
     setLoadError('')
     try {
-      setPlans(await fetchTrainingPlans())
+      const loadedPlans = await fetchTrainingPlans()
+      setPlans(loadedPlans)
+      if (focusedPlanId) {
+        const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? await fetchTrainingPlan(focusedPlanId)
+        setViewingPlan(focusedPlan)
+      }
       setDemoMode(false)
     } catch (error) {
       if (import.meta.env.DEV && isTrainingPlansSchemaMissing(error)) {
@@ -71,7 +78,7 @@ export function TrainingPlansView({ seasons, userId, onNotify }: {
     } finally {
       setLoading(false)
     }
-  }, [seasons, userId])
+  }, [focusedPlanId, seasons, userId])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0)

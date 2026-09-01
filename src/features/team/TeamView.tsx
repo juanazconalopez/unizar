@@ -5,18 +5,21 @@ import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
-import type { Profile, ProfilePrivateDetails } from '../../types'
+import type { Profile, ProfileDetailsValues, ProfilePrivateDetails } from '../../types'
+import { ProfileDetailsDialog } from '../profile/ProfileDetailsDialog'
 
-export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], currentUserId, onUpdate }: {
+export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], currentUserId, onUpdate, onUpdateDetails }: {
   embedded?: boolean
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
+  onUpdateDetails?: (profile: Profile, values: ProfileDetailsValues) => Promise<void>
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [editingPerson, setEditingPerson] = useState<Profile | null>(null)
   const normalizedSearch = normalizeDisplayName(search)
   const matchesSearch = (profile: Profile) => !normalizedSearch || displayNameContains(profile.display_name, normalizedSearch)
   const allPending = profiles.filter((profile) => !profile.is_approved && !profile.is_archived)
@@ -26,6 +29,7 @@ export function TeamView({ embedded = false, profiles, profilePrivateDetails = [
   const approved = allApproved.filter(matchesSearch)
   const archived = allArchived.filter(matchesSearch)
   const hasSearchMatches = pending.length + approved.length + archived.length > 0
+  const editingDetails = editingPerson ? profilePrivateDetails.find((item) => item.profile_id === editingPerson.id) : undefined
   const searchControl = searchOpen ? (
     <div className="team-search-field">
       <Icon name="search" size={17} />
@@ -59,11 +63,11 @@ export function TeamView({ embedded = false, profiles, profilePrivateDetails = [
       />}
       {pending.length > 0 && (
         <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">
-          {pending.map((person) => <ApprovalRequestRow key={person.id} onUpdate={onUpdate} person={person} possibleMatches={profiles.filter((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name)).slice(0, 3)} />)}
+          {pending.map((person) => <ApprovalRequestRow key={person.id} onEdit={onUpdateDetails ? () => setEditingPerson(person) : undefined} onUpdate={onUpdate} person={person} possibleMatches={profiles.filter((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name)).slice(0, 3)} />)}
         </PeopleSection>
       )}
       {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Permisos del equipo">
-          {approved.map((person) => <PersonRow currentUserId={currentUserId} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onUpdate={onUpdate} person={person} />)}
+          {approved.map((person) => <PersonRow currentUserId={currentUserId} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onEdit={onUpdateDetails ? () => setEditingPerson(person) : undefined} onUpdate={onUpdate} person={person} />)}
       </PeopleSection>}
       {archived.length > 0 && (
         <section className="archived-users">
@@ -78,13 +82,25 @@ export function TeamView({ embedded = false, profiles, profilePrivateDetails = [
         </section>
       )}
       {normalizedSearch && !hasSearchMatches && <p className="team-search-empty">No hay personas que coincidan con “{search.trim()}”.</p>}
+      {editingPerson && onUpdateDetails && <ProfileDetailsDialog
+        currentBirthDate={editingDetails?.birth_date ?? ''}
+        currentName={editingPerson.display_name}
+        currentPhone={editingDetails?.phone ?? ''}
+        email={editingDetails?.email ?? ''}
+        eyebrow="ADMINISTRACIÓN DEL EQUIPO"
+        helpText="El email procede de la cuenta de Google y no se puede modificar. Los demás datos se utilizan para la gestión del equipo."
+        title={`Editar datos de ${editingPerson.display_name}`}
+        onClose={() => setEditingPerson(null)}
+        onSave={(values) => onUpdateDetails(editingPerson, values)}
+      />}
     </div>
   )
 }
 
-function ApprovalRequestRow({ person, possibleMatches, onUpdate }: {
+function ApprovalRequestRow({ person, possibleMatches, onEdit, onUpdate }: {
   person: Profile
   possibleMatches: Profile[]
+  onEdit?: () => void
   onUpdate: (profile: Profile) => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
@@ -106,6 +122,7 @@ function ApprovalRequestRow({ person, possibleMatches, onUpdate }: {
           <strong>{person.display_name}</strong>
           <span>Solicitud recibida {formatDate(person.created_at.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' })}</span>
         </div>
+        {onEdit && <EditProfileButton name={person.display_name} onClick={onEdit} />}
       </div>
       {possibleMatches.length > 0 && <div className="duplicate-profile-warning" role="status">
         <Icon name="warning" size={18} />
@@ -139,10 +156,11 @@ function PeopleSection({ eyebrow, title, children }: { eyebrow: string; title: s
   )
 }
 
-function PersonRow({ person, details, currentUserId, onUpdate }: {
+function PersonRow({ person, details, currentUserId, onEdit, onUpdate }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
+  onEdit?: () => void
   onUpdate: (profile: Profile) => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
@@ -193,7 +211,7 @@ function PersonRow({ person, details, currentUserId, onUpdate }: {
           <span>Desde {formatDate(person.created_at.slice(0, 10), { month: 'long', year: 'numeric' })}</span>
         </div>
       </div>
-      <ProfileContactDetails details={details} />
+      <ProfileContactDetails details={details} onEdit={onEdit} personName={person.display_name} />
       <div className="person-controls">
         <div className="permission-toggles">
           <Toggle checked={person.is_approved} disabled={saving || person.id === currentUserId} label="Aprobado" onChange={(value) => change('is_approved', value)} />
@@ -209,12 +227,12 @@ function PersonRow({ person, details, currentUserId, onUpdate }: {
   )
 }
 
-function ProfileContactDetails({ details }: { details?: ProfilePrivateDetails }) {
+function ProfileContactDetails({ details, onEdit, personName }: { details?: ProfilePrivateDetails; onEdit?: () => void; personName: string }) {
   const complete = Boolean(details?.email && details.phone && details.birth_date)
   const age = ageOnDate(details?.birth_date, todayIso())
   return (
     <div className={`person-profile-details${complete ? ' complete' : ' incomplete'}`}>
-      <span className="profile-completion-state">{complete ? 'Datos completos' : 'Datos incompletos'}</span>
+      <span className="profile-details-state-actions"><span className="profile-completion-state">{complete ? 'Datos completos' : 'Datos incompletos'}</span>{onEdit && <EditProfileButton name={personName} onClick={onEdit} />}</span>
       <div>
         <span><b>Email</b>{details?.email ? <a href={`mailto:${details.email}`}>{details.email}</a> : <em>Sin email</em>}</span>
         <span><b>Teléfono</b>{details?.phone ? <a href={`tel:${details.phone}`}>{details.phone}</a> : <em>Sin teléfono</em>}</span>
@@ -223,6 +241,10 @@ function ProfileContactDetails({ details }: { details?: ProfilePrivateDetails })
       </div>
     </div>
   )
+}
+
+function EditProfileButton({ name, onClick }: { name: string; onClick: () => void }) {
+  return <button aria-label={`Editar datos de ${name}`} className="icon-button person-profile-edit" onClick={onClick} title={`Editar datos de ${name}`} type="button"><Icon name="edit" size={15} /></button>
 }
 
 function ArchivedPersonRow({ person, onUpdate }: {

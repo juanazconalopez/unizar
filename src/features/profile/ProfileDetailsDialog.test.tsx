@@ -46,6 +46,23 @@ describe('ProfileDetailsDialog', () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
+  test('supports the owner administration copy without changing the form fields', () => {
+    render(<ProfileDetailsDialog
+      currentName="Ana Martín"
+      email="ana@example.com"
+      eyebrow="ADMINISTRACIÓN DEL EQUIPO"
+      helpText="El email procede de Google y no se puede modificar."
+      title="Editar datos de Ana Martín"
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+    />)
+
+    const dialog = screen.getByRole('dialog', { name: 'Editar datos de Ana Martín' })
+    expect(within(dialog).getByText('ADMINISTRACIÓN DEL EQUIPO')).toBeInTheDocument()
+    expect(within(dialog).getByText('El email procede de Google y no se puede modificar.')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Email de Google')).toHaveAttribute('readonly')
+  })
+
   test('highlights only details that are still missing', () => {
     render(
       <ProfileDetailsDialog

@@ -24,6 +24,43 @@ describe('TeamView', () => {
     expect(screen.getByText('Datos completos')).toBeInTheDocument()
   })
 
+  test('opens owner editing from a pencil icon for approved and pending profiles', async () => {
+    const user = userEvent.setup()
+    const approved = makeProfile()
+    const pending = makeProfile({ id: 'pending-1', display_name: 'Nerea Ruiz', is_approved: false, is_active: false })
+    const onUpdateDetails = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView
+      profiles={[approved, pending]}
+      profilePrivateDetails={[
+        makeProfilePrivateDetails(),
+        makeProfilePrivateDetails({ profile_id: pending.id, email: 'nerea@example.com', phone: null, birth_date: null }),
+      ]}
+      currentUserId="owner-1"
+      onUpdate={vi.fn()}
+      onUpdateDetails={onUpdateDetails}
+    />)
+
+    const approvedEdit = screen.getByRole('button', { name: 'Editar datos de Ana Martín' })
+    expect(approvedEdit).toHaveAttribute('title', 'Editar datos de Ana Martín')
+    expect(approvedEdit.querySelector('svg')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar datos de Nerea Ruiz' })).toBeInTheDocument()
+
+    await user.click(approvedEdit)
+    const dialog = screen.getByRole('dialog', { name: 'Editar datos de Ana Martín' })
+    expect(within(dialog).getByLabelText('Email de Google')).toHaveValue('ana@example.com')
+    expect(within(dialog).getByLabelText('Email de Google')).toHaveAttribute('readonly')
+    const name = within(dialog).getByLabelText('Nombre y apellidos')
+    await user.clear(name)
+    await user.type(name, 'Ana Martín López')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
+
+    expect(onUpdateDetails).toHaveBeenCalledWith(approved, {
+      displayName: 'Ana Martín López',
+      phone: '+34 600 000 000',
+      birthDate: '1998-04-15',
+    })
+  })
+
   test('opens an accent-insensitive name search and filters every account state', async () => {
     const user = userEvent.setup()
     render(<TeamView profiles={[

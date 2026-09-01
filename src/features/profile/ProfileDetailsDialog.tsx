@@ -5,12 +5,15 @@ import { ageOnDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { ProfileDetailsValues } from '../../types'
 
-export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', highlightMissing = false, onClose, onSave }: {
+export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onSave }: {
   currentName: string
   email: string
   currentPhone?: string
   currentBirthDate?: string
+  eyebrow?: string
   highlightMissing?: boolean
+  helpText?: string
+  title?: string
   onClose: () => void
   onSave: (values: ProfileDetailsValues) => Promise<void>
 }) {
@@ -56,10 +59,10 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
   return (
     <Modal className="profile-details-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={submit}>
       <div className="task-detail-heading">
-        <div><span className="eyebrow">MI PERFIL</span><h2 id={titleId}>Datos de perfil</h2></div>
+        <div><span className="eyebrow">{eyebrow}</span><h2 id={titleId}>{title}</h2></div>
         <button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button>
       </div>
-      <p className="profile-details-help">El email pertenece a tu cuenta de Google. El teléfono y la fecha de nacimiento solo se utilizan para la gestión del equipo.</p>
+      <p className="profile-details-help">{helpText ?? 'El email pertenece a tu cuenta de Google. El teléfono y la fecha de nacimiento solo se utilizan para la gestión del equipo.'}</p>
       <div className="profile-details-fields">
         <label>Nombre y apellidos
           <input

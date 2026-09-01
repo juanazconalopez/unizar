@@ -402,7 +402,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .training-plan-dot { background: #8bc9a4; }
 .selected-day-announcements { margin-bottom: 26px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
 .calendar-training-list { display: grid; gap: 8px; }
-.calendar-training-list article { padding: 13px 15px; border: 1px solid #cfe5d7; border-left: 4px solid #8bc9a4; border-radius: 12px; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 11px; background: #f4faf6; }
+.calendar-training-list article { padding: 13px 15px; border: 1px solid #cfe5d7; border-left: 4px solid #8bc9a4; border-radius: 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 11px; background: #f4faf6; }
 .calendar-training-list article > span { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; color: #24694f; background: #d9f0e2; font-size: 10px; font-weight: 900; }
 .calendar-training-list strong, .calendar-training-list small { display: block; }
 .calendar-training-list strong { font-size: 12px; }
@@ -594,8 +594,12 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .person-identity strong small { display: inline; color: var(--green); }
 .person-identity > div span { margin-top: 3px; color: var(--muted); font-size: 10px; }
 .person-profile-details { width: 100%; padding-left: 49px; order: 3; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: 12px; }
+.profile-details-state-actions { display: flex; align-items: center; gap: 6px; }
 .profile-completion-state { width: fit-content; padding: 3px 7px; border-radius: 20px; color: #176847; background: #daf0e2; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: .35px; }
 .person-profile-details.incomplete .profile-completion-state { color: #876c18; background: #faf1c8; }
+.person-profile-edit { width: 28px; height: 28px; flex: 0 0 auto; border: 1px solid #cfe0d8; color: var(--green); background: #f4faf6; }
+.person-profile-edit:hover { background: var(--green-soft); }
+.person-identity > .person-profile-edit { margin-left: auto; }
 .person-profile-details > div { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
 .person-profile-details > div > span { min-width: 0; display: grid; grid-template-columns: 62px minmax(0,1fr); gap: 6px; color: var(--muted); font-size: 9px; }
 .person-profile-details b { color: #60716c; text-transform: uppercase; font-size: 8px; }
@@ -1009,6 +1013,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .training-detail-instructions dl { grid-template-columns: 1fr; }
   .training-detail-footer { align-items: stretch; flex-direction: column-reverse; }
   .training-detail-footer button { width: 100%; }
+  .calendar-training-list article { grid-template-columns: auto minmax(0,1fr); }
+  .calendar-training-list article > button { grid-column: 2; width: fit-content; }
   .training-editor-heading { grid-template-columns: 1fr; }
   .training-editor-heading h1 { font-size: 29px; }
   .training-duration { width: 100%; }

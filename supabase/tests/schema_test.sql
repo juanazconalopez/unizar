@@ -1,5 +1,5 @@
 begin;
-select plan(98);
+select plan(103);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -108,6 +108,28 @@ select ok(
 select ok(
   not has_function_privilege('anon', 'public.update_own_profile_details(text,text,date)', 'EXECUTE'),
   'anonymous users cannot call the private profile update function'
+);
+select has_function(
+  'public', 'update_profile_details_as_owner', array['uuid', 'text', 'text', 'date'],
+  'owners can update another profile details through a restricted function'
+);
+select like(
+  pg_get_functiondef('public.update_profile_details_as_owner(uuid,text,text,date)'::regprocedure),
+  '%is_owner%is_approved%is_active%not is_archived%',
+  'managed profile updates require an active approved owner'
+);
+select like(
+  pg_get_functiondef('public.update_profile_details_as_owner(uuid,text,text,date)'::regprocedure),
+  '%select email into current_email from auth.users where id = checked_profile_id%',
+  'managed profile updates preserve the verified Google email'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.update_profile_details_as_owner(uuid,text,text,date)', 'EXECUTE'),
+  'authenticated users can call the owner profile update function after its internal permission check'
+);
+select ok(
+  not has_function_privilege('anon', 'public.update_profile_details_as_owner(uuid,text,text,date)', 'EXECUTE'),
+  'anonymous users cannot call the owner profile update function'
 );
 select ok(
   exists (select 1 from pg_trigger where tgname = 'auth_user_email_sync' and not tgisinternal),

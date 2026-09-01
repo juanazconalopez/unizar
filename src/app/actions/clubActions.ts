@@ -1,5 +1,5 @@
 import { activeMembershipFor } from '../../lib/selectors'
-import { updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { updateManagedProfileDetails, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
 import { setSeasonMembership } from '../../services/trainingMembershipService'
@@ -41,6 +41,12 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       await updateOwnProfileDetails(values)
       context.notify('Datos de perfil actualizados.')
+      await context.reloadData()
+    },
+    updateManagedProfileDetails: async (profile: Profile, values: ProfileDetailsValues) => {
+      context.requireConnection()
+      await updateManagedProfileDetails(profile.id, values)
+      context.notify(`Datos de ${values.displayName} actualizados.`)
       await context.reloadData()
     },
     saveAttendance: async (date: string, playerIds: string[], attendedPlayerIds: string[]) => {
