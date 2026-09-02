@@ -3,8 +3,9 @@ import { archiveManagedProfile, updateManagedProfile, updateOwnProfileDetails, u
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
+import { linkProvisionalPlayer } from '../../services/provisionalPlayersService'
 import { setSeasonMembership } from '../../services/trainingMembershipService'
-import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, ProvisionalAttendanceEntry, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
 import type { ActionContext } from './actionContext'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
@@ -57,10 +58,16 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       await context.reloadData()
     },
     loadProfilePhoto: loadProfilePhotoUrl,
-    saveAttendance: async (date: string, playerIds: string[], attendedPlayerIds: string[]) => {
+    saveAttendance: async (date: string, playerIds: string[], attendedPlayerIds: string[], guests: ProvisionalAttendanceEntry[]) => {
       context.requireConnection()
-      await saveTrainingAttendance(date, playerIds, attendedPlayerIds)
+      await saveTrainingAttendance(date, playerIds, attendedPlayerIds, guests)
       context.notify('Asistencia guardada correctamente.')
+      await context.reloadData()
+    },
+    linkProvisionalPlayer: async (guest: ProvisionalPlayer, profile: Profile) => {
+      context.requireConnection()
+      await linkProvisionalPlayer(guest.id, profile.id)
+      context.notify(`${guest.display_name} se ha vinculado con ${profile.display_name}.`)
       await context.reloadData()
     },
     toggleMembership: async (season: Season, player: Profile, active: boolean) => {

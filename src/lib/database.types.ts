@@ -526,6 +526,107 @@ export type Database = {
           },
         ]
       }
+      provisional_players: {
+        Row: {
+          created_at: string
+          created_by: string
+          display_name: string
+          id: string
+          linked_at: string | null
+          linked_by: string | null
+          linked_profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          display_name: string
+          id?: string
+          linked_at?: string | null
+          linked_by?: string | null
+          linked_profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          id?: string
+          linked_at?: string | null
+          linked_by?: string | null
+          linked_profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provisional_players_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisional_players_linked_by_fkey"
+            columns: ["linked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisional_players_linked_profile_id_fkey"
+            columns: ["linked_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provisional_training_attendance: {
+        Row: {
+          created_at: string
+          marked_by: string
+          provisional_player_id: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          marked_by: string
+          provisional_player_id: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          marked_by?: string
+          provisional_player_id?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provisional_training_attendance_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisional_training_attendance_provisional_player_id_fkey"
+            columns: ["provisional_player_id"]
+            isOneToOne: false
+            referencedRelation: "provisional_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provisional_training_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "training_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       season_players: {
         Row: {
           active_from: string
@@ -1070,6 +1171,13 @@ export type Database = {
         Args: { ordered_task_ids: string[] }
         Returns: undefined
       }
+      link_provisional_player: {
+        Args: {
+          checked_profile_id: string
+          checked_provisional_player_id: string
+        }
+        Returns: undefined
+      }
       save_match_lineup: {
         Args: {
           checked_match_id: string
@@ -1092,6 +1200,7 @@ export type Database = {
           attendance_date: string
           attended_player_ids: string[]
           checked_player_ids: string[]
+          guest_entries: Json
         }
         Returns: undefined
       }

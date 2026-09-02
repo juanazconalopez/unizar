@@ -1,5 +1,5 @@
 begin;
-select plan(112);
+select plan(125);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -323,7 +323,46 @@ select ok(
 );
 select ok(
   to_regprocedure('public.save_training_attendance(date,uuid[],uuid[])') is not null,
-  'attendance is saved atomically'
+  'installed clients retain a compatibility attendance function'
+);
+select ok(to_regclass('public.provisional_players') is not null, 'provisional players are persisted outside auth profiles');
+select ok(to_regclass('public.provisional_training_attendance') is not null, 'provisional attendance is persisted separately');
+select has_column('public', 'provisional_players', 'linked_profile_id', 'provisional players retain their confirmed link');
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.provisional_players'::regclass),
+  'provisional players use row level security'
+);
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.provisional_training_attendance'::regclass),
+  'provisional attendance uses row level security'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'provisional_players' and policyname = 'Team staff can read provisional players'),
+  'team staff can read provisional players'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'provisional_training_attendance' and policyname = 'Team staff can read provisional attendance'),
+  'team staff can read provisional attendance'
+);
+select has_function('public', 'save_training_attendance', array['date', 'uuid[]', 'uuid[]', 'jsonb'], 'attendance and invited players are saved atomically');
+select like(
+  pg_get_functiondef('public.save_training_attendance(date,uuid[],uuid[],jsonb)'::regprocedure),
+  '%current_user_can_manage_sport%',
+  'only sports managers can save provisional attendance'
+);
+select has_function('public', 'link_provisional_player', array['uuid', 'uuid'], 'owners can link a provisional player history');
+select like(
+  pg_get_functiondef('public.link_provisional_player(uuid,uuid)'::regprocedure),
+  '%current_user_is_owner%',
+  'only the owner can link provisional attendance'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provisional_players', 'INSERT'),
+  'authenticated users cannot bypass the provisional player RPC'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.provisional_training_attendance', 'INSERT'),
+  'authenticated users cannot bypass the provisional attendance RPC'
 );
 select ok(to_regclass('public.training_plans') is not null, 'private training plans are persisted');
 select ok(to_regclass('public.training_exercises') is not null, 'training plan exercises are persisted');

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
-import { makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
+import { makeAttendance, makeMembership, makeProfile, makeProvisionalAttendance, makeProvisionalPlayer, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
 import { StatisticsView } from './StatisticsView'
 
 const seasons = [makeSeason()]
@@ -290,6 +290,10 @@ describe('StatisticsView', () => {
 
     const present = screen.getByRole('region', { name: 'Asistieron: 3 jugadoras' })
     const absent = screen.getByRole('region', { name: 'No asistieron: 3 jugadoras' })
+    expect(within(present).getByText('Asistieron').closest('.statistics-player-group-heading')).toHaveClass('present')
+    expect(within(absent).getByText('No asistieron').closest('.statistics-player-group-heading')).toHaveClass('absent')
+    expect(within(present).getByText('3').closest('span')).toHaveTextContent('3 jugadoras')
+    expect(within(absent).getByText('3').closest('span')).toHaveTextContent('3 jugadoras')
     expect([...present.querySelectorAll('.statistics-player-title strong')].map((node) => node.textContent)).toEqual([
       'Zoe Presente Hoy', 'Ana Presente Completa', 'Bea Presente Resto',
     ])
@@ -317,5 +321,30 @@ describe('StatisticsView', () => {
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
     expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('—')
     expect(screen.queryByText('Ana Martín')).not.toBeInTheDocument()
+  })
+
+  test('counts invited players as attendees without creating absences or task metrics', () => {
+    const today = todayIso()
+    render(<StatisticsView
+      attendance={[makeAttendance({ training_sessions: { session_date: today } })]}
+      memberships={[makeMembership()]}
+      profiles={[makeProfile()]}
+      provisionalAttendance={[makeProvisionalAttendance({ training_sessions: { session_date: today } })]}
+      provisionalPlayers={[makeProvisionalPlayer()]}
+      results={[]}
+      seasons={seasons}
+      sessions={[makeSession({ session_date: today })]}
+      tasks={[]}
+    />)
+
+    const present = screen.getByRole('region', { name: 'Asistieron: 2 jugadoras' })
+    expect(within(present).getByText('Laura Invitada')).toBeInTheDocument()
+    expect(within(present).getByText('Invitada')).toBeInTheDocument()
+    expect(within(present).getByText('1 del equipo · 1 invitada')).toBeInTheDocument()
+    expect(within(present).getByText('Laura Invitada').closest('.statistics-player')).not.toHaveTextContent('Tareas semana')
+    expect(screen.getByRole('region', { name: 'No asistieron: 0 jugadoras' })).not.toHaveTextContent('Laura Invitada')
+    const calendarDay = screen.getByRole('button', { name: /2 asistencias, 1 de invitadas/ })
+    expect(within(calendarDay).getByText('A 2')).toBeInTheDocument()
+    expect(calendarDay).not.toHaveTextContent('+1')
   })
 })

@@ -7,26 +7,43 @@ import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { attendancePlayerIdsForDate, isActivePlayer, membershipCoversDate } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
-import type { AttendanceRecord, Profile, Season, SeasonPlayer, TrainingSession } from '../../types'
+import type { AttendanceRecord, Profile, ProvisionalAttendanceEntry, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonPlayer, TrainingSession } from '../../types'
+import { GuestPlayerDialog } from './GuestPlayerDialog'
 
-export function AttendanceView({ profiles, seasons, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
+const EMPTY_PROVISIONAL_PLAYERS: ProvisionalPlayer[] = []
+const EMPTY_PROVISIONAL_ATTENDANCE: ProvisionalAttendanceRecord[] = []
+
+export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONAL_PLAYERS, provisionalAttendance = EMPTY_PROVISIONAL_ATTENDANCE, seasons, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
   profiles: Profile[]
+  provisionalPlayers?: ProvisionalPlayer[]
+  provisionalAttendance?: ProvisionalAttendanceRecord[]
   seasons: Season[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
   memberships: SeasonPlayer[]
   loadingRange?: boolean
-  onLoadDate?: (date: string) => Promise<AttendanceRecord[] | undefined>
-  onSave: (date: string, playerIds: string[], attendedPlayerIds: string[]) => Promise<void>
+  onLoadDate?: (date: string) => Promise<{ attendance: AttendanceRecord[]; provisionalAttendance: ProvisionalAttendanceRecord[] } | undefined>
+  onSave: (date: string, playerIds: string[], attendedPlayerIds: string[], guests: ProvisionalAttendanceEntry[]) => Promise<void>
 }) {
   const [date, setDate] = useState(todayIso())
   const [selected, setSelected] = useState<Set<string>>(
     () => attendedPlayersForDate(attendance, todayIso()),
   )
   const [saving, setSaving] = useState(false)
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false)
+  const [guestEdits, setGuestEdits] = useState<Record<string, ProvisionalAttendanceEntry[]>>({})
   const [formError, setFormError] = useState('')
   const [saved, setSaved] = useState(false)
   const dateRequestId = useRef(0)
+
+  const guests = guestEdits[date] ?? guestsForDate(provisionalAttendance, provisionalPlayers, date)
+
+  function setGuests(next: ProvisionalAttendanceEntry[] | ((current: ProvisionalAttendanceEntry[]) => ProvisionalAttendanceEntry[])) {
+    setGuestEdits((current) => ({
+      ...current,
+      [date]: typeof next === 'function' ? next(current[date] ?? guestsForDate(provisionalAttendance, provisionalPlayers, date)) : next,
+    }))
+  }
 
   function changeDate(nextDate: string) {
     setDate(nextDate)
@@ -37,7 +54,8 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
       const requestId = ++dateRequestId.current
       void onLoadDate(nextDate).then((records) => {
         if (records && dateRequestId.current === requestId) {
-          setSelected(attendedPlayersForDate(records, nextDate))
+          setSelected(attendedPlayersForDate(records.attendance, nextDate))
+          setGuestEdits((current) => ({ ...current, [nextDate]: guestsForDate(records.provisionalAttendance, provisionalPlayers, nextDate) }))
         }
       }).catch(() => undefined)
     }
@@ -57,12 +75,15 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
     setSaving(true)
     setFormError('')
     try {
-      await onSave(date, [...visibleIds], [...visibleSelected])
+      await onSave(date, [...visibleIds], [...visibleSelected], guests)
       setSaved(true)
       if (onLoadDate) {
         try {
           const records = await onLoadDate(date)
-          if (records) setSelected(attendedPlayersForDate(records, date))
+          if (records) {
+            setSelected(attendedPlayersForDate(records.attendance, date))
+            setGuestEdits((current) => ({ ...current, [date]: guestsForDate(records.provisionalAttendance, provisionalPlayers, date) }))
+          }
         } catch {
           // The save succeeded; the shared error banner reports the refresh failure.
         }
@@ -104,7 +125,7 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
           <input disabled={loadingRange} max={todayIso()} onChange={(event) => changeDate(event.target.value)} type="date" value={date} />
         </label>
         {date !== todayIso() && <button className="secondary-button" onClick={() => changeDate(todayIso())}>Volver a hoy</button>}
-        <div className="attendance-count"><strong>{visibleSelected.size}</strong><span>de {visiblePlayers.length}<br />asistentes</span></div>
+        <div className="attendance-count"><strong>{visibleSelected.size + guests.length}</strong><span>{guests.length ? `${visibleSelected.size} del equipo · ${guests.length} ${guests.length === 1 ? 'invitada' : 'invitadas'}` : `de ${visiblePlayers.length} asistentes`}</span></div>
       </section>
       {selectedSeason && <p className="attendance-context"><Icon name="calendar" size={15} />Temporada: <strong>{selectedSeason.name}</strong></p>}
 
@@ -119,20 +140,23 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
         </div>
       )}
 
-      {visiblePlayers.length ? (
+      {selectedSeason ? (
         <section className="attendance-panel">
           <div className="attendance-panel-heading">
             <div><span className="eyebrow">JUGADORAS ACTIVAS</span><h2>{formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>
-            <label className="select-all">
-              <input
-                checked={allSelected}
-                onChange={(event) => setSelected(event.target.checked ? new Set(visiblePlayers.map((player) => player.id)) : new Set())}
-                type="checkbox"
-              />
-              Marcar todas
-            </label>
+            <div className="attendance-heading-actions">
+              <button className="secondary-button compact" onClick={() => setGuestDialogOpen(true)} type="button"><Icon name="plus" size={16} />Añadir invitada</button>
+              {visiblePlayers.length > 0 && <label className="select-all">
+                <input
+                  checked={allSelected}
+                  onChange={(event) => setSelected(event.target.checked ? new Set(visiblePlayers.map((player) => player.id)) : new Set())}
+                  type="checkbox"
+                />
+                Marcar todas
+              </label>}
+            </div>
           </div>
-          <div className="attendance-list">
+          {visiblePlayers.length > 0 && <div className="attendance-list">
             {visiblePlayers.map((player) => {
               const checked = selected.has(player.id)
               return (
@@ -143,11 +167,18 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
                 </label>
               )
             })}
-          </div>
+          </div>}
+          {guests.length > 0 && <section className="attendance-guests" aria-label={`Invitadas: ${guests.length}`}>
+            <div className="attendance-guests-heading"><div><span className="eyebrow">INVITADAS</span><strong>{guests.length} {guests.length === 1 ? 'asistente' : 'asistentes'}</strong></div><small>Se vincularán cuando creen su cuenta.</small></div>
+            <div className="attendance-guest-list">{guests.map((guest, index) => <article key={`${guest.id ?? 'new'}-${guest.displayName}-${index}`}>
+              <span><Avatar name={guest.displayName} /><span><strong>{guest.displayName}</strong><small>Asistencia provisional</small></span></span>
+              <button aria-label={`Quitar a ${guest.displayName}`} className="icon-button" onClick={() => { setSaved(false); setGuests((current) => current.filter((_, itemIndex) => itemIndex !== index)) }} type="button"><Icon name="close" size={16} /></button>
+            </article>)}</div>
+          </section>}
           {formError && <p className="form-error">{formError}</p>}
           {saved && <p aria-live="polite" className="form-success"><Icon name="check" size={16} />Asistencia guardada para esta fecha.</p>}
           <div className="attendance-save">
-            <span>{visibleSelected.size === visiblePlayers.length ? '¡Equipo completo!' : `${visiblePlayers.length - visibleSelected.size} sin marcar`}</span>
+            <span>{visiblePlayers.length > 0 && visibleSelected.size === visiblePlayers.length ? '¡Equipo completo!' : `${visiblePlayers.length - visibleSelected.size} sin marcar`}{guests.length > 0 && ` · ${guests.length} ${guests.length === 1 ? 'invitada' : 'invitadas'}`}</span>
             <button className="primary-button" disabled={saving} onClick={save}>
               <Icon name="check" size={18} />{saving ? 'Guardando…' : 'Guardar asistencia'}
             </button>
@@ -161,8 +192,24 @@ export function AttendanceView({ profiles, seasons, sessions, attendance, member
             : 'Crea o ajusta una temporada que incluya esta fecha antes de guardar asistencia.'}
         />
       )}
+      {guestDialogOpen && <GuestPlayerDialog
+        players={provisionalPlayers}
+        unavailableIds={new Set(guests.flatMap((guest) => guest.id ? [guest.id] : []))}
+        onAdd={(entry) => { setSaved(false); setGuests((current) => [...current, entry]) }}
+        onClose={() => setGuestDialogOpen(false)}
+      />}
     </div>
   )
+}
+
+function guestsForDate(attendance: ProvisionalAttendanceRecord[], players: ProvisionalPlayer[], date: string): ProvisionalAttendanceEntry[] {
+  const names = new Map(players.map((player) => [player.id, player.display_name]))
+  return attendance
+    .filter((record) => record.training_sessions?.session_date === date)
+    .flatMap((record) => {
+      const displayName = record.provisional_players?.display_name ?? names.get(record.provisional_player_id)
+      return displayName ? [{ id: record.provisional_player_id, displayName }] : []
+    })
 }
 
 function attendedPlayersForDate(attendance: AttendanceRecord[], date: string) {

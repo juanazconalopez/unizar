@@ -81,6 +81,8 @@ export function AppViewRouter({
         loadingRange={data.loadingRange}
         memberships={data.memberships}
         profiles={data.profiles}
+        provisionalAttendance={data.provisionalAttendance}
+        provisionalPlayers={data.provisionalPlayers}
         results={data.results}
         seasons={data.seasons}
         sessions={data.trainingSessions}
@@ -93,6 +95,8 @@ export function AppViewRouter({
         loadingRange={data.loadingRange}
         memberships={data.memberships}
         profiles={data.profiles}
+        provisionalAttendance={data.provisionalAttendance}
+        provisionalPlayers={data.provisionalPlayers}
         seasons={data.seasons}
         sessions={data.trainingSessions}
         onLoadDate={data.loadAttendanceDate}
@@ -197,11 +201,14 @@ export function AppViewRouter({
         memberships={data.memberships}
         profilePrivateDetails={data.profilePrivateDetails}
         profiles={data.profiles}
+        provisionalAttendance={data.provisionalAttendance}
+        provisionalPlayers={data.provisionalPlayers}
         seasons={data.seasons}
         onCreateSeason={actions.club.createSeason}
         onDeleteSeason={actions.club.deleteSeason}
         onArchiveProfile={actions.club.archiveProfile}
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
+        onLinkProvisionalPlayer={actions.club.linkProvisionalPlayer}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
         onUpdateProfileDetails={actions.club.updateManagedProfile}

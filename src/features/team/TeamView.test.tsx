@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { makeProfile, makeProfilePrivateDetails } from '../../test/fixtures'
+import { makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
 afterEach(() => {
@@ -115,5 +115,30 @@ describe('TeamView', () => {
     await user.click(screen.getByRole('button', { name: 'Ver datos de Paula Romero' }))
     await user.click(screen.getByRole('button', { name: 'Restaurar acceso' }))
     expect(onUpdate).toHaveBeenCalledWith({ ...archived, is_archived: false, is_approved: true, is_active: false })
+  })
+
+  test('lets the owner confirm and link a provisional attendance history', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const profile = makeProfile({ display_name: 'Laura Invitada Pérez' })
+    const guest = makeProvisionalPlayer()
+    const onLink = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView
+      currentUserId="owner-1"
+      profiles={[profile]}
+      provisionalAttendance={[makeProvisionalAttendance()]}
+      provisionalPlayers={[guest]}
+      onLinkProvisionalPlayer={onLink}
+      onUpdate={vi.fn()}
+    />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Invitada Pérez' }))
+    const dialog = screen.getByRole('dialog', { name: 'Laura Invitada Pérez' })
+    await user.selectOptions(within(dialog).getByLabelText('Invitada para vincular con Laura Invitada Pérez'), guest.id)
+    expect(within(dialog).getByText(/Historial desde/)).toHaveTextContent('5 ago 2026')
+    await user.click(within(dialog).getByRole('button', { name: 'Vincular asistencias' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Vincular 1 asistencia de Laura Invitada con Laura Invitada Pérez?')
+    expect(onLink).toHaveBeenCalledWith(guest, profile)
   })
 })

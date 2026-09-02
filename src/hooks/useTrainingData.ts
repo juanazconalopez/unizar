@@ -5,8 +5,8 @@ import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
-import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
-import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
+import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
 
@@ -21,6 +21,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [results, setResults] = useState<TaskResult[]>([])
   const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([])
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+  const [provisionalPlayers, setProvisionalPlayers] = useState<ProvisionalPlayer[]>([])
+  const [provisionalAttendance, setProvisionalAttendance] = useState<ProvisionalAttendanceRecord[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [matchAvailability, setMatchAvailability] = useState<MatchAvailability[]>([])
   const [matchLineups, setMatchLineups] = useState<MatchLineup[]>([])
@@ -89,6 +91,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       setResults(data.results)
       setTrainingSessions(data.trainingSessions)
       setAttendance(data.attendance)
+      setProvisionalAttendance(data.provisionalAttendance)
     } catch (error) {
       if (rangeRequestIds.current.statistics === requestId) setErrorMessage(errorText(error))
       throw error
@@ -104,15 +107,16 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     setErrorMessage('')
     try {
       const data = await fetchAttendanceDate(date)
-      if (rangeRequestIds.current.attendance !== requestId) return data.attendance
+      if (rangeRequestIds.current.attendance !== requestId) return data
       loadedAttendanceDate.current = date
       setTrainingSessions((current) => {
         const oldSessionIds = new Set(current.filter((sessionItem) => sessionItem.session_date === date).map((sessionItem) => sessionItem.id))
         const affectedIds = new Set([...oldSessionIds, ...data.trainingSessions.map((sessionItem) => sessionItem.id)])
         setAttendance((currentAttendance) => replaceRelated(currentAttendance, data.attendance, affectedIds, (item) => item.session_id, attendanceKey))
+        setProvisionalAttendance((currentAttendance) => replaceRelated(currentAttendance, data.provisionalAttendance, affectedIds, (item) => item.session_id, provisionalAttendanceKey))
         return replaceDateRange(current, data.trainingSessions, 'session_date', date, date)
       })
-      return data.attendance
+      return data
     } catch (error) {
       if (rangeRequestIds.current.attendance === requestId) setErrorMessage(errorText(error))
       throw error
@@ -191,6 +195,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setProfiles(data.profiles)
         setTrainingSessions(data.trainingSessions)
         setAttendance(data.attendance)
+        setProvisionalPlayers(data.provisionalPlayers)
+        setProvisionalAttendance(data.provisionalAttendance)
         setMatches(data.matches)
         setMatchAvailability(data.matchAvailability)
         setMatchLineups(data.matchLineups)
@@ -258,6 +264,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     results,
     trainingSessions,
     attendance,
+    provisionalPlayers,
+    provisionalAttendance,
     matches,
     matchAvailability,
     matchLineups,

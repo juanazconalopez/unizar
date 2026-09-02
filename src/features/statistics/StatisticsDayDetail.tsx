@@ -2,11 +2,13 @@ import { Avatar } from '../../components/ui/Avatar'
 import { addDays, formatDate, mondayFor } from '../../lib/dates'
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { canUserCompleteTask } from '../../lib/tasks'
-import type { AttendanceRecord, Profile, Season, SeasonBirthday, SeasonPlayer, TaskResult, TrainingSession, TrainingTask } from '../../types'
+import type { AttendanceRecord, Profile, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TrainingSession, TrainingTask } from '../../types'
 import { recordDate } from './statisticsSelectors'
 
-export function StatisticsDayDetail({ players, attendance, date, memberships, results, seasons, sessions, tasks, birthdays }: {
+export function StatisticsDayDetail({ players, provisionalPlayers = [], provisionalAttendance = [], attendance, date, memberships, results, seasons, sessions, tasks, birthdays }: {
   players: Profile[]
+  provisionalPlayers?: ProvisionalPlayer[]
+  provisionalAttendance?: ProvisionalAttendanceRecord[]
   attendance: AttendanceRecord[]
   date: string
   memberships: SeasonPlayer[]
@@ -67,6 +69,14 @@ export function StatisticsDayDetail({ players, attendance, date, memberships, re
   const visibleTaskRows = playerRows.filter((row) => row.completedToday > 0 || row.complete)
   const attendedRows = playerRows.filter((row) => row.dailyAttendance?.attended)
   const absentRows = playerRows.filter((row) => row.dailyAttendance?.attended === false)
+  const provisionalNames = new Map(provisionalPlayers.map((player) => [player.id, player.display_name]))
+  const guestRows = provisionalAttendance
+    .filter((record) => record.training_sessions?.session_date === date)
+    .flatMap((record) => {
+      const displayName = provisionalNames.get(record.provisional_player_id)
+      return displayName ? [{ id: record.provisional_player_id, displayName }] : []
+    })
+    .sort((first, second) => first.displayName.localeCompare(second.displayName, 'es'))
   const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
 
   return (
@@ -98,8 +108,8 @@ export function StatisticsDayDetail({ players, attendance, date, memberships, re
       </div>
 
       {hasSession ? <div className="statistics-player-groups">
-        <PlayerDayGroup hasSession label="Asistieron" rows={attendedRows} />
-        <PlayerDayGroup hasSession label="No asistieron" rows={absentRows} />
+        <PlayerDayGroup attendanceStatus="present" guestRows={guestRows} hasSession label="Asistieron" rows={attendedRows} />
+        <PlayerDayGroup attendanceStatus="absent" hasSession label="No asistieron" rows={absentRows} />
       </div> : <div className="statistics-player-list">
         {visibleTaskRows.map((row) => <PlayerDayRow hasSession={false} key={row.player.id} row={row} />)}
         {!visibleTaskRows.length && <p className="statistics-empty">Ninguna jugadora hizo tareas este día ni tiene completa la semana.</p>}
@@ -123,14 +133,25 @@ function comparePlayerDayRows(first: PlayerDayRowData, second: PlayerDayRowData)
   return firstPriority - secondPriority || first.player.display_name.localeCompare(second.player.display_name, 'es')
 }
 
-function PlayerDayGroup({ hasSession, label, rows }: { hasSession: boolean; label: string; rows: PlayerDayRowData[] }) {
-  return <section aria-label={`${label}: ${rows.length} jugadoras`} className="statistics-player-group">
-    <div className="statistics-player-group-heading"><h3>{label}</h3><span>{rows.length} {rows.length === 1 ? 'jugadora' : 'jugadoras'}</span></div>
+function PlayerDayGroup({ attendanceStatus, guestRows = [], hasSession, label, rows }: { attendanceStatus: 'present' | 'absent'; guestRows?: { id: string; displayName: string }[]; hasSession: boolean; label: string; rows: PlayerDayRowData[] }) {
+  const total = rows.length + guestRows.length
+  return <section aria-label={`${label}: ${total} jugadoras`} className="statistics-player-group">
+    <div className={`statistics-player-group-heading ${attendanceStatus}`}><h3>{label}</h3><span><strong>{total}</strong> {total === 1 ? 'jugadora' : 'jugadoras'}{guestRows.length > 0 && <small>{rows.length} del equipo · {guestRows.length} {guestRows.length === 1 ? 'invitada' : 'invitadas'}</small>}</span></div>
     <div className="statistics-player-list">
       {rows.map((row) => <PlayerDayRow hasSession={hasSession} key={row.player.id} row={row} />)}
-      {!rows.length && <p className="statistics-empty">No hay jugadoras en este grupo.</p>}
+      {guestRows.map((guest) => <GuestDayRow guest={guest} key={guest.id} />)}
+      {!total && <p className="statistics-empty">No hay jugadoras en este grupo.</p>}
     </div>
   </section>
+}
+
+function GuestDayRow({ guest }: { guest: { id: string; displayName: string } }) {
+  return <article className="statistics-player provisional">
+    <div className="statistics-player-name">
+      <Avatar name={guest.displayName} />
+      <div><div className="statistics-player-title"><strong>{guest.displayName}</strong><small className="provisional-player-badge">Invitada</small></div><span>Asistió como invitada</span></div>
+    </div>
+  </article>
 }
 
 function PlayerDayRow({ hasSession, row }: { hasSession: boolean; row: PlayerDayRowData }) {
@@ -190,4 +211,3 @@ function attendanceLabel(hasSession: boolean, record?: AttendanceRecord) {
   if (!record) return 'Asistencia sin registrar'
   return record.attended ? 'Asistió al entrenamiento' : 'No asistió al entrenamiento'
 }
-

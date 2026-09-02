@@ -5,7 +5,7 @@ describe('training data requirements', () => {
   test('keeps the player home payload small', () => {
     expect(dataRequirementsFor('home', false)).toEqual({
       tasks: true, results: true, memberships: true, profiles: false, attendance: true,
-      matches: true, announcements: true, seasons: true,
+      provisionalPlayers: false, matches: true, announcements: true, seasons: true,
     })
   })
 
@@ -18,26 +18,27 @@ describe('training data requirements', () => {
   test('loads all planning data for the staff calendar', () => {
     expect(dataRequirementsFor('calendar', true)).toEqual({
       tasks: true, results: true, memberships: true, profiles: true, attendance: false,
-      matches: true, announcements: true, seasons: true,
+      provisionalPlayers: false, matches: true, announcements: true, seasons: true,
     })
   })
 
   test('does not load operational tables for competition', () => {
     expect(dataRequirementsFor('competition', false)).toEqual({
       tasks: false, results: false, memberships: false, profiles: false, attendance: false,
-      matches: false, announcements: false, seasons: false,
+      provisionalPlayers: false, matches: false, announcements: false, seasons: false,
     })
   })
 
   test('loads only season context for the private training planner', () => {
     expect(dataRequirementsFor('training', true)).toEqual({
       tasks: false, results: false, memberships: false, profiles: false, attendance: false,
-      matches: false, announcements: false, seasons: true,
+      provisionalPlayers: false, matches: false, announcements: false, seasons: true,
     })
   })
 
   test('loads memberships when attendance needs date-based eligibility', () => {
     expect(dataRequirementsFor('attendance', false).memberships).toBe(true)
+    expect(dataRequirementsFor('attendance', true).provisionalPlayers).toBe(true)
   })
 
   test('limits the home agenda to the end of next week and the active season', () => {

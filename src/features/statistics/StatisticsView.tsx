@@ -8,6 +8,8 @@ import { StatisticsDayDetail } from './StatisticsDayDetail'
 import { recordDate } from './statisticsSelectors'
 import type {
   AttendanceRecord,
+  ProvisionalAttendanceRecord,
+  ProvisionalPlayer,
   Profile,
   Season,
   SeasonPlayer,
@@ -20,6 +22,8 @@ import type {
 
 type StatisticsProps = {
   profiles: Profile[]
+  provisionalPlayers?: ProvisionalPlayer[]
+  provisionalAttendance?: ProvisionalAttendanceRecord[]
   sessions: TrainingSession[]
   attendance: AttendanceRecord[]
   memberships: SeasonPlayer[]
@@ -32,7 +36,7 @@ type StatisticsProps = {
   birthdays?: SeasonBirthday[]
 }
 
-export function StatisticsView({ profiles = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
+export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -141,13 +145,15 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
           {days.map((date, index) => {
             if (!date) return <span className="calendar-empty" key={`empty-${index}`} />
             const dayAttendance = playerAttendance.filter((record) => recordDate(record) === date)
-            const attended = dayAttendance.filter((record) => record.attended).length
+            const guestAttendance = provisionalAttendance.filter((record) => record.training_sessions?.session_date === date)
+            const teamAttended = dayAttendance.filter((record) => record.attended).length
+            const attended = teamAttended + guestAttendance.length
             const taskPlayers = new Set(playerResults.filter((result) => result.performed_on === date).map((result) => result.player_id)).size
             const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
-            const hasData = dayAttendance.length > 0 || taskPlayers > 0 || dayBirthdays.length > 0
+            const hasData = dayAttendance.length > 0 || guestAttendance.length > 0 || taskPlayers > 0 || dayBirthdays.length > 0
             return (
               <button
-                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${attended} asistencias, ${taskPlayers} jugadoras con tareas${dayBirthdays.length ? ` y cumpleaños de ${dayBirthdays.map((birthday) => birthday.display_name).join(', ')}` : ''}`}
+                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${attended} asistencias${guestAttendance.length ? `, ${guestAttendance.length} de invitadas` : ''}, ${taskPlayers} jugadoras con tareas${dayBirthdays.length ? ` y cumpleaños de ${dayBirthdays.map((birthday) => birthday.display_name).join(', ')}` : ''}`}
                 aria-pressed={selectedDate === date}
                 className={`${hasData ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
                 key={date}
@@ -155,7 +161,7 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
                 type="button"
               >
                 <strong>{Number(date.slice(-2))}</strong>
-                {dayAttendance.length > 0 && <small className="attendance-mark">A {attended}/{dayAttendance.length}</small>}
+                {(dayAttendance.length > 0 || guestAttendance.length > 0) && <small className="attendance-mark">A {attended}</small>}
                 {taskPlayers > 0 && <small className="task-mark">T {taskPlayers}</small>}
                 {dayBirthdays.length > 0 && <small className="birthday-mark">🎂 {dayBirthdays.length}</small>}
               </button>
@@ -170,6 +176,8 @@ export function StatisticsView({ profiles = [], seasons = [], sessions = [], att
 
       <StatisticsDayDetail
         players={historicalPlayers}
+        provisionalAttendance={provisionalAttendance}
+        provisionalPlayers={provisionalPlayers}
         attendance={playerAttendance}
         date={selectedDate}
         memberships={memberships}

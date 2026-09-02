@@ -2,11 +2,12 @@ import { addDays, mondayFor, monthEnd, monthStart, todayIso } from '../lib/dates
 import { canManageSport, canViewTeamData } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type {
-  AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails,
+  AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
   Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday,
   TrainingSession, TrainingTask, ViewName,
 } from '../types'
 import { fetchActiveSeasonBirthdays, fetchTodayBirthdays } from './birthdayService'
+import { fetchAllProvisionalAttendance, fetchUnlinkedProvisionalPlayers } from './provisionalPlayersService'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -24,6 +25,8 @@ export type TrainingData = {
   results: TaskResult[]
   trainingSessions: TrainingSession[]
   attendance: AttendanceRecord[]
+  provisionalPlayers: ProvisionalPlayer[]
+  provisionalAttendance: ProvisionalAttendanceRecord[]
   matches: Match[]
   matchAvailability: MatchAvailability[]
   matchLineups: MatchLineup[]
@@ -42,7 +45,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const profile = profileResponse.data
   const emptyData: TrainingData = {
     profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], memberships: [], profiles: [],
-    tasks: [], results: [], trainingSessions: [], attendance: [], matches: [], matchAvailability: [], matchLineups: [],
+    tasks: [], results: [], trainingSessions: [], attendance: [], provisionalPlayers: [], provisionalAttendance: [], matches: [], matchAvailability: [], matchLineups: [],
     announcements: [], todayBirthdays: [], seasonBirthdays: [],
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
@@ -52,13 +55,15 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const requirements = dataRequirementsFor(scope, canViewTeam)
   const currentWeek = mondayFor(new Date())
   const emptyResponse = Promise.resolve({ data: [], error: null })
-  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse] = await Promise.all([
+  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, provisionalPlayers, settingsProvisionalAttendance] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
     requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
     requirements.profiles
       ? supabase.from('profiles').select('id, display_name, avatar_path, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').order('display_name')
       : emptyResponse,
     scope === 'settings' ? supabase.from('profile_private_details').select('profile_id, email, phone, birth_date').order('profile_id') : emptyResponse,
+    requirements.provisionalPlayers ? fetchUnlinkedProvisionalPlayers() : Promise.resolve([]),
+    scope === 'settings' ? fetchAllProvisionalAttendance() : Promise.resolve([]),
   ])
   if (seasonsResponse.error) throw seasonsResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
@@ -109,6 +114,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: privateDetailsResponse.data ?? [], seasons,
     memberships: membershipsResponse.data ?? [], profiles: profilesResponse.data ?? [], tasks: taskData.tasks,
     results: taskData.results, trainingSessions: attendanceData.trainingSessions, attendance: attendanceData.attendance,
+    provisionalPlayers, provisionalAttendance: scope === 'settings' ? settingsProvisionalAttendance : attendanceData.provisionalAttendance,
     matches: matchData.matches, matchAvailability: matchData.matchAvailability, matchLineups: matchData.matchLineups,
     announcements: taskData.announcements, todayBirthdays, seasonBirthdays,
   }

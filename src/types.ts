@@ -105,6 +105,13 @@ export type AttendanceRecord = Omit<Tables<'training_attendance'>, 'created_at'>
   training_sessions: { session_date: string } | null
 }
 
+export type ProvisionalPlayer = Tables<'provisional_players'>
+export type ProvisionalAttendanceRecord = Omit<Tables<'provisional_training_attendance'>, 'created_at'> & {
+  training_sessions: { session_date: string } | null
+  provisional_players?: { display_name: string } | null
+}
+export type ProvisionalAttendanceEntry = { id?: string; displayName: string }
+
 export type MatchStatus = Enums<'match_status'>
 export type MatchKind = Enums<'match_kind'>
 export type RugbyFormat = Enums<'rugby_format'>

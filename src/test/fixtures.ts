@@ -2,6 +2,8 @@ import type {
   AttendanceRecord,
   Profile,
   ProfilePrivateDetails,
+  ProvisionalAttendanceRecord,
+  ProvisionalPlayer,
   Season,
   SeasonPlayer,
   TaskResult,
@@ -120,6 +122,31 @@ export function makeAttendance(overrides: Partial<AttendanceRecord> = {}): Atten
     session_id: 'session-1',
     player_id: 'player-1',
     attended: true,
+    marked_by: 'owner-1',
+    updated_at: createdAt,
+    training_sessions: { session_date: '2026-08-05' },
+    ...overrides,
+  }
+}
+
+export function makeProvisionalPlayer(overrides: Partial<ProvisionalPlayer> = {}): ProvisionalPlayer {
+  return {
+    id: 'guest-1',
+    display_name: 'Laura Invitada',
+    linked_profile_id: null,
+    linked_by: null,
+    linked_at: null,
+    created_by: 'owner-1',
+    created_at: createdAt,
+    updated_at: createdAt,
+    ...overrides,
+  }
+}
+
+export function makeProvisionalAttendance(overrides: Partial<ProvisionalAttendanceRecord> = {}): ProvisionalAttendanceRecord {
+  return {
+    session_id: 'session-1',
+    provisional_player_id: 'guest-1',
     marked_by: 'owner-1',
     updated_at: createdAt,
     training_sessions: { session_date: '2026-08-05' },

@@ -5,6 +5,7 @@ import type {
   Match,
   MatchAvailability,
   MatchLineup,
+  ProvisionalAttendanceRecord,
   TaskResult,
   TeamAnnouncement,
   TrainingSession,
@@ -13,11 +14,11 @@ import type {
 } from '../types'
 
 export type TaskWindowData = { tasks: TrainingTask[]; results: TaskResult[]; announcements?: TeamAnnouncement[] }
-export type AttendanceWindowData = { trainingSessions: TrainingSession[]; attendance: AttendanceRecord[] }
+export type AttendanceWindowData = { trainingSessions: TrainingSession[]; attendance: AttendanceRecord[]; provisionalAttendance: ProvisionalAttendanceRecord[] }
 export type MatchWindowData = { matches: Match[]; matchAvailability: MatchAvailability[]; matchLineups: MatchLineup[] }
 
 export const emptyTaskWindow: TaskWindowData = { tasks: [], results: [], announcements: [] }
-export const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [] }
+export const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [], provisionalAttendance: [] }
 export const emptyMatchWindow: MatchWindowData = { matches: [], matchAvailability: [], matchLineups: [] }
 
 export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
@@ -33,6 +34,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
       || scope === 'settings'
       || ((scope === 'home' || scope === 'tasks') && canViewTeam),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
+    provisionalPlayers: canViewTeam && (scope === 'statistics' || scope === 'attendance' || scope === 'settings'),
     matches: scope === 'home' || scope === 'calendar' || scope === 'matches',
     announcements: scope === 'home' || scope === 'calendar' || scope === 'tasks',
     seasons: scope !== 'competition',
@@ -88,15 +90,27 @@ export function homeAgendaEnd(today: string, seasonEnd: string) {
 
 export async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
   if (!sessionRows.length) return emptyAttendanceWindow
-  let query = supabase
+  let attendanceQuery = supabase
     .from('training_attendance')
     .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
     .in('session_id', sessionRows.map((session) => session.id))
     .order('updated_at', { ascending: false })
-  if (playerId) query = query.eq('player_id', playerId)
-  const { data, error } = await query
-  if (error) throw error
-  return { trainingSessions: sessionRows, attendance: data ?? [] }
+  if (playerId) attendanceQuery = attendanceQuery.eq('player_id', playerId)
+  const provisionalPromise = playerId
+    ? Promise.resolve({ data: [] as ProvisionalAttendanceRecord[], error: null })
+    : supabase
+      .from('provisional_training_attendance')
+      .select('session_id, provisional_player_id, marked_by, updated_at, training_sessions(session_date), provisional_players(display_name)')
+      .in('session_id', sessionRows.map((session) => session.id))
+      .order('updated_at', { ascending: false })
+  const [attendanceResponse, provisionalResponse] = await Promise.all([attendanceQuery, provisionalPromise])
+  if (attendanceResponse.error) throw attendanceResponse.error
+  if (provisionalResponse.error) throw provisionalResponse.error
+  return {
+    trainingSessions: sessionRows,
+    attendance: attendanceResponse.data ?? [],
+    provisionalAttendance: provisionalResponse.data ?? [],
+  }
 }
 
 export async function fetchStatisticsWindow(month: string): Promise<TaskWindowData & AttendanceWindowData> {

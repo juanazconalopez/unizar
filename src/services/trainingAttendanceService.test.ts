@@ -12,12 +12,16 @@ describe('saveTrainingAttendance', () => {
   test('sends the whole attendance update through the atomic database function', async () => {
     vi.mocked(supabase.rpc).mockResolvedValue({ data: undefined, error: null } as never)
 
-    await saveTrainingAttendance('2026-08-10', ['player-1', 'player-2'], ['player-2'])
+    await saveTrainingAttendance('2026-08-10', ['player-1', 'player-2'], ['player-2'], [
+      { id: 'guest-1', displayName: 'Invitada anterior' },
+      { displayName: 'Nueva Invitada' },
+    ])
 
     expect(supabase.rpc).toHaveBeenCalledWith('save_training_attendance', {
       attendance_date: '2026-08-10',
       checked_player_ids: ['player-1', 'player-2'],
       attended_player_ids: ['player-2'],
+      guest_entries: [{ id: 'guest-1' }, { displayName: 'Nueva Invitada' }],
     })
   })
 })

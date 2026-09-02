@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { todayIso } from '../../lib/dates'
-import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonsView } from '../seasons/SeasonsView'
 import { TeamView } from '../team/TeamView'
 
-export function SettingsView({ currentUserId, memberships, profiles, profilePrivateDetails = [], seasons, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onUpdateSeason }: {
+export function SettingsView({ currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayer, onUpdateSeason }: {
   currentUserId: string
   memberships: SeasonPlayer[]
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
+  provisionalPlayers?: ProvisionalPlayer[]
+  provisionalAttendance?: ProvisionalAttendanceRecord[]
   seasons: Season[]
   onCreateSeason: (values: SeasonValues) => Promise<void>
   onDeleteSeason: (season: Season) => Promise<void>
   onArchiveProfile?: (profile: Profile) => Promise<void>
   onLoadProfilePhoto?: (path: string) => Promise<string>
+  onLinkProvisionalPlayer?: (guest: ProvisionalPlayer, profile: Profile) => Promise<void>
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
   onUpdateProfile: (profile: Profile) => Promise<void>
   onUpdateProfileDetails?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
@@ -28,6 +31,6 @@ export function SettingsView({ currentUserId, memberships, profiles, profilePriv
       <button aria-selected={section === 'team'} className={section === 'team' ? 'active' : ''} onClick={() => setSection('team')} role="tab">Equipo</button>
       <button aria-selected={section === 'seasons'} className={section === 'seasons' ? 'active' : ''} onClick={() => setSection('seasons')} role="tab">Temporadas</button>
     </div>
-    {section === 'team' ? <TeamView currentUserId={currentUserId} embedded profiles={profiles} profilePrivateDetails={profilePrivateDetails} onArchive={onArchiveProfile} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} /> : <SeasonsView embedded memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
+    {section === 'team' ? <TeamView currentUserId={currentUserId} embedded profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onLinkProvisionalPlayer={onLinkProvisionalPlayer} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} /> : <SeasonsView embedded memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
   </div>
 }

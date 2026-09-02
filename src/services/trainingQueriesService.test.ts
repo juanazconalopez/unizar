@@ -13,7 +13,7 @@ type QueryBuilder = {
 const mocks = vi.hoisted(() => ({ from: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
 
-import { fetchAttendanceDate, fetchMatchWindow, fetchTaskWindow } from './trainingQueriesService'
+import { fetchAttendanceDate, fetchAttendanceForSessions, fetchMatchWindow, fetchTaskWindow } from './trainingQueriesService'
 
 function query(data: unknown[]): QueryBuilder {
   const builder = {} as QueryBuilder
@@ -85,11 +85,35 @@ describe('training data queries', () => {
       session_id: 'session-1', player_id: 'player-1', attended: true, marked_by: 'owner-1',
       updated_at: '2026-08-05T10:00:00Z', training_sessions: { session_date: '2026-08-05' },
     }])
-    mocks.from.mockImplementation((table: string) => table === 'training_sessions' ? sessions : attendance)
+    const provisionalAttendance = query([{
+      session_id: 'session-1', provisional_player_id: 'guest-1', marked_by: 'owner-1',
+      updated_at: '2026-08-05T10:00:00Z', training_sessions: { session_date: '2026-08-05' },
+    }])
+    mocks.from.mockImplementation((table: string) => {
+      if (table === 'training_sessions') return sessions
+      return table === 'training_attendance' ? attendance : provisionalAttendance
+    })
 
     const data = await fetchAttendanceDate('2026-08-05')
     expect(sessions.eq).toHaveBeenCalledWith('session_date', '2026-08-05')
     expect(attendance.in).toHaveBeenCalledWith('session_id', ['session-1'])
     expect(data.attendance[0]?.training_sessions?.session_date).toBe('2026-08-05')
+    expect(data.provisionalAttendance[0]?.provisional_player_id).toBe('guest-1')
+  })
+
+  test('does not request provisional attendance for a player personal history', async () => {
+    const session = {
+      id: 'session-1', season_id: 'season-1', session_date: '2026-08-05', created_by: 'owner-1',
+      created_at: '2026-08-05T10:00:00Z', updated_at: '2026-08-05T10:00:00Z',
+    }
+    const attendance = query([])
+    mocks.from.mockReturnValue(attendance)
+
+    const data = await fetchAttendanceForSessions([session], 'player-1')
+
+    expect(mocks.from).toHaveBeenCalledTimes(1)
+    expect(mocks.from).toHaveBeenCalledWith('training_attendance')
+    expect(attendance.eq).toHaveBeenCalledWith('player_id', 'player-1')
+    expect(data.provisionalAttendance).toEqual([])
   })
 })

@@ -33,6 +33,8 @@ const trainingData = {
   results: [],
   trainingSessions: [],
   attendance: [],
+  provisionalPlayers: [],
+  provisionalAttendance: [],
   matches: [],
   matchAvailability: [],
   matchLineups: [],

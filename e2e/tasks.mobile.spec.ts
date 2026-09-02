@@ -31,6 +31,19 @@ test('staff home shows team progress and exposes the linked video task', async (
   await expect(videoLink).toHaveAttribute('target', '_blank')
 })
 
+test('daily attendance groups and task metrics stay compact on mobile', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Resumen' }).click()
+
+  const present = page.getByRole('region', { name: /Asistieron: \d+ jugadoras/ })
+  const absent = page.getByRole('region', { name: /No asistieron: \d+ jugadoras/ })
+  await expect(present.locator('.statistics-player-group-heading')).toHaveCSS('background-color', 'rgb(218, 240, 226)')
+  await expect(absent.locator('.statistics-player-group-heading')).toHaveCSS('background-color', 'rgb(255, 240, 237)')
+
+  const metricBox = await present.locator('.statistics-player-metrics > div').first().boundingBox()
+  expect(metricBox?.height).toBeLessThan(45)
+})
+
 test('owner publishes a dated announcement and a player opens it from home', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
@@ -172,8 +185,16 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await expect(page.getByRole('heading', { name: 'Ajustes', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Equipo', exact: true })).toBeVisible()
   await expect(page.getByText('Posible duplicado')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Ver datos de Marta Sánchez' })).toContainText('Activa')
-  await expect(page.getByRole('button', { name: 'Ver datos de Marta Sánchez' }).getByRole('checkbox')).toHaveCount(0)
+  const martaCard = page.getByRole('button', { name: 'Ver datos de Marta Sánchez' })
+  await expect(martaCard).toContainText('Activa')
+  await expect(martaCard.getByRole('checkbox')).toHaveCount(0)
+  const emailBox = await martaCard.locator('.person-summary-contact > span').nth(0).boundingBox()
+  const phoneBox = await martaCard.locator('.person-summary-contact > span').nth(1).boundingBox()
+  const ageBox = await martaCard.locator('.person-summary-contact > span').nth(2).boundingBox()
+  const arrowBox = await martaCard.locator(':scope > .icon').boundingBox()
+  expect(emailBox?.width).toBeGreaterThan((phoneBox?.width ?? 0) * 1.8)
+  expect(Math.abs((phoneBox?.y ?? 0) - (ageBox?.y ?? 0))).toBeLessThan(2)
+  expect(arrowBox?.y).toBeLessThan(emailBox?.y ?? 0)
   await page.getByRole('button', { name: 'Buscar personas' }).click()
   await page.getByRole('searchbox', { name: 'Buscar por nombre' }).fill('claudia')
   await expect(page.getByText('Claudia Pérez')).toBeVisible()
@@ -228,6 +249,29 @@ test('selecting attendance keeps the mobile header and navigation fixed', async 
   expect(header?.y).toBeLessThan(2)
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+})
+
+test('owner records an invited player and later links her attendance', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Asistencia' }).click()
+  await expect(page.getByRole('region', { name: 'Invitadas: 5' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Añadir invitada' }).click()
+  const addDialog = page.getByRole('dialog', { name: 'Añadir invitada' })
+  await addDialog.getByLabel('Nombre y apellidos').fill('Nueva Jugadora Prueba')
+  await addDialog.getByRole('button', { name: 'Añadir invitada' }).click()
+  await expect(page.getByRole('region', { name: 'Invitadas: 6' })).toContainText('Nueva Jugadora Prueba')
+  await page.getByRole('button', { name: 'Guardar asistencia' }).click()
+  await expect(page.getByText('Asistencia mock guardada.')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('button', { name: 'Ver datos de Nerea Ruiz' }).click()
+  const profileDialog = page.getByRole('dialog', { name: 'Nerea Ruiz' })
+  await profileDialog.getByLabel('Invitada para vincular con Nerea Ruiz').selectOption({ label: 'Nerea Ruis · 1 asistencia · sugerida' })
+  page.once('dialog', (dialog) => dialog.accept())
+  await profileDialog.getByRole('button', { name: 'Vincular asistencias' }).click()
+  await expect(page.getByText('Nerea Ruis se ha vinculado con Nerea Ruiz.')).toBeVisible()
+  await expect(profileDialog).toHaveCount(0)
 })
 
 test('scrolling the lineup modal does not move the screen behind it', async ({ page }) => {

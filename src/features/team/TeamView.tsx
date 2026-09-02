@@ -5,19 +5,22 @@ import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
-import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails } from '../../types'
+import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
 import { profileRoles } from './profileRoles'
 import { TeamMemberDialog } from './TeamMemberDialog'
 
-export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto }: {
+export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayer }: {
   embedded?: boolean
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
+  provisionalPlayers?: ProvisionalPlayer[]
+  provisionalAttendance?: ProvisionalAttendanceRecord[]
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
+  onLinkProvisionalPlayer?: (guest: ProvisionalPlayer, profile: Profile) => Promise<void>
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -55,7 +58,7 @@ export function TeamView({ embedded = false, profiles, profilePrivateDetails = [
       {(showArchived || Boolean(normalizedSearch)) && <div className="people-list">{archived.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {normalizedSearch && !hasSearchMatches && <p className="team-search-empty">No hay personas que coincidan con “{search.trim()}”.</p>}
-    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLoadPhoto={onLoadPhoto} onSave={onSave} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLinkProvisionalPlayer={onLinkProvisionalPlayer} onLoadPhoto={onLoadPhoto} onSave={onSave} onUpdate={onUpdate} />}
   </div>
 }
 

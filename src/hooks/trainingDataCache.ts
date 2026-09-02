@@ -2,7 +2,7 @@ import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { canManageSport } from '../lib/permissions'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { TrainingData } from '../services/trainingDataService'
-import type { AttendanceRecord, MatchAvailability, MatchLineup, TaskResult, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, MatchAvailability, MatchLineup, ProvisionalAttendanceRecord, TaskResult, TrainingTask, ViewName } from '../types'
 
 export type LoadedRanges = {
   taskRanges: { from: string; to: string }[]
@@ -32,6 +32,7 @@ export function replaceRelated<T>(
 
 export const resultKey = (result: TaskResult) => `${result.task_id}:${result.player_id}`
 export const attendanceKey = (record: AttendanceRecord) => `${record.session_id}:${record.player_id}`
+export const provisionalAttendanceKey = (record: ProvisionalAttendanceRecord) => `${record.session_id}:${record.provisional_player_id}`
 export const availabilityKey = (item: MatchAvailability) => `${item.match_id}:${item.player_id}`
 export const lineupKey = (item: MatchLineup) => `${item.match_id}:${item.position}:${item.player_id}`
 
@@ -61,12 +62,14 @@ export async function restoreLoadedRanges(base: TrainingData, view: ViewName, us
   if (view === 'attendance' && ranges.attendanceDate) {
     let trainingSessions = base.trainingSessions
     let attendance = base.attendance
+    let provisionalAttendance = base.provisionalAttendance
     const window = await fetchAttendanceDate(ranges.attendanceDate)
     const oldIds = new Set(trainingSessions.filter((session) => session.session_date === ranges.attendanceDate).map((session) => session.id))
     const affectedIds = new Set([...oldIds, ...window.trainingSessions.map((session) => session.id)])
     trainingSessions = replaceDateRange(trainingSessions, window.trainingSessions, 'session_date', ranges.attendanceDate, ranges.attendanceDate)
     attendance = replaceRelated(attendance, window.attendance, affectedIds, (item) => item.session_id, attendanceKey)
-    return { ...base, trainingSessions, attendance }
+    provisionalAttendance = replaceRelated(provisionalAttendance, window.provisionalAttendance, affectedIds, (item) => item.session_id, provisionalAttendanceKey)
+    return { ...base, trainingSessions, attendance, provisionalAttendance }
   }
 
   if ((view === 'matches' || view === 'calendar') && ranges.matchMonth) {

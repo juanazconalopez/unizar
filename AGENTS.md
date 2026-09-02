@@ -180,6 +180,11 @@ Reglas importantes:
 - Owner y entrenadores registran asistencia de campo.
 - El guardado se realiza de forma atómica mediante RPC.
 - Los informes de temporada están disponibles según los permisos de consulta del equipo.
+- Las personas que entrenan antes de crear su cuenta se guardan como invitadas en `provisional_players`, nunca como perfiles falsos ligados a `auth.users`.
+- Una invitada solo genera presencias en `provisional_training_attendance`; no cuenta como ausencia ni modifica el porcentaje de asistencia de la plantilla mientras siga siendo provisional.
+- El detalle diario sí suma invitadas al total real de asistentes y las identifica expresamente.
+- Solo el owner vincula manualmente una invitada con un perfil real. `link_provisional_player` migra su histórico sin duplicados y ajusta la pertenencia a la temporada desde la primera asistencia.
+- No vincular automáticamente por similitud de nombre; la coincidencia sirve únicamente como sugerencia que el owner debe confirmar.
 
 ### Ajustes
 
