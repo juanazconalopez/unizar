@@ -16,6 +16,7 @@ import type {
   Profile,
   Season,
   SeasonCallupReport,
+  SeasonBirthday,
   SeasonPlayer,
   TaskResult,
   TaskStatus,
@@ -41,6 +42,7 @@ import { StatusControl } from '../tasks/StatusControl'
 type CalendarViewProps = {
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
+  birthdays?: SeasonBirthday[]
   lineups: MatchLineup[]
   matches: Match[]
   memberships: SeasonPlayer[]
@@ -94,6 +96,7 @@ export function CalendarView(props: CalendarViewProps) {
     .filter((match) => match.match_date === selectedDate)
     .sort((first, second) => (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? ''))
   const selectedTrainingPlans = publishedTrainingPlans.filter((plan) => plan.session_date === selectedDate)
+  const selectedBirthdays = (props.birthdays ?? []).filter((birthday) => birthday.birthday_on === selectedDate)
   const activeSeason = seasonForDate(props.seasons, today)
 
   const loadPublishedTrainingPlans = useCallback(async (targetMonth: string) => {
@@ -199,7 +202,7 @@ export function CalendarView(props: CalendarViewProps) {
     />
   }
 
-  const hasSelectedContent = selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedTasks.length > 0
+  const hasSelectedContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedTasks.length > 0
 
   return <div className="page">
     <PageHeader
@@ -215,6 +218,7 @@ export function CalendarView(props: CalendarViewProps) {
         <div className="planning-current-action"><button className="secondary-button compact" onClick={goToToday} type="button"><Icon name="calendar" size={16} />Ir a la semana actual</button></div>
         <TaskPlanningCalendar
           announcements={props.announcements}
+          birthdays={props.birthdays}
           matches={props.matches}
           month={month}
           selectedDate={selectedDate}
@@ -225,6 +229,10 @@ export function CalendarView(props: CalendarViewProps) {
           onSelectDate={setSelectedDate}
         />
         <section className="selected-planning-week">
+          {selectedBirthdays.length > 0 && <div className="birthday-day-detail" role="status">
+            <span aria-hidden="true">🎂</span>
+            <p><strong>Cumpleaños del día</strong>{selectedBirthdays.map((birthday) => `${birthday.display_name} cumple ${birthday.age_turning} años`).join(' · ')}</p>
+          </div>}
           {selectedAnnouncements.length > 0 && <div className="selected-calendar-group selected-day-announcements">
             <div className="task-week-heading"><div><span className="eyebrow">AVISOS DEL DÍA</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedAnnouncements.length}</span></div>
             <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActions(announcement)} announcement={announcement} initialOpen={props.focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>

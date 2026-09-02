@@ -102,7 +102,9 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     taskData = await fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo)
     if (scope === 'calendar') {
       matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))
-      if (!canManageTasks && profile.is_player && activeSeason) {
+      if (canManageTasks && activeSeason) {
+        seasonBirthdays = await fetchActiveSeasonBirthdays(activeSeason.id, todayIso())
+      } else if (!canManageTasks && profile.is_player && activeSeason) {
         calendarBirthdays = await fetchPlayerCalendarBirthdays(userId, activeSeason.id, todayIso())
       }
     }

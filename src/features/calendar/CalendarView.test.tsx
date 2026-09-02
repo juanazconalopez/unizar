@@ -22,6 +22,7 @@ function props() {
   return {
     announcements: [makeAnnouncement({ announcement_date: todayIso() })],
     availability: [],
+    birthdays: [{ season_id: 'season-1', player_id: 'player-1', display_name: 'Ana Martín', birthday_on: todayIso(), age_turning: 28 }],
     lineups: [],
     matches: [makeMatch()],
     memberships: [makeMembership()],
@@ -51,8 +52,10 @@ describe('CalendarView', () => {
     expect(screen.getByText('Cambio de horario')).toBeInTheDocument()
     expect(screen.getByText(/Rival Rugby/)).toBeInTheDocument()
     expect(screen.getByText('Velocidad y cambios de dirección')).toBeInTheDocument()
+    expect(screen.getByText('Cumpleaños del día').closest('.birthday-day-detail')).toHaveTextContent('Ana Martín cumple 28 años')
     const todayButton = screen.getByRole('button', { name: /1 partido/ })
     expect(within(todayButton).getByText('P')).toBeInTheDocument()
+    expect(within(todayButton).getByText('🎂 1')).toBeInTheDocument()
     expect(todayButton).not.toHaveClass('has-match')
     expect(screen.queryByText(/T · Tareas publicadas/)).not.toBeInTheDocument()
     expect(screen.queryByText(/A · Avisos en su fecha exacta/)).not.toBeInTheDocument()

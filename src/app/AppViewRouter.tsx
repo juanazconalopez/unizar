@@ -106,6 +106,7 @@ export function AppViewRouter({
       {view === 'calendar' && canManage && <CalendarView
         announcements={data.announcements}
         availability={data.matchAvailability}
+        birthdays={data.seasonBirthdays}
         focusedAnnouncementId={navigation.announcementId}
         focusedDate={navigation.date}
         lineups={data.matchLineups}

@@ -133,13 +133,14 @@ Reglas importantes:
 - Visible para owner, entrenadores y Dirección con permiso de consulta.
 - Estadísticas mensuales de asistencia y tareas.
 - Calendario mensual y detalle diario.
-- Solo el owner recibe y ve el calendario completo de cumpleaños de la temporada.
+- En Resumen solo el owner ve el calendario de cumpleaños; los entrenadores reciben la misma información únicamente dentro del Calendario de gestión.
 - La marca de cumpleaños es `🎂` y el detalle aparece encima del cumplimiento semanal.
 
 ### Calendario
 
 - Vista unificada de gestión para owner y entrenadores.
 - Reúne tareas, avisos, partidos y entrenamientos publicados.
+- Owner y entrenadores ven además la marca de cumpleaños `🎂` y, al seleccionar el día, el nombre y la edad que cumple cada jugadora activa.
 - Las jugadoras también usan Calendario como su única vista de planificación: reúne tareas y avisos publicados, partidos, disponibilidad, convocatorias y cumpleaños. No reciben planes de entrenamiento privados.
 - Dirección conserva la vista independiente de Partidos porque no tiene acceso a tareas.
 - Permite editar estados, convocatorias, disponibilidad y planificación.
@@ -207,7 +208,7 @@ Reglas importantes:
 - Entrenadores, Dirección y owner no cuentan salvo que además tengan `is_player`.
 - No existe tabla de cumpleaños; son datos derivados.
 - `get_today_active_player_birthdays()` devuelve únicamente identificador y nombre a usuarios aprobados y activos.
-- `get_active_season_birthdays()` devuelve al owner las ocurrencias de toda la temporada, con fecha y edad que cumplirá la jugadora.
+- `get_active_season_birthdays()` devuelve a owner y entrenadores las ocurrencias de toda la temporada, con fecha y edad que cumplirá la jugadora.
 - `get_player_season_birthday_calendar()` devuelve a jugadoras activas únicamente nombre y día del cumpleaños dentro de la temporada. Nunca expone edad, año de nacimiento ni la fecha privada original.
 - El año de nacimiento y la fecha privada no deben exponerse al resto del equipo.
 - El 29 de febrero se celebra el 28 de febrero en años no bisiestos.

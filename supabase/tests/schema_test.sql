@@ -150,8 +150,8 @@ select like(
 );
 select like(
   pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
-  '%current_user_can_view_private_profile_details%',
-  'the season birthday calendar is owner-only'
+  '%current_user_can_manage_sport%',
+  'the season birthday calendar is limited to owner and coaches'
 );
 select like(
   pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
