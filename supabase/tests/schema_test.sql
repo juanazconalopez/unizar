@@ -1,5 +1,5 @@
 begin;
-select plan(125);
+select plan(131);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -137,6 +137,7 @@ select ok(
 );
 select has_function('public', 'get_today_active_player_birthdays', array[]::text[], 'today birthdays are available');
 select has_function('public', 'get_active_season_birthdays', array[]::text[], 'active season birthdays are available');
+select has_function('public', 'get_player_season_birthday_calendar', array[]::text[], 'players have a privacy-safe birthday calendar');
 select like(
   pg_get_functiondef('public.get_today_active_player_birthdays()'::regprocedure),
   '%today_in_madrid%between season.start_date and season.end_date%',
@@ -164,6 +165,29 @@ select ok(
 select ok(
   not has_function_privilege('anon', 'public.get_active_season_birthdays()', 'EXECUTE'),
   'anonymous users cannot request the season birthday calendar'
+);
+select like(
+  pg_get_functiondef('public.get_player_season_birthday_calendar()'::regprocedure),
+  '%requester.is_player%requester.is_approved%requester.is_active%not requester.is_archived%',
+  'only active approved players can request the player birthday calendar'
+);
+select like(
+  pg_get_functiondef('public.get_player_season_birthday_calendar()'::regprocedure),
+  '%birthday_on >= membership.active_from%',
+  'player birthday occurrences respect membership periods'
+);
+select unlike(
+  pg_get_function_result('public.get_player_season_birthday_calendar()'::regprocedure),
+  '%age%',
+  'the player birthday calendar does not expose age'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.get_player_season_birthday_calendar()', 'EXECUTE'),
+  'authenticated players can call the protected birthday calendar function'
+);
+select ok(
+  not has_function_privilege('anon', 'public.get_player_season_birthday_calendar()', 'EXECUTE'),
+  'anonymous users cannot request the player birthday calendar'
 );
 select ok(to_regclass('public.competition_fixtures') is not null, 'competition fixtures are persisted');
 select ok(to_regclass('public.competition_standings') is not null, 'competition standings are persisted');

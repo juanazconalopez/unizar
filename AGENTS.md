@@ -140,6 +140,8 @@ Reglas importantes:
 
 - Vista unificada de gestión para owner y entrenadores.
 - Reúne tareas, avisos, partidos y entrenamientos publicados.
+- Las jugadoras también usan Calendario como su única vista de planificación: reúne tareas y avisos publicados, partidos, disponibilidad, convocatorias y cumpleaños. No reciben planes de entrenamiento privados.
+- Dirección conserva la vista independiente de Partidos porque no tiene acceso a tareas.
 - Permite editar estados, convocatorias, disponibilidad y planificación.
 - Las tarjetas de entrenamientos publicados enlazan con el detalle completo, incluidos entrenamientos de fechas pasadas.
 - Evitar leyendas inferiores redundantes cuando las marcas ya son conocidas por los usuarios de gestión.
@@ -160,13 +162,14 @@ Reglas importantes:
 
 ### Tareas
 
-- Las jugadoras ven tareas publicadas que les corresponden.
+- Las jugadoras ven y completan desde Calendario las tareas publicadas que les corresponden; la ruta histórica de Tareas redirige a Calendario.
 - El staff gestiona publicación, edición, orden, avisos y resultados.
 - Las tareas se asignan por semana y deben respetar temporada y vinculación.
 
 ### Partidos
 
 - Incluye partidos oficiales y amistosos, disponibilidad y convocatorias.
+- Las jugadoras consultan y responden los partidos desde Calendario; Dirección mantiene la sección independiente de Partidos.
 - Las alineaciones publicadas tienen restricciones de edición y desbloqueo.
 - Las convocatorias y resúmenes deben respetar la jugadora, el partido, la temporada y el periodo de vinculación.
 
@@ -205,10 +208,12 @@ Reglas importantes:
 - No existe tabla de cumpleaños; son datos derivados.
 - `get_today_active_player_birthdays()` devuelve únicamente identificador y nombre a usuarios aprobados y activos.
 - `get_active_season_birthdays()` devuelve al owner las ocurrencias de toda la temporada, con fecha y edad que cumplirá la jugadora.
+- `get_player_season_birthday_calendar()` devuelve a jugadoras activas únicamente nombre y día del cumpleaños dentro de la temporada. Nunca expone edad, año de nacimiento ni la fecha privada original.
 - El año de nacimiento y la fecha privada no deben exponerse al resto del equipo.
 - El 29 de febrero se celebra el 28 de febrero en años no bisiestos.
 - La consulta diaria se cachea por usuario y día.
 - El calendario completo del owner se cachea por temporada y día.
+- El calendario seguro de jugadoras se cachea por usuario, temporada y día.
 - La caché se invalida localmente tras cambios de perfil, permisos, temporada o vinculación. Los cambios realizados desde otro dispositivo se actualizan como máximo al día siguiente.
 - No utilizar Realtime para cumpleaños.
 

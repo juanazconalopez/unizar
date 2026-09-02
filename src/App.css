@@ -527,6 +527,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .attendance-mark { color: #206b51; background: #e1f1e7; }
 .task-mark { color: #3f6970; background: #e3f0f2; }
 .birthday-mark { color: #7a5817; background: #fff0bd; }
+.task-planning-calendar > button > .birthday-mark { position: absolute; top: 6px; right: 5px; }
 .calendar-legend { padding: 0 20px 15px; display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 10px; }
 .calendar-legend span { display: flex; align-items: center; gap: 6px; }
 .calendar-legend i { width: 8px; height: 8px; border-radius: 50%; }

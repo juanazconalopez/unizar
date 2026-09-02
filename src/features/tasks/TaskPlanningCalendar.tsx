@@ -1,14 +1,16 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
-import type { Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
+import type { CalendarBirthday, Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], matches, trainingPlans, showLegend = true, onMonthChange, onSelectDate }: {
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], birthdays = [], matches, trainingPlans, showLegend = true, legendVariant = 'management', onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
   announcements?: TeamAnnouncement[]
+  birthdays?: CalendarBirthday[]
   matches?: Match[]
   trainingPlans?: TrainingPlanCalendarItem[]
   showLegend?: boolean
+  legendVariant?: 'management' | 'player'
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
@@ -49,11 +51,13 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const matchCount = dayMatches.length
           const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.status === 'published' && plan.session_date === date)
           const trainingPlanCount = dayTrainingPlans.length
+          const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
+          const birthdayCount = dayBirthdays.length
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}`}
               aria-pressed={selectedDate === date}
-              className={`${taskCount || announcementCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
+              className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
@@ -83,15 +87,17 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
                   {matchCount > 3 && <small>+{matchCount - 3}</small>}
                 </span>
               )}
+              {birthdayCount > 0 && <small aria-hidden="true" className="birthday-mark">🎂 {birthdayCount}</small>}
             </button>
           )
         })}
       </div>
       {showLegend && <div className="calendar-legend">
-        <span><i className="task-dot" />T · Tareas publicadas o en borrador guardadas en el lunes de su semana</span>
+        <span><i className="task-dot" />T · {legendVariant === 'player' ? 'Tareas publicadas' : 'Tareas publicadas o en borrador guardadas en el lunes de su semana'}</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
         {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
+        {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
       </div>}
     </section>
   )

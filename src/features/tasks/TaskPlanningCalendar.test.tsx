@@ -21,4 +21,22 @@ describe('planning calendar training plans', () => {
     expect(within(day).getAllByText('E')).toHaveLength(1)
     expect(screen.getByText('E · Entrenamientos publicados')).toBeInTheDocument()
   })
+
+  test('marks birthdays without exposing an age', () => {
+    render(<TaskPlanningCalendar
+      birthdays={[{ season_id: 'season-1', player_id: 'player-2', display_name: 'Bea Pérez', birthday_on: '2026-09-03' }]}
+      legendVariant="player"
+      matches={[]}
+      month="2026-09-01"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      selectedDate="2026-09-03"
+      tasks={[]}
+    />)
+
+    const day = screen.getByRole('button', { name: /3 de septiembre.*1 cumpleaños/i })
+    expect(within(day).getByText('🎂 1')).toBeInTheDocument()
+    expect(screen.getByText('🎂 · Cumpleaños')).toBeInTheDocument()
+    expect(screen.queryByText(/\d+ años/)).not.toBeInTheDocument()
+  })
 })

@@ -15,7 +15,7 @@ import { useNotifications } from './hooks/useNotifications'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOperationFeedback } from './hooks/useOperationFeedback'
 import { useTrainingData } from './hooks/useTrainingData'
-import { canManageSport, canViewTeamData } from './lib/permissions'
+import { canManageSport, canViewTeamData, isPlayer } from './lib/permissions'
 import './App.css'
 
 function App() {
@@ -49,7 +49,7 @@ function App() {
   useEffect(() => {
     if (!data.profile || canAccessView(data.profile, view)) return
     const timer = window.setTimeout(() => {
-      const target = canManageSport(data.profile!) && (view === 'tasks' || view === 'matches')
+      const target = (canManageSport(data.profile!) || isPlayer(data.profile!)) && (view === 'tasks' || view === 'matches')
         ? { ...navigation, view: 'calendar' as const }
         : { view: 'home' as const }
       replaceNavigation(target)
@@ -91,7 +91,7 @@ function App() {
     view={view}
     onNavigate={navigate}
     onNotificationOpen={(notification) => navigate({
-      view: canManage && (notification.view === 'tasks' || notification.view === 'matches') ? 'calendar' : notification.view,
+      view: (canManage || isPlayer(profile)) && (notification.view === 'tasks' || notification.view === 'matches') ? 'calendar' : notification.view,
       date: notification.targetDate,
       announcementId: notification.kind === 'announcement' ? notification.targetId : undefined,
     })}

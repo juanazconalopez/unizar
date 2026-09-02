@@ -1,5 +1,5 @@
 import { todayIso } from '../lib/dates'
-import { canAccessTasks, canManageSport, canViewTeamData } from '../lib/permissions'
+import { canManageSport, canViewTeamData, isPlayer } from '../lib/permissions'
 import { membershipCoversDate } from '../lib/selectors'
 import type { Profile, Season, SeasonPlayer, ViewName } from '../types'
 
@@ -15,10 +15,11 @@ export function hasWorkingSeason(profile: Profile, seasons: Season[], membership
 }
 
 export function canAccessView(profile: Profile, view: ViewName) {
-  if (view === 'calendar' || view === 'training' || view === 'attendance') return canManageSport(profile)
-  if ((view === 'tasks' || view === 'matches') && canManageSport(profile)) return false
+  if (view === 'calendar') return canManageSport(profile) || isPlayer(profile)
+  if (view === 'training' || view === 'attendance') return canManageSport(profile)
+  if (view === 'tasks') return false
+  if (view === 'matches') return !canManageSport(profile) && !isPlayer(profile)
   if (view === 'settings') return profile.is_owner
   if (view === 'statistics') return canViewTeamData(profile)
-  if (view === 'tasks') return canAccessTasks(profile)
   return true
 }

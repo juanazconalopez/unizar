@@ -27,14 +27,15 @@ describe('AppLayout', () => {
     const { navigation, onNavigate } = renderLayout()
 
     expect(within(navigation).getByRole('button', { name: 'Inicio' })).toBeInTheDocument()
-    expect(within(navigation).getByRole('button', { name: 'Tareas' })).toBeInTheDocument()
-    expect(within(navigation).getByRole('button', { name: 'Partidos' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Calendario' })).toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Resumen' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
 
-    await user.click(within(navigation).getByRole('button', { name: 'Tareas' }))
-    expect(onNavigate).toHaveBeenCalledWith('tasks')
+    await user.click(within(navigation).getByRole('button', { name: 'Calendario' }))
+    expect(onNavigate).toHaveBeenCalledWith('calendar')
   })
 
   test('shows every management area to owners', () => {
@@ -73,9 +74,11 @@ describe('AppLayout', () => {
   test('keeps player navigation when Dirección is an additional role', () => {
     const { navigation } = renderLayout(makeProfile({ is_viewer: true }))
 
-    for (const label of ['Inicio', 'Resumen', 'Tareas', 'Partidos', 'Competición']) {
+    for (const label of ['Inicio', 'Resumen', 'Calendario', 'Competición']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
+    expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
+    expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Asistencia' })).not.toBeInTheDocument()
   })
 

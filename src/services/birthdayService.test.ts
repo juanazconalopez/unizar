@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc } }))
 
-import { fetchActiveSeasonBirthdays, fetchTodayBirthdays, invalidateBirthdayCache } from './birthdayService'
+import { fetchActiveSeasonBirthdays, fetchPlayerCalendarBirthdays, fetchTodayBirthdays, invalidateBirthdayCache } from './birthdayService'
 
 describe('birthday cache', () => {
   beforeEach(() => {
@@ -31,5 +31,16 @@ describe('birthday cache', () => {
     await fetchActiveSeasonBirthdays('season-1', '2026-09-01')
 
     expect(mocks.rpc).toHaveBeenCalledTimes(3)
+  })
+
+  test('caches the privacy-safe player calendar per user and season', async () => {
+    mocks.rpc.mockResolvedValue({ data: [{ season_id: 'season-1', player_id: 'player-2', display_name: 'Bea', birthday_on: '2026-09-03' }], error: null })
+
+    const first = await fetchPlayerCalendarBirthdays('player-1', 'season-1', '2026-09-02')
+    const second = await fetchPlayerCalendarBirthdays('player-1', 'season-1', '2026-09-02')
+
+    expect(first).toEqual(second)
+    expect(mocks.rpc).toHaveBeenCalledOnce()
+    expect(mocks.rpc).toHaveBeenCalledWith('get_player_season_birthday_calendar')
   })
 })

@@ -61,6 +61,7 @@ describe('buildNotifications', () => {
     ]))
     expect(notifications.some((item) => item.kind === 'availability')).toBe(false)
     expect(notifications.some((item) => item.kind === 'task')).toBe(false)
+    expect(notifications.filter((item) => item.kind === 'match' || item.kind === 'lineup').every((item) => item.view === 'calendar')).toBe(true)
   })
 
   test('shows the nearest match when there is no newly published match', () => {
@@ -74,7 +75,7 @@ describe('buildNotifications', () => {
   test('links a newly published team announcement to its exact day', () => {
     const announcement = makeAnnouncement({ announcement_date: '2026-08-11', updated_at: '2026-08-07T10:00:00.000Z' })
     const notifications = buildNotifications(feed({ tasks: [], matches: [], lineups: [], announcements: [announcement] }), makeProfile(), '2026-08-07')
-    expect(notifications).toContainEqual(expect.objectContaining({ kind: 'announcement', targetDate: '2026-08-11', targetId: announcement.id }))
+    expect(notifications).toContainEqual(expect.objectContaining({ kind: 'announcement', view: 'calendar', targetDate: '2026-08-11', targetId: announcement.id }))
   })
 
   test('creates one availability-change notification per match for coaches', () => {

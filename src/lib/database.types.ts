@@ -1116,6 +1116,15 @@ export type Database = {
           season_id: string
         }[]
       }
+      get_player_season_birthday_calendar: {
+        Args: never
+        Returns: {
+          birthday_on: string
+          display_name: string
+          player_id: string
+          season_id: string
+        }[]
+      }
       current_user_can_edit_match: {
         Args: { checked_match_id: string }
         Returns: boolean

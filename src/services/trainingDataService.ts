@@ -2,11 +2,11 @@ import { addDays, mondayFor, monthEnd, monthStart, todayIso } from '../lib/dates
 import { canManageSport, canViewTeamData } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type {
-  AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
+  AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
   Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday,
   TrainingSession, TrainingTask, ViewName,
 } from '../types'
-import { fetchActiveSeasonBirthdays, fetchTodayBirthdays } from './birthdayService'
+import { fetchActiveSeasonBirthdays, fetchPlayerCalendarBirthdays, fetchTodayBirthdays } from './birthdayService'
 import { fetchAllProvisionalAttendance, fetchUnlinkedProvisionalPlayers } from './provisionalPlayersService'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
@@ -33,6 +33,7 @@ export type TrainingData = {
   announcements?: TeamAnnouncement[]
   todayBirthdays: TodayBirthday[]
   seasonBirthdays: SeasonBirthday[]
+  calendarBirthdays: CalendarBirthday[]
 }
 
 export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
@@ -46,7 +47,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const emptyData: TrainingData = {
     profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], memberships: [], profiles: [],
     tasks: [], results: [], trainingSessions: [], attendance: [], provisionalPlayers: [], provisionalAttendance: [], matches: [], matchAvailability: [], matchLineups: [],
-    announcements: [], todayBirthdays: [], seasonBirthdays: [],
+    announcements: [], todayBirthdays: [], seasonBirthdays: [], calendarBirthdays: [],
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
@@ -76,6 +77,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   let matchData = emptyMatchWindow
   let todayBirthdays: TodayBirthday[] = []
   let seasonBirthdays: SeasonBirthday[] = []
+  let calendarBirthdays: CalendarBirthday[] = []
 
   if (scope === 'home') {
     todayBirthdays = await fetchTodayBirthdays(userId, todayIso())
@@ -93,11 +95,17 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       attendanceData = await fetchAttendanceForSessions(data ?? [], userId)
     }
   } else if (scope === 'tasks' || scope === 'calendar') {
-    const start = addDays(currentWeek, -14)
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     const managerEnd = activeSeason?.end_date && activeSeason.end_date >= currentWeek ? mondayFor(activeSeason.end_date) : addDays(currentWeek, 84)
-    taskData = await fetchTaskWindow(userId, canManageTasks, start, canManageTasks ? managerEnd : currentWeek)
-    if (scope === 'calendar') matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))
+    const taskFrom = scope === 'calendar' && !canManageTasks ? mondayFor(monthStart(todayIso())) : addDays(currentWeek, -14)
+    const taskTo = scope === 'calendar' && !canManageTasks ? mondayFor(monthEnd(todayIso())) : canManageTasks ? managerEnd : currentWeek
+    taskData = await fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo)
+    if (scope === 'calendar') {
+      matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))
+      if (!canManageTasks && profile.is_player && activeSeason) {
+        calendarBirthdays = await fetchPlayerCalendarBirthdays(userId, activeSeason.id, todayIso())
+      }
+    }
   } else if (scope === 'statistics' && canViewTeam) {
     const statistics = await fetchStatisticsWindow(monthStart(todayIso()))
     taskData = statistics
@@ -116,6 +124,6 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     results: taskData.results, trainingSessions: attendanceData.trainingSessions, attendance: attendanceData.attendance,
     provisionalPlayers, provisionalAttendance: scope === 'settings' ? settingsProvisionalAttendance : attendanceData.provisionalAttendance,
     matches: matchData.matches, matchAvailability: matchData.matchAvailability, matchLineups: matchData.matchLineups,
-    announcements: taskData.announcements, todayBirthdays, seasonBirthdays,
+    announcements: taskData.announcements, todayBirthdays, seasonBirthdays, calendarBirthdays,
   }
 }

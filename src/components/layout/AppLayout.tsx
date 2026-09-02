@@ -10,7 +10,7 @@ import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
 import { ProfileDetailsDialog } from '../../features/profile/ProfileDetailsDialog'
 import type { AppNotification } from '../../features/notifications/notifications'
-import { canAccessTasks, canManageSport, canViewTeamData } from '../../lib/permissions'
+import { canManageSport, canViewTeamData, isPlayer } from '../../lib/permissions'
 
 type NavigationItem = { id: ViewName; label: string; icon: IconName }
 
@@ -75,10 +75,9 @@ export function AppLayout({
           { id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const },
           { id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const },
         ]
-      : [
-          ...(canAccessTasks(profile) ? [{ id: 'tasks' as const, label: 'Tareas', icon: 'tasks' as const }] : []),
-          { id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const },
-        ]),
+      : isPlayer(profile)
+        ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }]
+        : [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }]),
     { id: 'competition', label: 'Competición', icon: 'trophy' },
     ...(canManage ? [
       { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },

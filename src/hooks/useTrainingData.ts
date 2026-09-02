@@ -5,7 +5,7 @@ import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
-import type { AttendanceRecord, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
@@ -29,6 +29,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [announcements, setAnnouncements] = useState<TeamAnnouncement[]>([])
   const [todayBirthdays, setTodayBirthdays] = useState<TodayBirthday[]>([])
   const [seasonBirthdays, setSeasonBirthdays] = useState<SeasonBirthday[]>([])
+  const [calendarBirthdays, setCalendarBirthdays] = useState<CalendarBirthday[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingRange, setLoadingRange] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -203,6 +204,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setAnnouncements(data.announcements ?? [])
         setTodayBirthdays(data.todayBirthdays)
         setSeasonBirthdays(data.seasonBirthdays)
+        setCalendarBirthdays(data.calendarBirthdays)
         setLoadedView(view)
         setLoadedUserId(userId)
       } catch (error) {
@@ -272,6 +274,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     announcements,
     todayBirthdays,
     seasonBirthdays,
+    calendarBirthdays,
     loading,
     loadingRange,
     errorMessage,

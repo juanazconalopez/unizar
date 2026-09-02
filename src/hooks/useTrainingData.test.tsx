@@ -40,6 +40,7 @@ const trainingData = {
   matchLineups: [],
   todayBirthdays: [],
   seasonBirthdays: [],
+  calendarBirthdays: [],
 }
 
 async function flushInitialLoad() {

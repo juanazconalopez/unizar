@@ -35,6 +35,11 @@ export type SeasonBirthday = TodayBirthday & {
   age_turning: number
 }
 
+export type CalendarBirthday = TodayBirthday & {
+  season_id: string
+  birthday_on: string
+}
+
 export type TaskStatus = Enums<'task_status'>
 
 export type TrainingTask = Omit<Tables<'tasks'>, 'updated_at'> & {

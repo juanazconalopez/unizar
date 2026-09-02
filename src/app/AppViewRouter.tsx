@@ -12,7 +12,7 @@ import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
-import { AttendanceView, CalendarView, CompetitionView, MatchesView, SettingsView, StatisticsView, TasksView, TrainingPlansView } from './viewModules'
+import { AttendanceView, CalendarView, CompetitionView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, TasksView, TrainingPlansView } from './viewModules'
 
 type TrainingController = ReturnType<typeof useTrainingData>
 type CompetitionController = ReturnType<typeof useCompetitionData>
@@ -69,10 +69,10 @@ export function AppViewRouter({
         todayBirthdays={data.todayBirthdays}
         trainingSessions={data.trainingSessions}
         userId={userId}
-        onGoToTasks={canAccessTasks(profile) ? () => navigate(canManage ? 'calendar' : 'tasks') : undefined}
+        onGoToTasks={canAccessTasks(profile) ? () => navigate('calendar') : undefined}
         onLoadSeasonSummary={isPlayer(profile) ? fetchPlayerSeasonSummary : undefined}
-        onOpenAnnouncement={(announcement) => navigate({ view: canManage ? 'calendar' : 'tasks', date: announcement.announcement_date, announcementId: announcement.id })}
-        onOpenMatch={(match) => navigate({ view: canManage ? 'calendar' : 'matches', date: match.match_date })}
+        onOpenAnnouncement={(announcement) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'home', date: announcement.announcement_date, announcementId: announcement.id })}
+        onOpenMatch={(match) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'matches', date: match.match_date })}
         onSaveResult={actions.tasks.saveResult}
       />}
       {view === 'statistics' && canViewTeam && <StatisticsView
@@ -134,6 +134,24 @@ export function AppViewRouter({
         onTaskStatusChange={actions.tasks.changeStatus}
         onUnlockLineup={actions.matches.unlockLineup}
         onUpdateTask={actions.tasks.update}
+      />}
+      {view === 'calendar' && !canManage && isPlayer(profile) && <PlayerCalendarView
+        announcements={data.announcements}
+        availability={data.matchAvailability}
+        birthdays={data.calendarBirthdays}
+        focusedAnnouncementId={navigation.announcementId}
+        focusedDate={navigation.date}
+        lineups={data.matchLineups}
+        matches={data.matches}
+        memberships={data.memberships}
+        profiles={data.profiles}
+        results={personalResults}
+        tasks={data.tasks}
+        userId={userId}
+        onLoadMatchMonth={data.loadMatchMonth}
+        onLoadTaskRange={data.loadTaskRange}
+        onSaveAvailability={actions.matches.saveAvailability}
+        onSaveResult={actions.tasks.saveResult}
       />}
       {view === 'tasks' && canAccessTasks(profile) && <TasksView
         announcements={data.announcements}
