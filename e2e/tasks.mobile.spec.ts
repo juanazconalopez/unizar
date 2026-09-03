@@ -27,6 +27,11 @@ test('owner can open demo training plans and find the PDF action', async ({ page
   await page.getByRole('button', { name: /Ver entrenamiento/ }).first().click()
   await expect(page.getByText('VISTA DEL ENTRENAMIENTO')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Guardar PDF' })).toBeVisible()
+
+  await page.emulateMedia({ media: 'print' })
+  const pdf = await page.pdf({ format: 'A4', printBackground: true })
+  const pageCount = pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0
+  expect(pageCount).toBeGreaterThan(1)
 })
 
 test('staff home shows team progress and exposes the linked video task', async ({ page }) => {

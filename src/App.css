@@ -1083,6 +1083,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
 
+  html, body, #root { height: auto !important; min-height: 0 !important; overflow: visible !important; }
   html, body { background: white !important; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .app-shell { min-height: 0; display: block !important; overflow: visible !important; }
@@ -1092,6 +1093,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .demo-toolbar,
   .toast,
   .offline-banner,
+  .pwa-update,
+  .launch-splash,
   .training-detail-back,
   .training-detail-hero-actions button,
   .training-detail-footer { display: none !important; }
@@ -1100,7 +1103,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .training-detail-hero,
   .training-detail-overview,
   .training-detail-exercise { break-inside: avoid; box-shadow: none; }
-  .training-detail-exercises { gap: 10mm; }
+  .training-detail-exercises { display: block; }
+  .training-detail-exercise { margin-bottom: 10mm; overflow: visible; }
 }
 
 @media (max-width: 680px) {
