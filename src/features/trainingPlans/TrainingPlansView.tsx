@@ -36,7 +36,8 @@ import {
 
 type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
 
-export function TrainingPlansView({ focusedPlanId, seasons, userId, onNotify }: {
+export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId, onNotify }: {
+  demo?: boolean
   focusedPlanId?: string
   seasons: Season[]
   userId: string
@@ -60,6 +61,14 @@ export function TrainingPlansView({ focusedPlanId, seasons, userId, onNotify }: 
     setLoading(true)
     setLoadError('')
     try {
+      if (demo) {
+        const loadedPlans = demoTrainingPlans(seasons)
+        setPlans(loadedPlans)
+        setDemoPresets((current) => current.length ? current : demoExercisePresets(seasons, userId))
+        if (focusedPlanId) setViewingPlan(loadedPlans.find((plan) => plan.id === focusedPlanId) ?? null)
+        setDemoMode(true)
+        return
+      }
       const loadedPlans = await fetchTrainingPlans()
       setPlans(loadedPlans)
       if (focusedPlanId) {
@@ -78,7 +87,7 @@ export function TrainingPlansView({ focusedPlanId, seasons, userId, onNotify }: 
     } finally {
       setLoading(false)
     }
-  }, [focusedPlanId, seasons, userId])
+  }, [demo, focusedPlanId, seasons, userId])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0)

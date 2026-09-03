@@ -160,6 +160,9 @@ Reglas importantes:
   - `TrainingPresetEditor`;
   - `TacticsBoard`;
   - `trainingPlanMappers` para transformaciones puras y modo demo.
+- En el editor, la única acción “Añadir ejercicio” aparece debajo del último ejercicio. Los ejercicios nuevos se incorporan al final y se reordenan con los controles existentes.
+- `demo.local` monta esta sección con datos en memoria mediante la propiedad `demo`; no debe consultar Supabase.
+- El detalle ofrece “Guardar PDF” mediante el diálogo de impresión nativo y una hoja de estilos de impresión, sin añadir una dependencia de generación de PDF.
 
 ### Tareas
 

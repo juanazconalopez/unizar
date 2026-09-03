@@ -929,6 +929,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .training-detail-date { margin: 0; display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,.82); font-size: 12px; font-weight: 700; text-transform: capitalize; }
 .training-detail-hero-actions { min-width: 170px; display: grid; justify-items: stretch; gap: 11px; }
 .training-detail-hero-actions .primary-button { border-color: white; color: var(--green-dark); background: white; box-shadow: none; }
+.training-detail-hero-actions .training-pdf-button { border-color: rgba(255,255,255,.5); color: white; background: rgba(255,255,255,.1); }
 .training-detail-hero-actions .primary-button:hover { background: #eff8f2; }
 .training-detail-duration { padding: 15px; border: 1px solid rgba(255,255,255,.25); border-radius: 13px; display: flex; align-items: baseline; justify-content: center; gap: 7px; background: rgba(255,255,255,.1); backdrop-filter: blur(5px); }
 .training-detail-duration strong { font-family: 'Manrope',system-ui,sans-serif; font-size: 32px; }
@@ -987,6 +988,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .training-section-heading h2 { margin: 0; font-size: 19px; }
 .training-section-heading p { margin: 3px 0 0; color: var(--muted); font-size: 10px; }
 .training-exercise-list { display: grid; gap: 13px; }
+.training-add-exercise-action { width: 100%; }
 .training-exercise-card { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #fcfdfc; }
 .training-exercise-card > header { padding: 13px 15px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); background: #f5f8f6; }
 .training-exercise-number { width: 29px; height: 29px; border-radius: 9px; display: grid; place-items: center; color: var(--green); background: var(--green-soft); font-size: 11px; font-weight: 800; }
@@ -1075,6 +1077,29 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .tactics-workspace { grid-template-columns: 1fr; }
   .tactics-palette { grid-template-columns: repeat(5,minmax(0,1fr)); }
   .tactics-palette button { min-height: 52px; }
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+
+  html, body { background: white !important; }
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .app-shell { min-height: 0; display: block !important; overflow: visible !important; }
+  .sidebar,
+  .mobile-header,
+  .mobile-nav,
+  .demo-toolbar,
+  .toast,
+  .offline-banner,
+  .training-detail-back,
+  .training-detail-hero-actions button,
+  .training-detail-footer { display: none !important; }
+  .content { width: 100%; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+  .training-detail-page { width: 100%; max-width: none; padding: 0 !important; }
+  .training-detail-hero,
+  .training-detail-overview,
+  .training-detail-exercise { break-inside: avoid; box-shadow: none; }
+  .training-detail-exercises { gap: 10mm; }
 }
 
 @media (max-width: 680px) {

@@ -14,7 +14,7 @@ export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPla
         <span className="eyebrow">VISTA DEL ENTRENAMIENTO</span><h1>{plan.title}</h1>
         <p className="training-detail-date"><Icon name="calendar" size={17} />{formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
-      <div className="training-detail-hero-actions"><div className="training-detail-duration"><strong>{totalDuration}</strong><span>minutos</span></div><button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button></div>
+      <div className="training-detail-hero-actions"><div className="training-detail-duration"><strong>{totalDuration}</strong><span>minutos</span></div><button className="secondary-button training-pdf-button" onClick={() => window.print()} type="button"><Icon name="download" size={16} />Guardar PDF</button><button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button></div>
     </header>
     <section className="training-detail-overview">
       <article><span className="eyebrow">OBJETIVOS</span><p>{plan.objectives || 'Sin objetivos generales indicados.'}</p></article>

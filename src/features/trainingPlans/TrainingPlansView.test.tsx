@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
 import type { Season, TrainingPlan } from '../../types'
 
@@ -58,6 +58,19 @@ describe('training plan reading view', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  test('loads the local demo plans without querying Supabase', async () => {
+    render(<TrainingPlansView demo onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    expect(await screen.findByText('Modo de muestra local.')).toBeInTheDocument()
+    expect((await screen.findAllByRole('button', { name: /Ver entrenamiento/ })).length).toBeGreaterThan(0)
+    expect(mocks.fetchTrainingPlans).not.toHaveBeenCalled()
+    expect(mocks.fetchTrainingExercisePresets).not.toHaveBeenCalled()
+  })
+
   test('shows today first, then future sessions, and hides past sessions', async () => {
     const today = todayIso()
     mocks.fetchTrainingPlans.mockResolvedValue([
@@ -91,6 +104,7 @@ describe('training plan reading view', () => {
 
   test('opens the card in read mode and keeps Editar for the form', async () => {
     mocks.fetchTrainingPlans.mockResolvedValue([plan])
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
     const user = userEvent.setup()
     render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
 
@@ -102,6 +116,9 @@ describe('training plan reading view', () => {
     expect(screen.getByText('Preparar conos.')).toBeInTheDocument()
     expect(screen.getByLabelText('Esquema táctico de Juego de evasión')).toBeInTheDocument()
     expect(screen.queryByLabelText('Título')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Guardar PDF' }))
+    expect(print).toHaveBeenCalledOnce()
 
     await user.click(screen.getAllByRole('button', { name: 'Editar entrenamiento' })[0])
     expect(screen.getByText('EDITAR ENTRENAMIENTO')).toBeInTheDocument()
@@ -150,7 +167,10 @@ describe('training plan reading view', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar Juego de evasión como predefinido' }))
     expect(mocks.saveTrainingExercisePreset).toHaveBeenCalledWith(expect.objectContaining({ title: 'Juego de evasión' }), 'owner-1')
 
-    await user.click(screen.getByRole('button', { name: 'Añadir ejercicio' }))
+    const addExercise = screen.getByRole('button', { name: 'Añadir ejercicio' })
+    expect(screen.getByRole('heading', { name: 'Ejercicios' }).closest('.training-section-heading')).not.toContainElement(addExercise)
+    expect(screen.getByDisplayValue('Juego de evasión').closest('.training-exercise-card')?.compareDocumentPosition(addExercise) ?? 0).toBeTruthy()
+    await user.click(addExercise)
     await user.click(screen.getByRole('button', { name: /Predefinido/ }))
     expect(await screen.findByLabelText('Vista previa de Circuito rápido')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Añadir al entrenamiento' }))

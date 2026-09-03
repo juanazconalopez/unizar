@@ -194,7 +194,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
         </section>
 
         <section className="training-editor-section">
-          <div className="training-section-heading"><span>2</span><div><h2>Ejercicios</h2><p>Ordena la sesión, añade indicaciones y prepara cada esquema.</p></div><button className="secondary-button" onClick={() => setAddDialog('choice')} type="button"><Icon name="plus" size={16} />Añadir ejercicio</button></div>
+          <div className="training-section-heading"><span>2</span><div><h2>Ejercicios</h2><p>Ordena la sesión, añade indicaciones y prepara cada esquema.</p></div></div>
           <div className="training-exercise-list">
             {values.exercises.map((exercise, index) => (
               <article className="training-exercise-card" key={index}>
@@ -220,6 +220,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
                 </button>
               </article>
             ))}
+            <button className="secondary-button training-add-exercise-action" onClick={() => setAddDialog('choice')} type="button"><Icon name="plus" size={16} />Añadir ejercicio</button>
           </div>
         </section>
 

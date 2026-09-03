@@ -19,6 +19,16 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
   }
 })
 
+test('owner can open demo training plans and find the PDF action', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Entrenamientos' }).click()
+
+  await expect(page.getByText('Modo de muestra local.')).toBeVisible()
+  await page.getByRole('button', { name: /Ver entrenamiento/ }).first().click()
+  await expect(page.getByText('VISTA DEL ENTRENAMIENTO')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Guardar PDF' })).toBeVisible()
+})
+
 test('staff home shows team progress and exposes the linked video task', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('PANEL DEL EQUIPO')).toBeVisible()
