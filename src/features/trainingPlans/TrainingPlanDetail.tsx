@@ -24,9 +24,9 @@ export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPla
     <div className="training-detail-section-heading"><span className="eyebrow">DESARROLLO DE LA SESIÓN</span><h2>Ejercicios</h2></div>
     <div className="training-detail-exercises">{plan.training_exercises.map((exercise, index) => <article className="training-detail-exercise" key={exercise.id}>
       <header><span className="training-detail-number">{index + 1}</span><div><h3>{exercise.title}</h3><p>Ejercicio {index + 1} de {plan.training_exercises.length}</p></div><span className="training-detail-exercise-time"><Icon name="clock" size={16} /><strong>{exercise.duration_minutes}</strong> min</span></header>
-      <div className="training-detail-exercise-body">
+      <div className={`training-detail-exercise-body${exercise.diagram_data.elements.length ? '' : ' without-board'}`}>
         <div className="training-detail-instructions"><section><span className="eyebrow">DESARROLLO</span><p>{exercise.description || 'Sin descripción.'}</p></section></div>
-        <div className="training-detail-board"><div><span className="eyebrow">ESQUEMA</span><small>{exercise.diagram_data.template === 'full' ? 'Campo completo' : exercise.diagram_data.template === 'half' ? 'Medio campo' : 'Zona de 22'}</small></div>{exercise.diagram_data.elements.length ? <TacticsBoardPreview data={exercise.diagram_data} label={`Esquema táctico de ${exercise.title}`} /> : <div className="training-detail-no-board">Este ejercicio no tiene esquema.</div>}</div>
+        {exercise.diagram_data.elements.length > 0 && <div className="training-detail-board"><div><span className="eyebrow">ESQUEMA</span><small>{exercise.diagram_data.template === 'full' ? 'Campo completo' : exercise.diagram_data.template === 'half' ? 'Medio campo' : 'Zona de 22'}</small></div><TacticsBoardPreview data={exercise.diagram_data} label={`Esquema táctico de ${exercise.title}`} /></div>}
       </div>
     </article>)}</div>
     <div className="training-detail-footer"><button className="secondary-button" onClick={onBack} type="button">Volver</button><button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button></div>

@@ -128,6 +128,26 @@ describe('training plan reading view', () => {
     expect(screen.queryByLabelText('Puntos técnicos')).not.toBeInTheDocument()
   })
 
+  test('uses the full exercise width when there is no tactical diagram', async () => {
+    const planWithoutDiagram = {
+      ...plan,
+      title: 'Entrenamiento sin esquema',
+      training_exercises: plan.training_exercises.map((exercise) => ({
+        ...exercise,
+        diagram_data: { ...exercise.diagram_data, elements: [] },
+      })),
+    }
+    mocks.fetchTrainingPlans.mockResolvedValue([planWithoutDiagram])
+    const user = userEvent.setup()
+    render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento Entrenamiento sin esquema' }))
+
+    expect(screen.getByText('Cruzar el campo sin ser tocada.').closest('.training-detail-exercise-body')).toHaveClass('without-board')
+    expect(screen.queryByText('ESQUEMA')).not.toBeInTheDocument()
+    expect(screen.queryByText('Este ejercicio no tiene esquema.')).not.toBeInTheDocument()
+  })
+
   test('preserves an exercise draft on blur, recovers it, and clears it after saving', async () => {
     mocks.fetchTrainingPlans.mockResolvedValue([plan])
     const user = userEvent.setup()

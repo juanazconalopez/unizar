@@ -951,6 +951,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .training-detail-exercise-time { padding: 8px 11px; border-radius: 9px; display: inline-flex; align-items: center; gap: 5px; color: var(--green); background: var(--green-soft); font-size: 9px; font-weight: 700; }
 .training-detail-exercise-time strong { font-size: 15px; }
 .training-detail-exercise-body { padding: 18px; display: grid; grid-template-columns: minmax(240px,.82fr) minmax(390px,1.3fr); align-items: start; gap: 19px; }
+.training-detail-exercise-body.without-board { grid-template-columns: 1fr; }
 .training-detail-instructions { display: grid; gap: 14px; }
 .training-detail-instructions section { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .training-detail-instructions section p { margin: 7px 0 0; color: #455b55; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
