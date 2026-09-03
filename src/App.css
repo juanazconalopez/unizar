@@ -1320,6 +1320,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .week-task-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .day-announcement-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .day-training-bubbles i { width: 14px; height: 14px; font-size: 7px; }
+  .task-planning-calendar > button > .birthday-mark { position: absolute; top: 6px; right: 3px; width: auto; }
   .announcement-card { grid-template-columns: auto minmax(0,1fr); padding: 14px; gap: 10px; }
   .announcement-card .task-actions { grid-column: 2; }
   .statistics-calendar > button.today strong { width: 22px; height: 22px; margin: -2px 0 0 -1px; }
