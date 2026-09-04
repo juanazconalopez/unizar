@@ -11,6 +11,31 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 - No modificar ni eliminar cambios locales ajenos a la tarea. Comprobar siempre `git status --short`.
 - No añadir dependencias nuevas salvo que aporten una ventaja clara y se haya valorado su coste de mantenimiento y tamaño.
 
+### Estrategia de uso de Codex y cuota
+
+- Priorizar una configuración económica que mantenga la calidad mediante pruebas y validación, sin cambiar de modelo automáticamente sin indicárselo al usuario.
+- Configuración recomendada para el trabajo habitual del proyecto: `gpt-5.6-luna` con `model_reasoning_effort = "high"` y `model_verbosity = "low"`. Es adecuada para cambios localizados de React, TypeScript, CSS, calendarios, formularios, exportaciones y pruebas.
+- Cambiar puntualmente a `gpt-5.6-terra` con razonamiento `high` cuando la tarea abarque varias áreas, refactorizaciones amplias, permisos, autenticación, RLS o migraciones de Supabase.
+- Reservar `gpt-5.6-sol` para problemas especialmente complejos de arquitectura, seguridad, depuración difícil o decisiones de alto impacto. No usar `xhigh` o Pro como valores predeterminados.
+- No activar Fast mode para este proyecto: se prioriza consumir menos cuota aunque algunas tareas tarden más.
+- Mantener las conversaciones acotadas por funcionalidad y enviar solo los archivos, capturas y contexto necesarios. Las conversaciones largas, los resultados de herramientas y los servidores MCP aumentan el contexto y el consumo.
+- Mantener la validación obligatoria (`npm test -- --run`, `npm run lint`, `npm run build` y pruebas E2E cuando proceda); bajar el modelo no debe significar omitir comprobaciones.
+- Para una configuración local orientativa de Codex:
+
+  ```toml
+  model = "gpt-5.6-luna"
+  model_reasoning_effort = "high"
+  model_verbosity = "low"
+  approval_policy = "on-request"
+  sandbox_mode = "workspace-write"
+  web_search = "cached"
+
+  [sandbox_workspace_write]
+  network_access = false
+  ```
+
+- Si una tarea necesita información actual de Supabase, Cloudflare, normativa o dependencias, solicitar búsqueda web actualizada de forma puntual en vez de mantenerla siempre activa.
+
 ## Entorno de desarrollo
 
 - Utilizar siempre Node.js 22 mediante:

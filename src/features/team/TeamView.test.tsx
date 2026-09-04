@@ -77,9 +77,33 @@ describe('TeamView', () => {
     expect(screen.queryByText('Clara Pérez')).not.toBeInTheDocument()
     await user.clear(search)
     await user.type(search, 'sin coincidencias')
-    expect(screen.getByText('No hay personas que coincidan con “sin coincidencias”.')).toBeInTheDocument()
+    expect(screen.getByText('No hay personas que coincidan con “sin coincidencias” dentro de los filtros actuales.')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('searchbox', { name: 'Buscar por nombre' })).not.toBeInTheDocument()
+  })
+
+  test('keeps inactive cards compact and reports combined filter results', async () => {
+    const user = userEvent.setup()
+    const active = makeProfile({ id: 'active', display_name: 'Ana Activa' })
+    const inactive = makeProfile({ id: 'inactive', display_name: 'Paula Inactiva', is_active: false })
+    const coach = makeProfile({ id: 'coach', display_name: 'Marta Entrenadora', is_player: false, is_coach: true })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[active, inactive, coach]} profilePrivateDetails={[
+      makeProfilePrivateDetails({ profile_id: 'inactive', email: 'paula@example.com' }),
+    ]} />)
+
+    const inactiveCard = screen.getByRole('button', { name: 'Ver datos de Paula Inactiva' })
+    expect(inactiveCard).toHaveTextContent('Inactiva')
+    expect(inactiveCard).toHaveTextContent('Jugadora')
+    expect(inactiveCard).not.toHaveTextContent('paula@example.com')
+    expect(screen.getByText('3 aprobados · 0 pendientes · 2 activas · 1 inactivas · 2 jugadoras · 1 entrenadoras · 0 dirección')).toBeInTheDocument()
+
+    await user.click(document.querySelector('.team-filter-control > summary')!)
+    await user.click(screen.getByRole('radio', { name: 'Inactivas' }))
+    expect(screen.getByText('1 resultado')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver datos de Ana Activa' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Entrenadora' }))
+    expect(screen.getByText('0 resultados')).toBeInTheDocument()
   })
 
   test('moves duplicate review and approval into the pending profile detail', async () => {

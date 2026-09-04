@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { addDays, monthEnd, monthStart } from '../lib/dates'
+import { withAuthRecovery } from '../lib/authRecovery'
 import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
@@ -63,7 +64,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await fetchTaskWindow(userId, canManageSport(profile), fromWeek, toWeek)
+      const data = await withAuthRecovery(() => fetchTaskWindow(userId, canManageSport(profile), fromWeek, toWeek))
       if (rangeRequestIds.current.tasks !== requestId) return
       loadedTaskRanges.current.set(`${fromWeek}:${toWeek}`, { from: fromWeek, to: toWeek })
       setResults((currentResults) => mergeTaskWindow(
@@ -85,7 +86,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await fetchStatisticsWindow(month)
+      const data = await withAuthRecovery(() => fetchStatisticsWindow(month))
       if (rangeRequestIds.current.statistics !== requestId) return
       loadedStatisticsMonth.current = month
       setTasks(data.tasks)
@@ -107,7 +108,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await fetchAttendanceDate(date)
+      const data = await withAuthRecovery(() => fetchAttendanceDate(date))
       if (rangeRequestIds.current.attendance !== requestId) return data
       loadedAttendanceDate.current = date
       setTrainingSessions((current) => {
@@ -134,7 +135,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     try {
       const from = monthStart(month)
       const to = monthEnd(month)
-      const data = await fetchMatchWindow(from, to)
+      const data = await withAuthRecovery(() => fetchMatchWindow(from, to))
       if (rangeRequestIds.current.matches !== requestId) return
       loadedMatchMonth.current = monthStart(month)
       setMatches((current) => {
@@ -179,7 +180,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       setErrorMessage('')
 
       try {
-        let data = await fetchTrainingData(userId, view)
+        let data = await withAuthRecovery(() => fetchTrainingData(userId, view))
         data = await restoreLoadedRanges(data, view, userId, {
           taskRanges: [...loadedTaskRanges.current.values()],
           statisticsMonth: loadedStatisticsMonth.current,

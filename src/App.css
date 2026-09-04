@@ -352,6 +352,20 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .team-search-field button { position: absolute; right: 6px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 20px; }
 .team-search-field button:hover { color: var(--ink); background: var(--canvas); }
 .team-search-empty { padding: 36px 20px; border: 1px dashed #cbd8d2; border-radius: 13px; color: var(--muted); background: #fafcfb; text-align: center; font-size: 12px; }
+.team-heading-actions { position: relative; display: flex; align-items: center; gap: 8px; }
+.team-filter-control { position: relative; flex: 0 0 auto; }
+.team-filter-control > summary { min-height: 42px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; color: var(--green); background: white; font-size: 11px; font-weight: 800; list-style: none; cursor: pointer; }
+.team-filter-control > summary::-webkit-details-marker { display: none; }
+.team-filter-control > summary:hover, .team-filter-control[open] > summary { border-color: #b8c9c1; background: var(--green-soft); }
+.team-filter-control > summary small { min-width: 17px; height: 17px; padding: 2px 4px; border-radius: 10px; color: white; background: var(--green); font-size: 9px; line-height: 13px; text-align: center; }
+.team-filter-menu { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 230px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 14px; background: white; box-shadow: 0 15px 35px rgba(31,63,54,.16); }
+.team-filter-menu fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: 7px; }
+.team-filter-menu legend { margin-bottom: 2px; color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: .7px; text-transform: uppercase; }
+.team-filter-menu label { min-height: 27px; display: flex; align-items: center; gap: 8px; color: var(--ink); font-size: 11px; cursor: pointer; }
+.team-filter-menu input { width: auto; min-height: 0; margin: 0; accent-color: var(--green); }
+.team-filter-menu .text-button { justify-self: start; padding: 0; font-size: 10px; }
+.team-filter-menu .text-button:disabled { color: #a5b2ad; cursor: default; }
+.team-filter-results { margin: -10px 0 20px; color: var(--green); font-size: 11px; font-weight: 800; }
 .panel-form-heading { margin-bottom: 23px; display: flex; justify-content: space-between; align-items: start; }
 .panel-form-heading h2 { margin: 4px 0 0; font-size: 22px; }
 .panel-form-heading .icon-button:hover { background: var(--canvas); }
@@ -695,6 +709,10 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .profile-details-dialog .form-actions { margin-top: 22px; }
 .person-summary-card { width: 100%; border: 0; color: inherit; background: white; text-align: left; cursor: pointer; flex-wrap: nowrap; }
 .person-summary-card:hover { background: #f7fbf9; }
+.person-summary-card.inactive-person { background: #f7faf8; }
+.person-summary-card.inactive-person:hover { background: #eff7f2; }
+.person-summary-card.owner-person { box-shadow: inset 3px 0 0 var(--green); background: #eff8f2; }
+.person-summary-card.owner-person:hover { background: #e7f3ec; }
 .person-summary-card:focus-visible { position: relative; z-index: 1; outline: 3px solid rgba(30,111,92,.22); outline-offset: -3px; }
 .person-summary-card > .icon { flex: 0 0 auto; color: #8da099; }
 .person-summary-card .person-identity { flex: 1 1 210px; }
@@ -709,6 +727,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .member-active-state.inactive { color: #a24d42; }
 .person-role-list { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .person-role-list small { padding: 3px 6px; border-radius: 20px; color: #42675d; background: #eaf3ef; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .25px; }
+.person-role-list small.owner-role { color: #176847; background: #cce8d6; }
 .profile-completion-state.incomplete { color: #876c18; background: #faf1c8; }
 .person-duplicate-compact { display: inline-flex; align-items: center; gap: 3px; color: #876c18; font-size: 8px; font-weight: 800; }
 .team-member-dialog { width: min(680px,100%); }
@@ -1212,6 +1231,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .page-header { margin-bottom: 27px; align-items: flex-start; flex-direction: column; }
   .page-header h1 { font-size: 34px; }
   .page-header .primary-button { width: 100%; }
+  .team-heading-actions { width: 100%; justify-content: flex-end; }
+  .team-heading-actions .team-search-field { flex: 1 1 auto; width: auto; }
   .match-view-actions, .callup-report-actions { width: 100%; align-items: stretch; flex-direction: column; }
   .match-view-actions button, .callup-report-actions button, .lineup-export-actions button { width: 100%; }
   .callup-report-heading { align-items: stretch; flex-direction: column; }
@@ -1252,6 +1273,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .people-list { overflow: visible; border: 0; display: grid; gap: 10px; background: transparent; }
   .person-row, .person-row:last-child { border: 1px solid var(--line); border-radius: 12px; }
   .person-summary-card { position: relative; padding: 14px; grid-template-areas: 'identity arrow' 'contact contact' 'state state'; grid-template-columns: minmax(0,1fr) auto; row-gap: 12px; column-gap: 10px; box-shadow: 0 4px 12px rgba(31,63,54,.035); }
+  .person-summary-card.inactive-person { grid-template-areas: 'identity arrow' 'state state'; }
   .person-summary-card .person-identity { grid-area: identity; }
   .person-summary-card .person-identity > span { min-width: 0; }
   .person-summary-card .person-identity > span > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
