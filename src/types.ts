@@ -241,7 +241,36 @@ export type CompetitionPlayerStat = {
   redCards: number
 }
 
-export type ViewName = 'home' | 'statistics' | 'calendar' | 'training' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings'
+export type LibrarySyncStatus = 'idle' | 'running' | 'succeeded' | 'failed'
+
+export type LibrarySettings = {
+  id: boolean
+  root_folder_id: string | null
+  root_folder_url: string | null
+  root_resource_key: string | null
+  sync_status: LibrarySyncStatus
+  sync_error: string | null
+  item_count: number
+  last_synced_at: string | null
+  updated_at: string
+  updated_by: string | null
+}
+
+export type LibraryItem = {
+  drive_file_id: string
+  parent_drive_id: string | null
+  name: string
+  mime_type: string
+  size_bytes: number | null
+  modified_at: string | null
+  web_view_link: string | null
+  web_content_link: string | null
+  resource_key: string | null
+  is_folder: boolean
+  synced_at: string
+}
+
+export type ViewName = 'home' | 'statistics' | 'calendar' | 'training' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings' | 'library'
 
 export type ResultValues = {
   resultText: string

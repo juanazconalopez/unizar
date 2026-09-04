@@ -6,7 +6,7 @@ import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
-import type { AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
@@ -31,6 +31,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [todayBirthdays, setTodayBirthdays] = useState<TodayBirthday[]>([])
   const [seasonBirthdays, setSeasonBirthdays] = useState<SeasonBirthday[]>([])
   const [calendarBirthdays, setCalendarBirthdays] = useState<CalendarBirthday[]>([])
+  const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([])
+  const [librarySettings, setLibrarySettings] = useState<LibrarySettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [loadingRange, setLoadingRange] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -206,6 +208,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setTodayBirthdays(data.todayBirthdays)
         setSeasonBirthdays(data.seasonBirthdays)
         setCalendarBirthdays(data.calendarBirthdays)
+        setLibraryItems(data.libraryItems)
+        setLibrarySettings(data.librarySettings)
         setLoadedView(view)
         setLoadedUserId(userId)
       } catch (error) {
@@ -276,6 +280,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     todayBirthdays,
     seasonBirthdays,
     calendarBirthdays,
+    libraryItems,
+    librarySettings,
     loading,
     loadingRange,
     errorMessage,

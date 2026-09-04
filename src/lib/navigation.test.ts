@@ -32,4 +32,15 @@ describe('contextual navigation', () => {
     })
     expect(urlForNavigation({ view: 'training', trainingPlanId: 'plan-1' })).toContain('?view=training&training=plan-1')
   })
+
+  test('keeps the selected settings section in a shareable URL', () => {
+    expect(navigationFromLocation({ search: '?view=settings&section=library' } as Location)).toEqual({
+      view: 'settings', settingsSection: 'library',
+    })
+    expect(urlForNavigation({ view: 'settings', settingsSection: 'seasons' })).toContain('?view=settings&section=seasons')
+  })
+
+  test('accepts the library route', () => {
+    expect(navigationFromLocation({ search: '?view=library' } as Location)).toEqual({ view: 'library' })
+  })
 })

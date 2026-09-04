@@ -11,8 +11,9 @@ import { isPlayer } from '../../lib/permissions'
 import type { Profile, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
 
-export function SeasonsView({ embedded = false, seasons, profiles, profilePrivateDetails = [], memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
+export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, profiles, profilePrivateDetails = [], memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
   embedded?: boolean
+  hideEmbeddedTitle?: boolean
   seasons: Season[]
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
@@ -28,7 +29,7 @@ export function SeasonsView({ embedded = false, seasons, profiles, profilePrivat
 
   return (
     <div className={embedded ? 'settings-section' : 'page'}>
-      {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2><p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => { setEditingSeason(null); setShowForm(true) }}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
+      {embedded ? <div className={`settings-section-heading${hideEmbeddedTitle ? ' compact' : ''}`}><div>{!hideEmbeddedTitle && <><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2></>}<p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => { setEditingSeason(null); setShowForm(true) }}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
         eyebrow="ORGANIZACIÓN"
         title="Temporadas"
         subtitle="Gestiona periodos y participantes del equipo."

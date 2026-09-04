@@ -5,6 +5,7 @@ import type { AppActions } from './app/actions/appActions'
 import { createClubActions } from './app/actions/clubActions'
 import { createMatchActions } from './app/actions/matchActions'
 import { createTaskActions } from './app/actions/taskActions'
+import { createLibraryActions } from './app/actions/libraryActions'
 import { canAccessView } from './app/appAccess'
 import { AppLayout } from './components/layout/AppLayout'
 import { DataLoadErrorScreen, DisabledScreen, LoadingScreen, LoginScreen, PendingScreen } from './features/auth/AuthScreens'
@@ -44,6 +45,7 @@ function App() {
     club: createClubActions(actionContext, data.memberships),
     matches: createMatchActions(actionContext),
     tasks: createTaskActions(actionContext, data.results),
+    library: createLibraryActions(actionContext),
   }
 
   useEffect(() => {
@@ -88,6 +90,7 @@ function App() {
     online={online}
     profile={profile}
     profileDetails={data.ownProfileDetails}
+    settingsSection={navigation.settingsSection}
     view={view}
     onNavigate={navigate}
     onNotificationOpen={(notification) => navigate({

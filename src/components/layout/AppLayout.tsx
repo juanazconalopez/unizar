@@ -11,14 +11,22 @@ import { NotificationCenter } from '../../features/notifications/NotificationCen
 import { ProfileDetailsDialog } from '../../features/profile/ProfileDetailsDialog'
 import type { AppNotification } from '../../features/notifications/notifications'
 import { canManageSport, canViewTeamData, isPlayer } from '../../lib/permissions'
+import type { NavigationTarget } from '../../lib/navigation'
 
-type NavigationItem = { id: ViewName; label: string; icon: IconName }
+type NavigationLeaf = { id: ViewName; label: string; icon: IconName; target?: NavigationTarget }
+type NavigationGroup = { id: 'attendance' | 'settings'; label: string; icon: IconName; children: NavigationLeaf[] }
+type NavigationEntry = NavigationLeaf | NavigationGroup
+
+function isNavigationGroup(entry: NavigationEntry): entry is NavigationGroup {
+  return 'children' in entry
+}
 
 export function AppLayout({
   profile,
   profileDetails,
   email,
   view,
+  settingsSection,
   message,
   errorMessage,
   online = true,
@@ -38,10 +46,11 @@ export function AppLayout({
   profileDetails?: ProfilePrivateDetails | null
   email: string
   view: ViewName
+  settingsSection?: 'team' | 'seasons' | 'library'
   message: string
   errorMessage: string
   online?: boolean
-  onNavigate: (view: ViewName) => void
+  onNavigate: (view: ViewName | NavigationTarget) => void
   onSignOut: () => void
   onLoadProfilePhoto?: (path: string) => Promise<string>
   onUpdateProfileDetails?: (values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) => Promise<void>
@@ -65,31 +74,43 @@ export function AppLayout({
   const canManage = canManageSport(profile)
   const canViewTeam = canViewTeamData(profile)
   const canEditProfile = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateProfileDetails)
-  const navigation: NavigationItem[] = [
+  const navigation: NavigationEntry[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
-    ...(canViewTeam ? [
-      { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
-    ] : []),
-    ...(canManage
-      ? [
-          { id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const },
-          { id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const },
-        ]
-      : isPlayer(profile)
+    ...(canManage ? [
+      { id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const },
+      {
+        id: 'attendance' as const,
+        label: 'Asistencia',
+        icon: 'check' as const,
+        children: [
+          { id: 'attendance' as const, label: 'Registrar asistencia', icon: 'check' as const },
+          { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
+        ],
+      },
+      { id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const },
+    ] : [
+      ...(canViewTeam ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
+      ...(isPlayer(profile)
         ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }]
         : [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }]),
+    ]),
     { id: 'competition', label: 'Competición', icon: 'trophy' },
-    ...(canManage ? [
-      { id: 'attendance' as const, label: 'Asistencia', icon: 'check' as const },
-    ] : []),
-    ...(profile.is_owner ? [
-      { id: 'settings' as const, label: 'Ajustes', icon: 'settings' as const },
-    ] : []),
+    { id: 'library', label: 'Librería', icon: 'folder' },
+    ...(profile.is_owner ? [{
+      id: 'settings' as const,
+      label: 'Ajustes',
+      icon: 'settings' as const,
+      children: [
+        { id: 'settings' as const, label: 'Equipo', icon: 'users' as const, target: { view: 'settings' as const, settingsSection: 'team' as const } },
+        { id: 'settings' as const, label: 'Temporadas', icon: 'calendar' as const, target: { view: 'settings' as const, settingsSection: 'seasons' as const } },
+        { id: 'settings' as const, label: 'Librería', icon: 'folder' as const, target: { view: 'settings' as const, settingsSection: 'library' as const } },
+      ],
+    }] : []),
   ]
 
   const role = profileRoles(profile).join(' · ') || 'Miembro'
 
-  function navigate(nextView: ViewName) {
+  function navigate(nextView: ViewName | NavigationTarget) {
     setProfileMenuOpen(false)
     onNavigate(nextView)
   }
@@ -127,7 +148,7 @@ export function AppLayout({
     <div className={`app-shell${online ? '' : ' offline'}`}>
       <aside className="sidebar">
         <ClubBrand onClick={() => navigate('home')} />
-        <Navigation items={navigation} view={view} onNavigate={navigate} />
+        <Navigation items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
         {showInstallAction && (
           <button className="sidebar-install" onClick={requestInstall} type="button">
             <Icon name="download" size={17} />Instalar aplicación
@@ -202,7 +223,7 @@ export function AppLayout({
         {children}
       </main>
 
-      <Navigation mobile items={navigation} view={view} onNavigate={navigate} />
+      <Navigation mobile items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
       {notificationsOpen && (
         <Modal className="notification-dialog" labelledBy="notification-center-title" onClose={() => setNotificationsOpen(false)}>
           <div className="notification-dialog-close"><button aria-label="Cerrar avisos" className="icon-button" onClick={() => setNotificationsOpen(false)} type="button">×</button></div>
@@ -274,24 +295,74 @@ function NotificationButton({ count, onClick }: { count: number; onClick: () => 
   )
 }
 
-function Navigation({ items, view, mobile = false, onNavigate }: {
-  items: NavigationItem[]
+function Navigation({ items, settingsSection, view, mobile = false, onNavigate }: {
+  items: NavigationEntry[]
+  settingsSection?: 'team' | 'seasons' | 'library'
   view: ViewName
   mobile?: boolean
-  onNavigate: (view: ViewName) => void
+  onNavigate: (view: ViewName | NavigationTarget) => void
 }) {
+  const [openGroup, setOpenGroup] = useState<NavigationGroup['id'] | null>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const selectedSettingsSection = settingsSection ?? 'team'
+
+  useEffect(() => {
+    if (!openGroup) return
+    function closeOnOutsidePress(event: PointerEvent) {
+      if (!navRef.current?.contains(event.target as Node)) setOpenGroup(null)
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpenGroup(null)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [openGroup])
+
   return (
-    <nav aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'} className={mobile ? 'mobile-nav' : undefined}>
-      {items.map((item) => (
-        <button
-          className={mobile ? (view === item.id ? 'active' : '') : (view === item.id ? 'nav-item active' : 'nav-item')}
-          key={item.id}
-          onClick={() => onNavigate(item.id)}
-        >
-          <Icon name={item.icon} />
-          <span>{item.label}</span>
-        </button>
-      ))}
+    <nav ref={navRef} aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'} className={mobile ? 'mobile-nav' : undefined}>
+      {items.map((item) => {
+        const grouped = isNavigationGroup(item)
+        const active = grouped ? item.children.some((child) => child.id === view) : view === item.id
+        const itemClassName = mobile ? (active ? 'active' : '') : (active ? 'nav-item active' : 'nav-item')
+        if (!grouped) {
+          return <button className={itemClassName} key={item.id} onClick={() => { setOpenGroup(null); onNavigate(item.target ?? item.id) }} type="button">
+            <Icon name={item.icon} />
+            <span>{item.label}</span>
+          </button>
+        }
+        const expanded = openGroup === item.id
+        return <div className={`nav-group${expanded ? ' open' : ''}`} key={item.id}>
+          <button
+            aria-expanded={expanded}
+            aria-haspopup="menu"
+            className={itemClassName}
+            onClick={() => setOpenGroup((current) => current === item.id ? null : item.id)}
+            type="button"
+          >
+            <Icon name={item.icon} />
+            <span>{item.label}</span>
+            <b aria-hidden="true" className="nav-group-chevron">⌄</b>
+          </button>
+          {expanded && <div className="nav-submenu" role="menu">
+            {item.children.map((child) => (
+              <button
+                className={view === child.id && (!child.target?.settingsSection || child.target.settingsSection === selectedSettingsSection) ? 'active' : ''}
+                key={`${item.id}-${child.label}`}
+                onClick={() => { setOpenGroup(null); onNavigate(child.target ?? child.id) }}
+                role="menuitem"
+                type="button"
+              >
+                <Icon name={child.icon} size={16} />
+                <span>{child.label}</span>
+              </button>
+            ))}
+          </div>}
+        </div>
+      })}
     </nav>
   )
 }

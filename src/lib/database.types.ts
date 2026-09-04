@@ -241,6 +241,95 @@ export type Database = {
           },
         ]
       }
+      library_items: {
+        Row: {
+          drive_file_id: string
+          is_folder: boolean
+          mime_type: string
+          modified_at: string | null
+          name: string
+          parent_drive_id: string | null
+          resource_key: string | null
+          size_bytes: number | null
+          synced_at: string
+          web_content_link: string | null
+          web_view_link: string | null
+        }
+        Insert: {
+          drive_file_id: string
+          is_folder?: boolean
+          mime_type: string
+          modified_at?: string | null
+          name: string
+          parent_drive_id?: string | null
+          resource_key?: string | null
+          size_bytes?: number | null
+          synced_at?: string
+          web_content_link?: string | null
+          web_view_link?: string | null
+        }
+        Update: {
+          drive_file_id?: string
+          is_folder?: boolean
+          mime_type?: string
+          modified_at?: string | null
+          name?: string
+          parent_drive_id?: string | null
+          resource_key?: string | null
+          size_bytes?: number | null
+          synced_at?: string
+          web_content_link?: string | null
+          web_view_link?: string | null
+        }
+        Relationships: []
+      }
+      library_settings: {
+        Row: {
+          id: boolean
+          item_count: number
+          last_synced_at: string | null
+          root_folder_id: string | null
+          root_folder_url: string | null
+          root_resource_key: string | null
+          sync_error: string | null
+          sync_status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          item_count?: number
+          last_synced_at?: string | null
+          root_folder_id?: string | null
+          root_folder_url?: string | null
+          root_resource_key?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          item_count?: number
+          last_synced_at?: string | null
+          root_folder_id?: string | null
+          root_folder_url?: string | null
+          root_resource_key?: string | null
+          sync_error?: string | null
+          sync_status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_availability: {
         Row: {
           comment: string | null
@@ -1129,6 +1218,7 @@ export type Database = {
         Args: { checked_match_id: string }
         Returns: boolean
       }
+      current_user_can_read_library: { Args: never; Returns: boolean }
       current_user_can_manage_tasks: { Args: never; Returns: boolean }
       current_user_is_active_player: { Args: never; Returns: boolean }
       current_user_is_approved: { Args: never; Returns: boolean }
@@ -1173,6 +1263,24 @@ export type Database = {
           checked_player_stats: Json
           checked_season: Json
           checked_standings: Json
+        }
+        Returns: undefined
+      }
+      replace_library_catalog: {
+        Args: {
+          checked_folder_id: string
+          checked_folder_url: string | null
+          checked_items: Json
+          checked_resource_key: string | null
+          checked_synced_at: string
+        }
+        Returns: number
+      }
+      set_library_folder: {
+        Args: {
+          checked_folder_id: string
+          checked_folder_url: string
+          checked_resource_key: string | null
         }
         Returns: undefined
       }

@@ -38,26 +38,69 @@ describe('AppLayout', () => {
     expect(onNavigate).toHaveBeenCalledWith('calendar')
   })
 
-  test('shows every management area to owners', () => {
+  test('shows every management area to owners', async () => {
+    const user = userEvent.setup()
     const { navigation } = renderLayout(makeProfile({ is_owner: true }))
 
-    for (const label of ['Inicio', 'Resumen', 'Calendario', 'Competición', 'Asistencia', 'Ajustes']) {
+    for (const label of ['Inicio', 'Calendario', 'Competición', 'Asistencia', 'Ajustes', 'Librería']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
+    await user.click(within(navigation).getByRole('button', { name: 'Asistencia' }))
+    expect(within(navigation).getByRole('menuitem', { name: 'Resumen' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
   })
 
-  test('gives coaches every sports area but not settings', () => {
+  test('groups attendance actions and settings sections', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    const { navigation } = renderLayout(makeProfile({ is_owner: true }), onNavigate)
+
+    await user.click(within(navigation).getByRole('button', { name: 'Asistencia' }))
+    expect(within(navigation).getByRole('menu')).toBeInTheDocument()
+    expect(onNavigate).not.toHaveBeenCalled()
+    await user.click(within(navigation).getByRole('menuitem', { name: 'Registrar asistencia' }))
+    expect(onNavigate).toHaveBeenCalledWith('attendance')
+
+    await user.click(within(navigation).getByRole('button', { name: 'Ajustes' }))
+    await user.click(within(navigation).getByRole('menuitem', { name: 'Librería' }))
+    expect(onNavigate).toHaveBeenCalledWith({ view: 'settings', settingsSection: 'library' })
+  })
+
+  test('closes an open submenu before navigating to another main option', async () => {
+    const user = userEvent.setup()
+    const onNavigate = vi.fn()
+    const { navigation } = renderLayout(makeProfile({ is_owner: true }), onNavigate)
+
+    await user.click(within(navigation).getByRole('button', { name: 'Ajustes' }))
+    expect(within(navigation).getByRole('menu')).toBeInTheDocument()
+    await user.click(within(navigation).getByRole('button', { name: 'Calendario' }))
+    expect(within(navigation).queryByRole('menu')).not.toBeInTheDocument()
+    expect(onNavigate).toHaveBeenCalledWith('calendar')
+  })
+
+  test('closes an open submenu when clicking outside navigation', async () => {
+    const user = userEvent.setup()
+    const { navigation } = renderLayout(makeProfile({ is_owner: true }))
+
+    await user.click(within(navigation).getByRole('button', { name: 'Ajustes' }))
+    expect(within(navigation).getByRole('menu')).toBeInTheDocument()
+    await user.click(screen.getByText('Contenido'))
+    expect(within(navigation).queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  test('gives coaches every sports area but not settings', async () => {
+    const user = userEvent.setup()
     const { navigation } = renderLayout(makeProfile({ is_coach: true }))
     expect(within(navigation).getByRole('button', { name: 'Calendario' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
-    expect(within(navigation).getByRole('button', { name: 'Resumen' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Asistencia' })).toBeInTheDocument()
+    await user.click(within(navigation).getByRole('button', { name: 'Asistencia' }))
+    expect(within(navigation).getByRole('menuitem', { name: 'Resumen' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument()
   })
 

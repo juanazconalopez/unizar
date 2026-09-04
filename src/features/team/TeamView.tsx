@@ -34,8 +34,9 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayer }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayer }: {
   embedded?: boolean
+  hideEmbeddedTitle?: boolean
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
   provisionalPlayers?: ProvisionalPlayer[]
@@ -113,7 +114,7 @@ export function TeamView({ embedded = false, profiles, profilePrivateDetails = [
   const headerActions = <div className="team-heading-actions">{searchControl}{filterControl}</div>
 
   return <div className={embedded ? 'settings-section' : 'page'}>
-    {embedded ? <div className="settings-section-heading"><div><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2><p>{teamSummary}</p></div>{headerActions}</div> : <PageHeader action={headerActions} eyebrow="ADMINISTRACIÓN" subtitle={teamSummary} title="Equipo" />}
+    {embedded ? <div className={`settings-section-heading${hideEmbeddedTitle ? ' compact' : ''}`}><div>{!hideEmbeddedTitle && <><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2></>}<p>{teamSummary}</p></div>{headerActions}</div> : <PageHeader action={headerActions} eyebrow="ADMINISTRACIÓN" subtitle={teamSummary} title="Equipo" />}
     {hasSearchOrFilters && <p aria-live="polite" className="team-filter-results">{filterResultCount} {filterResultCount === 1 ? 'resultado' : 'resultados'}</p>}
     {pending.length > 0 && <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">{pending.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} warning={profiles.some((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name))} />)}</PeopleSection>}
     {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Personas del equipo">{approved.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</PeopleSection>}

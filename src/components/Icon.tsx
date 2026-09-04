@@ -25,6 +25,7 @@ export type IconName =
   | 'save'
   | 'edit'
   | 'close'
+  | 'folder'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></>,
@@ -51,6 +52,7 @@ const paths: Record<IconName, ReactNode> = {
   save: <><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></>,
   edit: <><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></>,
   close: <path d="m6 6 12 12M18 6 6 18"/>,
+  folder: <><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/><path d="M3 9h18"/></>,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

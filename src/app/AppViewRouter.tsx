@@ -12,7 +12,7 @@ import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
-import { AttendanceView, CalendarView, CompetitionView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, TasksView, TrainingPlansView } from './viewModules'
+import { AttendanceView, CalendarView, CompetitionView, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, TasksView, TrainingPlansView } from './viewModules'
 
 type TrainingController = ReturnType<typeof useTrainingData>
 type CompetitionController = ReturnType<typeof useCompetitionData>
@@ -51,9 +51,9 @@ export function AppViewRouter({
       : <SectionLoading />
   }
 
-  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}`}>
+  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}:${navigation.settingsSection ?? ''}`}>
     <Suspense fallback={<SectionLoading />}>
-      {view !== 'competition' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId) && (
+      {view !== 'competition' && view !== 'library' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId) && (
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
       {view === 'home' && <Dashboard
@@ -215,6 +215,7 @@ export function AppViewRouter({
         onSeasonChange={competition.loadSeason}
         onSync={competition.synchronize}
       />}
+      {view === 'library' && <LibraryView items={data.libraryItems} />}
       {view === 'settings' && profile.is_owner && <SettingsView
         currentUserId={userId}
         memberships={data.memberships}
@@ -223,6 +224,8 @@ export function AppViewRouter({
         provisionalAttendance={data.provisionalAttendance}
         provisionalPlayers={data.provisionalPlayers}
         seasons={data.seasons}
+        section={navigation.settingsSection}
+        librarySettings={data.librarySettings}
         onCreateSeason={actions.club.createSeason}
         onDeleteSeason={actions.club.deleteSeason}
         onArchiveProfile={actions.club.archiveProfile}
@@ -232,7 +235,10 @@ export function AppViewRouter({
         onUpdateProfile={actions.club.updateProfile}
         onUpdateProfileDetails={actions.club.updateManagedProfile}
         onUpdateSeason={actions.club.updateSeason}
+        onSaveLibraryFolder={actions.library.saveFolder}
+        onSyncLibrary={actions.library.sync}
       />}
+      {view === 'settings' && !profile.is_owner && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
     </Suspense>
   </ViewErrorBoundary>
 }

@@ -20,6 +20,7 @@ export function canAccessView(profile: Profile, view: ViewName) {
   if (view === 'tasks') return false
   if (view === 'matches') return !canManageSport(profile) && !isPlayer(profile)
   if (view === 'settings') return profile.is_owner
+  if (view === 'library') return profile.is_approved && profile.is_active && !profile.is_archived
   if (view === 'statistics') return canViewTeamData(profile)
   return true
 }

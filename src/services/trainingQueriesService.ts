@@ -37,7 +37,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
     provisionalPlayers: canViewTeam && (scope === 'statistics' || scope === 'attendance' || scope === 'settings'),
     matches: scope === 'home' || scope === 'calendar' || scope === 'matches',
     announcements: scope === 'home' || scope === 'calendar' || scope === 'tasks',
-    seasons: scope !== 'competition',
+    seasons: scope !== 'competition' && scope !== 'library',
   }
 }
 

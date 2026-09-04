@@ -47,6 +47,28 @@ procesa calendario, clasificación y estadísticas públicas de MatchReady, y gu
 una instantánea separada por temporada. Una nueva edición aparece automáticamente
 en el selector y las anteriores permanecen en Supabase aunque desaparezca su fuente.
 
+### Librería de Google Drive
+
+La Librería guarda únicamente metadatos de una carpeta raíz de Drive. Los documentos
+no se transfieren a Supabase: los enlaces de visualización y descarga siguen apuntando
+a Google Drive. La carpeta debe compartirse como mínimo con la cuenta de servicio de
+Google como lectora; el acceso "cualquiera con el enlace" se puede mantener para que
+los miembros abran los documentos.
+
+En el proyecto de Google Cloud de la cuenta de servicio debe estar habilitada la **Google
+Drive API**. No hace falta habilitar APIs de subida ni guardar archivos en Supabase.
+
+Después de aplicar `037_library.sql` desde el SQL Editor, despliega la función:
+
+```bash
+npx supabase functions deploy sync-library --project-ref TU_PROJECT_REF
+```
+
+En **Edge Functions → Secrets** configura `GOOGLE_SERVICE_ACCOUNT_JSON` con el
+contenido de la clave JSON de la cuenta de servicio. Nunca lo guardes en el frontend,
+en `.env` con prefijo `VITE_` ni en Git. Solo el owner puede cambiar la carpeta y
+sincronizar; el catálogo es de lectura para usuarios aprobados y activos.
+
 ## Desarrollo local
 
 Requiere Node `20.19` o posterior compatible con Vite 8.
@@ -64,7 +86,7 @@ VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-Los secretos de Google no deben guardarse en el proyecto ni usar el prefijo `VITE_`. Se configuran únicamente en Supabase, dentro de **Authentication → Sign In / Providers → Google**.
+Los secretos de Google no deben guardarse en el proyecto ni usar el prefijo `VITE_`. Las credenciales OAuth del login se configuran en **Authentication → Sign In / Providers → Google**; la clave JSON de la cuenta de servicio de Drive se configura únicamente en **Edge Functions → Secrets** como `GOOGLE_SERVICE_ACCOUNT_JSON`.
 
 ## Organización del código
 

@@ -1,5 +1,5 @@
 begin;
-select plan(131);
+select plan(136);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -480,6 +480,11 @@ select ok(
 select has_function('public', 'update_own_profile', array['text', 'text', 'date', 'text'], 'players can update their own details and photo path');
 select has_function('public', 'update_managed_profile', array['uuid', 'text', 'text', 'date', 'boolean', 'boolean', 'boolean', 'boolean', 'boolean', 'text'], 'owners update details and permissions atomically');
 select has_function('public', 'archive_profile_as_owner', array['uuid'], 'owners archive profiles through a protected function');
+select ok(to_regclass('public.library_settings') is not null, 'library settings are persisted');
+select ok(to_regclass('public.library_items') is not null, 'library metadata items are persisted');
+select has_function('public', 'current_user_can_read_library', array[]::text[], 'approved active users can read the library');
+select has_function('public', 'set_library_folder', array['text', 'text', 'text'], 'owners can change the Drive folder');
+select has_function('public', 'replace_library_catalog', array['text', 'text', 'text', 'jsonb', 'timestamp with time zone'], 'Drive catalog replacement is atomic');
 
 select * from finish();
 rollback;

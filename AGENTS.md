@@ -207,6 +207,15 @@ Reglas importantes:
 - Clasificación, calendario y estadísticas procedentes de la fuente de competición.
 - La sincronización queda reservada al owner.
 
+### Librería
+
+- `src/features/library/LibraryView.tsx` muestra el árbol de carpetas y archivos sincronizados de Google Drive; `LibrarySettingsView` permite al owner guardar la carpeta raíz y lanzar la sincronización.
+- `library_settings` conserva la carpeta y el estado de sincronización; `library_items` conserva únicamente metadatos y enlaces de Drive. No guardar nunca bytes de documentos en Supabase.
+- `supabase/functions/sync-library/index.ts` usa la cuenta de servicio configurada en el secreto `GOOGLE_SERVICE_ACCOUNT_JSON`, recorre `files.list` de forma paginada y reemplaza el catálogo mediante `replace_library_catalog`.
+- La carpeta raíz puede estar en Mi unidad. Debe compartirse como lectora con el correo de la cuenta de servicio; el permiso "cualquiera con el enlace" se mantiene si los miembros deben abrir los enlaces sin autenticarse en Drive.
+- La migración `037_library.sql` se copia y ejecuta manualmente en el SQL Editor de Supabase. No probarla con Docker ni `supabase db reset` en este entorno; revisar RLS y el plan pgTAP de forma estática.
+- Nunca introducir la clave JSON en el frontend, en una variable `VITE_`, en commits ni en mensajes. Las operaciones de configuración y sincronización están reservadas al owner; el catálogo solo se lee con RLS para usuarios aprobados, activos y no archivados.
+
 ### Asistencia
 
 - Owner y entrenadores registran asistencia de campo.

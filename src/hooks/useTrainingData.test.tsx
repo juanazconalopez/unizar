@@ -41,6 +41,8 @@ const trainingData = {
   todayBirthdays: [],
   seasonBirthdays: [],
   calendarBirthdays: [],
+  libraryItems: [],
+  librarySettings: null,
 }
 
 async function flushInitialLoad() {
