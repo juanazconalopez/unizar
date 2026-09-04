@@ -96,7 +96,10 @@ begin
     raise exception 'La carpeta raíz de Drive es obligatoria';
   end if;
 
-  delete from public.library_items;
+  -- pg_safeupdate (activo en Supabase) exige una cláusula WHERE incluso
+  -- cuando la intención es vaciar el catálogo completo.
+  delete from public.library_items
+  where drive_file_id is not null;
   insert into public.library_settings (
     id, root_folder_id, root_folder_url, root_resource_key,
     sync_status, sync_error, item_count, last_synced_at, updated_at, updated_by

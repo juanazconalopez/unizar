@@ -1,5 +1,5 @@
 begin;
-select plan(136);
+select plan(137);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -485,6 +485,11 @@ select ok(to_regclass('public.library_items') is not null, 'library metadata ite
 select has_function('public', 'current_user_can_read_library', array[]::text[], 'approved active users can read the library');
 select has_function('public', 'set_library_folder', array['text', 'text', 'text'], 'owners can change the Drive folder');
 select has_function('public', 'replace_library_catalog', array['text', 'text', 'text', 'jsonb', 'timestamp with time zone'], 'Drive catalog replacement is atomic');
+select like(
+  pg_get_functiondef('public.set_library_folder(text,text,text)'::regprocedure),
+  '%delete from public.library_items%where drive_file_id is not null%',
+  'changing the Drive folder uses a safe DELETE clause'
+);
 
 select * from finish();
 rollback;

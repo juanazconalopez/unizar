@@ -58,7 +58,8 @@ los miembros abran los documentos.
 En el proyecto de Google Cloud de la cuenta de servicio debe estar habilitada la **Google
 Drive API**. No hace falta habilitar APIs de subida ni guardar archivos en Supabase.
 
-Después de aplicar `037_library.sql` desde el SQL Editor, despliega la función:
+Después de aplicar `037_library.sql` desde el SQL Editor (y `038_library_safe_delete.sql`
+si la primera migración ya se ejecutó antes de esta corrección), despliega la función:
 
 ```bash
 npx supabase functions deploy sync-library --project-ref TU_PROJECT_REF

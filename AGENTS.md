@@ -213,7 +213,7 @@ Reglas importantes:
 - `library_settings` conserva la carpeta y el estado de sincronización; `library_items` conserva únicamente metadatos y enlaces de Drive. No guardar nunca bytes de documentos en Supabase.
 - `supabase/functions/sync-library/index.ts` usa la cuenta de servicio configurada en el secreto `GOOGLE_SERVICE_ACCOUNT_JSON`, recorre `files.list` de forma paginada y reemplaza el catálogo mediante `replace_library_catalog`.
 - La carpeta raíz puede estar en Mi unidad. Debe compartirse como lectora con el correo de la cuenta de servicio; el permiso "cualquiera con el enlace" se mantiene si los miembros deben abrir los enlaces sin autenticarse en Drive.
-- La migración `037_library.sql` se copia y ejecuta manualmente en el SQL Editor de Supabase. No probarla con Docker ni `supabase db reset` en este entorno; revisar RLS y el plan pgTAP de forma estática.
+- Las migraciones `037_library.sql` y `038_library_safe_delete.sql` se copian y ejecutan manualmente en el SQL Editor de Supabase (`038` corrige el `DELETE` protegido por `pg_safeupdate` si `037` ya estaba aplicada). No probarlas con Docker ni `supabase db reset` en este entorno; revisar RLS y el plan pgTAP de forma estática.
 - Nunca introducir la clave JSON en el frontend, en una variable `VITE_`, en commits ni en mensajes. Las operaciones de configuración y sincronización están reservadas al owner; el catálogo solo se lee con RLS para usuarios aprobados, activos y no archivados.
 
 ### Asistencia
