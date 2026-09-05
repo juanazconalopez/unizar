@@ -48,7 +48,8 @@ test('staff home shows team progress and exposes the linked video task', async (
 
 test('daily attendance groups and task metrics stay compact on mobile', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Resumen' }).click()
+  await page.getByRole('button', { name: 'Asistencia' }).click()
+  await page.getByRole('menuitem', { name: 'Resumen' }).click()
 
   const present = page.getByRole('region', { name: /Asistieron: \d+ jugadoras/ })
   const absent = page.getByRole('region', { name: /No asistieron: \d+ jugadoras/ })
@@ -177,7 +178,9 @@ test('player sees her seasonal progress from home', async ({ page }) => {
 test('coach manages sports areas without access to settings', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('coach')
-  await expect(page.getByRole('button', { name: 'Resumen' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Asistencia' })).toBeVisible()
+  await page.getByRole('button', { name: 'Asistencia' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Resumen' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Asistencia' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Ajustes' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Calendario' }).click()
@@ -210,8 +213,8 @@ test('Dirección can inspect team data but cannot edit it', async ({ page }) => 
 test('owner manages team and seasons from settings on mobile', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
-  await expect(page.getByRole('heading', { name: 'Ajustes', exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Equipo', exact: true })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await expect(page.getByRole('heading', { name: 'Ajustes - Equipo', exact: true })).toBeVisible()
   await expect(page.getByText('Posible duplicado')).toBeVisible()
   const martaCard = page.getByRole('button', { name: 'Ver datos de Marta Sánchez' })
   await expect(martaCard).toContainText('Activa')
@@ -244,8 +247,9 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await profileDialog.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(page.getByText('Claudia Pérez García', { exact: true })).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Temporadas' }).click()
-  await expect(page.getByRole('heading', { name: 'Temporadas', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Temporadas' }).click()
+  await expect(page.getByRole('heading', { name: 'Ajustes - Temporadas', exact: true })).toBeVisible()
 })
 
 test('player browses the 2025–26 competition on mobile', async ({ page }) => {
@@ -264,6 +268,7 @@ test('player browses the 2025–26 competition on mobile', async ({ page }) => {
 test('selecting attendance keeps the mobile header and navigation fixed', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Asistencia' }).click()
+  await page.getByRole('menuitem', { name: 'Registrar asistencia' }).click()
   await expect(page.getByRole('heading', { name: 'Asistencia de hoy' })).toBeVisible()
 
   const players = page.locator('.attendance-player')
@@ -279,9 +284,10 @@ test('selecting attendance keeps the mobile header and navigation fixed', async 
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
 })
 
-test('owner records an invited player and later links her attendance', async ({ page }) => {
+test('owner records an invited player and later links multiple provisional histories', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Asistencia' }).click()
+  await page.getByRole('menuitem', { name: 'Registrar asistencia' }).click()
   await expect(page.getByRole('region', { name: 'Invitadas: 5' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Añadir invitada' }).click()
@@ -293,12 +299,14 @@ test('owner records an invited player and later links her attendance', async ({ 
   await expect(page.getByText('Asistencia mock guardada.')).toBeVisible()
 
   await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
   await page.getByRole('button', { name: 'Ver datos de Nerea Ruiz' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Nerea Ruiz' })
-  await profileDialog.getByLabel('Invitada para vincular con Nerea Ruiz').selectOption({ label: 'Nerea Ruis · 1 asistencia · sugerida' })
+  await profileDialog.getByRole('checkbox', { name: /Nerea Ruis/ }).check()
+  await profileDialog.getByRole('checkbox', { name: /Nueva Jugadora Prueba/ }).check()
   page.once('dialog', (dialog) => dialog.accept())
   await profileDialog.getByRole('button', { name: 'Vincular asistencias' }).click()
-  await expect(page.getByText('Nerea Ruis se ha vinculado con Nerea Ruiz.')).toBeVisible()
+  await expect(page.getByText('2 invitadas se han vinculado con Nerea Ruiz.')).toBeVisible()
   await expect(profileDialog).toHaveCount(0)
 })
 

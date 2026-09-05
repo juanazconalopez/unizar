@@ -7,7 +7,7 @@ import { LibrarySettingsView } from '../library/LibrarySettingsView'
 
 type SettingsSection = 'team' | 'seasons' | 'library'
 
-export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, librarySettings = null, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayer, onUpdateSeason, onSaveLibraryFolder, onSyncLibrary }: {
+export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, librarySettings = null, onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onUpdateSeason, onSaveLibraryFolder, onSyncLibrary }: {
   section?: SettingsSection
   currentUserId: string
   memberships: SeasonPlayer[]
@@ -21,7 +21,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onDeleteSeason: (season: Season) => Promise<void>
   onArchiveProfile?: (profile: Profile) => Promise<void>
   onLoadProfilePhoto?: (path: string) => Promise<string>
-  onLinkProvisionalPlayer?: (guest: ProvisionalPlayer, profile: Profile) => Promise<void>
+  onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
   onUpdateProfile: (profile: Profile) => Promise<void>
   onUpdateProfileDetails?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
@@ -34,7 +34,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   const sectionTitle = section === 'team' ? 'Equipo' : section === 'seasons' ? 'Temporadas' : 'Librería'
   return <div className="page settings-page">
     <PageHeader eyebrow="ADMINISTRACIÓN" title={`Ajustes - ${sectionTitle}`} subtitle="Gestiona la estructura y los accesos del club." />
-    {section === 'team' && <TeamView currentUserId={currentUserId} embedded hideEmbeddedTitle profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onLinkProvisionalPlayer={onLinkProvisionalPlayer} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} />}
+    {section === 'team' && <TeamView currentUserId={currentUserId} embedded hideEmbeddedTitle profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} />}
     {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
     {section === 'library' && <LibrarySettingsView hideEmbeddedTitle settings={librarySettings} onSaveFolder={onSaveLibraryFolder} onSync={onSyncLibrary} />}
   </div>

@@ -7,9 +7,9 @@ import { errorText } from '../../lib/errors'
 import { areDisplayNamesSimilar } from '../../lib/displayNames'
 import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
-import { profileRoles } from './profileRoles'
+import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], onClose, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayer }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], onClose, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
@@ -21,7 +21,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
-  onLinkProvisionalPlayer?: (guest: ProvisionalPlayer, profile: Profile) => Promise<void>
+  onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [displayName, setDisplayName] = useState(person.display_name)
@@ -33,7 +33,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const [isViewer, setIsViewer] = useState(person.is_viewer)
   const [isOwner, setIsOwner] = useState(person.is_owner)
   const [photoChange, setPhotoChange] = useState<ProfilePhotoChange>(undefined)
-  const [selectedProvisionalId, setSelectedProvisionalId] = useState('')
+  const [selectedProvisionalIds, setSelectedProvisionalIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const age = ageOnDate(details?.birth_date, todayIso())
@@ -47,10 +47,17 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     const secondMatch = areDisplayNamesSimilar(second.display_name, person.display_name) ? 0 : 1
     return firstMatch - secondMatch || first.display_name.localeCompare(second.display_name, 'es')
   })
-  const selectedProvisional = provisionalCandidates.find((guest) => guest.id === selectedProvisionalId)
-  const selectedProvisionalDates = selectedProvisional
-    ? provisionalAttendance.filter((record) => record.provisional_player_id === selectedProvisional.id).flatMap((record) => record.training_sessions?.session_date ? [record.training_sessions.session_date] : []).sort()
-    : []
+  const selectedProvisionals = provisionalCandidates.filter((guest) => selectedProvisionalIds.includes(guest.id))
+  const selectedProvisionalDates = provisionalAttendance
+    .filter((record) => selectedProvisionalIds.includes(record.provisional_player_id))
+    .flatMap((record) => record.training_sessions?.session_date ? [record.training_sessions.session_date] : [])
+    .sort()
+
+  function toggleProvisionalSelection(provisionalPlayerId: string) {
+    setSelectedProvisionalIds((current) => current.includes(provisionalPlayerId)
+      ? current.filter((id) => id !== provisionalPlayerId)
+      : [...current, provisionalPlayerId])
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -76,9 +83,14 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   }
 
   async function approve() {
+    const selectedCount = selectedProvisionals.length
+    const attendanceCount = selectedProvisionalDates.length
+    if (selectedCount > 0 && !window.confirm(`¿Aprobar como jugadora a ${person.display_name} y vincular ${selectedCount} ${selectedCount === 1 ? 'invitada' : 'invitadas'} (${attendanceCount} ${attendanceCount === 1 ? 'asistencia' : 'asistencias'})?`)) return
     setSaving(true)
+    setFormError('')
     try {
       await onUpdate({ ...person, is_approved: true, is_active: true, is_player: true })
+      if (selectedCount > 0 && onLinkProvisionalPlayers) await onLinkProvisionalPlayers(selectedProvisionals, person)
       onClose()
     } catch (error) {
       setFormError(errorText(error))
@@ -110,13 +122,14 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   }
 
   async function linkAttendance() {
-    if (!selectedProvisional || !onLinkProvisionalPlayer) return
+    if (selectedProvisionals.length === 0 || !onLinkProvisionalPlayers) return
     const total = selectedProvisionalDates.length
-    if (!window.confirm(`¿Vincular ${total} ${total === 1 ? 'asistencia' : 'asistencias'} de ${selectedProvisional.display_name} con ${person.display_name}?`)) return
+    const selectedCount = selectedProvisionals.length
+    if (!window.confirm(`¿Vincular ${selectedCount} ${selectedCount === 1 ? 'invitada' : 'invitadas'} (${total} ${total === 1 ? 'asistencia' : 'asistencias'}) con ${person.display_name}?`)) return
     setSaving(true)
     setFormError('')
     try {
-      await onLinkProvisionalPlayer(selectedProvisional, person)
+      await onLinkProvisionalPlayers(selectedProvisionals, person)
       onClose()
     } catch (error) {
       setFormError(errorText(error))
@@ -140,7 +153,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       <fieldset className="team-member-permissions"><legend>Estado y roles</legend>
         <Toggle checked={isActive} disabled={person.id === currentUserId} label="Activa" onChange={setIsActive} />
         <Toggle checked={isPlayer} label="Jugadora" onChange={setIsPlayer} />
-        <Toggle checked={isCoach} label="Entrenadora" onChange={setIsCoach} />
+        <Toggle checked={isCoach} label="Entrenador" onChange={setIsCoach} />
         <Toggle checked={isViewer} label="Dirección" onChange={setIsViewer} />
         <Toggle checked={isOwner} disabled={person.id === currentUserId} label="Owner" onChange={setIsOwner} />
       </fieldset>
@@ -162,25 +175,22 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <Detail label="Fecha de nacimiento">{details?.birth_date ? formatDate(details.birth_date, { day: 'numeric', month: 'long', year: 'numeric' }) : <em>Sin fecha</em>}</Detail>
         <Detail label="En el equipo desde">{formatDate(person.created_at.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' })}</Detail>
         <Detail label="Estado"><span className={`member-active-state ${person.is_active ? 'active' : 'inactive'}`}><Icon name={person.is_active ? 'check' : 'close'} size={14} />{person.is_active ? 'Activa' : 'Inactiva'}</span></Detail>
-        <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small key={role}>{role}</small>)}</span></Detail>
+        <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>)}</span></Detail>
         <Detail label="Perfil"><small className={`profile-completion-state ${details?.email && details.phone && details.birth_date ? 'complete' : 'incomplete'}`}>{details?.email && details.phone && details.birth_date ? 'Datos completos' : 'Faltan datos'}</small></Detail>
       </div>
-      {onLinkProvisionalPlayer && person.is_player && !person.is_archived && provisionalCandidates.length > 0 && <section className={`provisional-link-panel${provisionalCandidates.some((guest) => areDisplayNamesSimilar(guest.display_name, person.display_name)) ? ' has-suggestion' : ''}`}>
-        <div><span className="eyebrow">ASISTENCIAS PENDIENTES</span><strong>Vincular historial de una invitada</strong><p>Selecciona manualmente la identidad correcta. La vinculación no se realiza solo por coincidencia de nombre.</p></div>
-        <label>Invitada
-          <select aria-label={`Invitada para vincular con ${person.display_name}`} onChange={(event) => setSelectedProvisionalId(event.target.value)} value={selectedProvisionalId}>
-            <option value="">Selecciona una invitada…</option>
-            {provisionalCandidates.map((guest) => {
-              const count = provisionalAttendance.filter((record) => record.provisional_player_id === guest.id).length
-              const suggested = areDisplayNamesSimilar(guest.display_name, person.display_name)
-              return <option key={guest.id} value={guest.id}>{guest.display_name} · {count} {count === 1 ? 'asistencia' : 'asistencias'}{suggested ? ' · sugerida' : ''}</option>
-            })}
-          </select>
-        </label>
-        {selectedProvisional && <small>{selectedProvisionalDates.length
+      {onLinkProvisionalPlayers && !person.is_archived && (person.is_player || !person.is_approved) && provisionalCandidates.length > 0 && <section className={`provisional-link-panel${provisionalCandidates.some((guest) => areDisplayNamesSimilar(guest.display_name, person.display_name)) ? ' has-suggestion' : ''}`}>
+        <div className="provisional-link-heading"><span className="eyebrow">ASISTENCIAS PENDIENTES</span><strong>Vincular historiales de invitadas</strong><p>Selecciona manualmente todas las identidades que correspondan. Las sugerencias no se vinculan automáticamente.</p></div>
+        <fieldset className="provisional-link-options"><legend>Invitadas</legend>
+          {provisionalCandidates.map((guest) => {
+            const count = provisionalAttendance.filter((record) => record.provisional_player_id === guest.id).length
+            const suggested = areDisplayNamesSimilar(guest.display_name, person.display_name)
+            return <label key={guest.id}><input checked={selectedProvisionalIds.includes(guest.id)} onChange={() => toggleProvisionalSelection(guest.id)} type="checkbox" /><span>{guest.display_name}</span><small>{count} {count === 1 ? 'asistencia' : 'asistencias'}{suggested ? ' · sugerida' : ''}</small></label>
+          })}
+        </fieldset>
+        {selectedProvisionals.length > 0 && <small className="provisional-link-history">{selectedProvisionalDates.length
           ? `Historial desde ${formatDate(selectedProvisionalDates[0], { day: 'numeric', month: 'short', year: 'numeric' })}${selectedProvisionalDates.length > 1 ? ` hasta ${formatDate(selectedProvisionalDates.at(-1)!, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.`
-          : 'Esta invitada no tiene asistencias pendientes.'}</small>}
-        <button className="secondary-button compact" disabled={saving || !selectedProvisional || selectedProvisionalDates.length === 0} onClick={() => void linkAttendance()} type="button">Vincular asistencias</button>
+          : 'Las invitadas seleccionadas no tienen asistencias pendientes.'}</small>}
+        {person.is_player && <button className="secondary-button compact" disabled={saving || selectedProvisionals.length === 0 || selectedProvisionalDates.length === 0} onClick={() => void linkAttendance()} type="button">Vincular asistencias</button>}
       </section>}
       {possibleMatches.length > 0 && <div className="duplicate-profile-warning" role="status"><Icon name="warning" size={18} /><div><strong>Posible cuenta duplicada</strong><p>El nombre se parece a {possibleMatches.map((match) => match.display_name).join(', ')}. Revisa la coincidencia antes de autorizar.</p></div></div>}
       {!person.is_approved && !person.is_archived && <div className="approval-actions"><span>Se habilitará como jugadora activa</span><button className="primary-button" disabled={saving} onClick={() => void approve()} type="button">{saving ? 'Aprobando…' : 'Aprobar como jugadora'}</button></div>}

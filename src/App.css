@@ -57,6 +57,7 @@
 .page-header { margin-bottom: 38px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
 .page-header h1 { margin: 7px 0 7px; color: var(--ink); font-size: clamp(32px, 4vw, 45px); line-height: 1.05; letter-spacing: -1.8px; }
 .page-header p { margin: 0; color: var(--muted); }
+.page-header .team-summary-line { display: block; }
 .eyebrow { color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: 1.8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
 .dashboard-stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 16px; margin-bottom: 18px; }
@@ -375,6 +376,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .settings-section-heading { margin-bottom: 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
 .settings-section-heading h2 { margin: 5px 0 0; font-size: 25px; }
 .settings-section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+.settings-section-heading .team-summary-line { display: block; }
 .settings-section-heading.compact p { margin-top: 0; }
 .team-search-toggle { flex: 0 0 auto; border: 1px solid var(--line); color: var(--green); background: white; }
 .team-search-toggle:hover { border-color: #b8c9c1; background: var(--green-soft); }
@@ -759,7 +761,10 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .member-active-state.inactive { color: #a24d42; }
 .person-role-list { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .person-role-list small { padding: 3px 6px; border-radius: 20px; color: #42675d; background: #eaf3ef; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .25px; }
-.person-role-list small.owner-role { color: #176847; background: #cce8d6; }
+.person-role-list small.jugadora-role { color: #176b50; background: #ddf3e9; }
+.person-role-list small.entrenador-role { color: #1d5f91; background: #e1effb; }
+.person-role-list small.direccion-role { color: #6542a3; background: #eee8fa; }
+.person-role-list small.owner-role { color: #9a5a00; background: #fff0d6; }
 .profile-completion-state.incomplete { color: #876c18; background: #faf1c8; }
 .person-duplicate-compact { display: inline-flex; align-items: center; gap: 3px; color: #876c18; font-size: 8px; font-weight: 800; }
 .team-member-dialog { width: min(680px,100%); }
@@ -775,14 +780,19 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .team-member-detail-grid { margin: 18px 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
 .team-member-detail-grid a { color: var(--green); }
 .team-member-detail-grid em { color: var(--muted); font-style: normal; font-weight: 500; }
-.provisional-link-panel { margin: 16px 0; padding: 14px; border: 1px solid #c7dce0; border-radius: 11px; display: grid; grid-template-columns: minmax(0,1fr) minmax(190px,.8fr) auto; align-items: end; gap: 12px; background: #f3f9fa; }
+.provisional-link-panel { margin: 16px 0; padding: 14px; border: 1px solid #c7dce0; border-radius: 11px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 12px; background: #f3f9fa; }
 .provisional-link-panel.has-suggestion { border-color: #d8c681; background: #fffaf0; }
-.provisional-link-panel > div > strong { margin-top: 3px; display: block; font-size: 12px; }
+.provisional-link-heading { min-width: 0; }
+.provisional-link-heading > strong { margin-top: 3px; display: block; font-size: 12px; }
 .provisional-link-panel p { margin: 3px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
-.provisional-link-panel label { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase; }
-.provisional-link-panel select { margin: 5px 0 0; text-transform: none; }
-.provisional-link-panel > small { grid-column: 2; color: var(--green); font-size: 9px; }
-.provisional-link-panel > button { grid-column: 3; grid-row: 1 / span 2; }
+.provisional-link-options { min-width: 220px; max-height: 146px; margin: 0; padding: 7px 9px; border: 1px solid #c7dce0; border-radius: 8px; display: grid; gap: 5px; overflow-y: auto; }
+.provisional-link-options legend { padding: 0 4px; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase; }
+.provisional-link-options label { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 6px; color: #36564d; font-size: 10px; font-weight: 700; text-transform: none; }
+.provisional-link-options input { margin: 0; }
+.provisional-link-options label > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.provisional-link-options label > small { color: var(--muted); font-size: 8px; font-weight: 600; white-space: nowrap; }
+.provisional-link-history { grid-column: 1; color: var(--green); font-size: 9px; }
+.provisional-link-panel > button { grid-column: 2; grid-row: 1 / span 2; }
 .team-member-permissions { margin: 18px 0 0; padding: 15px; border: 1px solid var(--line); border-radius: 11px; display: flex; align-items: center; justify-content: space-around; gap: 12px; }
 .team-member-permissions legend { padding: 0 7px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
 .team-member-danger { margin-top: 22px; padding: 14px; border: 1px solid #ebc7bf; border-radius: 11px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: #fff9f7; }
@@ -1326,7 +1336,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .profile-details-fields label:first-child, .profile-details-fields label:nth-child(2) { grid-column: 1; }
   .team-member-detail-grid { grid-template-columns: 1fr; }
   .provisional-link-panel { grid-template-columns: 1fr; align-items: stretch; }
-  .provisional-link-panel > small, .provisional-link-panel > button { grid-column: 1; grid-row: auto; }
+  .provisional-link-options, .provisional-link-history, .provisional-link-panel > button { grid-column: 1; grid-row: auto; }
+  .provisional-link-options { min-width: 0; }
   .provisional-link-panel > button { width: 100%; }
   .team-member-permissions { align-items: stretch; justify-content: flex-start; flex-wrap: wrap; }
   .team-member-permissions .toggle { flex: 1 1 74px; }

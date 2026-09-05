@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
 import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
-import { profileRoles } from './profileRoles'
+import { profileRoleClass, profileRoles } from './profileRoles'
 import { TeamMemberDialog } from './TeamMemberDialog'
 
 type TeamStatusFilter = 'all' | 'active' | 'inactive' | 'pending' | 'archived'
@@ -22,7 +22,7 @@ const statusFilterOptions: Array<{ value: TeamStatusFilter; label: string }> = [
 
 const roleFilterOptions: Array<{ value: TeamRoleFilter; label: string }> = [
   { value: 'player', label: 'Jugadora' },
-  { value: 'coach', label: 'Entrenadora' },
+  { value: 'coach', label: 'Entrenador' },
   { value: 'viewer', label: 'Dirección' },
   { value: 'owner', label: 'Owner' },
 ]
@@ -34,7 +34,7 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayer }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   profiles: Profile[]
@@ -46,7 +46,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
-  onLinkProvisionalPlayer?: (guest: ProvisionalPlayer, profile: Profile) => Promise<void>
+  onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -83,7 +83,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
     coach: allApproved.filter((profile) => profile.is_coach).length,
     viewer: allApproved.filter((profile) => profile.is_viewer).length,
   }
-  const teamSummary = `${allApproved.length} aprobados · ${allPending.length} pendientes · ${activeApproved} activas · ${inactiveApproved} inactivas · ${roleCounts.player} jugadoras · ${roleCounts.coach} entrenadoras · ${roleCounts.viewer} dirección`
+  const teamSummary = <><span className="team-summary-line">{allApproved.length} aprobados · {allPending.length} pendientes · {activeApproved} activas · {inactiveApproved} inactivas</span><span className="team-summary-line">{roleCounts.player} jugadoras · {roleCounts.coach} entrenador · {roleCounts.viewer} dirección</span></>
   const selectedDetails = selectedPerson ? profilePrivateDetails.find((item) => item.profile_id === selectedPerson.id) : undefined
   const possibleMatches = selectedPerson && !selectedPerson.is_approved && !selectedPerson.is_archived
     ? profiles.filter((other) => other.id !== selectedPerson.id && areDisplayNamesSimilar(selectedPerson.display_name, other.display_name)).slice(0, 3)
@@ -124,7 +124,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLinkProvisionalPlayer={onLinkProvisionalPlayer} onLoadPhoto={onLoadPhoto} onSave={onSave} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onSave={onSave} onUpdate={onUpdate} />}
   </div>
 }
 
@@ -138,7 +138,7 @@ function PersonCard({ person, details, warning = false, onOpen }: { person: Prof
     {!compact && <span className="person-summary-contact"><span><b>Email</b>{details?.email || 'Sin email'}</span><span><b>Teléfono</b>{details?.phone || 'Sin teléfono'}</span><span><b>Edad</b>{age === null ? 'Sin edad' : `${age} años`}</span></span>}
     <span className="person-summary-state">
       <span className={`member-active-state ${person.is_active ? 'active' : 'inactive'}`}><Icon name={person.is_active ? 'check' : 'close'} size={14} />{person.is_active ? 'Activa' : 'Inactiva'}</span>
-      <span className="person-role-list">{roles.length ? roles.map((role) => <small className={role === 'Owner' ? 'owner-role' : undefined} key={role}>{role}</small>) : <small>Sin rol</small>}</span>
+      <span className="person-role-list">{roles.length ? roles.map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>) : <small>Sin rol</small>}</span>
       {!compact && <small className={`profile-completion-state ${complete ? 'complete' : 'incomplete'}`}>{complete ? 'Datos completos' : 'Faltan datos'}</small>}
       {warning && <small className="person-duplicate-compact"><Icon name="warning" size={13} />Posible duplicado</small>}
     </span>

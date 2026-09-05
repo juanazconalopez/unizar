@@ -1295,6 +1295,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      link_provisional_players: {
+        Args: {
+          checked_profile_id: string
+          checked_provisional_player_ids: string[]
+        }
+        Returns: undefined
+      }
       save_match_lineup: {
         Args: {
           checked_match_id: string

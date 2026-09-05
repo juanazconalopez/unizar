@@ -230,7 +230,7 @@ export function AppViewRouter({
         onDeleteSeason={actions.club.deleteSeason}
         onArchiveProfile={actions.club.archiveProfile}
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
-        onLinkProvisionalPlayer={actions.club.linkProvisionalPlayer}
+        onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
         onUpdateProfileDetails={actions.club.updateManagedProfile}

@@ -1,5 +1,5 @@
 begin;
-select plan(137);
+select plan(140);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -379,6 +379,16 @@ select like(
   pg_get_functiondef('public.link_provisional_player(uuid,uuid)'::regprocedure),
   '%current_user_is_owner%',
   'only the owner can link provisional attendance'
+);
+select has_function('public', 'link_provisional_players', array['uuid[]', 'uuid'], 'owners can link multiple provisional histories at once');
+select like(
+  pg_get_functiondef('public.link_provisional_players(uuid[],uuid)'::regprocedure),
+  '%current_user_is_owner%',
+  'only the owner can link multiple provisional histories'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.link_provisional_players(uuid[],uuid)', 'execute'),
+  'authenticated users can call the protected multiple provisional link RPC'
 );
 select ok(
   not has_table_privilege('authenticated', 'public.provisional_players', 'INSERT'),

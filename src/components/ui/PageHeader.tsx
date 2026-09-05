@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 export function PageHeader({ eyebrow, title, subtitle, action }: {
   eyebrow: string
   title: string
-  subtitle: string
+  subtitle: ReactNode
   action?: ReactNode
 }) {
   return (

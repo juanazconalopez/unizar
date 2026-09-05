@@ -3,7 +3,7 @@ import { archiveManagedProfile, updateManagedProfile, updateOwnProfileDetails, u
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
-import { linkProvisionalPlayer } from '../../services/provisionalPlayersService'
+import { linkProvisionalPlayers } from '../../services/provisionalPlayersService'
 import { setSeasonMembership } from '../../services/trainingMembershipService'
 import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, ProvisionalAttendanceEntry, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
 import type { ActionContext } from './actionContext'
@@ -64,10 +64,10 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.notify('Asistencia guardada correctamente.')
       await context.reloadData()
     },
-    linkProvisionalPlayer: async (guest: ProvisionalPlayer, profile: Profile) => {
+    linkProvisionalPlayers: async (guests: ProvisionalPlayer[], profile: Profile) => {
       context.requireConnection()
-      await linkProvisionalPlayer(guest.id, profile.id)
-      context.notify(`${guest.display_name} se ha vinculado con ${profile.display_name}.`)
+      await linkProvisionalPlayers(guests.map((guest) => guest.id), profile.id)
+      context.notify(`${guests.length === 1 ? 'La invitada seleccionada se ha vinculado' : `${guests.length} invitadas se han vinculado`} con ${profile.display_name}.`)
       await context.reloadData()
     },
     toggleMembership: async (season: Season, player: Profile, active: boolean) => {

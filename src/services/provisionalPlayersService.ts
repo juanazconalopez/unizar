@@ -22,9 +22,9 @@ export async function fetchAllProvisionalAttendance(): Promise<ProvisionalAttend
   return data ?? []
 }
 
-export async function linkProvisionalPlayer(provisionalPlayerId: string, profileId: string) {
-  const { error } = await supabase.rpc('link_provisional_player', {
-    checked_provisional_player_id: provisionalPlayerId,
+export async function linkProvisionalPlayers(provisionalPlayerIds: string[], profileId: string) {
+  const { error } = await supabase.rpc('link_provisional_players', {
+    checked_provisional_player_ids: provisionalPlayerIds,
     checked_profile_id: profileId,
   })
   if (error) throw error

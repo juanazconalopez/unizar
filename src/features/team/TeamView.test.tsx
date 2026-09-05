@@ -52,7 +52,7 @@ describe('TeamView', () => {
     const name = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(name)
     await user.type(name, 'Ana Martín López')
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Entrenadora' }))
+    await user.click(within(dialog).getByRole('checkbox', { name: 'Entrenador' }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }))
 
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('estado o los permisos'))
@@ -95,15 +95,30 @@ describe('TeamView', () => {
     expect(inactiveCard).toHaveTextContent('Inactiva')
     expect(inactiveCard).toHaveTextContent('Jugadora')
     expect(inactiveCard).not.toHaveTextContent('paula@example.com')
-    expect(screen.getByText('3 aprobados · 0 pendientes · 2 activas · 1 inactivas · 2 jugadoras · 1 entrenadoras · 0 dirección')).toBeInTheDocument()
+    expect(screen.getByText('3 aprobados · 0 pendientes · 2 activas · 1 inactivas')).toBeInTheDocument()
+    expect(screen.getByText('2 jugadoras · 1 entrenador · 0 dirección')).toBeInTheDocument()
 
     await user.click(document.querySelector('.team-filter-control > summary')!)
     await user.click(screen.getByRole('radio', { name: 'Inactivas' }))
     expect(screen.getByText('1 resultado')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ver datos de Ana Activa' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('checkbox', { name: 'Entrenadora' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Entrenador' }))
     expect(screen.getByText('0 resultados')).toBeInTheDocument()
+  })
+
+  test('uses a distinct colour label for each team role', () => {
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[
+      makeProfile({ id: 'player', display_name: 'Paula Jugadora' }),
+      makeProfile({ id: 'coach', display_name: 'Clara Entrenador', is_player: false, is_coach: true }),
+      makeProfile({ id: 'viewer', display_name: 'Diana Dirección', is_player: false, is_viewer: true }),
+      makeProfile({ id: 'owner', display_name: 'Olga Owner', is_player: false, is_owner: true }),
+    ]} />)
+
+    expect(within(screen.getByRole('button', { name: 'Ver datos de Paula Jugadora' })).getByText('Jugadora')).toHaveClass('jugadora-role')
+    expect(within(screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })).getByText('Entrenador')).toHaveClass('entrenador-role')
+    expect(within(screen.getByRole('button', { name: 'Ver datos de Diana Dirección' })).getByText('Dirección')).toHaveClass('direccion-role')
+    expect(within(screen.getByRole('button', { name: 'Ver datos de Olga Owner' })).getByText('Owner')).toHaveClass('owner-role')
   })
 
   test('moves duplicate review and approval into the pending profile detail', async () => {
@@ -141,28 +156,59 @@ describe('TeamView', () => {
     expect(onUpdate).toHaveBeenCalledWith({ ...archived, is_archived: false, is_approved: true, is_active: false })
   })
 
-  test('lets the owner confirm and link a provisional attendance history', async () => {
+  test('lets the owner confirm and link multiple provisional attendance histories', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const profile = makeProfile({ display_name: 'Laura Invitada Pérez' })
     const guest = makeProvisionalPlayer()
+    const guestWithSurname = makeProvisionalPlayer({ id: 'guest-2', display_name: 'Laura Paredes' })
     const onLink = vi.fn().mockResolvedValue(undefined)
     render(<TeamView
       currentUserId="owner-1"
       profiles={[profile]}
-      provisionalAttendance={[makeProvisionalAttendance()]}
-      provisionalPlayers={[guest]}
-      onLinkProvisionalPlayer={onLink}
+      provisionalAttendance={[
+        makeProvisionalAttendance(),
+        makeProvisionalAttendance({ session_id: 'session-2', provisional_player_id: guestWithSurname.id, training_sessions: { session_date: '2026-08-12' } }),
+      ]}
+      provisionalPlayers={[guest, guestWithSurname]}
+      onLinkProvisionalPlayers={onLink}
       onUpdate={vi.fn()}
     />)
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Invitada Pérez' }))
     const dialog = screen.getByRole('dialog', { name: 'Laura Invitada Pérez' })
-    await user.selectOptions(within(dialog).getByLabelText('Invitada para vincular con Laura Invitada Pérez'), guest.id)
+    await user.click(within(dialog).getByRole('checkbox', { name: /Laura Invitada/ }))
+    await user.click(within(dialog).getByRole('checkbox', { name: /Laura Paredes/ }))
     expect(within(dialog).getByText(/Historial desde/)).toHaveTextContent('5 ago 2026')
     await user.click(within(dialog).getByRole('button', { name: 'Vincular asistencias' }))
 
-    expect(window.confirm).toHaveBeenCalledWith('¿Vincular 1 asistencia de Laura Invitada con Laura Invitada Pérez?')
-    expect(onLink).toHaveBeenCalledWith(guest, profile)
+    expect(window.confirm).toHaveBeenCalledWith('¿Vincular 2 invitadas (2 asistencias) con Laura Invitada Pérez?')
+    expect(onLink).toHaveBeenCalledWith([guest, guestWithSurname], profile)
+  })
+
+  test('links selected provisional histories while approving a new player', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const pending = makeProfile({ id: 'pending', display_name: 'Laura Nueva', is_approved: false, is_active: false })
+    const guest = makeProvisionalPlayer()
+    const onUpdate = vi.fn().mockResolvedValue(undefined)
+    const onLink = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView
+      currentUserId="owner-1"
+      profiles={[pending]}
+      provisionalAttendance={[makeProvisionalAttendance()]}
+      provisionalPlayers={[guest]}
+      onLinkProvisionalPlayers={onLink}
+      onUpdate={onUpdate}
+    />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Nueva' }))
+    const dialog = screen.getByRole('dialog', { name: 'Laura Nueva' })
+    await user.click(within(dialog).getByRole('checkbox', { name: /Laura Invitada/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Aprobar como jugadora' }))
+
+    expect(window.confirm).toHaveBeenCalledWith('¿Aprobar como jugadora a Laura Nueva y vincular 1 invitada (1 asistencia)?')
+    expect(onUpdate).toHaveBeenCalledWith({ ...pending, is_approved: true, is_active: true, is_player: true })
+    expect(onLink).toHaveBeenCalledWith([guest], pending)
   })
 })
