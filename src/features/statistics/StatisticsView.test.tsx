@@ -81,7 +81,8 @@ describe('StatisticsView', () => {
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
     expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('1')
-    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('50%')
+    expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('Máx. A.1Mín. A.1')
+    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('1(50%)')
     expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('0,5')
     expect(screen.getByText('Ana Martín')).toBeInTheDocument()
     expect(screen.getByText('María López')).toBeInTheDocument()
@@ -116,6 +117,7 @@ describe('StatisticsView', () => {
         sessions={[
           makeSession({ id: 'session-1', session_date: firstTraining }),
           makeSession({ id: 'session-2', session_date: secondTraining }),
+          makeSession({ id: 'session-3', session_date: `${monthPrefix}-03` }),
         ]}
         attendance={[
           ...profiles.map((profile, index) => makeAttendance({
@@ -141,7 +143,8 @@ describe('StatisticsView', () => {
     )
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
-    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('75%')
+    expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('Máx. A.4Mín. A.0')
+    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('2(75%)')
   })
 
   test('averages completed published tasks across every active player', () => {

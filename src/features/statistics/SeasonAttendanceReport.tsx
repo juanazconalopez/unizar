@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Modal } from '../../components/ui/Modal'
@@ -6,6 +6,7 @@ import { formatDate } from '../../lib/dates'
 import { displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
 import { downloadText } from '../../lib/fileExport'
 import { attendanceReportXml } from '../../lib/seasonExports'
+import { groupPlayersByAttendancePercentage } from './statisticsSelectors'
 import type { Season, SeasonCallupReport } from '../../types'
 
 export function SeasonAttendanceReport({ season, onLoad }: {
@@ -49,7 +50,18 @@ export function SeasonAttendanceReport({ season, onLoad }: {
       || (second.attendancePercentage ?? -1) - (first.attendancePercentage ?? -1)
       || first.name.localeCompare(second.name, 'es')
     )) ?? [], [normalizedSearch, report])
+  const groups = useMemo(() => groupPlayersByAttendancePercentage(players), [players])
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const average = attendanceAverage(report)
+
+  function toggleGroup(groupKey: string) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
+      return next
+    })
+  }
 
   function exportXml() {
     if (!report) return
@@ -97,20 +109,58 @@ export function SeasonAttendanceReport({ season, onLoad }: {
       <div className="season-attendance-table-wrap">
         <table className="season-attendance-table">
           <thead><tr><th>Jugadora</th><th>Asistencias</th><th>Entrenamientos computables</th><th>Porcentaje</th></tr></thead>
-          <tbody>{players.map((player) => (
-            <tr key={player.playerId}>
-              <th scope="row">{player.name}</th>
-              <td>{player.attendedSessions}</td>
-              <td>{player.eligibleSessions}</td>
-              <td><strong>{player.attendancePercentage === null ? '—' : `${player.attendancePercentage}%`}</strong></td>
-            </tr>
-          ))}</tbody>
+          {groups.map((group) => {
+            const expanded = !collapsedGroups.has(group.key)
+            const percentageLabel = group.percentage === null ? 'Sin datos' : `${group.percentage}%`
+            const playerCount = `${group.players.length} ${group.players.length === 1 ? 'jugadora' : 'jugadoras'}`
+            return <tbody key={group.key}>
+              <tr className="season-attendance-group-row">
+                <th colSpan={4} scope="colgroup">
+                  <button
+                    aria-expanded={expanded}
+                    aria-label={`${percentageLabel} · ${playerCount}`}
+                    className="season-attendance-group-button"
+                    onClick={() => toggleGroup(group.key)}
+                    style={attendanceGroupStyle(group.percentage)}
+                    type="button"
+                  >
+                    <strong className="season-attendance-group-percentage">{percentageLabel}</strong>
+                    <span className="season-attendance-group-count">{playerCount}</span>
+                    <span aria-hidden="true" className="season-attendance-group-chevron">{expanded ? '⌃' : '⌄'}</span>
+                  </button>
+                </th>
+              </tr>
+              {expanded && group.players.map((player) => (
+                <tr key={player.playerId}>
+                  <th scope="row">{player.name}</th>
+                  <td>{player.attendedSessions}</td>
+                  <td>{player.eligibleSessions}</td>
+                  <td><strong>{player.attendancePercentage === null ? '—' : `${player.attendancePercentage}%`}</strong></td>
+                </tr>
+              ))}
+            </tbody>
+          })}
         </table>
         {!players.length && <EmptyState title="Sin coincidencias" text={`No hay jugadoras que coincidan con “${search.trim()}”.`} />}
       </div>
-      <p className="callup-report-note">Ordenado por número de asistencias. Cada porcentaje usa los entrenamientos celebrados durante el periodo de inscripción de la jugadora.</p>
+      <p className="callup-report-note">Agrupado por porcentaje de asistencia. Cada porcentaje usa los entrenamientos celebrados durante el periodo de inscripción de la jugadora.</p>
     </Modal>}
   </>
+}
+
+function attendanceGroupStyle(percentage: number | null): CSSProperties {
+  if (percentage === null) {
+    return {
+      '--attendance-group-color': 'var(--muted)',
+      '--attendance-group-background': 'linear-gradient(90deg, #f4f6f5, #e8edeb)',
+    } as CSSProperties
+  }
+
+  const hue = percentage <= 50 ? percentage * 0.96 : 48 + (percentage - 50) * 1.74
+  return {
+    '--attendance-group-color': `hsl(${hue} 62% 35%)`,
+    '--attendance-group-background': `linear-gradient(90deg, hsl(${hue} 75% 97%), hsl(${hue} 70% 90%))`,
+  } as CSSProperties
 }
 
 function attendanceAverage(report: SeasonCallupReport | null) {

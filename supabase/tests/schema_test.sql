@@ -1,5 +1,5 @@
 begin;
-select plan(140);
+select plan(144);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -13,6 +13,26 @@ select like(
   pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
   '%current_user_can_view_team_data%',
   'owners, coaches and management can load the season attendance report'
+);
+select like(
+  pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
+  '%p.is_player%',
+  'season attendance report filters non-player profiles'
+);
+select like(
+  pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
+  '%p.is_approved%',
+  'season attendance report filters unapproved profiles'
+);
+select like(
+  pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
+  '%p.is_active%',
+  'season attendance report filters inactive profiles'
+);
+select like(
+  pg_get_functiondef('public.get_season_attendance_report(uuid)'::regprocedure),
+  '%not p.is_archived%',
+  'season attendance report filters archived profiles'
 );
 select has_function('public', 'get_player_season_summary', array['uuid', 'uuid'], 'personal season summary is available');
 select has_function('public', 'current_user_can_manage_sport', array[]::text[], 'sports management permission is available');

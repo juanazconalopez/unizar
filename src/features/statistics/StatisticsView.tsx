@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
 import { SeasonAttendanceReport } from './SeasonAttendanceReport'
 import { StatisticsDayDetail } from './StatisticsDayDetail'
-import { recordDate } from './statisticsSelectors'
+import { monthlyAttendanceSummary, recordDate } from './statisticsSelectors'
 import type {
   AttendanceRecord,
   ProvisionalAttendanceRecord,
@@ -61,7 +61,8 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
   const monthSessions = sessions.filter((session) => session.session_date.startsWith(monthPrefix))
   const monthAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(monthPrefix))
   const monthResults = playerResults.filter((result) => result.performed_on.startsWith(monthPrefix))
-  const attendanceRate = attendancePercentage(monthAttendance)
+  const attendanceSummary = monthlyAttendanceSummary(monthSessions, monthAttendance, provisionalAttendance, playerIds)
+  const attendanceRate = attendanceSummary.percentage
   const averageCompletedTasks = eligibleMonthPlayerIds.size
     ? monthResults.length / eligibleMonthPlayerIds.size
     : null
@@ -103,13 +104,20 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
       />
 
       <section className="statistics-summary" aria-label="Resumen del mes">
-        <SummaryMetric label="Entrenamientos" value={monthSessions.length.toString()} />
+        <SummaryMetric
+          label="Entrenamientos"
+          value={monthSessions.length.toString()}
+          aside={attendanceSummary.maximum !== null ? (
+            <div className="summary-attendance-range" aria-label={`Máxima asistencia ${attendanceSummary.maximum}, mínima asistencia ${attendanceSummary.minimum}`}>
+              <div><span>Máx. A.</span><strong>{attendanceSummary.maximum}</strong></div>
+              <div><span>Mín. A.</span><strong>{attendanceSummary.minimum}</strong></div>
+            </div>
+          ) : undefined}
+        />
         <SummaryMetric
           label="Media asistencia"
-          value={attendanceRate === null ? '—' : `${Math.round(attendanceRate)}%`}
-          note={attendanceRate !== null && previousAttendanceRate !== null
-            ? `${Math.round(attendanceRate - previousAttendanceRate) >= 0 ? '+' : ''}${Math.round(attendanceRate - previousAttendanceRate)} ptos. vs. mes anterior`
-            : undefined}
+          value={attendanceSummary.average === null ? '—' : formatAverage(attendanceSummary.average)}
+          valueAside={attendanceSummary.percentage === null ? undefined : <span className="summary-percentage">({Math.round(attendanceSummary.percentage)}%)</span>}
         />
         <SummaryMetric
           label="Media tareas realizadas"
@@ -191,8 +199,11 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
   )
 }
 
-function SummaryMetric({ label, value, note }: { label: string; value: string; note?: string }) {
-  return <article><span>{label}</span><strong>{value}</strong>{note && <small>{note}</small>}</article>
+function SummaryMetric({ label, value, valueAside, aside }: { label: string; value: string; valueAside?: ReactNode; aside?: ReactNode }) {
+  return <article className={aside || valueAside ? 'statistics-summary-horizontal' : undefined}>
+    <div className="statistics-summary-content"><span>{label}</span><div className="statistics-summary-value"><strong>{value}</strong>{valueAside}</div></div>
+    {aside}
+  </article>
 }
 
 function formatAverage(value: number) {

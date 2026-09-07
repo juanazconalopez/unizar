@@ -529,6 +529,16 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .statistics-summary span { display: block; color: var(--muted); font-size: 11px; }
 .statistics-summary strong { display: block; margin-top: 6px; font-family: 'Manrope',system-ui,sans-serif; font-size: 25px; }
 .statistics-summary small { display: block; margin-top: 4px; color: var(--muted); font-size: 8px; line-height: 1.3; }
+.statistics-summary-horizontal { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.statistics-summary-content { min-width: 0; }
+.statistics-summary-value { display: flex; align-items: baseline; gap: 12px; }
+.statistics-summary-horizontal .statistics-summary-value > strong { font-size: 30px; }
+.summary-attendance-range { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.summary-attendance-range > div { display: flex; align-items: baseline; justify-content: flex-end; gap: 7px; }
+.summary-attendance-range span, .summary-attendance-range strong { color: var(--muted); }
+.summary-attendance-range span { font-size: 8px; white-space: nowrap; }
+.summary-attendance-range strong { margin-top: 2px; font-size: 19px; }
+.statistics-summary-horizontal .summary-percentage { margin: 0; color: var(--muted); font-size: 22px; line-height: 1; white-space: nowrap; }
 .statistics-summary .statistics-attendance-card { display: flex; flex-direction: column; border-color: #bcd9c8; background: linear-gradient(145deg,#f4fbf6,#edf7f1); }
 .statistics-attendance-card .text-button { width: fit-content; margin-top: auto; padding: 8px 0 0; display: inline-flex; align-items: center; gap: 4px; font-size: 9px; text-align: left; }
 .season-attendance-dialog { width: min(900px,100%); }
@@ -550,6 +560,12 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .season-attendance-table th, .season-attendance-table td { padding: 12px 15px; border-bottom: 1px solid var(--line); text-align: center; }
 .season-attendance-table thead th { color: var(--green-dark); background: #edf6f1; font-size: 9px; letter-spacing: .4px; text-transform: uppercase; }
 .season-attendance-table th:first-child { text-align: left; }
+.season-attendance-group-row th { padding: 0; background: white; }
+.season-attendance-group-button { width: 100%; padding: 10px 15px; border: 0; border-left: 4px solid var(--attendance-group-color); display: grid; grid-template-columns: minmax(0,1fr) auto 18px; align-items: center; gap: 12px; color: var(--attendance-group-color); background: var(--attendance-group-background); text-align: left; }
+.season-attendance-group-button:hover { filter: brightness(.98); }
+.season-attendance-group-percentage { margin: 0; font-family: 'Manrope',system-ui,sans-serif; font-size: 16px; }
+.season-attendance-group-count { color: var(--muted); font-size: 11px; font-weight: 800; text-align: right; }
+.season-attendance-group-chevron { color: var(--muted); font-size: 17px; font-weight: 800; line-height: 1; text-align: center; }
 .season-attendance-table tbody th { font-size: 12px; }
 .season-attendance-table tbody td { font-size: 12px; }
 .season-attendance-table tbody td:last-child strong { color: var(--green); }
@@ -1375,10 +1391,20 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .statistics-summary article { min-width: 0; padding: 12px 9px; }
   .statistics-summary span { min-height: 25px; font-size: 9px; }
   .statistics-summary strong { font-size: 20px; }
+  .statistics-summary-horizontal .statistics-summary-value > strong { font-size: 24px; }
+  .statistics-summary-value { gap: 8px; }
+  .summary-attendance-range { gap: 1px; }
+  .summary-attendance-range > div { gap: 4px; }
+  .summary-attendance-range span { min-height: auto; font-size: 7px; }
+  .summary-attendance-range strong { font-size: 17px; }
+  .statistics-summary-horizontal .summary-percentage { min-height: auto; font-size: 18px; }
   .monthly-alert { flex-direction: column; gap: 3px; }
   .season-attendance-heading, .season-attendance-toolbar { align-items: stretch; flex-direction: column; }
   .season-attendance-toolbar { gap: 6px; }
   .season-attendance-toolbar > div { padding-bottom: 0; justify-content: space-between; }
+  .season-attendance-group-button { padding: 9px 11px; gap: 8px; }
+  .season-attendance-group-percentage { font-size: 14px; }
+  .season-attendance-group-count { font-size: 10px; }
   .calendar-toolbar { padding: 14px 12px; grid-template-columns: 38px minmax(0,1fr) 38px; gap: 8px; }
   .calendar-toolbar button { width: 38px; height: 38px; }
   .calendar-toolbar h2 { font-size: 18px; }
