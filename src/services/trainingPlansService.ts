@@ -11,6 +11,7 @@ import type {
   TrainingPlanCalendarItem,
   TrainingPlanValues,
 } from '../types'
+import { cleanupContentImages, contentImageIdsForEntity, ensureContentImages } from './contentImagesService'
 
 export const EMPTY_TACTICS_BOARD: TacticsBoardData = { version: 1, template: 'full', elements: [] }
 
@@ -100,6 +101,7 @@ export async function fetchTrainingExercisePresets(): Promise<TrainingExercisePr
 }
 
 export async function saveTrainingExercisePreset(exercise: TrainingExerciseValues, userId: string): Promise<TrainingExercisePreset> {
+  const uploadedIds = await ensureContentImages([exercise.description], userId)
   const { data, error } = await supabase
     .from('training_exercise_presets')
     .insert({
@@ -111,11 +113,16 @@ export async function saveTrainingExercisePreset(exercise: TrainingExerciseValue
     })
     .select()
     .single()
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
   return { ...data, diagram_data: parseTacticsBoard(data.diagram_data) }
 }
 
-export async function updateTrainingExercisePreset(presetId: string, exercise: TrainingExerciseValues): Promise<TrainingExercisePreset> {
+export async function updateTrainingExercisePreset(presetId: string, exercise: TrainingExerciseValues, userId: string): Promise<TrainingExercisePreset> {
+  const previousIds = await contentImageIdsForEntity('training_preset', presetId)
+  const uploadedIds = await ensureContentImages([exercise.description], userId)
   const { data, error } = await supabase
     .from('training_exercise_presets')
     .update({
@@ -127,16 +134,28 @@ export async function updateTrainingExercisePreset(presetId: string, exercise: T
     .eq('id', presetId)
     .select()
     .single()
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
+  await cleanupContentImages(previousIds)
   return { ...data, diagram_data: parseTacticsBoard(data.diagram_data) }
 }
 
 export async function deleteTrainingExercisePreset(presetId: string) {
+  const imageIds = await contentImageIdsForEntity('training_preset', presetId)
   const { error } = await supabase.from('training_exercise_presets').delete().eq('id', presetId)
   if (error) throw error
+  await cleanupContentImages(imageIds)
 }
 
-export async function saveTrainingPlan(planId: string | undefined, values: TrainingPlanValues) {
+export async function saveTrainingPlan(planId: string | undefined, values: TrainingPlanValues, userId: string) {
+  const previousIds = planId ? await contentImageIdsForEntity('training_plan', planId) : []
+  const uploadedIds = await ensureContentImages([
+    values.objectives,
+    values.material,
+    ...values.exercises.map((exercise) => exercise.description),
+  ], userId)
   const exercises = values.exercises.map((exercise) => ({
     title: exercise.title.trim(),
     description: exercise.description.trim(),
@@ -153,14 +172,20 @@ export async function saveTrainingPlan(planId: string | undefined, values: Train
     checked_status: values.status,
     checked_exercises: exercises,
   })
-  if (error?.code === '23505') throw new Error('Ya existe un entrenamiento planificado para esa fecha.')
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    if (error.code === '23505') throw new Error('Ya existe un entrenamiento planificado para esa fecha.')
+    throw error
+  }
+  await cleanupContentImages(previousIds)
   return data
 }
 
 export async function deleteTrainingPlan(planId: string) {
+  const imageIds = await contentImageIdsForEntity('training_plan', planId)
   const { error } = await supabase.from('training_plans').delete().eq('id', planId)
   if (error) throw error
+  await cleanupContentImages(imageIds)
 }
 
 export function isTrainingPlansSchemaMissing(error: unknown) {

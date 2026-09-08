@@ -14,6 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_image_references: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          image_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          image_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          image_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_image_references_image_id_fkey"
+            columns: ["image_id"]
+            isOneToOne: false
+            referencedRelation: "content_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_images: {
+        Row: {
+          created_at: string
+          created_by: string
+          height: number
+          id: string
+          mime_type: string
+          size_bytes: number
+          storage_path: string
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          height: number
+          id: string
+          mime_type?: string
+          size_bytes: number
+          storage_path: string
+          width: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          height?: number
+          id?: string
+          mime_type?: string
+          size_bytes?: number
+          storage_path?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_images_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competition_fixtures: {
         Row: {
           away_score: number | null
@@ -1184,6 +1254,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_content_images: {
+        Args: { checked_image_ids: string[] }
+        Returns: { storage_path: string }[]
+      }
+      cleanup_my_abandoned_content_images: {
+        Args: never
+        Returns: { storage_path: string }[]
+      }
+      current_user_can_read_content_image: {
+        Args: { checked_image_id: string }
+        Returns: boolean
+      }
       current_user_can_view_private_profile_details: {
         Args: never
         Returns: boolean

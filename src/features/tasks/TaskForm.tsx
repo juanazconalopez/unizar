@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { ContentImageTextarea } from '../../components/ContentImageTextarea'
 import { SeasonContextField } from '../../components/SeasonContextField'
 import { Modal } from '../../components/ui/Modal'
 import { TRAINING_TYPES } from '../../constants/training'
@@ -24,6 +25,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
   const [dirty, setDirty] = useState(false)
   const busy = saving || deleting
   const source = task ?? template
+  const [description, setDescription] = useState(source?.description ?? '')
   const selectedSeason = task
     ? seasons.find((season) => season.id === task.season_id)
     : seasonForDate(seasons, todayIso())
@@ -80,7 +82,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
           <SeasonContextField creation={!task} season={selectedSeason} />
           {!task && <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>}
           <label>Tipo<select defaultValue={source?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{trainingTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-          <label className="full-field task-form-description">Descripción<textarea defaultValue={source?.description ?? ''} name="description" rows={7} placeholder="Indicaciones o enlace al vídeo…" /></label>
+          <ContentImageTextarea className="full-field task-form-description" label="Descripción" name="description" onChange={(value) => { setDescription(value); setDirty(true) }} rows={7} placeholder="Indicaciones o enlace al vídeo…" value={description} />
           <label>Estado<select name="status" defaultValue={task?.status ?? 'draft'}><option value="published">Publicada</option><option value="draft">Borrador</option>{task && <option value="cancelled">Anulada</option>}</select></label>
         </div>
         {formError && <p className="form-error">{formError}</p>}

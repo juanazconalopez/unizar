@@ -1,5 +1,5 @@
 begin;
-select plan(144);
+select plan(161);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -519,6 +519,74 @@ select like(
   pg_get_functiondef('public.set_library_folder(text,text,text)'::regprocedure),
   '%delete from public.library_items%where drive_file_id is not null%',
   'changing the Drive folder uses a safe DELETE clause'
+);
+
+select ok(to_regclass('public.content_images') is not null, 'content image metadata is persisted');
+select ok(to_regclass('public.content_image_references') is not null, 'content images are related to their parent content');
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.content_images'::regclass),
+  'content image metadata uses row level security'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'content_images_path_format'),
+  'content image paths are restricted to the creator and immutable image id'
+);
+select has_function('public', 'current_user_can_read_content_image', array['uuid'], 'content image reads use a protected permission helper');
+select has_function('public', 'cleanup_content_images', array['uuid[]'], 'unreferenced content images can be cleaned up');
+select has_function('public', 'cleanup_my_abandoned_content_images', array[]::text[], 'abandoned uploads can be cleaned up without a scheduled function');
+select like(
+  pg_get_functiondef('public.current_user_can_read_content_image(uuid)'::regprocedure),
+  '%current_user_is_active_player%',
+  'player image reads require an active player profile'
+);
+select like(
+  pg_get_functiondef('public.current_user_can_read_content_image(uuid)'::regprocedure),
+  '%membership.active_until%',
+  'player image reads respect season membership periods'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.cleanup_content_images(uuid[])', 'EXECUTE'),
+  'authenticated sport managers can invoke protected image cleanup'
+);
+select ok(
+  not has_function_privilege('anon', 'public.cleanup_content_images(uuid[])', 'EXECUTE'),
+  'anonymous users cannot invoke content image cleanup'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.cleanup_my_abandoned_content_images()', 'EXECUTE'),
+  'authenticated sport managers can clean their own abandoned uploads'
+);
+select ok(
+  exists (
+    select 1 from storage.buckets
+    where id = 'content-images' and not public and file_size_limit = 614400
+      and allowed_mime_types = array['image/webp']
+  ),
+  'the private content image bucket limits size and format'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Eligible users can read private content images'),
+  'private content images use the content permission helper for reads'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Sport managers can upload private content images'),
+  'only sport managers can upload content images to their own folder'
+);
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Sport managers can delete private content images'),
+  'only sport managers can delete content images'
+);
+select is(
+  (select count(*)::integer from pg_trigger where tgname in (
+    'tasks_sync_content_image_references',
+    'announcements_sync_content_image_references',
+    'training_plans_sync_content_image_references',
+    'training_exercises_sync_content_image_references',
+    'training_exercises_delete_content_image_references',
+    'training_presets_sync_content_image_references'
+  ) and not tgisinternal),
+  6,
+  'all supported text content derives its image references automatically'
 );
 
 select * from finish();

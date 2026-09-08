@@ -42,7 +42,8 @@ export function createTaskActions(context: ActionContext, results: TaskResult[])
     update: async (task: TrainingTask, values: TaskValues) => {
       try {
         context.requireConnection()
-        await updateTrainingTask(task.id, values)
+        if (!context.userId) return
+        await updateTrainingTask(task.id, values, context.userId)
         context.notify('Tarea actualizada.')
         await context.reloadData()
       } catch (error) {

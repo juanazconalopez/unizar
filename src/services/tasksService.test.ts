@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), rpc: vi.fn(), update: vi.fn(),
 }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
+vi.mock('./contentImagesService', () => ({
+  cleanupContentImages: vi.fn(), contentImageIdsForEntity: vi.fn().mockResolvedValue([]), ensureContentImages: vi.fn().mockResolvedValue([]),
+}))
 
 import { createTrainingTask, deleteTrainingTask, reorderTrainingTasks, saveTaskResult, updateTaskStatus, updateTrainingTask } from './tasksService'
 
@@ -22,7 +25,7 @@ describe('tasksService', () => {
   test('never moves the week while editing a task', async () => {
     await updateTrainingTask(makeTask().id, {
       seasonId: 'season-2', date: '2030-01-07', title: 'Editada', description: 'Texto', trainingType: 'Físico', status: 'published',
-    })
+    }, 'owner-1')
     expect(mocks.update).toHaveBeenCalledWith(expect.not.objectContaining({ week_start: expect.anything() }))
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ title: 'Editada', season_id: 'season-2' }))
   })

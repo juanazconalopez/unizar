@@ -61,6 +61,7 @@ function App() {
 
   async function handleSignOut() {
     navigate('home', true)
+    await import('./services/contentImagesService').then(({ clearContentImageCache }) => clearContentImageCache()).catch(() => undefined)
     await auth.signOut()
   }
 

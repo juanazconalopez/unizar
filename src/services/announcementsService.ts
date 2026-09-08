@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { AnnouncementValues } from '../types'
+import { cleanupContentImages, contentImageIdsForEntity, ensureContentImages } from './contentImagesService'
 
 function announcementRow(values: AnnouncementValues) {
   return {
@@ -12,16 +13,26 @@ function announcementRow(values: AnnouncementValues) {
 }
 
 export async function createTeamAnnouncement(values: AnnouncementValues, userId: string) {
+  const uploadedIds = await ensureContentImages([values.description], userId)
   const { error } = await supabase.from('team_announcements').insert({
     ...announcementRow(values),
     created_by: userId,
   })
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
 }
 
-export async function updateTeamAnnouncement(id: string, values: AnnouncementValues) {
+export async function updateTeamAnnouncement(id: string, values: AnnouncementValues, userId: string) {
+  const previousIds = await contentImageIdsForEntity('announcement', id)
+  const uploadedIds = await ensureContentImages([values.description], userId)
   const { error } = await supabase.from('team_announcements').update(announcementRow(values)).eq('id', id)
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
+  await cleanupContentImages(previousIds)
 }
 
 export async function updateTeamAnnouncementStatus(id: string, status: AnnouncementValues['status']) {
@@ -30,6 +41,8 @@ export async function updateTeamAnnouncementStatus(id: string, status: Announcem
 }
 
 export async function deleteTeamAnnouncement(id: string) {
+  const imageIds = await contentImageIdsForEntity('announcement', id)
   const { error } = await supabase.from('team_announcements').delete().eq('id', id)
   if (error) throw error
+  await cleanupContentImages(imageIds)
 }

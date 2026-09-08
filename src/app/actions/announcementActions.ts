@@ -7,7 +7,7 @@ export function createAnnouncementActions(context: ActionContext) {
     save: async (announcement: TeamAnnouncement | undefined, values: AnnouncementValues) => {
       context.requireConnection()
       if (!context.userId) return
-      if (announcement) await updateTeamAnnouncement(announcement.id, values)
+      if (announcement) await updateTeamAnnouncement(announcement.id, values, context.userId)
       else await createTeamAnnouncement(values, context.userId)
       context.notify(announcement ? 'Aviso actualizado.' : 'Aviso creado.')
       await context.reloadData()

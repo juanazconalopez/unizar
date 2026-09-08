@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
 import type { TrainingExercisePreset } from '../../types'
 import { TacticsBoardPreview } from './TacticsBoard'
 
@@ -26,7 +27,7 @@ export function TrainingExerciseLibrary({ presets, loading, error, onBack, onCre
           return <article className="training-library-card" key={preset.id}>
             <button aria-label={`Editar ejercicio ${preset.title}`} className="training-library-card-open" onClick={() => onEdit(preset)} type="button" />
             <div className={hasDiagram ? 'training-library-card-preview populated' : 'training-library-card-preview'}>{hasDiagram ? <TacticsBoardPreview data={preset.diagram_data} label={`Esquema de ${preset.title}`} /> : <div><span>Sin pizarra táctica</span></div>}</div>
-            <div className="training-library-card-content"><div className="training-library-card-meta"><span><Icon name="clock" size={14} />{preset.duration_minutes} min</span>{hasDiagram && <span className="has-diagram"><Icon name="strategy" size={14} />Con esquema</span>}</div><h2>{preset.title}</h2><p>{preset.description || 'Sin descripción.'}</p></div>
+            <div className="training-library-card-content"><div className="training-library-card-meta"><span><Icon name="clock" size={14} />{preset.duration_minutes} min</span>{hasDiagram && <span className="has-diagram"><Icon name="strategy" size={14} />Con esquema</span>}{contentImageIds(preset.description).length > 0 && <span>📎 Imagen</span>}</div><h2>{preset.title}</h2><p>{stripContentImageTokens(preset.description) || 'Sin descripción.'}</p></div>
             <button className="secondary-button compact training-library-edit" onClick={() => onEdit(preset)} type="button">Editar</button>
           </article>
         })}</div>

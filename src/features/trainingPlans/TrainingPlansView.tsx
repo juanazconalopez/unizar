@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
+import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
 import { errorText } from '../../lib/errors'
 import {
   deleteTrainingPlan,
@@ -128,7 +129,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     const saved = demoMode
       ? demoPresetFromExercise(values, userId, current?.id, current)
       : current
-        ? await updateTrainingExercisePreset(current.id, values)
+        ? await updateTrainingExercisePreset(current.id, values, userId)
         : await saveTrainingExercisePreset(values, userId)
     const updateList = (items: TrainingExercisePreset[]) => [...items.filter((item) => item.id !== saved.id), saved].sort((a, b) => a.title.localeCompare(b.title, 'es'))
     setLibraryPresets(updateList)
@@ -182,7 +183,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
       onDelete={editor.plan ? async () => { await remove(editor.plan!); setEditor(null) } : undefined}
       onSavePlan={async (values) => {
         if (!demoMode) {
-          await saveTrainingPlan(editor.plan?.id, values)
+          await saveTrainingPlan(editor.plan?.id, values, userId)
           return
         }
         const saved = demoPlanFromValues(values, seasons, editor.plan)
@@ -240,11 +241,12 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
                 <div className="training-plan-main">
                   <div className="training-plan-title-row"><span className={`training-plan-status ${plan.status}`}>{trainingPlanStatusLabel(plan.status)}</span><small>{plan.seasons?.name}</small></div>
                   <h2>{plan.title}</h2>
-                  <p>{plan.objectives || 'Sin objetivos generales indicados.'}</p>
+                  <p>{stripContentImageTokens(plan.objectives) || 'Sin objetivos generales indicados.'}</p>
                   <div className="training-plan-meta">
                     <span><Icon name="tasks" size={14} />{plan.training_exercises.length} ejercicios</span>
                     <span><Icon name="clock" size={14} />{duration} min</span>
                     <span className="training-diagram-count">▧ {plan.training_exercises.filter((exercise) => exercise.diagram_data.elements.length).length} esquemas</span>
+                    {contentImageIds([plan.objectives, plan.material, ...plan.training_exercises.map((exercise) => exercise.description)].join('\n')).length > 0 && <span>📎 Imágenes</span>}
                   </div>
                 </div>
                 <div className="training-plan-card-actions">

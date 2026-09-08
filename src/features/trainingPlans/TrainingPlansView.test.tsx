@@ -172,7 +172,7 @@ describe('training plan reading view', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({
       exercises: [expect.objectContaining({ description: 'Descripción que no quiero perder.' })],
-    }))
+    }), 'owner-1')
     expect(localStorage.getItem(storageKey)).toBeNull()
   })
 
@@ -215,7 +215,7 @@ describe('training plan reading view', () => {
     await user.clear(title)
     await user.type(title, 'Circuito revisado')
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-    expect(mocks.updateTrainingExercisePreset).toHaveBeenCalledWith('preset-1', expect.objectContaining({ title: 'Circuito revisado' }))
+    expect(mocks.updateTrainingExercisePreset).toHaveBeenCalledWith('preset-1', expect.objectContaining({ title: 'Circuito revisado' }), 'owner-1')
     expect(await screen.findByText('Circuito revisado')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Editar ejercicio Circuito revisado' }))

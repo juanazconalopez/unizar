@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
+import { ContentImageTextarea } from '../../components/ContentImageTextarea'
 import { Icon } from '../../components/Icon'
+import { RichContent } from '../../components/RichContent'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
 import { seasonForDate } from '../../lib/selectors'
@@ -188,8 +190,8 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
             <label>Fecha<input onChange={(event) => changeDate(event.target.value)} required type="date" value={values.sessionDate} /></label>
             <label>Temporada<select onChange={(event) => update('seasonId', event.target.value)} value={values.seasonId}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
             <label>Estado<select onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option><option value="published">Preparado</option>{plan && <option value="cancelled">Cancelado</option>}</select></label>
-            <label className="full-field">Objetivos<textarea onChange={(event) => update('objectives', event.target.value)} placeholder="Principios y objetivos principales de la sesión…" rows={3} value={values.objectives} /></label>
-            <label className="full-field">Material<textarea onChange={(event) => update('material', event.target.value)} placeholder="Balones, conos, petos, escudos…" rows={2} value={values.material} /></label>
+            <ContentImageTextarea className="full-field" label="Objetivos" onChange={(value) => update('objectives', value)} placeholder="Principios y objetivos principales de la sesión…" rows={3} value={values.objectives} />
+            <ContentImageTextarea className="full-field" label="Material" onChange={(value) => update('material', value)} placeholder="Balones, conos, petos, escudos…" rows={2} value={values.material} />
           </div>
         </section>
 
@@ -211,7 +213,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
                 <div className="training-exercise-fields">
                   <label>Título<input onChange={(event) => updateExercise(index, { title: event.target.value })} required value={exercise.title} /></label>
                   <label>Duración (min)<input max="240" min="1" onChange={(event) => updateExercise(index, { durationMinutes: Number(event.target.value) })} required type="number" value={exercise.durationMinutes} /></label>
-                  <label className="full-field">Descripción<textarea onChange={(event) => updateExercise(index, { description: event.target.value })} placeholder="Explica la organización y el desarrollo del ejercicio…" rows={3} value={exercise.description} /></label>
+                  <ContentImageTextarea className="full-field" label="Descripción" onChange={(value) => updateExercise(index, { description: value })} placeholder="Explica la organización y el desarrollo del ejercicio…" rows={3} value={exercise.description} />
                 </div>
                 <button className={exercise.diagramData.elements.length ? 'training-board-button populated' : 'training-board-button'} onClick={() => setBoardExercise(index)} type="button">
                   {exercise.diagramData.elements.length > 0 && <span className="training-board-preview"><i /><i /><i /></span>}
@@ -265,7 +267,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
             </div>
             {selectedPreset && <article className="training-preset-preview">
               <header><div><span className="eyebrow">VISTA PREVIA</span><h3>{selectedPreset.title}</h3></div><strong>{selectedPreset.duration_minutes} min</strong></header>
-              <p>{selectedPreset.description || 'Sin descripción.'}</p>
+              <RichContent fallback="Sin descripción." text={selectedPreset.description} />
               {selectedPreset.diagram_data.elements.length
                 ? <TacticsBoardPreview data={selectedPreset.diagram_data} label={`Vista previa de ${selectedPreset.title}`} />
                 : <div className="training-detail-no-board">Este ejercicio no tiene esquema.</div>}

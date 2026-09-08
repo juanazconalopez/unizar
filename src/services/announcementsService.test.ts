@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), update: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
+vi.mock('./contentImagesService', () => ({
+  cleanupContentImages: vi.fn(), contentImageIdsForEntity: vi.fn().mockResolvedValue([]), ensureContentImages: vi.fn().mockResolvedValue([]),
+}))
 
 import { createTeamAnnouncement, deleteTeamAnnouncement, updateTeamAnnouncement, updateTeamAnnouncementStatus } from './announcementsService'
 
@@ -23,7 +26,7 @@ describe('announcementsService', () => {
   })
 
   test('updates status and deletes only the requested announcement', async () => {
-    await updateTeamAnnouncement('announcement-1', values)
+    await updateTeamAnnouncement('announcement-1', values, 'owner-1')
     await updateTeamAnnouncementStatus('announcement-1', 'cancelled')
     await deleteTeamAnnouncement('announcement-1')
     expect(mocks.eq).toHaveBeenCalledWith('id', 'announcement-1')

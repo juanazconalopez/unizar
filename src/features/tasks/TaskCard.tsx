@@ -1,11 +1,13 @@
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
+import { LinkedText, RichContent } from '../../components/RichContent'
 import { FatigueIcon } from '../../components/ui/FatigueIcon'
 import { Modal } from '../../components/ui/Modal'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { addDays, formatDate, formatWeek, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
+import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
 import type { ResultValues, TaskResult, TrainingTask } from '../../types'
 
 export function TaskCard({ task, result, onSave, managerActions, managementSummary, hideWeek = false }: {
@@ -22,6 +24,8 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const resultFatigue = FATIGUE_LEVELS.find((item) => item.value === result?.fatigue_level)
+  const descriptionText = stripContentImageTokens(task.description)
+  const descriptionImageCount = contentImageIds(task.description).length
   const defaultPerformedOn = result?.performed_on
     ?? (todayIso() >= task.week_start && todayIso() <= addDays(task.week_start, 6) ? todayIso() : task.week_start)
 
@@ -62,7 +66,8 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
           <span>{task.training_type || 'Entrenamiento'}</span><span>·</span><span>{task.seasons?.name}</span>
         </div>
         <h3>{task.title}</h3>
-        {task.description && <p className="task-card-description"><LinkedText text={task.description} /></p>}
+        {descriptionText && <p className="task-card-description"><LinkedText text={descriptionText} /></p>}
+        {descriptionImageCount > 0 && <span className="content-image-count">📎 {descriptionImageCount} {descriptionImageCount === 1 ? 'imagen' : 'imágenes'}</span>}
         {managementSummary}
         {(!hideWeek || result) && <div className="task-footer">
           {!hideWeek && <span>{formatWeek(task.week_start)}</span>}
@@ -121,38 +126,9 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
             <div className="task-detail-week"><Icon name="calendar" size={17} /><span>{formatWeek(task.week_start)}</span></div>
             <div className="task-detail-description">
               <span className="eyebrow">INDICACIONES</span>
-              <p>{task.description ? <LinkedText text={task.description} /> : 'Esta tarea no tiene indicaciones adicionales.'}</p>
+              <RichContent fallback="Esta tarea no tiene indicaciones adicionales." text={task.description} />
             </div>
       </Modal>}
     </article>
   )
-}
-
-const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+/gi
-const TRAILING_URL_PUNCTUATION = /[),.;!?]$/
-
-function LinkedText({ text }: { text: string }) {
-  const parts: ReactNode[] = []
-  let lastIndex = 0
-
-  for (const match of text.matchAll(URL_PATTERN)) {
-    const matchIndex = match.index ?? 0
-    let label = match[0]
-    let trailing = ''
-    while (TRAILING_URL_PUNCTUATION.test(label)) {
-      trailing = label.slice(-1) + trailing
-      label = label.slice(0, -1)
-    }
-    parts.push(text.slice(lastIndex, matchIndex))
-    parts.push(
-      <a className="task-description-link" href={label.startsWith('www.') ? `https://${label}` : label} key={`${matchIndex}-${label}`} rel="noopener noreferrer" target="_blank">
-        {label}
-      </a>,
-    )
-    if (trailing) parts.push(trailing)
-    lastIndex = matchIndex + match[0].length
-  }
-
-  parts.push(text.slice(lastIndex))
-  return <>{parts}</>
 }

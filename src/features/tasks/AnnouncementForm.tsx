@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { ContentImageTextarea } from '../../components/ContentImageTextarea'
 import { SeasonContextField } from '../../components/SeasonContextField'
 import { Modal } from '../../components/ui/Modal'
 import { todayIso } from '../../lib/dates'
@@ -19,6 +20,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
   const [busy, setBusy] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [error, setError] = useState('')
+  const [description, setDescription] = useState(announcement?.description ?? '')
   const selectedSeason = announcement
     ? seasons.find((season) => season.id === announcement.season_id)
     : seasonForDate(seasons, todayIso())
@@ -65,7 +67,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
         <SeasonContextField creation={!announcement} season={selectedSeason} />
         <label>Fecha<input defaultValue={announcement?.announcement_date ?? initialDate} name="date" required type="date" /></label>
         <label>Estado<select defaultValue={announcement?.status ?? 'published'} name="status"><option value="published">Publicado</option><option value="draft">Borrador</option>{announcement && <option value="cancelled">Anulado</option>}</select></label>
-        <label className="full-field task-form-description">Descripción<textarea defaultValue={announcement?.description ?? ''} name="description" placeholder="Información que debe conocer el equipo…" rows={7} /></label>
+        <ContentImageTextarea className="full-field task-form-description" label="Descripción" name="description" onChange={(value) => { setDescription(value); setDirty(true) }} placeholder="Información que debe conocer el equipo…" rows={7} value={description} />
       </div>
       {error && <p className="form-error">{error}</p>}
       <div className="form-actions">

@@ -69,7 +69,7 @@ describe('TaskCard', () => {
 
     const dialog = screen.getByRole('dialog', { name: task.title })
     expect(within(dialog).getByText(formatWeek(task.week_start))).toBeInTheDocument()
-    expect(dialog.querySelector('.task-detail-description p')).toHaveTextContent(
+    expect(dialog.querySelector('.task-detail-description .rich-content')).toHaveTextContent(
       'Primera línea con indicaciones. Segunda línea. Tercera línea que solo se consulta en el detalle.',
     )
 

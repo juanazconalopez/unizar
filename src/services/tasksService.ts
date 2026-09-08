@@ -1,6 +1,7 @@
 import { mondayFor } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type { ResultValues, TaskStatus, TaskValues, TrainingTask } from '../types'
+import { cleanupContentImages, contentImageIdsForEntity, ensureContentImages } from './contentImagesService'
 
 export async function saveTaskResult(task: TrainingTask, values: ResultValues, userId: string, exists: boolean) {
   const payload = {
@@ -17,6 +18,7 @@ export async function saveTaskResult(task: TrainingTask, values: ResultValues, u
 }
 
 export async function createTrainingTask(values: TaskValues, userId: string) {
+  const uploadedIds = await ensureContentImages([values.description], userId)
   const { error } = await supabase.from('tasks').insert({
     season_id: values.seasonId,
     week_start: mondayFor(values.date),
@@ -26,10 +28,15 @@ export async function createTrainingTask(values: TaskValues, userId: string) {
     status: values.status,
     created_by: userId,
   })
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
 }
 
-export async function updateTrainingTask(taskId: string, values: TaskValues) {
+export async function updateTrainingTask(taskId: string, values: TaskValues, userId: string) {
+  const previousIds = await contentImageIdsForEntity('task', taskId)
+  const uploadedIds = await ensureContentImages([values.description], userId)
   const { error } = await supabase.from('tasks').update({
     season_id: values.seasonId,
     title: values.title.trim(),
@@ -37,12 +44,18 @@ export async function updateTrainingTask(taskId: string, values: TaskValues) {
     training_type: values.trainingType,
     status: values.status,
   }).eq('id', taskId)
-  if (error) throw error
+  if (error) {
+    await cleanupContentImages(uploadedIds)
+    throw error
+  }
+  await cleanupContentImages(previousIds)
 }
 
 export async function deleteTrainingTask(taskId: string) {
+  const imageIds = await contentImageIdsForEntity('task', taskId)
   const { error } = await supabase.from('tasks').delete().eq('id', taskId)
   if (error) throw error
+  await cleanupContentImages(imageIds)
 }
 
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
