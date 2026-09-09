@@ -13,7 +13,7 @@ import { GuestPlayerDialog } from './GuestPlayerDialog'
 const EMPTY_PROVISIONAL_PLAYERS: ProvisionalPlayer[] = []
 const EMPTY_PROVISIONAL_ATTENDANCE: ProvisionalAttendanceRecord[] = []
 
-export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONAL_PLAYERS, provisionalAttendance = EMPTY_PROVISIONAL_ATTENDANCE, seasons, sessions, attendance, memberships, loadingRange = false, onLoadDate, onSave }: {
+export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONAL_PLAYERS, provisionalAttendance = EMPTY_PROVISIONAL_ATTENDANCE, seasons, sessions, attendance, memberships, loadingRange = false, canRecord = true, canManageGuests = true, onLoadDate, onSave }: {
   profiles: Profile[]
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
@@ -22,6 +22,8 @@ export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONA
   attendance: AttendanceRecord[]
   memberships: SeasonPlayer[]
   loadingRange?: boolean
+  canRecord?: boolean
+  canManageGuests?: boolean
   onLoadDate?: (date: string) => Promise<{ attendance: AttendanceRecord[]; provisionalAttendance: ProvisionalAttendanceRecord[] } | undefined>
   onSave: (date: string, playerIds: string[], attendedPlayerIds: string[], guests: ProvisionalAttendanceEntry[]) => Promise<void>
 }) {
@@ -145,10 +147,11 @@ export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONA
           <div className="attendance-panel-heading">
             <div><span className="eyebrow">JUGADORAS ACTIVAS</span><h2>{formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>
             <div className="attendance-heading-actions">
-              <button className="secondary-button compact" onClick={() => setGuestDialogOpen(true)} type="button"><Icon name="plus" size={16} />Añadir invitada</button>
+              {canManageGuests && <button className="secondary-button compact" onClick={() => setGuestDialogOpen(true)} type="button"><Icon name="plus" size={16} />Añadir invitada</button>}
               {visiblePlayers.length > 0 && <label className="select-all">
                 <input
                   checked={allSelected}
+                  disabled={!canRecord}
                   onChange={(event) => setSelected(event.target.checked ? new Set(visiblePlayers.map((player) => player.id)) : new Set())}
                   type="checkbox"
                 />
@@ -162,7 +165,7 @@ export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONA
               return (
                 <label className={checked ? 'attendance-player present' : 'attendance-player'} key={player.id}>
                   <span><Avatar name={player.display_name} /><strong>{player.display_name}</strong></span>
-                  <input checked={checked} onChange={() => togglePlayer(player.id)} type="checkbox" />
+                  <input checked={checked} disabled={!canRecord} onChange={() => togglePlayer(player.id)} type="checkbox" />
                   <i><Icon name="check" size={20} /></i>
                 </label>
               )
@@ -172,17 +175,17 @@ export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONA
             <div className="attendance-guests-heading"><div><span className="eyebrow">INVITADAS</span><strong>{guests.length} {guests.length === 1 ? 'asistente' : 'asistentes'}</strong></div><small>Se vincularán cuando creen su cuenta.</small></div>
             <div className="attendance-guest-list">{guests.map((guest, index) => <article key={`${guest.id ?? 'new'}-${guest.displayName}-${index}`}>
               <span><Avatar name={guest.displayName} /><span><strong>{guest.displayName}</strong><small>Asistencia provisional</small></span></span>
-              <button aria-label={`Quitar a ${guest.displayName}`} className="icon-button" onClick={() => { setSaved(false); setGuests((current) => current.filter((_, itemIndex) => itemIndex !== index)) }} type="button"><Icon name="close" size={16} /></button>
+              {canManageGuests && <button aria-label={`Quitar a ${guest.displayName}`} className="icon-button" onClick={() => { setSaved(false); setGuests((current) => current.filter((_, itemIndex) => itemIndex !== index)) }} type="button"><Icon name="close" size={16} /></button>}
             </article>)}</div>
           </section>}
           {formError && <p className="form-error">{formError}</p>}
           {saved && <p aria-live="polite" className="form-success"><Icon name="check" size={16} />Asistencia guardada para esta fecha.</p>}
-          <div className="attendance-save">
+          {canRecord && <div className="attendance-save">
             <span>{visiblePlayers.length > 0 && visibleSelected.size === visiblePlayers.length ? '¡Equipo completo!' : `${visiblePlayers.length - visibleSelected.size} sin marcar`}{guests.length > 0 && ` · ${guests.length} ${guests.length === 1 ? 'invitada' : 'invitadas'}`}</span>
             <button className="primary-button" disabled={saving} onClick={save}>
               <Icon name="check" size={18} />{saving ? 'Guardando…' : 'Guardar asistencia'}
             </button>
-          </div>
+          </div>}
         </section>
       ) : (
         <EmptyState
@@ -192,7 +195,7 @@ export function AttendanceView({ profiles, provisionalPlayers = EMPTY_PROVISIONA
             : 'Crea o ajusta una temporada que incluya esta fecha antes de guardar asistencia.'}
         />
       )}
-      {guestDialogOpen && <GuestPlayerDialog
+      {canManageGuests && guestDialogOpen && <GuestPlayerDialog
         players={provisionalPlayers}
         unavailableIds={new Set(guests.flatMap((guest) => guest.id ? [guest.id] : []))}
         onAdd={(entry) => { setSaved(false); setGuests((current) => [...current, entry]) }}

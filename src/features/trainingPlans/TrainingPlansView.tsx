@@ -37,13 +37,18 @@ import {
 
 type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
 
-export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId, onNotify }: {
+export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId, onNotify, permissions }: {
   demo?: boolean
   focusedPlanId?: string
   seasons: Season[]
   userId: string
   onNotify: (message: string) => void
+  permissions?: {
+    create: boolean; edit: boolean; delete: boolean; publish: boolean
+    viewExercises: boolean; createExercises: boolean; editExercises: boolean; deleteExercises: boolean
+  }
 }) {
+  const access = permissions ?? { create: true, edit: true, delete: true, publish: true, viewExercises: true, createExercises: true, editExercises: true, deleteExercises: true }
   const [plans, setPlans] = useState<TrainingPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -156,7 +161,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     return <TrainingPresetEditor
       preset={presetEditor === 'new' ? undefined : presetEditor}
       onBack={() => setPresetEditor(null)}
-      onDelete={presetEditor === 'new' ? undefined : () => removeLibraryPreset(presetEditor)}
+      onDelete={presetEditor === 'new' || !access.deleteExercises ? undefined : () => removeLibraryPreset(presetEditor)}
       onSave={saveLibraryPreset}
     />
   }
@@ -167,8 +172,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
       loading={libraryLoading}
       presets={libraryPresets}
       onBack={() => setLibraryOpen(false)}
-      onCreate={() => setPresetEditor('new')}
-      onEdit={setPresetEditor}
+      onCreate={access.createExercises ? () => setPresetEditor('new') : undefined}
+      onEdit={access.editExercises ? setPresetEditor : undefined}
       onReload={() => void openLibrary()}
     />
   }
@@ -180,7 +185,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
       template={editor.template}
       userId={userId}
       onCancel={() => setEditor(null)}
-      onDelete={editor.plan ? async () => { await remove(editor.plan!); setEditor(null) } : undefined}
+      onDelete={editor.plan && access.delete ? async () => { await remove(editor.plan!); setEditor(null) } : undefined}
       onSavePlan={async (values) => {
         if (!demoMode) {
           await saveTrainingPlan(editor.plan?.id, values, userId)
@@ -191,14 +196,15 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
           ? current.map((item) => item.id === editor.plan?.id ? saved : item)
           : [saved, ...current])
       }}
-      onLoadPresets={async () => demoMode ? demoPresets : fetchTrainingExercisePresets()}
-      onSavePreset={async (exercise) => {
+      onLoadPresets={async () => access.viewExercises ? demoMode ? demoPresets : fetchTrainingExercisePresets() : []}
+      onSavePreset={access.createExercises ? async (exercise) => {
         if (!demoMode) return saveTrainingExercisePreset(exercise, userId)
         const preset = demoPresetFromExercise(exercise, userId)
         setDemoPresets((current) => [...current, preset].sort((a, b) => a.title.localeCompare(b.title, 'es')))
         return preset
-      }}
+      } : undefined}
       onNotify={onNotify}
+      canPublish={access.publish}
       onSaved={async (message) => {
         onNotify(message)
         if (!demoMode) await load()
@@ -211,7 +217,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     return <TrainingPlanDetail
       plan={viewingPlan}
       onBack={() => setViewingPlan(null)}
-      onEdit={() => { setViewingPlan(null); setEditor({ plan: viewingPlan }) }}
+      onEdit={access.edit ? () => { setViewingPlan(null); setEditor({ plan: viewingPlan }) } : undefined}
     />
   }
 
@@ -219,8 +225,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     <div className="page training-plans-page">
       <PageHeader
         action={<div className="training-header-actions">
-          <button className="secondary-button" onClick={() => void openLibrary()} type="button"><Icon name="strategy" size={17} />Biblioteca de ejercicios</button>
-          <button className="primary-button" disabled={!seasons.length} onClick={() => setEditor({})}><Icon name="plus" size={17} />Crear entrenamiento</button>
+          {access.viewExercises && <button className="secondary-button" onClick={() => void openLibrary()} type="button"><Icon name="strategy" size={17} />Biblioteca de ejercicios</button>}
+          {access.create && <button className="primary-button" disabled={!seasons.length} onClick={() => setEditor({})}><Icon name="plus" size={17} />Crear entrenamiento</button>}
         </div>}
         eyebrow="PLANIFICACIÓN DEL EQUIPO"
         subtitle="Prepara cada sesión con ejercicios de texto y esquemas tácticos reutilizables."
@@ -250,8 +256,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
                   </div>
                 </div>
                 <div className="training-plan-card-actions">
-                  <button className="secondary-button compact" onClick={() => setEditor({ template: plan })} type="button"><Icon name="copy" size={14} />Duplicar</button>
-                  <button className="secondary-button compact" onClick={() => setEditor({ plan })} type="button">Editar</button>
+                  {access.create && <button className="secondary-button compact" onClick={() => setEditor({ template: plan })} type="button"><Icon name="copy" size={14} />Duplicar</button>}
+                  {access.edit && <button className="secondary-button compact" onClick={() => setEditor({ plan })} type="button">Editar</button>}
                 </div>
               </article>
             )

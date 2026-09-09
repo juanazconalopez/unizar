@@ -5,7 +5,8 @@ import type { useCompetitionData } from '../hooks/useCompetitionData'
 import type { useTrainingData } from '../hooks/useTrainingData'
 import { todayIso } from '../lib/dates'
 import type { NavigationTarget } from '../lib/navigation'
-import { canAccessTasks, isPlayer } from '../lib/permissions'
+import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/permissions'
+import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
 import { fetchPublishedTrainingPlans } from '../services/trainingPlansService'
 import type { Profile, ViewName } from '../types'
@@ -28,6 +29,7 @@ export function AppViewRouter({
   notify,
   online,
   profile,
+  permissionKeys,
   userId,
 }: {
   actions: AppActions
@@ -40,10 +42,12 @@ export function AppViewRouter({
   notify: (message: string) => void
   online: boolean
   profile: Profile
+  permissionKeys: PermissionKey[]
   userId: string
 }) {
   const view = navigation.view
   const personalResults = data.results.filter((result) => result.player_id === userId)
+  const can = (permission: PermissionKey) => hasPermission(profile, permission, permissionKeys)
 
   if (data.loadedView !== view) {
     return data.errorMessage && !data.loading
@@ -53,7 +57,7 @@ export function AppViewRouter({
 
   return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}:${navigation.settingsSection ?? ''}`}>
     <Suspense fallback={<SectionLoading />}>
-      {view !== 'competition' && view !== 'library' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId) && (
+      {view !== 'competition' && view !== 'library' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId, permissionKeys) && (
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
       {view === 'home' && <Dashboard
@@ -69,13 +73,13 @@ export function AppViewRouter({
         todayBirthdays={data.todayBirthdays}
         trainingSessions={data.trainingSessions}
         userId={userId}
-        onGoToTasks={canAccessTasks(profile) ? () => navigate('calendar') : undefined}
+        onGoToTasks={canAccessTasks(profile, permissionKeys) ? () => navigate('calendar') : undefined}
         onLoadSeasonSummary={isPlayer(profile) ? fetchPlayerSeasonSummary : undefined}
         onOpenAnnouncement={(announcement) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'home', date: announcement.announcement_date, announcementId: announcement.id })}
         onOpenMatch={(match) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'matches', date: match.match_date })}
-        onSaveResult={actions.tasks.saveResult}
+        onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
       />}
-      {view === 'statistics' && canViewTeam && <StatisticsView
+      {view === 'statistics' && can(PERMISSIONS.statistics.view) && <StatisticsView
         attendance={data.attendance}
         birthdays={data.seasonBirthdays}
         loadingRange={data.loadingRange}
@@ -87,10 +91,12 @@ export function AppViewRouter({
         seasons={data.seasons}
         sessions={data.trainingSessions}
         tasks={data.tasks}
+        canViewAttendance={can(PERMISSIONS.statistics.attendance)}
+        canViewTasks={can(PERMISSIONS.statistics.tasks)}
         onLoadMonth={data.loadStatisticsMonth}
         onLoadSeasonReport={fetchSeasonAttendanceReport}
       />}
-      {view === 'attendance' && canManage && <AttendanceView
+      {view === 'attendance' && can(PERMISSIONS.attendance.view) && <AttendanceView
         attendance={data.attendance}
         loadingRange={data.loadingRange}
         memberships={data.memberships}
@@ -99,11 +105,22 @@ export function AppViewRouter({
         provisionalPlayers={data.provisionalPlayers}
         seasons={data.seasons}
         sessions={data.trainingSessions}
+        canRecord={can(PERMISSIONS.attendance.record)}
+        canManageGuests={can(PERMISSIONS.attendance.guests)}
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
-      {view === 'training' && canManage && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} seasons={data.seasons} userId={userId} onNotify={notify} />}
-      {view === 'calendar' && canManage && <CalendarView
+      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} seasons={data.seasons} userId={userId} onNotify={notify} permissions={{
+        create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
+        viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
+      }} />}
+      {view === 'calendar' && can(PERMISSIONS.calendar.manage) && <CalendarView
+        permissions={{
+          taskCreate: can(PERMISSIONS.tasks.create), taskEdit: can(PERMISSIONS.tasks.edit), taskDelete: can(PERMISSIONS.tasks.delete), taskPublish: can(PERMISSIONS.tasks.publish), taskReorder: can(PERMISSIONS.tasks.reorder), taskResults: can(PERMISSIONS.tasks.results),
+          announcementCreate: can(PERMISSIONS.announcements.create), announcementEdit: can(PERMISSIONS.announcements.edit), announcementDelete: can(PERMISSIONS.announcements.delete), announcementPublish: can(PERMISSIONS.announcements.publish),
+          matchCreate: can(PERMISSIONS.matches.create), matchEdit: can(PERMISSIONS.matches.edit), matchDelete: can(PERMISSIONS.matches.delete), availabilityEdit: can(PERMISSIONS.matches.editAvailability),
+          lineupEdit: can(PERMISSIONS.matches.editLineup), lineupPublish: can(PERMISSIONS.matches.publishLineup), lineupUnlock: can(PERMISSIONS.matches.unlockLineup), report: can(PERMISSIONS.matches.report),
+        }}
         announcements={data.announcements}
         availability={data.matchAvailability}
         birthdays={data.seasonBirthdays}
@@ -136,7 +153,7 @@ export function AppViewRouter({
         onUnlockLineup={actions.matches.unlockLineup}
         onUpdateTask={actions.tasks.update}
       />}
-      {view === 'calendar' && !canManage && isPlayer(profile) && <PlayerCalendarView
+      {view === 'calendar' && !can(PERMISSIONS.calendar.manage) && can(PERMISSIONS.calendar.personal) && <PlayerCalendarView
         announcements={data.announcements}
         availability={data.matchAvailability}
         birthdays={data.calendarBirthdays}
@@ -151,8 +168,8 @@ export function AppViewRouter({
         userId={userId}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadTaskRange={data.loadTaskRange}
-        onSaveAvailability={actions.matches.saveAvailability}
-        onSaveResult={actions.tasks.saveResult}
+        onSaveAvailability={can(PERMISSIONS.matches.ownAvailability) ? actions.matches.saveAvailability : undefined}
+        onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
       />}
       {view === 'tasks' && canAccessTasks(profile) && <TasksView
         announcements={data.announcements}
@@ -180,13 +197,13 @@ export function AppViewRouter({
       />}
       {view === 'matches' && <MatchesView
         availability={data.matchAvailability}
-        canEditPlayerAvailability={canManage}
-        canManage={canManage}
-        canUnlockLineup={canManage}
-        canViewAvailability={canViewTeam}
-        canViewReport={canManage}
+        canEditPlayerAvailability={can(PERMISSIONS.matches.editAvailability)}
+        canManage={can(PERMISSIONS.matches.edit)}
+        canUnlockLineup={can(PERMISSIONS.matches.unlockLineup)}
+        canViewAvailability={can(PERMISSIONS.matches.teamAvailability)}
+        canViewReport={can(PERMISSIONS.matches.report)}
         focusedDate={navigation.date}
-        isPlayer={isPlayer(profile)}
+        isPlayer={isPlayer(profile) && can(PERMISSIONS.matches.ownAvailability)}
         lineups={data.matchLineups}
         matches={data.matches}
         memberships={data.memberships}
@@ -206,7 +223,7 @@ export function AppViewRouter({
       {view === 'competition' && <CompetitionView
         errorMessage={competition.errorMessage}
         fixtures={competition.fixtures}
-        isOwner={profile.is_owner}
+        isOwner={hasPermission(profile, PERMISSIONS.competition.sync, permissionKeys)}
         loading={competition.loading}
         playerStats={competition.playerStats}
         seasons={competition.seasons}
@@ -216,7 +233,7 @@ export function AppViewRouter({
         onSync={competition.synchronize}
       />}
       {view === 'library' && <LibraryView items={data.libraryItems} />}
-      {view === 'settings' && profile.is_owner && <SettingsView
+      {view === 'settings' && hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SettingsView
         currentUserId={userId}
         memberships={data.memberships}
         profilePrivateDetails={data.profilePrivateDetails}
@@ -226,6 +243,8 @@ export function AppViewRouter({
         seasons={data.seasons}
         section={navigation.settingsSection}
         librarySettings={data.librarySettings}
+        permissionDefinitions={data.permissionConfiguration.definitions}
+        rolePermissions={data.permissionConfiguration.grants}
         onCreateSeason={actions.club.createSeason}
         onDeleteSeason={actions.club.deleteSeason}
         onArchiveProfile={actions.club.archiveProfile}
@@ -237,8 +256,10 @@ export function AppViewRouter({
         onUpdateSeason={actions.club.updateSeason}
         onSaveLibraryFolder={actions.library.saveFolder}
         onSyncLibrary={actions.library.sync}
+        onSaveRolePermissions={actions.club.saveRolePermissions}
+        onResetRolePermissions={actions.club.resetRolePermissions}
       />}
-      {view === 'settings' && !profile.is_owner && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
+      {view === 'settings' && !hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
     </Suspense>
   </ViewErrorBoundary>
 }

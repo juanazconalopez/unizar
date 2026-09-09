@@ -34,9 +34,11 @@ type StatisticsProps = {
   onLoadMonth?: (month: string) => Promise<void>
   onLoadSeasonReport?: (seasonId: string) => Promise<SeasonCallupReport>
   birthdays?: SeasonBirthday[]
+  canViewAttendance?: boolean
+  canViewTasks?: boolean
 }
 
-export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
+export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -100,11 +102,11 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
       <PageHeader
         eyebrow="RENDIMIENTO DEL EQUIPO"
         title="Resumen mensual"
-        subtitle="Asistencia a campo y seguimiento de tareas del equipo."
+        subtitle={canViewAttendance && canViewTasks ? 'Asistencia a campo y seguimiento de tareas del equipo.' : canViewAttendance ? 'Asistencia a campo del equipo.' : 'Seguimiento de tareas del equipo.'}
       />
 
       <section className="statistics-summary" aria-label="Resumen del mes">
-        <SummaryMetric
+        {canViewAttendance && <SummaryMetric
           label="Entrenamientos"
           value={monthSessions.length.toString()}
           aside={attendanceSummary.maximum !== null ? (
@@ -113,22 +115,22 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
               <div><span>Mín. A.</span><strong>{attendanceSummary.minimum}</strong></div>
             </div>
           ) : undefined}
-        />
-        <SummaryMetric
+        />}
+        {canViewAttendance && <SummaryMetric
           label="Media asistencia"
           value={attendanceSummary.average === null ? '—' : formatAverage(attendanceSummary.average)}
           valueAside={attendanceSummary.percentage === null ? undefined : <span className="summary-percentage">({Math.round(attendanceSummary.percentage)}%)</span>}
-        />
-        <SummaryMetric
+        />}
+        {canViewTasks && <SummaryMetric
           label="Media tareas realizadas"
           value={averageCompletedTasks === null ? '—' : formatAverage(averageCompletedTasks)}
-        />
-        {onLoadSeasonReport && <SeasonAttendanceReport
+        />}
+        {canViewAttendance && onLoadSeasonReport && <SeasonAttendanceReport
           onLoad={onLoadSeasonReport}
           season={seasons.find((season) => season.start_date <= today && season.end_date >= today)}
         />}
       </section>
-      {attendanceDrop >= 10 && (
+      {canViewAttendance && attendanceDrop >= 10 && (
         <div className="monthly-alert" role="status">
           <strong>La asistencia ha bajado {attendanceDrop} puntos</strong>
           <span>Comparación con el mes anterior. Puede ser útil revisar lesiones, carga y disponibilidad.</span>
@@ -158,10 +160,15 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
             const attended = teamAttended + guestAttendance.length
             const taskPlayers = new Set(playerResults.filter((result) => result.performed_on === date).map((result) => result.player_id)).size
             const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
-            const hasData = dayAttendance.length > 0 || guestAttendance.length > 0 || taskPlayers > 0 || dayBirthdays.length > 0
+            const hasData = (canViewAttendance && (dayAttendance.length > 0 || guestAttendance.length > 0)) || (canViewTasks && taskPlayers > 0) || dayBirthdays.length > 0
+            const daySummary = [
+              canViewAttendance ? `${attended} asistencias${guestAttendance.length ? `, ${guestAttendance.length} de invitadas` : ''}` : '',
+              canViewTasks ? `${taskPlayers} jugadoras con tareas` : '',
+              dayBirthdays.length ? `cumpleaños de ${dayBirthdays.map((birthday) => birthday.display_name).join(', ')}` : '',
+            ].filter(Boolean).join(', ')
             return (
               <button
-                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${attended} asistencias${guestAttendance.length ? `, ${guestAttendance.length} de invitadas` : ''}, ${taskPlayers} jugadoras con tareas${dayBirthdays.length ? ` y cumpleaños de ${dayBirthdays.map((birthday) => birthday.display_name).join(', ')}` : ''}`}
+                aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${daySummary || 'sin datos'}`}
                 aria-pressed={selectedDate === date}
                 className={`${hasData ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
                 key={date}
@@ -169,30 +176,30 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
                 type="button"
               >
                 <strong>{Number(date.slice(-2))}</strong>
-                {(dayAttendance.length > 0 || guestAttendance.length > 0) && <small className="attendance-mark">A {attended}</small>}
-                {taskPlayers > 0 && <small className="task-mark">T {taskPlayers}</small>}
+                {canViewAttendance && (dayAttendance.length > 0 || guestAttendance.length > 0) && <small className="attendance-mark">A {attended}</small>}
+                {canViewTasks && taskPlayers > 0 && <small className="task-mark">T {taskPlayers}</small>}
                 {dayBirthdays.length > 0 && <small className="birthday-mark">🎂 {dayBirthdays.length}</small>}
               </button>
             )
           })}
         </div>
         <div className="calendar-legend">
-          <span><i className="attendance-dot" />A · Asistencia</span>
-          <span><i className="task-dot" />T · Jugadoras con tareas</span>
+          {canViewAttendance && <span><i className="attendance-dot" />A · Asistencia</span>}
+          {canViewTasks && <span><i className="task-dot" />T · Jugadoras con tareas</span>}
         </div>
       </section>
 
       <StatisticsDayDetail
         players={historicalPlayers}
-        provisionalAttendance={provisionalAttendance}
+        provisionalAttendance={canViewAttendance ? provisionalAttendance : []}
         provisionalPlayers={provisionalPlayers}
-        attendance={playerAttendance}
+        attendance={canViewAttendance ? playerAttendance : []}
         date={selectedDate}
         memberships={memberships}
         seasons={seasons}
-        results={playerResults}
-        sessions={sessions}
-        tasks={tasks}
+        results={canViewTasks ? playerResults : []}
+        sessions={canViewAttendance ? sessions : []}
+        tasks={canViewTasks ? tasks : []}
         birthdays={birthdays}
       />
     </div>

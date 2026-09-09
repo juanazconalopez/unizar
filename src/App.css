@@ -402,6 +402,25 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .settings-section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
 .settings-section-heading .team-summary-line { display: block; }
 .settings-section-heading.compact p { margin-top: 0; }
+.permissions-settings { max-width: 920px; }
+.permissions-save-actions { display: flex; gap: 9px; }
+.permissions-role-tabs { margin-bottom: 18px; padding: 5px; display: flex; gap: 5px; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: #f4f7f5; }
+.permissions-role-tabs button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-weight: 800; white-space: nowrap; }
+.permissions-role-tabs button.active { color: white; background: var(--green); }
+.permissions-role-tabs button.locked { margin-left: auto; cursor: default; opacity: .7; }
+.permission-section-list { display: grid; gap: 11px; }
+.permission-section-card { border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow); overflow: hidden; }
+.permission-section-card summary { padding: 15px 17px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.permission-section-card summary span { color: var(--muted); font-size: 11px; }
+.permission-tree { border-top: 1px solid var(--line); }
+.permission-row { min-height: 54px; padding: 10px 17px; display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 1px solid #edf1ef; }
+.permission-row:last-child { border-bottom: 0; }
+.permission-row.child { padding-left: 38px; }
+.permission-row > span { display: grid; gap: 3px; }
+.permission-row strong { font-size: 12px; }
+.permission-row small { color: var(--muted); font-size: 10px; }
+.permission-row input { width: 18px; height: 18px; accent-color: var(--green); }
+.permission-row.disabled { background: #f7f8f7; color: var(--muted); }
 .team-search-toggle { flex: 0 0 auto; border: 1px solid var(--line); color: var(--green); background: white; }
 .team-search-toggle:hover { border-color: #b8c9c1; background: var(--green-soft); }
 .team-search-field { position: relative; width: min(320px,100%); display: flex; align-items: center; }
@@ -1356,6 +1375,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .availability-groups { grid-template-columns: 1fr; }
   .settings-section-heading { align-items: stretch; flex-direction: column; }
   .settings-section-heading .primary-button { width: 100%; }
+  .permissions-save-actions { width: 100%; flex-direction: column-reverse; }
+  .permissions-save-actions button { width: 100%; }
+  .permissions-role-tabs button.locked { margin-left: 0; }
   .team-search-field { width: 100%; }
   .people-list { overflow: visible; border: 0; display: grid; gap: 10px; background: transparent; }
   .person-row, .person-row:last-child { border: 1px solid var(--line); border-radius: 12px; }

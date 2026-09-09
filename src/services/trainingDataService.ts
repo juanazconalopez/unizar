@@ -1,5 +1,5 @@
 import { addDays, mondayFor, monthEnd, monthStart, todayIso } from '../lib/dates'
-import { canManageSport, canViewTeamData } from '../lib/permissions'
+import { canManageSport, canViewTeamData, hasPermission, PERMISSIONS } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
@@ -9,6 +9,9 @@ import type {
 import { fetchActiveSeasonBirthdays, fetchPlayerCalendarBirthdays, fetchTodayBirthdays } from './birthdayService'
 import { fetchAllProvisionalAttendance, fetchUnlinkedProvisionalPlayers } from './provisionalPlayersService'
 import { fetchLibraryItems, fetchLibrarySettings } from './libraryService'
+import { fetchMyPermissions, fetchPermissionConfiguration } from './permissionsService'
+import type { PermissionConfiguration } from './permissionsService'
+import type { PermissionKey } from '../lib/permissions'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -37,6 +40,8 @@ export type TrainingData = {
   calendarBirthdays: CalendarBirthday[]
   libraryItems: LibraryItem[]
   librarySettings: LibrarySettings | null
+  permissionKeys: PermissionKey[]
+  permissionConfiguration: PermissionConfiguration
 }
 
 export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
@@ -51,15 +56,22 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], memberships: [], profiles: [],
     tasks: [], results: [], trainingSessions: [], attendance: [], provisionalPlayers: [], provisionalAttendance: [], matches: [], matchAvailability: [], matchLineups: [],
     announcements: [], todayBirthdays: [], seasonBirthdays: [], calendarBirthdays: [], libraryItems: [], librarySettings: null,
+    permissionKeys: [], permissionConfiguration: { definitions: [], grants: [] },
   }
   if (!profile.is_approved || profile.is_archived) return emptyData
 
-  const canManageTasks = canManageSport(profile)
-  const canViewTeam = canViewTeamData(profile)
-  const requirements = dataRequirementsFor(scope, canViewTeam)
+  const permissionKeys = await fetchMyPermissions()
+
+  const canManageTasks = canManageSport(profile, permissionKeys)
+  const canViewTeam = canViewTeamData(profile, permissionKeys)
+  const canViewProvisionalPlayers = hasPermission(profile, PERMISSIONS.attendance.guests, permissionKeys)
+    || hasPermission(profile, PERMISSIONS.attendance.report, permissionKeys)
+    || hasPermission(profile, PERMISSIONS.statistics.attendance, permissionKeys)
+    || hasPermission(profile, PERMISSIONS.settings.team, permissionKeys)
+  const requirements = dataRequirementsFor(scope, canViewTeam, canViewProvisionalPlayers)
   const currentWeek = mondayFor(new Date())
   const emptyResponse = Promise.resolve({ data: [], error: null })
-  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings] = await Promise.all([
+  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings, permissionConfiguration] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
     requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
     requirements.profiles
@@ -70,6 +82,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     scope === 'settings' ? fetchAllProvisionalAttendance() : Promise.resolve([]),
     scope === 'library' ? fetchLibraryItems() : Promise.resolve([] as LibraryItem[]),
     scope === 'settings' ? fetchLibrarySettings() : Promise.resolve(null as LibrarySettings | null),
+    scope === 'settings' ? fetchPermissionConfiguration() : Promise.resolve({ definitions: [], grants: [] } as PermissionConfiguration),
   ])
   if (seasonsResponse.error) throw seasonsResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
@@ -114,12 +127,15 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       }
     }
   } else if (scope === 'statistics' && canViewTeam) {
-    const statistics = await fetchStatisticsWindow(monthStart(todayIso()))
+    const statistics = await fetchStatisticsWindow(monthStart(todayIso()), {
+      tasks: hasPermission(profile, PERMISSIONS.statistics.tasks, permissionKeys),
+      attendance: hasPermission(profile, PERMISSIONS.statistics.attendance, permissionKeys),
+    })
     taskData = statistics
     attendanceData = statistics
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     if (profile.is_owner && activeSeason) seasonBirthdays = await fetchActiveSeasonBirthdays(activeSeason.id, todayIso())
-  } else if (scope === 'attendance' && canManageTasks) {
+  } else if (scope === 'attendance' && hasPermission(profile, PERMISSIONS.attendance.view, permissionKeys)) {
     attendanceData = await fetchRecentAttendance()
   } else if (scope === 'matches') {
     matchData = await fetchMatchWindow(monthStart(todayIso()))
@@ -132,5 +148,6 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     provisionalPlayers, provisionalAttendance: scope === 'settings' ? settingsProvisionalAttendance : attendanceData.provisionalAttendance,
     matches: matchData.matches, matchAvailability: matchData.matchAvailability, matchLineups: matchData.matchLineups,
     announcements: taskData.announcements, todayBirthdays, seasonBirthdays, calendarBirthdays, libraryItems, librarySettings,
+    permissionKeys, permissionConfiguration,
   }
 }

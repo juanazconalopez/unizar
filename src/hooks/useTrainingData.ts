@@ -4,6 +4,8 @@ import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { withAuthRecovery } from '../lib/authRecovery'
 import { errorText } from '../lib/errors'
 import { canManageSport } from '../lib/permissions'
+import type { PermissionConfiguration } from '../services/permissionsService'
+import type { PermissionKey } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
@@ -33,6 +35,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [calendarBirthdays, setCalendarBirthdays] = useState<CalendarBirthday[]>([])
   const [libraryItems, setLibraryItems] = useState<LibraryItem[]>([])
   const [librarySettings, setLibrarySettings] = useState<LibrarySettings | null>(null)
+  const [permissionKeys, setPermissionKeys] = useState<PermissionKey[]>([])
+  const [permissionConfiguration, setPermissionConfiguration] = useState<PermissionConfiguration>({ definitions: [], grants: [] })
   const [loading, setLoading] = useState(false)
   const [loadingRange, setLoadingRange] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -66,7 +70,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await withAuthRecovery(() => fetchTaskWindow(userId, canManageSport(profile), fromWeek, toWeek))
+      const data = await withAuthRecovery(() => fetchTaskWindow(userId, canManageSport(profile, permissionKeys), fromWeek, toWeek))
       if (rangeRequestIds.current.tasks !== requestId) return
       loadedTaskRanges.current.set(`${fromWeek}:${toWeek}`, { from: fromWeek, to: toWeek })
       setResults((currentResults) => mergeTaskWindow(
@@ -80,7 +84,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     } finally {
       endRangeLoad()
     }
-  }, [beginRangeLoad, endRangeLoad, profile, userId])
+  }, [beginRangeLoad, endRangeLoad, permissionKeys, profile, userId])
 
   const loadStatisticsMonth = useCallback(async (month: string) => {
     if (!userId) return
@@ -88,7 +92,10 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     beginRangeLoad()
     setErrorMessage('')
     try {
-      const data = await withAuthRecovery(() => fetchStatisticsWindow(month))
+      const data = await withAuthRecovery(() => fetchStatisticsWindow(month, {
+        tasks: Boolean(profile && permissionKeys.includes('statistics.tasks')),
+        attendance: Boolean(profile && permissionKeys.includes('statistics.attendance')),
+      }))
       if (rangeRequestIds.current.statistics !== requestId) return
       loadedStatisticsMonth.current = month
       setTasks(data.tasks)
@@ -102,7 +109,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     } finally {
       endRangeLoad()
     }
-  }, [beginRangeLoad, endRangeLoad, userId])
+  }, [beginRangeLoad, endRangeLoad, permissionKeys, profile, userId])
 
   const loadAttendanceDate = useCallback(async (date: string) => {
     if (!userId) return
@@ -210,6 +217,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setCalendarBirthdays(data.calendarBirthdays)
         setLibraryItems(data.libraryItems)
         setLibrarySettings(data.librarySettings)
+        setPermissionKeys(data.permissionKeys)
+        setPermissionConfiguration(data.permissionConfiguration)
         setLoadedView(view)
         setLoadedUserId(userId)
       } catch (error) {
@@ -282,6 +291,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     calendarBirthdays,
     libraryItems,
     librarySettings,
+    permissionKeys,
+    permissionConfiguration,
     loading,
     loadingRange,
     errorMessage,

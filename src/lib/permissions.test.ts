@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canConfigureClub, canManageSport, canViewTeamData, isPlayer } from './permissions'
+import { canAccessTasks, canConfigureClub, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
   test('gives the owner every permission', () => {
@@ -37,5 +37,19 @@ describe('role permissions', () => {
     expect(isPlayer(playerViewer)).toBe(true)
     expect(canViewTeamData(playerViewer)).toBe(true)
     expect(canAccessTasks(playerViewer)).toBe(true)
+  })
+
+  test('uses loaded role permissions as the effective source without losing owner access', () => {
+    const coach = makeProfile({ is_coach: true, is_player: false })
+    expect(hasPermission(coach, PERMISSIONS.training.view, [PERMISSIONS.library.view])).toBe(false)
+    expect(hasPermission(coach, PERMISSIONS.library.view, [PERMISSIONS.library.view])).toBe(true)
+
+    const owner = makeProfile({ is_owner: true, is_player: false })
+    expect(effectivePermissions(owner, []).has(PERMISSIONS.settings.permissions)).toBe(true)
+  })
+
+  test('removes every effective permission from disabled profiles', () => {
+    const inactiveOwner = makeProfile({ is_owner: true, is_player: false, is_active: false })
+    expect(effectivePermissions(inactiveOwner).size).toBe(0)
   })
 })

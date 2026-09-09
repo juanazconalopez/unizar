@@ -10,7 +10,8 @@ import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
 import { ProfileDetailsDialog } from '../../features/profile/ProfileDetailsDialog'
 import type { AppNotification } from '../../features/notifications/notifications'
-import { canManageSport, canViewTeamData, isPlayer } from '../../lib/permissions'
+import { hasPermission, PERMISSIONS } from '../../lib/permissions'
+import type { PermissionKey } from '../../lib/permissions'
 import type { NavigationTarget } from '../../lib/navigation'
 
 type NavigationLeaf = { id: ViewName; label: string; icon: IconName; target?: NavigationTarget }
@@ -23,6 +24,7 @@ function isNavigationGroup(entry: NavigationEntry): entry is NavigationGroup {
 
 export function AppLayout({
   profile,
+  permissionKeys,
   profileDetails,
   email,
   view,
@@ -43,10 +45,11 @@ export function AppLayout({
   children,
 }: {
   profile: Profile
+  permissionKeys?: PermissionKey[]
   profileDetails?: ProfilePrivateDetails | null
   email: string
   view: ViewName
-  settingsSection?: 'team' | 'seasons' | 'library'
+  settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
   message: string
   errorMessage: string
   online?: boolean
@@ -71,32 +74,26 @@ export function AppLayout({
   const [highlightMissingProfileDetails, setHighlightMissingProfileDetails] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
-  const canManage = canManageSport(profile)
-  const canViewTeam = canViewTeamData(profile)
+  const can = (permission: PermissionKey) => hasPermission(profile, permission, permissionKeys)
   const canEditProfile = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateProfileDetails)
   const navigation: NavigationEntry[] = [
     { id: 'home', label: 'Inicio', icon: 'home' },
-    ...(canManage ? [
-      { id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const },
-      {
+    ...((can(PERMISSIONS.calendar.manage) || can(PERMISSIONS.calendar.personal)) ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }] : []),
+    ...(can(PERMISSIONS.attendance.view) ? [{
         id: 'attendance' as const,
         label: 'Asistencia',
         icon: 'check' as const,
         children: [
-          { id: 'attendance' as const, label: 'Registrar asistencia', icon: 'check' as const },
-          { id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const },
+          ...(can(PERMISSIONS.attendance.view) ? [{ id: 'attendance' as const, label: 'Registrar asistencia', icon: 'check' as const }] : []),
+          ...(can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
         ],
-      },
-      { id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const },
-    ] : [
-      ...(canViewTeam ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
-      ...(isPlayer(profile)
-        ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }]
-        : [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }]),
-    ]),
-    { id: 'competition', label: 'Competición', icon: 'trophy' },
-    { id: 'library', label: 'Librería', icon: 'folder' },
-    ...(profile.is_owner ? [{
+      }] : []),
+    ...(can(PERMISSIONS.training.view) ? [{ id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const }] : []),
+    ...(!can(PERMISSIONS.attendance.view) && can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
+    ...(can(PERMISSIONS.matches.teamAvailability) && !can(PERMISSIONS.calendar.manage) && !can(PERMISSIONS.calendar.personal) ? [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }] : []),
+    ...(can(PERMISSIONS.competition.view) ? [{ id: 'competition' as const, label: 'Competición', icon: 'trophy' as const }] : []),
+    ...(can(PERMISSIONS.library.view) ? [{ id: 'library' as const, label: 'Librería', icon: 'folder' as const }] : []),
+    ...(can(PERMISSIONS.settings.view) ? [{
       id: 'settings' as const,
       label: 'Ajustes',
       icon: 'settings' as const,
@@ -104,6 +101,7 @@ export function AppLayout({
         { id: 'settings' as const, label: 'Equipo', icon: 'users' as const, target: { view: 'settings' as const, settingsSection: 'team' as const } },
         { id: 'settings' as const, label: 'Temporadas', icon: 'calendar' as const, target: { view: 'settings' as const, settingsSection: 'seasons' as const } },
         { id: 'settings' as const, label: 'Librería', icon: 'folder' as const, target: { view: 'settings' as const, settingsSection: 'library' as const } },
+        { id: 'settings' as const, label: 'Permisos', icon: 'settings' as const, target: { view: 'settings' as const, settingsSection: 'permissions' as const } },
       ],
     }] : []),
   ]
@@ -297,7 +295,7 @@ function NotificationButton({ count, onClick }: { count: number; onClick: () => 
 
 function Navigation({ items, settingsSection, view, mobile = false, onNavigate }: {
   items: NavigationEntry[]
-  settingsSection?: 'team' | 'seasons' | 'library'
+  settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
   view: ViewName
   mobile?: boolean
   onNavigate: (view: ViewName | NavigationTarget) => void

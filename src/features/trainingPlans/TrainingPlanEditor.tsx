@@ -10,16 +10,17 @@ import { TacticsBoard, TacticsBoardPreview } from './TacticsBoard'
 import { emptyTrainingExercise, exerciseValuesFromPreset, initialTrainingPlanValues } from './trainingPlanMappers'
 import { trainingPlanDraftKey, useTrainingPlanDraft } from './useTrainingPlanDraft'
 
-export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, onDelete, onSavePlan, onLoadPresets, onSavePreset, onNotify, onSaved }: {
+export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish = true, onCancel, onDelete, onSavePlan, onLoadPresets, onSavePreset, onNotify, onSaved }: {
   plan?: TrainingPlan
   template?: TrainingPlan
   seasons: Season[]
   userId: string
   onCancel: () => void
   onDelete?: () => Promise<void>
+  canPublish?: boolean
   onSavePlan: (values: TrainingPlanValues) => Promise<void>
   onLoadPresets: () => Promise<TrainingExercisePreset[]>
-  onSavePreset: (exercise: TrainingExerciseValues) => Promise<TrainingExercisePreset>
+  onSavePreset?: (exercise: TrainingExerciseValues) => Promise<TrainingExercisePreset>
   onNotify: (message: string) => void
   onSaved: (message: string) => Promise<void>
 }) {
@@ -95,6 +96,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
   }
 
   async function savePreset(index: number) {
+    if (!onSavePreset) return
     const exercise = values.exercises[index]
     if (!exercise.title.trim()) {
       setFormError('Escribe un título antes de guardar el ejercicio como predefinido.')
@@ -189,7 +191,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
             <label>Título<input autoFocus onChange={(event) => update('title', event.target.value)} placeholder="Ej. Defensa organizada y salida" required value={values.title} /></label>
             <label>Fecha<input onChange={(event) => changeDate(event.target.value)} required type="date" value={values.sessionDate} /></label>
             <label>Temporada<select onChange={(event) => update('seasonId', event.target.value)} value={values.seasonId}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
-            <label>Estado<select onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option><option value="published">Preparado</option>{plan && <option value="cancelled">Cancelado</option>}</select></label>
+            <label>Estado<select disabled={!canPublish} onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option>{(canPublish || values.status === 'published') && <option value="published">Preparado</option>}{plan && (canPublish || values.status === 'cancelled') && <option value="cancelled">Cancelado</option>}</select></label>
             <ContentImageTextarea className="full-field" label="Objetivos" onChange={(value) => update('objectives', value)} placeholder="Principios y objetivos principales de la sesión…" rows={3} value={values.objectives} />
             <ContentImageTextarea className="full-field" label="Material" onChange={(value) => update('material', value)} placeholder="Balones, conos, petos, escudos…" rows={2} value={values.material} />
           </div>
@@ -206,7 +208,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, onCancel, 
                   <div className="training-exercise-order">
                     <button aria-label="Subir ejercicio" className="secondary-button compact" disabled={index === 0} onClick={() => moveExercise(index, -1)} type="button">↑</button>
                     <button aria-label="Bajar ejercicio" className="secondary-button compact" disabled={index === values.exercises.length - 1} onClick={() => moveExercise(index, 1)} type="button">↓</button>
-                    <button aria-label={`Guardar ${exercise.title || `ejercicio ${index + 1}`} como predefinido`} className="secondary-button compact" disabled={savingPresetIndex !== null} onClick={() => void savePreset(index)} title="Guardar como predefinido" type="button"><Icon name="save" size={14} /></button>
+                    {onSavePreset && <button aria-label={`Guardar ${exercise.title || `ejercicio ${index + 1}`} como predefinido`} className="secondary-button compact" disabled={savingPresetIndex !== null} onClick={() => void savePreset(index)} title="Guardar como predefinido" type="button"><Icon name="save" size={14} /></button>}
                     <button aria-label="Eliminar ejercicio" className="secondary-button compact" disabled={values.exercises.length === 1} onClick={() => removeExercise(index)} type="button">×</button>
                   </div>
                 </header>

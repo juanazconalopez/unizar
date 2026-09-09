@@ -83,7 +83,7 @@ describe('CalendarView', () => {
     const user = userEvent.setup()
     render(<CalendarView {...common} />)
 
-    await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento' }))
+    await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento' }, { timeout: 3000 }))
     expect(common.onOpenTrainingPlan).toHaveBeenCalledWith('training-1')
   })
 

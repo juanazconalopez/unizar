@@ -8,10 +8,11 @@ import { errorText } from '../../lib/errors'
 import { seasonForDate } from '../../lib/selectors'
 import type { AnnouncementValues, Season, TaskStatus, TeamAnnouncement } from '../../types'
 
-export function AnnouncementForm({ announcement, initialDate, seasons, onCancel, onDelete, onSubmit }: {
+export function AnnouncementForm({ announcement, initialDate, seasons, canPublish = true, onCancel, onDelete, onSubmit }: {
   announcement?: TeamAnnouncement
   initialDate: string
   seasons: Season[]
+  canPublish?: boolean
   onCancel: () => void
   onDelete?: (announcement: TeamAnnouncement) => Promise<void>
   onSubmit: (values: AnnouncementValues) => Promise<void>
@@ -66,7 +67,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, onCancel,
         <label>Título<input autoFocus defaultValue={announcement?.title} name="title" placeholder="Ej. Cambio de horario" required /></label>
         <SeasonContextField creation={!announcement} season={selectedSeason} />
         <label>Fecha<input defaultValue={announcement?.announcement_date ?? initialDate} name="date" required type="date" /></label>
-        <label>Estado<select defaultValue={announcement?.status ?? 'published'} name="status"><option value="published">Publicado</option><option value="draft">Borrador</option>{announcement && <option value="cancelled">Anulado</option>}</select></label>
+        <label>Estado<select disabled={!canPublish} defaultValue={announcement?.status ?? (canPublish ? 'published' : 'draft')} name="status">{(canPublish || announcement?.status === 'published') && <option value="published">Publicado</option>}<option value="draft">Borrador</option>{announcement && (canPublish || announcement.status === 'cancelled') && <option value="cancelled">Anulado</option>}</select></label>
         <ContentImageTextarea className="full-field task-form-description" label="Descripción" name="description" onChange={(value) => { setDescription(value); setDirty(true) }} placeholder="Información que debe conocer el equipo…" rows={7} value={description} />
       </div>
       {error && <p className="form-error">{error}</p>}

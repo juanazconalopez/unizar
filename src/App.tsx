@@ -49,15 +49,15 @@ function App() {
   }
 
   useEffect(() => {
-    if (!data.profile || canAccessView(data.profile, view)) return
+    if (!data.profile || canAccessView(data.profile, view, data.permissionKeys)) return
     const timer = window.setTimeout(() => {
-      const target = (canManageSport(data.profile!) || isPlayer(data.profile!)) && (view === 'tasks' || view === 'matches')
+      const target = (canManageSport(data.profile!, data.permissionKeys) || isPlayer(data.profile!)) && (view === 'tasks' || view === 'matches')
         ? { ...navigation, view: 'calendar' as const }
         : { view: 'home' as const }
       replaceNavigation(target)
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [data.profile, navigation, replaceNavigation, view])
+  }, [data.permissionKeys, data.profile, navigation, replaceNavigation, view])
 
   async function handleSignOut() {
     navigate('home', true)
@@ -77,8 +77,8 @@ function App() {
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
 
   const profile = data.profile
-  const canManage = canManageSport(profile)
-  const canViewTeam = canViewTeamData(profile)
+  const canManage = canManageSport(profile, data.permissionKeys)
+  const canViewTeam = canViewTeamData(profile, data.permissionKeys)
   const errorMessage = feedback.operationError || data.errorMessage || auth.errorMessage
 
   return <AppLayout
@@ -90,6 +90,7 @@ function App() {
     notifications={notifications.notifications}
     online={online}
     profile={profile}
+    permissionKeys={data.permissionKeys}
     profileDetails={data.ownProfileDetails}
     settingsSection={navigation.settingsSection}
     view={view}
@@ -116,6 +117,7 @@ function App() {
       notify={feedback.notify}
       online={online}
       profile={profile}
+      permissionKeys={data.permissionKeys}
       userId={auth.session.user.id}
     />
   </AppLayout>

@@ -29,7 +29,7 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
   onOpenMatch?: (match: Match) => void
   onOpenAnnouncement?: (announcement: TeamAnnouncement) => void
   onLoadSeasonSummary?: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
-  onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
+  onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const [motivationVariant] = useState(() => Math.random())
   const [seasonSummary, setSeasonSummary] = useState<PlayerSeasonSummary | null>(null)

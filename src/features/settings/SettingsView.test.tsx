@@ -28,4 +28,10 @@ describe('SettingsView', () => {
     view.rerender(<SettingsView section="team" currentUserId="owner-1" memberships={[makeMembership()]} profiles={[makeProfile()]} seasons={[makeSeason()]} onCreateSeason={vi.fn()} onDeleteSeason={vi.fn()} onToggleMembership={vi.fn()} onUpdateProfile={vi.fn()} onUpdateSeason={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Personas del equipo' })).toBeInTheDocument()
   })
+
+  test('shows the database-driven permissions section', () => {
+    render(<SettingsView section="permissions" currentUserId="owner-1" memberships={[]} profiles={[]} seasons={[makeSeason()]} onCreateSeason={vi.fn()} onDeleteSeason={vi.fn()} onToggleMembership={vi.fn()} onUpdateProfile={vi.fn()} onUpdateSeason={vi.fn()} onSaveRolePermissions={vi.fn()} onResetRolePermissions={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Ajustes - Permisos' })).toBeInTheDocument()
+    expect(screen.getByText('Catálogo de permisos no disponible')).toBeInTheDocument()
+  })
 })

@@ -21,7 +21,7 @@ export const emptyTaskWindow: TaskWindowData = { tasks: [], results: [], announc
 export const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [], provisionalAttendance: [] }
 export const emptyMatchWindow: MatchWindowData = { matches: [], matchAvailability: [], matchLineups: [] }
 
-export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
+export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean, canViewProvisionalPlayers = canViewTeam) {
   const tasks = scope === 'home' || scope === 'calendar' || scope === 'tasks' || scope === 'statistics'
   return {
     tasks,
@@ -34,7 +34,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean) {
       || scope === 'settings'
       || ((scope === 'home' || scope === 'tasks') && canViewTeam),
     attendance: scope === 'home' || scope === 'statistics' || scope === 'attendance',
-    provisionalPlayers: canViewTeam && (scope === 'statistics' || scope === 'attendance' || scope === 'settings'),
+    provisionalPlayers: canViewProvisionalPlayers && (scope === 'statistics' || scope === 'attendance' || scope === 'settings'),
     matches: scope === 'home' || scope === 'calendar' || scope === 'matches',
     announcements: scope === 'home' || scope === 'calendar' || scope === 'tasks',
     seasons: scope !== 'competition' && scope !== 'library',
@@ -113,15 +113,15 @@ export async function fetchAttendanceForSessions(sessionRows: TrainingSession[],
   }
 }
 
-export async function fetchStatisticsWindow(month: string): Promise<TaskWindowData & AttendanceWindowData> {
+export async function fetchStatisticsWindow(month: string, include: { tasks: boolean; attendance: boolean } = { tasks: true, attendance: true }): Promise<TaskWindowData & AttendanceWindowData> {
   const fromDate = offsetMonth(monthStart(month), -1)
   const toDate = monthEnd(month)
   const [taskData, sessionsResponse] = await Promise.all([
-    fetchTaskWindow('', true, mondayFor(fromDate), mondayFor(toDate)),
-    supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate).order('session_date', { ascending: false }),
+    include.tasks ? fetchTaskWindow('', true, mondayFor(fromDate), mondayFor(toDate)) : Promise.resolve(emptyTaskWindow),
+    include.attendance ? supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate).order('session_date', { ascending: false }) : Promise.resolve({ data: [], error: null }),
   ])
   if (sessionsResponse.error) throw sessionsResponse.error
-  return { ...taskData, ...await fetchAttendanceForSessions(sessionsResponse.data ?? []) }
+  return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
 }
 
 export async function fetchAttendanceDate(date: string): Promise<AttendanceWindowData> {

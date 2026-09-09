@@ -5,11 +5,11 @@ export type NavigationTarget = {
   date?: string
   announcementId?: string
   trainingPlanId?: string
-  settingsSection?: 'team' | 'seasons' | 'library'
+  settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
 }
 
 const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library'])
-const settingsSections = new Set<NonNullable<NavigationTarget['settingsSection']>>(['team', 'seasons', 'library'])
+const settingsSections = new Set<NonNullable<NavigationTarget['settingsSection']>>(['team', 'seasons', 'library', 'permissions'])
 
 export function navigationFromLocation(location: Pick<Location, 'search'> = window.location): NavigationTarget {
   const params = new URLSearchParams(location.search)

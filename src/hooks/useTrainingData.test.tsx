@@ -43,6 +43,8 @@ const trainingData = {
   calendarBirthdays: [],
   libraryItems: [],
   librarySettings: null,
+  permissionKeys: [],
+  permissionConfiguration: { definitions: [], grants: [] },
 }
 
 async function flushInitialLoad() {

@@ -134,6 +134,9 @@ Reglas importantes:
 - Los cambios de estado o roles requieren confirmación. Desautorizar y restaurar se realizan dentro de la ficha, nunca desde el listado.
 - El owner no puede desactivarse, quitarse su propio rol ni dejar la aplicación sin otro owner activo; estas reglas se validan también en las RPC.
 - Las reglas comunes están en `src/lib/permissions.ts`, `src/lib/selectors.ts` y `src/app/appAccess.ts`. No duplicarlas en componentes.
+- El catálogo configurable vive en `permission_definitions`; `role_permissions` guarda la matriz vigente, `role_permission_defaults` permite restaurarla y `permission_audit_log` conserva los cambios.
+- Las claves se declaran también de forma tipada en `src/lib/permissions.ts`. Toda funcionalidad protegida nueva debe añadirse mediante una migración, asociarse a su ruta o acción en React y comprobarse en RLS/RPC. La pantalla de Ajustes → Permisos se genera desde el catálogo y no contiene una lista manual.
+- `current_user_has_permission(text)` es la autoridad SQL. Los permisos hijos requieren su permiso padre; al retirar un padre se retiran sus descendientes. El owner mantiene siempre acceso completo y no forma parte de la matriz editable.
 
 ## Temporadas y vinculaciones
 

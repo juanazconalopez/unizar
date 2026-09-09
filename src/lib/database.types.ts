@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      permission_audit_log: {
+        Row: { changed_at: string; changed_by: string; id: number; new_permissions: Json; previous_permissions: Json; role: string }
+        Insert: { changed_at?: string; changed_by: string; id?: never; new_permissions: Json; previous_permissions: Json; role: string }
+        Update: { changed_at?: string; changed_by?: string; id?: never; new_permissions?: Json; previous_permissions?: Json; role?: string }
+        Relationships: []
+      }
+      permission_definitions: {
+        Row: { action: string; active: boolean; configurable: boolean; created_at: string; description: string; key: string; label: string; owner_only: boolean; parent_key: string | null; section_key: string; section_label: string; sort_order: number }
+        Insert: { action: string; active?: boolean; configurable?: boolean; created_at?: string; description?: string; key: string; label: string; owner_only?: boolean; parent_key?: string | null; section_key: string; section_label: string; sort_order: number }
+        Update: { action?: string; active?: boolean; configurable?: boolean; created_at?: string; description?: string; key?: string; label?: string; owner_only?: boolean; parent_key?: string | null; section_key?: string; section_label?: string; sort_order?: number }
+        Relationships: []
+      }
+      role_permission_defaults: {
+        Row: { permission_key: string; role: string }
+        Insert: { permission_key: string; role: string }
+        Update: { permission_key?: string; role?: string }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: { enabled: boolean; permission_key: string; role: string; updated_at: string; updated_by: string | null }
+        Insert: { enabled?: boolean; permission_key: string; role: string; updated_at?: string; updated_by?: string | null }
+        Update: { enabled?: boolean; permission_key?: string; role?: string; updated_at?: string; updated_by?: string | null }
+        Relationships: []
+      }
       content_image_references: {
         Row: {
           created_at: string
@@ -1266,6 +1290,10 @@ export type Database = {
         Args: { checked_image_id: string }
         Returns: boolean
       }
+      current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
+      get_my_permissions: { Args: never; Returns: string[] }
+      set_role_permissions: { Args: { checked_permissions: string[]; checked_role: string }; Returns: undefined }
+      reset_role_permissions: { Args: { checked_role: string }; Returns: undefined }
       current_user_can_view_private_profile_details: {
         Args: never
         Returns: boolean

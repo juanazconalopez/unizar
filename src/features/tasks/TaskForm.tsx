@@ -9,11 +9,12 @@ import { errorText } from '../../lib/errors'
 import { seasonForDate } from '../../lib/selectors'
 import type { Season, TaskStatus, TaskValues, TrainingTask } from '../../types'
 
-export function TaskForm({ seasons, initialDate = todayIso(), task, template, onCancel, onDelete, onSubmit }: {
+export function TaskForm({ seasons, initialDate = todayIso(), task, template, canPublish = true, onCancel, onDelete, onSubmit }: {
   seasons: Season[]
   initialDate?: string
   task?: TrainingTask
   template?: TrainingTask
+  canPublish?: boolean
   onCancel: () => void
   onDelete?: (task: TrainingTask) => Promise<void>
   onSubmit: (values: TaskValues) => Promise<void>
@@ -83,7 +84,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, on
           {!task && <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>}
           <label>Tipo<select defaultValue={source?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{trainingTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
           <ContentImageTextarea className="full-field task-form-description" label="Descripción" name="description" onChange={(value) => { setDescription(value); setDirty(true) }} rows={7} placeholder="Indicaciones o enlace al vídeo…" value={description} />
-          <label>Estado<select name="status" defaultValue={task?.status ?? 'draft'}><option value="published">Publicada</option><option value="draft">Borrador</option>{task && <option value="cancelled">Anulada</option>}</select></label>
+          <label>Estado<select disabled={!canPublish} name="status" defaultValue={task?.status ?? 'draft'}>{(canPublish || task?.status === 'published') && <option value="published">Publicada</option>}<option value="draft">Borrador</option>{task && (canPublish || task.status === 'cancelled') && <option value="cancelled">Anulada</option>}</select></label>
         </div>
         {formError && <p className="form-error">{formError}</p>}
         <div className="form-actions">

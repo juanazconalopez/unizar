@@ -40,6 +40,12 @@ import { TaskResultsSummary } from '../tasks/TaskResultsSummary'
 import { StatusControl } from '../tasks/StatusControl'
 
 type CalendarViewProps = {
+  permissions?: {
+    taskCreate: boolean; taskEdit: boolean; taskDelete: boolean; taskPublish: boolean; taskReorder: boolean; taskResults: boolean
+    announcementCreate: boolean; announcementEdit: boolean; announcementDelete: boolean; announcementPublish: boolean
+    matchCreate: boolean; matchEdit: boolean; matchDelete: boolean; availabilityEdit: boolean
+    lineupEdit: boolean; lineupPublish: boolean; lineupUnlock: boolean; report: boolean
+  }
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
   birthdays?: SeasonBirthday[]
@@ -74,6 +80,12 @@ type CalendarViewProps = {
 }
 
 export function CalendarView(props: CalendarViewProps) {
+  const access = props.permissions ?? {
+    taskCreate: true, taskEdit: true, taskDelete: true, taskPublish: true, taskReorder: true, taskResults: true,
+    announcementCreate: true, announcementEdit: true, announcementDelete: true, announcementPublish: true,
+    matchCreate: true, matchEdit: true, matchDelete: true, availabilityEdit: true,
+    lineupEdit: true, lineupPublish: true, lineupUnlock: true, report: true,
+  }
   const { onLoadPublishedTrainingPlans } = props
   const today = todayIso()
   const [selectedDate, setSelectedDate] = useState(props.focusedDate ?? today)
@@ -139,16 +151,16 @@ export function CalendarView(props: CalendarViewProps) {
     const ordered = props.tasks.filter((item) => item.week_start === task.week_start).sort(compareTaskOrder)
     const index = ordered.findIndex((item) => item.id === task.id)
     return <>
-      {props.onReorderTasks && ordered.length > 1 && <div aria-label={`Ordenar ${task.title}`} className="task-order-actions" role="group">
+      {access.taskReorder && props.onReorderTasks && ordered.length > 1 && <div aria-label={`Ordenar ${task.title}`} className="task-order-actions" role="group">
         <button aria-label={`Subir ${task.title}`} className="secondary-button compact" disabled={index <= 0 || reorderingTaskId !== null} onClick={() => void moveTask(task, -1)} title="Mover antes" type="button">↑</button>
         <button aria-label={`Bajar ${task.title}`} className="secondary-button compact" disabled={index < 0 || index >= ordered.length - 1 || reorderingTaskId !== null} onClick={() => void moveTask(task, 1)} title="Mover después" type="button">↓</button>
       </div>}
-      <StatusControl status={task.status} onChange={async (status) => {
+      {access.taskPublish && <StatusControl status={task.status} onChange={async (status) => {
         await props.onTaskStatusChange(task.id, status)
         await props.onLoadTaskRange(task.week_start, task.week_start)
-      }} />
-      <button className="secondary-button compact" onClick={() => setTaskForm({ task })} type="button">Editar tarea</button>
-      <button className="secondary-button compact" onClick={() => setTaskForm({ template: task })} type="button">Copiar</button>
+      }} />}
+      {access.taskEdit && <button className="secondary-button compact" onClick={() => setTaskForm({ task })} type="button">Editar tarea</button>}
+      {access.taskCreate && <button className="secondary-button compact" onClick={() => setTaskForm({ template: task })} type="button">Copiar</button>}
     </>
   }
 
@@ -171,11 +183,11 @@ export function CalendarView(props: CalendarViewProps) {
 
   function announcementActions(announcement: TeamAnnouncement) {
     return <>
-      <StatusControl status={announcement.status} onChange={async (status) => {
+      {access.announcementPublish && <StatusControl status={announcement.status} onChange={async (status) => {
         await props.onAnnouncementStatusChange(announcement.id, status)
         await props.onLoadTaskRange(mondayFor(announcement.announcement_date), mondayFor(announcement.announcement_date))
-      }} />
-      <button className="secondary-button compact" onClick={() => setAnnouncementForm(announcement)} type="button">Editar aviso</button>
+      }} />}
+      {access.announcementEdit && <button className="secondary-button compact" onClick={() => setAnnouncementForm(announcement)} type="button">Editar aviso</button>}
     </>
   }
 
@@ -187,18 +199,20 @@ export function CalendarView(props: CalendarViewProps) {
     )))
     return <MatchCard
       availability={props.availability.filter((item) => item.match_id === match.id)}
-      canManage
+      canManage={access.matchEdit || access.lineupEdit}
+      canEditMatch={access.matchEdit}
+      canManageLineup={access.lineupEdit}
       canViewAvailability
       eligiblePlayerCount={eligibleProfiles.length}
       isPlayer={false}
       key={match.id}
       lineup={props.lineups.filter((entry) => entry.match_id === match.id)}
       match={match}
-      onEdit={() => setMatchForm(match)}
-      onManageLineup={() => setLineupMatch({ match, editable: true })}
+      onEdit={() => { if (access.matchEdit) setMatchForm(match) }}
+      onManageLineup={() => { if (access.lineupEdit) setLineupMatch({ match, editable: true }) }}
       onSaveAvailability={async () => undefined}
       onViewAvailability={() => setAvailabilityMatch(match)}
-      onViewLineup={() => setLineupMatch({ match, editable: true })}
+      onViewLineup={() => setLineupMatch({ match, editable: access.lineupEdit })}
     />
   }
 
@@ -206,7 +220,7 @@ export function CalendarView(props: CalendarViewProps) {
 
   return <div className="page">
     <PageHeader
-      action={<button className={reportOpen ? 'primary-button' : 'secondary-button'} onClick={() => setReportOpen((open) => !open)} type="button"><Icon name="statistics" size={18} />{reportOpen ? 'Volver al calendario' : 'Resumen de convocatorias'}</button>}
+      action={access.report && <button className={reportOpen ? 'primary-button' : 'secondary-button'} onClick={() => setReportOpen((open) => !open)} type="button"><Icon name="statistics" size={18} />{reportOpen ? 'Volver al calendario' : 'Resumen de convocatorias'}</button>}
       eyebrow="PLANIFICACIÓN"
       subtitle="Organiza tareas, avisos, partidos y entrenamientos publicados desde una única vista."
       title="Calendario"
@@ -247,30 +261,31 @@ export function CalendarView(props: CalendarViewProps) {
           </div>}
           <div className="selected-calendar-group">
             <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>
-            <div className="task-list">{selectedTasks.map((task) => <TaskCard hideWeek key={task.id} managerActions={taskActions(task)} managementSummary={<TaskResultsSummary profiles={props.profiles} results={props.results} task={task} />} result={undefined} task={task} />)}</div>
+            <div className="task-list">{selectedTasks.map((task) => <TaskCard hideWeek key={task.id} managerActions={taskActions(task)} managementSummary={access.taskResults ? <TaskResultsSummary profiles={props.profiles} results={props.results} task={task} /> : undefined} result={undefined} task={task} />)}</div>
           </div>
           {!hasSelectedContent && <EmptyState text="No hay tareas, avisos, partidos ni entrenamientos publicados en este periodo." title="Sin planificación" />}
-          <div className="selected-week-actions calendar-add-actions">
+          {(access.taskCreate || access.announcementCreate || access.matchCreate) && <div className="selected-week-actions calendar-add-actions">
             <div className="calendar-add-menu">
               <button aria-expanded={addMenuOpen} className="primary-button" onClick={() => setAddMenuOpen((open) => !open)} type="button"><Icon name="plus" size={18} />Añadir</button>
               {addMenuOpen && <div className="calendar-add-options" role="menu">
-                <button onClick={() => { setTaskForm({}); setAddMenuOpen(false) }} role="menuitem" type="button">Nueva tarea</button>
-                <button onClick={() => { setAnnouncementForm(null); setAddMenuOpen(false) }} role="menuitem" type="button">Nuevo aviso</button>
-                <button onClick={() => { setMatchForm(null); setAddMenuOpen(false) }} role="menuitem" type="button">Nuevo partido</button>
+                {access.taskCreate && <button onClick={() => { setTaskForm({}); setAddMenuOpen(false) }} role="menuitem" type="button">Nueva tarea</button>}
+                {access.announcementCreate && <button onClick={() => { setAnnouncementForm(null); setAddMenuOpen(false) }} role="menuitem" type="button">Nuevo aviso</button>}
+                {access.matchCreate && <button onClick={() => { setMatchForm(null); setAddMenuOpen(false) }} role="menuitem" type="button">Nuevo partido</button>}
               </div>}
             </div>
-          </div>
+          </div>}
         </section>
       </div>
     </>}
 
     {taskForm && <TaskForm
       initialDate={taskForm.template?.week_start ?? selectedDate}
+      canPublish={access.taskPublish}
       seasons={props.seasons}
       task={taskForm.task}
       template={taskForm.template}
       onCancel={() => setTaskForm(null)}
-      onDelete={async (task) => { await props.onDeleteTask(task); await props.onLoadTaskRange(task.week_start, task.week_start); setTaskForm(null) }}
+      onDelete={access.taskDelete ? async (task) => { await props.onDeleteTask(task); await props.onLoadTaskRange(task.week_start, task.week_start); setTaskForm(null) } : undefined}
       onSubmit={async (values) => {
         if (taskForm.task) await props.onUpdateTask(taskForm.task, values)
         else await props.onCreateTask(values)
@@ -282,10 +297,11 @@ export function CalendarView(props: CalendarViewProps) {
     />}
     {announcementForm !== undefined && <AnnouncementForm
       announcement={announcementForm ?? undefined}
+      canPublish={access.announcementPublish}
       initialDate={selectedDate}
       seasons={props.seasons}
       onCancel={() => setAnnouncementForm(undefined)}
-      onDelete={async (announcement) => { await props.onDeleteAnnouncement(announcement); await props.onLoadTaskRange(mondayFor(announcement.announcement_date), mondayFor(announcement.announcement_date)); setAnnouncementForm(undefined) }}
+      onDelete={access.announcementDelete ? async (announcement) => { await props.onDeleteAnnouncement(announcement); await props.onLoadTaskRange(mondayFor(announcement.announcement_date), mondayFor(announcement.announcement_date)); setAnnouncementForm(undefined) } : undefined}
       onSubmit={async (values) => { await props.onSaveAnnouncement(announcementForm ?? undefined, values); await props.onLoadTaskRange(mondayFor(values.date), mondayFor(values.date)); setSelectedDate(values.date); setMonth(`${values.date.slice(0, 7)}-01`); setAnnouncementForm(undefined) }}
     />}
     {matchForm !== undefined && <MatchForm
@@ -293,23 +309,24 @@ export function CalendarView(props: CalendarViewProps) {
       match={matchForm ?? undefined}
       seasons={props.seasons}
       onCancel={() => setMatchForm(undefined)}
-      onDelete={matchForm ? async (match) => { await props.onDeleteMatch(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`); setMatchForm(undefined) } : undefined}
+      onDelete={matchForm && access.matchDelete ? async (match) => { await props.onDeleteMatch(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`); setMatchForm(undefined) } : undefined}
       onSubmit={async (values) => { await props.onSaveMatch(matchForm ?? undefined, values); await refreshDate(values.matchDate); setSelectedDate(values.matchDate); setMonth(`${values.matchDate.slice(0, 7)}-01`); setMatchForm(undefined) }}
     />}
     {lineupMatch && <MatchLineupDialog
       availability={props.availability.filter((item) => item.match_id === lineupMatch.match.id)}
       canExport
+      canPublish={access.lineupPublish}
       entries={props.lineups.filter((entry) => entry.match_id === lineupMatch.match.id)}
       match={lineupMatch.match}
       memberships={props.memberships}
       profiles={props.profiles}
       onClose={() => setLineupMatch(null)}
-      onUnlock={async () => { await props.onUnlockLineup(lineupMatch.match); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`) }}
-      onSave={async (entries, published) => { await props.onSaveLineup(lineupMatch.match, entries, published); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`); setLineupMatch(null) }}
+      onUnlock={access.lineupUnlock ? async () => { await props.onUnlockLineup(lineupMatch.match); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`) } : undefined}
+      onSave={access.lineupEdit ? async (entries, published) => { await props.onSaveLineup(lineupMatch.match, entries, published); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`); setLineupMatch(null) } : undefined}
     />}
     {availabilityMatch && <MatchAvailabilityDialog
       availability={props.availability.filter((item) => item.match_id === availabilityMatch.id)}
-      canEdit
+      canEdit={access.availabilityEdit}
       eligibleProfiles={activePlayers(props.profiles).filter((profile) => props.memberships.some((membership) => membership.player_id === profile.id && membership.season_id === availabilityMatch.season_id && membershipCoversDate(membership, availabilityMatch.match_date)))}
       match={availabilityMatch}
       profiles={props.profiles}

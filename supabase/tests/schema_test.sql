@@ -1,5 +1,5 @@
 begin;
-select plan(161);
+select plan(179);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -170,8 +170,8 @@ select like(
 );
 select like(
   pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
-  '%current_user_can_manage_sport%',
-  'the season birthday calendar is limited to owner and coaches'
+  '%current_user_has_permission%calendar.view_manage%',
+  'the season birthday calendar requires its explicit management capability'
 );
 select like(
   pg_get_functiondef('public.get_active_season_birthdays()'::regprocedure),
@@ -587,6 +587,29 @@ select is(
   ) and not tgisinternal),
   6,
   'all supported text content derives its image references automatically'
+);
+
+select has_table('public', 'permission_definitions', 'the permission catalog is persisted');
+select has_table('public', 'role_permissions', 'current grants are persisted by role');
+select has_table('public', 'role_permission_defaults', 'default grants can be restored');
+select has_table('public', 'permission_audit_log', 'permission changes are audited');
+select has_function('public', 'current_user_has_permission', array['text'], 'permission checks use one SQL authority');
+select has_function('public', 'get_my_permissions', array[]::text[], 'users can load their effective permissions');
+select has_function('public', 'set_role_permissions', array['text', 'text[]'], 'owners can atomically update a role');
+select has_function('public', 'reset_role_permissions', array['text'], 'owners can restore role defaults');
+select ok((select relrowsecurity from pg_class where oid = 'public.permission_definitions'::regclass), 'permission definitions use RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.role_permissions'::regclass), 'role grants use RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.role_permission_defaults'::regclass), 'role defaults use RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.permission_audit_log'::regclass), 'permission audit uses RLS');
+select ok(has_function_privilege('authenticated', 'public.get_my_permissions()', 'EXECUTE'), 'authenticated users can load effective permissions');
+select ok(not has_function_privilege('anon', 'public.get_my_permissions()', 'EXECUTE'), 'anonymous users cannot load effective permissions');
+select ok(has_function_privilege('authenticated', 'public.set_role_permissions(text,text[])', 'EXECUTE'), 'authenticated owners can call the protected permission update');
+select ok(not has_function_privilege('anon', 'public.set_role_permissions(text,text[])', 'EXECUTE'), 'anonymous users cannot update permissions');
+select cmp_ok((select count(*) from public.permission_definitions), '>=', 60::bigint, 'the catalog covers all current application areas');
+select is(
+  (select count(*)::integer from pg_trigger where tgname = 'enforce_configurable_permission' and not tgisinternal),
+  13,
+  'all configurable mutation tables enforce permissions even through security definer RPCs'
 );
 
 select * from finish();

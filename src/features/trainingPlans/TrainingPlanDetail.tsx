@@ -5,7 +5,7 @@ import type { TrainingPlan } from '../../types'
 import { TacticsBoardPreview } from './TacticsBoard'
 import { trainingPlanStatusLabel } from './trainingPlanMappers'
 
-export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPlan; onBack: () => void; onEdit: () => void }) {
+export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPlan; onBack: () => void; onEdit?: () => void }) {
   const totalDuration = plan.training_exercises.reduce((total, exercise) => total + exercise.duration_minutes, 0)
   return <div className="page training-detail-page">
     <button className="text-button training-detail-back" onClick={onBack} type="button">← Volver a entrenamientos</button>
@@ -15,7 +15,7 @@ export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPla
         <span className="eyebrow">VISTA DEL ENTRENAMIENTO</span><h1>{plan.title}</h1>
         <p className="training-detail-date"><Icon name="calendar" size={17} />{formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
-      <div className="training-detail-hero-actions"><div className="training-detail-duration"><strong>{totalDuration}</strong><span>minutos</span></div><button className="secondary-button training-pdf-button" onClick={() => window.print()} type="button"><Icon name="download" size={16} />Guardar PDF</button><button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button></div>
+      <div className="training-detail-hero-actions"><div className="training-detail-duration"><strong>{totalDuration}</strong><span>minutos</span></div><button className="secondary-button training-pdf-button" onClick={() => window.print()} type="button"><Icon name="download" size={16} />Guardar PDF</button>{onEdit && <button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button>}</div>
     </header>
     <section className="training-detail-overview">
       <article><span className="eyebrow">OBJETIVOS</span><RichContent eagerImages fallback="Sin objetivos generales indicados." text={plan.objectives} /></article>
@@ -30,6 +30,6 @@ export function TrainingPlanDetail({ plan, onBack, onEdit }: { plan: TrainingPla
         {exercise.diagram_data.elements.length > 0 && <div className="training-detail-board"><div><span className="eyebrow">ESQUEMA</span><small>{exercise.diagram_data.template === 'full' ? 'Campo completo' : exercise.diagram_data.template === 'half' ? 'Medio campo' : 'Zona de 22'}</small></div><TacticsBoardPreview data={exercise.diagram_data} label={`Esquema táctico de ${exercise.title}`} /></div>}
       </div>
     </article>)}</div>
-    <div className="training-detail-footer"><button className="secondary-button" onClick={onBack} type="button">Volver</button><button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button></div>
+    <div className="training-detail-footer"><button className="secondary-button" onClick={onBack} type="button">Volver</button>{onEdit && <button className="primary-button" onClick={onEdit} type="button">Editar entrenamiento</button>}</div>
   </div>
 }

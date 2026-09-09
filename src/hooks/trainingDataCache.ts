@@ -41,7 +41,7 @@ export async function restoreLoadedRanges(base: TrainingData, view: ViewName, us
     let tasks = base.tasks
     let results = base.results
     let announcements = base.announcements ?? []
-    const canManage = canManageSport(base.profile)
+    const canManage = canManageSport(base.profile, base.permissionKeys)
     const windows = await Promise.all(ranges.taskRanges.map(async ({ from, to }) => ({
       from, to, data: await fetchTaskWindow(userId, canManage, from, to),
     })))
@@ -56,7 +56,10 @@ export async function restoreLoadedRanges(base: TrainingData, view: ViewName, us
   }
 
   if (view === 'statistics' && ranges.statisticsMonth) {
-    return { ...base, ...await fetchStatisticsWindow(ranges.statisticsMonth) }
+    return { ...base, ...await fetchStatisticsWindow(ranges.statisticsMonth, {
+      tasks: base.permissionKeys.includes('statistics.tasks'),
+      attendance: base.permissionKeys.includes('statistics.attendance'),
+    }) }
   }
 
   if (view === 'attendance' && ranges.attendanceDate) {

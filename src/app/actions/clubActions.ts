@@ -7,6 +7,8 @@ import { linkProvisionalPlayers } from '../../services/provisionalPlayersService
 import { setSeasonMembership } from '../../services/trainingMembershipService'
 import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, ProvisionalAttendanceEntry, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
 import type { ActionContext } from './actionContext'
+import { resetRolePermissions, saveRolePermissions } from '../../services/permissionsService'
+import type { ConfigurableRole, PermissionKey } from '../../lib/permissions'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
   return {
@@ -80,6 +82,18 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       } catch (error) {
         context.reportError(error)
       }
+    },
+    saveRolePermissions: async (role: ConfigurableRole, permissions: PermissionKey[]) => {
+      context.requireConnection()
+      await saveRolePermissions(role, permissions)
+      context.notify('Permisos actualizados.')
+      await context.reloadData()
+    },
+    resetRolePermissions: async (role: ConfigurableRole) => {
+      context.requireConnection()
+      await resetRolePermissions(role)
+      context.notify('Permisos predeterminados restaurados.')
+      await context.reloadData()
     },
   }
 }

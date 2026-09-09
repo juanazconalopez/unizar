@@ -6,6 +6,8 @@ export type MatchCardProps = {
   availability: MatchAvailability[]
   eligiblePlayerCount: number
   canManage: boolean
+  canEditMatch?: boolean
+  canManageLineup?: boolean
   canViewAvailability: boolean
   isPlayer: boolean
   lineup: MatchLineup[]
@@ -13,7 +15,7 @@ export type MatchCardProps = {
   ownAvailability?: MatchAvailability
   onEdit: () => void
   onManageLineup: () => void
-  onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
+  onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
   onViewAvailability: () => void
   onViewLineup: () => void
 }
@@ -22,6 +24,8 @@ export function MatchCard({
   availability,
   eligiblePlayerCount,
   canManage,
+  canEditMatch = canManage,
+  canManageLineup = canManage,
   canViewAvailability,
   isPlayer,
   lineup,
@@ -62,16 +66,16 @@ export function MatchCard({
         <>
           <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />
           <div className="match-actions">
-            {canManage && <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>}
+            {canEditMatch && <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>}
             {canViewLineup && <button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button>}
-            {canManage && !match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
+            {canManageLineup && !match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
           </div>
         </>
       )}
       {!canViewAvailability && canViewLineup && (
         <div className="match-actions"><button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button></div>
       )}
-      {isPlayer && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
+      {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
     </article>
   )
 }

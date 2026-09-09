@@ -56,8 +56,8 @@ export function PlayerCalendarView({
   userId: string
   onLoadMatchMonth: (month: string) => Promise<void>
   onLoadTaskRange: (fromWeek: string, toWeek: string) => Promise<void>
-  onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
-  onSaveResult: (task: TrainingTask, values: ResultValues) => Promise<void>
+  onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
+  onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const today = todayIso()
   const initialDate = focusedDate ?? today
@@ -111,10 +111,10 @@ export function PlayerCalendarView({
       ownAvailability={availability.find((item) => item.match_id === match.id && item.player_id === userId)}
       onEdit={() => undefined}
       onManageLineup={() => undefined}
-      onSaveAvailability={async (...args) => {
+      onSaveAvailability={onSaveAvailability ? async (...args) => {
         await onSaveAvailability(...args)
         await onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`)
-      }}
+      } : undefined}
       onViewAvailability={() => undefined}
       onViewLineup={() => setLineupMatch(match)}
     />
