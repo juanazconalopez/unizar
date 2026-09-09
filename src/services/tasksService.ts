@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { ResultValues, TaskStatus, TaskValues, TrainingTask } from '../types'
 import { cleanupContentImages, contentImageIdsForEntity, ensureContentImages } from './contentImagesService'
 
-export async function saveTaskResult(task: TrainingTask, values: ResultValues, userId: string, exists: boolean) {
+export async function saveTaskResult(task: TrainingTask, values: ResultValues, userId: string) {
   const payload = {
     task_id: task.id,
     player_id: userId,
@@ -11,9 +11,9 @@ export async function saveTaskResult(task: TrainingTask, values: ResultValues, u
     fatigue_level: values.fatigueLevel,
     performed_on: values.performedOn,
   }
-  const response = exists
-    ? await supabase.from('task_results').update(payload).eq('task_id', task.id).eq('player_id', userId)
-    : await supabase.from('task_results').insert(payload)
+  // A result has a unique (task_id, player_id) key. Upsert prevents a stale
+  // local result list from trying to insert a duplicate or update no rows.
+  const response = await supabase.from('task_results').upsert(payload, { onConflict: 'task_id,player_id' })
   if (response.error) throw response.error
 }
 

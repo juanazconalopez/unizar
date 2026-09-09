@@ -8,7 +8,7 @@ export function createTaskActions(context: ActionContext, results: TaskResult[])
       context.requireConnection()
       if (!context.userId) return
       const exists = results.some((result) => result.task_id === task.id && result.player_id === context.userId)
-      await saveTaskResult(task, values, context.userId, exists)
+      await saveTaskResult(task, values, context.userId)
       context.notify(exists ? 'Resultado actualizado.' : 'Entrenamiento completado. ¡Buen trabajo!')
       await context.reloadData()
     },

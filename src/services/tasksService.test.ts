@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeTask } from '../test/fixtures'
 
 const mocks = vi.hoisted(() => ({
-  delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), rpc: vi.fn(), update: vi.fn(),
+  delete: vi.fn(), eq: vi.fn(), from: vi.fn(), insert: vi.fn(), rpc: vi.fn(), update: vi.fn(), upsert: vi.fn(),
 }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
 vi.mock('./contentImagesService', () => ({
@@ -18,8 +18,9 @@ describe('tasksService', () => {
     mocks.update.mockReturnValue({ eq: mocks.eq })
     mocks.delete.mockReturnValue({ eq: mocks.eq })
     mocks.insert.mockResolvedValue({ error: null })
+    mocks.upsert.mockResolvedValue({ error: null })
     mocks.rpc.mockResolvedValue({ error: null })
-    mocks.from.mockReturnValue({ delete: mocks.delete, insert: mocks.insert, update: mocks.update })
+    mocks.from.mockReturnValue({ delete: mocks.delete, insert: mocks.insert, update: mocks.update, upsert: mocks.upsert })
   })
 
   test('never moves the week while editing a task', async () => {
@@ -42,19 +43,14 @@ describe('tasksService', () => {
     })
   })
 
-  test('creates and updates only the player result for the requested task', async () => {
+  test('upserts only the player result for the requested task', async () => {
     const task = makeTask()
     const values = { resultText: '  Completado  ', fatigueLevel: 4, performedOn: '2026-08-05' }
 
-    await saveTaskResult(task, values, 'player-1', false)
-    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
+    await saveTaskResult(task, values, 'player-1')
+    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
       task_id: task.id, player_id: 'player-1', result_text: 'Completado', fatigue_level: 4,
-    }))
-
-    await saveTaskResult(task, values, 'player-1', true)
-    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ task_id: task.id, player_id: 'player-1' }))
-    expect(mocks.eq).toHaveBeenCalledWith('task_id', task.id)
-    expect(mocks.eq).toHaveBeenCalledWith('player_id', 'player-1')
+    }), { onConflict: 'task_id,player_id' })
   })
 
   test('updates status and deletes by task id', async () => {

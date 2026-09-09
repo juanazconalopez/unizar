@@ -1,5 +1,5 @@
 begin;
-select plan(179);
+select plan(183);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -610,6 +610,26 @@ select is(
   (select count(*)::integer from pg_trigger where tgname = 'enforce_configurable_permission' and not tgisinternal),
   13,
   'all configurable mutation tables enforce permissions even through security definer RPCs'
+);
+select like(
+  pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),
+  '%if tg_table_name = ''tasks'' then%',
+  'the shared permission trigger narrows task rows before reading task-only fields'
+);
+select like(
+  pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),
+  '%when ''task_results'' then ''tasks.submit_own''%',
+  'the shared permission trigger allows task-result submissions without task-only fields'
+);
+select like(
+  pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),
+  '%if tg_table_name = ''matches'' then%',
+  'the shared permission trigger narrows match rows before reading match-only fields'
+);
+select like(
+  pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),
+  '%if tg_op = ''DELETE'' then%availability_player_id := old.player_id%',
+  'the shared permission trigger handles availability deletes without NEW rows'
 );
 
 select * from finish();
