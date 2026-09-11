@@ -17,6 +17,7 @@ export const PERMISSIONS = {
   attendance: { view: 'attendance.view', record: 'attendance.record', report: 'attendance.report', guests: 'attendance.guests' },
   training: { view: 'training.view', create: 'training.create', edit: 'training.edit', delete: 'training.delete', publish: 'training.publish' },
   exercises: { view: 'exercises.view', create: 'exercises.create', edit: 'exercises.edit', delete: 'exercises.delete' },
+  surveys: { own: 'surveys.view_own', respondOwn: 'surveys.respond_own', manage: 'surveys.view_manage', create: 'surveys.create', edit: 'surveys.edit', publish: 'surveys.publish', cancelOwn: 'surveys.cancel_own', results: 'surveys.results_manage', export: 'surveys.export' },
   competition: { view: 'competition.view', sync: 'competition.sync' },
   library: { view: 'library.view', configure: 'library.configure', sync: 'library.sync' },
   settings: { view: 'settings.view', team: 'settings.team', seasons: 'settings.seasons', permissions: 'settings.permissions' },
@@ -59,16 +60,20 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.training.view, PERMISSIONS.training.create, PERMISSIONS.training.edit, PERMISSIONS.training.delete,
     PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
     PERMISSIONS.exercises.delete, PERMISSIONS.competition.view, PERMISSIONS.library.view,
+    PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
+    PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   viewer: new Set([
     PERMISSIONS.dashboard.team, PERMISSIONS.statistics.view, PERMISSIONS.statistics.attendance, PERMISSIONS.statistics.tasks,
     PERMISSIONS.matches.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.matches.lineup, PERMISSIONS.attendance.report,
     PERMISSIONS.competition.view, PERMISSIONS.library.view,
+    PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
+    PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   player: new Set([
     PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
     PERMISSIONS.announcements.view, PERMISSIONS.matches.view, PERMISSIONS.matches.ownAvailability, PERMISSIONS.matches.lineup,
-    PERMISSIONS.competition.view, PERMISSIONS.library.view,
+    PERMISSIONS.competition.view, PERMISSIONS.library.view, PERMISSIONS.surveys.own, PERMISSIONS.surveys.respondOwn,
   ]),
 }
 

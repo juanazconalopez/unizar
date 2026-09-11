@@ -19,6 +19,8 @@ describe('application access rules', () => {
     expect(canAccessView(player, 'tasks')).toBe(false)
     expect(canAccessView(player, 'matches')).toBe(false)
     expect(canAccessView(player, 'settings')).toBe(false)
+    expect(canAccessView(player, 'surveys')).toBe(false)
+    expect(canAccessView(owner, 'surveys')).toBe(true)
     expect(canAccessView(makeProfile({ is_player: false, is_viewer: true }), 'matches')).toBe(true)
   })
 })

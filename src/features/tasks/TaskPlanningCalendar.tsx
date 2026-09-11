@@ -1,14 +1,18 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import type { CalendarBirthday, Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
-export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], birthdays = [], matches, trainingPlans, showLegend = true, legendVariant = 'management', onMonthChange, onSelectDate }: {
+export type CalendarSurvey = { id: string; result_date: string; title?: string }
+
+export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], birthdays = [], holidays = [], matches, trainingPlans, surveys = [], showLegend = true, legendVariant = 'management', onMonthChange, onSelectDate }: {
   month: string
   selectedDate: string
   tasks: TrainingTask[]
   announcements?: TeamAnnouncement[]
   birthdays?: CalendarBirthday[]
+  holidays?: string[]
   matches?: Match[]
   trainingPlans?: TrainingPlanCalendarItem[]
+  surveys?: CalendarSurvey[]
   showLegend?: boolean
   legendVariant?: 'management' | 'player'
   onMonthChange: (month: string) => void
@@ -53,16 +57,19 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const trainingPlanCount = dayTrainingPlans.length
           const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
           const birthdayCount = dayBirthdays.length
+          const surveyCount = surveys.filter((survey) => survey.result_date === date).length
+          const isHoliday = holidays.includes(date)
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}${surveyCount ? ` y ${surveyCount} ${surveyCount === 1 ? 'encuesta cerrada' : 'encuestas cerradas'}` : ''}`}
               aria-pressed={selectedDate === date}
-              className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${date === today ? 'today' : ''}`}
+              className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount || surveyCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${isHoliday ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
             >
               <strong>{Number(date.slice(-2))}</strong>
+              {date === today && <small aria-hidden="true" className="today-label">HOY</small>}
               {taskCount > 0 && (
                 <span className="week-task-bubbles" aria-hidden="true">
                   {plannedTasks.slice(0, 6).map((task) => <i key={task.id}>T</i>)}
@@ -88,6 +95,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
                 </span>
               )}
               {birthdayCount > 0 && <small aria-hidden="true" className="birthday-mark">🎂 {birthdayCount}</small>}
+              {surveyCount > 0 && <small aria-hidden="true" className="survey-mark">Q {surveyCount}</small>}
             </button>
           )
         })}
@@ -98,6 +106,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
         {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
+        {surveys.length > 0 && <span><i className="survey-dot" />Q · Resultados de encuestas</span>}
       </div>}
     </section>
   )

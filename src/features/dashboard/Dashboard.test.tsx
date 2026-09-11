@@ -221,4 +221,15 @@ describe('Dashboard', () => {
     expect(screen.queryByText('Aviso pasado')).not.toBeInTheDocument()
     expect(screen.queryByText('Aviso posterior')).not.toBeInTheDocument()
   })
+
+  test('shows every pending survey in one modal when the player opens Inicio', async () => {
+    render(<Dashboard profile={makeProfile()} memberships={[makeMembership()]} tasks={[]} results={[]} attendance={[]} userId="player-1" onSaveResult={vi.fn()} onLoadPendingSurveys={vi.fn().mockResolvedValue([
+      { id: 'survey-1', title: 'Valoración semanal', description: null, startsOn: '2026-09-01', endsOn: '2026-09-14', visibility: 'team' },
+      { id: 'survey-2', title: 'Disponibilidad', description: null, startsOn: '2026-09-01', endsOn: '2026-09-14', visibility: 'management' },
+    ])} />)
+    const dialog = await screen.findByRole('dialog', { name: 'Tu opinión cuenta' })
+    expect(dialog).toHaveTextContent('Valoración semanal')
+    await userEvent.setup().click(screen.getByRole('button', { name: /Disponibilidad/ }))
+    expect(await screen.findByRole('dialog', { name: /cargando encuesta/i })).toBeInTheDocument()
+  })
 })

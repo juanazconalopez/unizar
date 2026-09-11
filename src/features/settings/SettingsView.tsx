@@ -9,7 +9,7 @@ import type { ConfigurableRole, PermissionDefinition, PermissionKey, RolePermiss
 
 type SettingsSection = 'team' | 'seasons' | 'library' | 'permissions'
 
-export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onUpdateSeason, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
+export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, holidays, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onUpdateSeason, onSaveHolidays, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
   section?: SettingsSection
   currentUserId: string
   memberships: SeasonPlayer[]
@@ -18,6 +18,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   seasons: Season[]
+  holidays?: { season_id: string; holiday_date: string }[]
   librarySettings?: LibrarySettings | null
   permissionDefinitions?: PermissionDefinition[]
   rolePermissions?: RolePermission[]
@@ -30,6 +31,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onUpdateProfile: (profile: Profile) => Promise<void>
   onUpdateProfileDetails?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onUpdateSeason: (season: Season, values: SeasonValues) => Promise<void>
+  onSaveHolidays?: (seasonId: string, dates: string[]) => Promise<void>
   onSaveLibraryFolder?: (folderUrl: string) => Promise<void>
   onSyncLibrary?: () => Promise<void>
   onSaveRolePermissions?: (role: ConfigurableRole, permissions: PermissionKey[]) => Promise<void>
@@ -41,7 +43,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   return <div className="page settings-page">
     <PageHeader eyebrow="ADMINISTRACIÓN" title={`Ajustes - ${sectionTitle}`} subtitle="Gestiona la estructura y los accesos del club." />
     {section === 'team' && <TeamView currentUserId={currentUserId} embedded hideEmbeddedTitle profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} />}
-    {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
+    {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle holidays={holidays} memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onSaveHolidays={onSaveHolidays} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
     {section === 'library' && <LibrarySettingsView hideEmbeddedTitle settings={librarySettings} onSaveFolder={onSaveLibraryFolder} onSync={onSyncLibrary} />}
     {section === 'permissions' && onSaveRolePermissions && onResetRolePermissions && <PermissionsSettingsView definitions={permissionDefinitions} grants={rolePermissions} onReset={onResetRolePermissions} onSave={onSaveRolePermissions} />}
   </div>

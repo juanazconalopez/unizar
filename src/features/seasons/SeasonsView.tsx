@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -10,25 +10,32 @@ import { activePlayersXml, currentSeasonPlayers } from '../../lib/seasonExports'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonForm } from './SeasonForm'
+import { SeasonHolidayDialog } from './SeasonHolidayDialog'
+import { fetchSeasonHolidays, saveSeasonHolidays } from '../../services/seasonHolidaysService'
 
-export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, profiles, profilePrivateDetails = [], memberships, onCreate, onDelete, onUpdate, onToggleMembership }: {
+export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onToggleMembership, onSaveHolidays }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   seasons: Season[]
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
+  holidays?: { season_id: string; holiday_date: string }[]
   onCreate: (values: SeasonValues) => Promise<void>
   onDelete: (season: Season) => Promise<void>
   onUpdate: (season: Season, values: SeasonValues) => Promise<void>
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
+  onSaveHolidays?: (seasonId: string, dates: string[]) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingSeason, setEditingSeason] = useState<Season | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [holidaySeason, setHolidaySeason] = useState<Season | null>(null)
+  const [loadedHolidays, setLoadedHolidays] = useState<{ season_id: string; holiday_date: string }[]>([])
+  const holidays = providedHolidays ?? loadedHolidays
+  useEffect(() => { if (!providedHolidays) void fetchSeasonHolidays(seasons.map((season) => season.id)).then(setLoadedHolidays).catch(() => undefined) }, [providedHolidays, seasons])
 
-  return (
-    <div className={embedded ? 'settings-section' : 'page'}>
+  return <div className={embedded ? 'settings-section' : 'page'}>
       {embedded ? <div className={`settings-section-heading${hideEmbeddedTitle ? ' compact' : ''}`}><div>{!hideEmbeddedTitle && <><span className="eyebrow">ORGANIZACIÓN</span><h2>Temporadas</h2></>}<p>Gestiona periodos y participantes del equipo.</p></div><button className="primary-button" onClick={() => { setEditingSeason(null); setShowForm(true) }}><Icon name="plus" size={18} />Nueva temporada</button></div> : <PageHeader
         eyebrow="ORGANIZACIÓN"
         title="Temporadas"
@@ -68,24 +75,28 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
             profiles={profiles}
             profilePrivateDetails={profilePrivateDetails}
             season={season}
+            holidayCount={holidays.filter((holiday) => holiday.season_id === season.id).length}
             onEdit={() => { setShowForm(false); setEditingSeason(season) }}
+            onHolidays={() => setHolidaySeason(season)}
             onToggle={() => setExpanded(expanded === season.id ? null : season.id)}
             onToggleMembership={onToggleMembership}
           />
         ))}
         {!seasons.length && <EmptyState title="Sin temporadas" text="Crea la primera temporada para comenzar a planificar entrenamientos." />}
       </div>
+      {holidaySeason && <SeasonHolidayDialog holidays={holidays.filter((holiday) => holiday.season_id === holidaySeason.id).map((holiday) => holiday.holiday_date)} onClose={() => setHolidaySeason(null)} onSave={async (dates) => { await (onSaveHolidays ?? saveSeasonHolidays)(holidaySeason.id, dates); if (!providedHolidays) setLoadedHolidays((current) => [...current.filter((holiday) => holiday.season_id !== holidaySeason.id), ...dates.map((holiday_date) => ({ season_id: holidaySeason.id, holiday_date }))]) }} season={holidaySeason} />}
     </div>
-  )
 }
 
-function SeasonCard({ season, profiles, profilePrivateDetails, memberships, expanded, onEdit, onToggle, onToggleMembership }: {
+function SeasonCard({ season, profiles, profilePrivateDetails, memberships, holidayCount, expanded, onEdit, onHolidays, onToggle, onToggleMembership }: {
   season: Season
   profiles: Profile[]
   profilePrivateDetails: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
+  holidayCount: number
   expanded: boolean
   onEdit: () => void
+  onHolidays: () => void
   onToggle: () => void
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
 }) {
@@ -103,6 +114,7 @@ function SeasonCard({ season, profiles, profilePrivateDetails, memberships, expa
       <p>{formatDate(season.start_date, { day: 'numeric', month: 'long', year: 'numeric' })} — {formatDate(season.end_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       <div className="season-card-actions">
         <button className="secondary-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
+        <button className="secondary-button" onClick={onHolidays}>Festivos{holidayCount ? ` (${holidayCount})` : ''}</button>
         <button className="secondary-button" onClick={onEdit}>Editar</button>
       </div>
       {state === 'Activa' && <button

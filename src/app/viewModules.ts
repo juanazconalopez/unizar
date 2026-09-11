@@ -12,6 +12,8 @@ const modules = {
   training: () => import('../features/trainingPlans/TrainingPlansView'),
   competition: () => import('../features/competition/CompetitionView'),
   library: () => import('../features/library/LibraryView'),
+  surveys: () => import('../features/surveys/SurveysView'),
+  survey: () => import('../features/surveys/SurveyResponseView'),
 }
 
 export const AttendanceView = lazy(() => modules.attendance().then(({ AttendanceView }) => ({ default: AttendanceView })))
@@ -24,6 +26,8 @@ export const PlayerCalendarView = lazy(() => modules.playerCalendar().then(({ Pl
 export const TrainingPlansView = lazy(() => modules.training().then(({ TrainingPlansView }) => ({ default: TrainingPlansView })))
 export const CompetitionView = lazy(() => modules.competition().then(({ CompetitionView }) => ({ default: CompetitionView })))
 export const LibraryView = lazy(() => modules.library().then(({ LibraryView }) => ({ default: LibraryView })))
+export const SurveysView = lazy(() => modules.surveys().then(({ SurveysView }) => ({ default: SurveysView })))
+export const SurveyResponseView = lazy(() => modules.survey().then(({ SurveyResponseView }) => ({ default: SurveyResponseView })))
 
 export function preloadView(view: ViewName) {
   if (view in modules) void modules[view as keyof typeof modules]()

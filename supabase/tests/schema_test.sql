@@ -1,5 +1,5 @@
 begin;
-select plan(183);
+select plan(193);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -615,6 +615,24 @@ select like(
   pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),
   '%if tg_table_name = ''tasks'' then%',
   'the shared permission trigger narrows task rows before reading task-only fields'
+);
+select has_table('public', 'surveys', 'season surveys are persisted');
+select has_table('public', 'survey_questions', 'survey questions are persisted');
+select has_table('public', 'survey_recipients', 'published survey recipients are fixed');
+select has_table('public', 'survey_responses', 'survey responses are persisted separately');
+select has_table('public', 'survey_answers', 'answers support every question type');
+select has_function('public', 'publish_survey', array['uuid'], 'surveys are published atomically');
+select has_function('public', 'submit_survey_response', array['uuid', 'jsonb'], 'players submit immutable answers atomically');
+select has_function('public', 'get_survey_results', array['uuid', 'uuid'], 'results enforce visibility through a protected RPC');
+select like(
+  pg_get_functiondef('public.get_manage_surveys()'::regprocedure),
+  '%survey.visibility <> ''private''%',
+  'the management list excludes private surveys for non-owners'
+);
+select like(
+  pg_get_functiondef('public.publish_survey(uuid)'::regprocedure),
+  '%Solo el owner puede publicar encuestas privadas%',
+  'only the owner can publish a private survey'
 );
 select like(
   pg_get_functiondef('public.enforce_configurable_permission()'::regprocedure),

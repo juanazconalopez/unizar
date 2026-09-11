@@ -17,7 +17,7 @@ export function AnnouncementCard({ announcement, actions, initialOpen = false }:
   const descriptionText = stripContentImageTokens(announcement.description)
   const imageCount = contentImageIds(announcement.description).length
   return (
-    <article className="announcement-card">
+    <article className={`announcement-card${actions ? '' : ' announcement-card-readonly'}`}>
       <button aria-label={`Ver aviso ${announcement.title}`} className="task-card-detail-link" onClick={() => setOpen(true)} type="button" />
       <span className="announcement-card-icon"><Icon name="bell" size={18} /></span>
       <div className="announcement-card-main">
@@ -26,7 +26,10 @@ export function AnnouncementCard({ announcement, actions, initialOpen = false }:
         {descriptionText && <p>{descriptionText}</p>}
         {imageCount > 0 && <span className="content-image-count">📎 {imageCount} {imageCount === 1 ? 'imagen' : 'imágenes'}</span>}
       </div>
-      {actions && <div className="task-actions">{actions}</div>}
+      {actions && <div className="announcement-card-side">
+        <span className={`announcement-status ${announcement.status}`}>{announcement.status === 'published' ? 'Publicada' : announcement.status === 'draft' ? 'Borrador' : 'Anulada'}</span>
+        <div className="task-actions">{actions}</div>
+      </div>}
       {open && <Modal labelledBy={titleId} onClose={() => setOpen(false)}>
         <div className="task-detail-heading"><div><span className="eyebrow">AVISO · {formatDate(announcement.announcement_date)}</span><h2 id={titleId}>{announcement.title}</h2></div><button aria-label="Cerrar aviso" className="icon-button" onClick={() => setOpen(false)} type="button">×</button></div>
         <div className="task-detail-description"><RichContent fallback="Este aviso no tiene información adicional." text={announcement.description} /></div>

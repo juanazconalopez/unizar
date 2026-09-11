@@ -22,6 +22,8 @@ export function canAccessView(profile: Profile, view: ViewName, permissionKeys?:
   if (view === 'home') return hasPermission(profile, PERMISSIONS.dashboard.personal, permissionKeys) || hasPermission(profile, PERMISSIONS.dashboard.team, permissionKeys)
   if (view === 'calendar') return hasPermission(profile, PERMISSIONS.calendar.manage, permissionKeys) || hasPermission(profile, PERMISSIONS.calendar.personal, permissionKeys)
   if (view === 'training') return hasPermission(profile, PERMISSIONS.training.view, permissionKeys)
+  if (view === 'surveys') return hasPermission(profile, PERMISSIONS.surveys.manage, permissionKeys)
+  if (view === 'survey') return hasPermission(profile, PERMISSIONS.surveys.respondOwn, permissionKeys)
   if (view === 'attendance') return hasPermission(profile, PERMISSIONS.attendance.view, permissionKeys)
   if (view === 'tasks') return false
   if (view === 'matches') return hasPermission(profile, PERMISSIONS.matches.teamAvailability, permissionKeys)

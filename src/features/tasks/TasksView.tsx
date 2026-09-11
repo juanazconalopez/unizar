@@ -15,7 +15,7 @@ import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 import { StatusControl } from './StatusControl'
 
-export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement, onAnnouncementStatusChange }: {
+export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement }: {
   canManage: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
@@ -229,13 +229,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
 
   function announcementActionsFor(announcement: TeamAnnouncement) {
     if (!canManage) return undefined
-    return <>
-      <StatusControl status={announcement.status} onChange={async (status) => {
-        await onAnnouncementStatusChange?.(announcement.id, status)
-        if (onLoadRange) await onLoadRange(mondayFor(announcement.announcement_date), mondayFor(announcement.announcement_date))
-      }} />
-      <button className="secondary-button compact" onClick={() => setAnnouncementForm(announcement)} type="button">Editar aviso</button>
-    </>
+    return <button aria-label={`Editar aviso ${announcement.title}`} className="announcement-edit-button" onClick={() => setAnnouncementForm(announcement)} title="Editar aviso" type="button">✎</button>
   }
 
   async function saveAnnouncement(values: AnnouncementValues) {

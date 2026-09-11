@@ -42,7 +42,7 @@ describe('AppLayout', () => {
     const user = userEvent.setup()
     const { navigation } = renderLayout(makeProfile({ is_owner: true }))
 
-    for (const label of ['Inicio', 'Calendario', 'Competición', 'Asistencia', 'Ajustes', 'Librería']) {
+    for (const label of ['Inicio', 'Calendario', 'Competición', 'Asistencia', 'Gestión', 'Ajustes', 'Librería']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
     await user.click(within(navigation).getByRole('button', { name: 'Asistencia' }))
@@ -51,6 +51,8 @@ describe('AppLayout', () => {
     expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Temporadas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Equipo' })).not.toBeInTheDocument()
+    await user.click(within(navigation).getByRole('button', { name: 'Gestión' }))
+    expect(within(navigation).getByRole('menuitem', { name: 'Encuestas' })).toBeInTheDocument()
   })
 
   test('groups attendance actions and settings sections', async () => {
@@ -98,20 +100,25 @@ describe('AppLayout', () => {
     expect(within(navigation).queryByRole('button', { name: 'Tareas' })).not.toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Partidos' })).not.toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Competición' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('button', { name: 'Gestión' })).toBeInTheDocument()
     expect(within(navigation).getByRole('button', { name: 'Asistencia' })).toBeInTheDocument()
     await user.click(within(navigation).getByRole('button', { name: 'Asistencia' }))
     expect(within(navigation).getByRole('menuitem', { name: 'Resumen' })).toBeInTheDocument()
     expect(within(navigation).queryByRole('button', { name: 'Ajustes' })).not.toBeInTheDocument()
   })
 
-  test('limits Dirección to read-only team areas', () => {
+  test('gives Dirección access to the shared management group', async () => {
+    const user = userEvent.setup()
     const { navigation } = renderLayout(makeProfile({ is_viewer: true, is_player: false }))
-    for (const label of ['Inicio', 'Resumen', 'Partidos', 'Competición']) {
+    for (const label of ['Inicio', 'Resumen', 'Gestión', 'Competición']) {
       expect(within(navigation).getByRole('button', { name: label })).toBeInTheDocument()
     }
     for (const label of ['Tareas', 'Asistencia', 'Ajustes']) {
       expect(within(navigation).queryByRole('button', { name: label })).not.toBeInTheDocument()
     }
+    await user.click(within(navigation).getByRole('button', { name: 'Gestión' }))
+    expect(within(navigation).getByRole('menuitem', { name: 'Partidos' })).toBeInTheDocument()
+    expect(within(navigation).getByRole('menuitem', { name: 'Encuestas' })).toBeInTheDocument()
   })
 
   test('keeps player navigation when Dirección is an additional role', () => {

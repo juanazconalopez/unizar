@@ -491,13 +491,18 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .day-training-bubbles small { color: #24694f; font-size: 8px; font-weight: 800; }
 .announcement-dot { background: #e6932e; }
 .training-plan-dot { background: #8bc9a4; }
-.selected-day-announcements { margin-bottom: 26px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
+.selected-day-announcements { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 .calendar-training-list { display: grid; gap: 8px; }
 .calendar-training-list article { padding: 13px 15px; border: 1px solid #cfe5d7; border-left: 4px solid #8bc9a4; border-radius: 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 11px; background: #f4faf6; }
 .calendar-training-list article > span { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; color: #24694f; background: #d9f0e2; font-size: 10px; font-weight: 900; }
 .calendar-training-list strong, .calendar-training-list small { display: block; }
 .calendar-training-list strong { font-size: 12px; }
 .calendar-training-list small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.calendar-training-list .survey-closure-card { width: 100%; min-height: 0; padding: 9px 11px; border: 1px solid #cfe5d7; border-left: 3px solid #8bc9a4; border-radius: 10px; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: var(--ink); background: #f4faf6; text-align: left; }
+button.survey-closure-card { cursor: pointer; }
+button.survey-closure-card:hover { border-color: #75b994; background: #edf8f1; }
+button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25); outline-offset: 2px; }
+.calendar-training-list .survey-closure-card > .survey-mark { width: 21px; height: 21px; font-size: 9px; }
 .selected-calendar-group + .selected-calendar-group { margin-top: 26px; padding-top: 25px; border-top: 1px solid var(--line); }
 .calendar-add-actions { position: relative; }
 .calendar-add-menu { position: relative; }
@@ -505,9 +510,16 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .calendar-add-options button { padding: 10px 12px; border: 0; border-radius: 7px; color: var(--ink); background: transparent; font-size: 12px; font-weight: 750; text-align: left; }
 .calendar-add-options button:hover { color: var(--green); background: var(--green-soft); }
 .announcement-card { position: relative; min-width: 0; padding: 17px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 14px; border: 1px solid #ecd2ad; border-left: 4px solid #e6932e; border-radius: 14px; background: #fffaf2; }
+.announcement-card-readonly { grid-template-columns: auto minmax(0,1fr); }
 .announcement-card-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #9b5b0f; background: #ffe8c5; }
 .announcement-card-main { min-width: 0; }
 .announcement-card-main .eyebrow { color: #9b5b0f; }
+.announcement-card-side { position: relative; z-index: 2; display: grid; justify-items: end; gap: 6px; }
+.announcement-status { flex: 0 0 auto; padding: 3px 6px; border-radius: 12px; color: #547267; background: #e5f2e9; font-size: 8px; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.announcement-status.draft { color: #876d23; background: #fff1c9; }
+.announcement-status.cancelled { color: #9a5148; background: #f9e2de; }
+.announcement-edit-button { width: 30px; height: 30px; padding: 0; border: 1px solid #e4cfae; border-radius: 8px; color: #9b5b0f; background: #fff; font-size: 17px; cursor: pointer; }
+.announcement-edit-button:hover { color: #fff; background: #9b5b0f; }
 .announcement-card-main h3 { margin: 4px 0 5px; font-size: 15px; }
 .announcement-card-main p { margin: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .announcement-card .task-actions { position: relative; z-index: 2; }
@@ -627,8 +639,25 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .statistics-calendar > button, .calendar-empty { min-width: 0; min-height: 92px; padding: 9px; border: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; background: white; text-align: left; }
 .statistics-calendar > button { position: relative; }
 .statistics-calendar > button:hover { background: #f7faf8; }
-.statistics-calendar > button[aria-pressed='true'] { z-index: 1; box-shadow: inset 0 0 0 2px var(--green); background: #f0f8f3; }
-.statistics-calendar > button.today strong { width: 25px; height: 25px; margin: -3px 0 0 -3px; border-radius: 50%; display: grid; place-items: center; color: white; background: var(--green); }
+.statistics-calendar > button[aria-pressed='true'] { z-index: 1; box-shadow: inset 0 0 0 2px var(--green); background: #eaf7ef; }
+.statistics-calendar > button.today { background: #eaf3ff; }
+.statistics-calendar > button.today strong { color: #1f5f96; }
+.statistics-calendar > button.today[aria-pressed='true'] { background: #eaf7ef; }
+.today-label { width: fit-content !important; align-self: flex-start; padding: 2px 5px !important; color: white; background: #2f78b7; font-size: 7px !important; letter-spacing: .5px; line-height: 1; }
+.statistics-calendar > button.holiday { background: #f0f2f1; }
+.statistics-calendar > button.holiday:hover { background: #e7ebe9; }
+.statistics-calendar > button.holiday[aria-pressed='true'] { background: #eaf7ef; }
+.holiday-calendar-context { margin: 0 0 12px; padding: 9px 11px; border: 1px solid #d2dfd8; border-left: 3px solid #aeb8b4; border-radius: 9px; display: grid; grid-template-columns: 21px minmax(0,1fr); align-items: center; gap: 8px; color: #58645f; background: #f4f7f5; }
+.holiday-calendar-context > span { width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center; color: #6f7d76; background: #e0e6e2; font-size: 9px; font-weight: 900; }
+.holiday-calendar-context > div { display: grid; gap: 2px; }
+.holiday-calendar-context strong { color: #44514b; font-size: 10px; letter-spacing: .7px; text-transform: uppercase; }
+.holiday-calendar-context small { color: #69766f; font-size: 10px; }
+.selected-day-date { margin: 18px 0 12px; }
+.selected-day-date h2 { margin: 0; color: var(--ink); font-size: 17px; text-transform: capitalize; }
+.survey-closure-group .task-week-heading h2, .selected-day-announcements .task-week-heading h2, .selected-day-matches .task-week-heading h2 { margin: 0; color: var(--green); font-size: 15px; }
+.selected-day-matches .match-card { background: #faf7ff; border-color: #ded3ee; }
+.selected-calendar-group + .selected-calendar-group { margin-top: 16px; padding-top: 0; border-top: 0; }
+.selected-week-tasks { margin-top: 26px !important; padding-top: 25px !important; border-top: 1px solid var(--line) !important; }
 .statistics-calendar > button strong { font-size: 12px; }
 .statistics-calendar > button small { max-width: 100%; padding: 3px 5px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 8px; font-weight: 800; }
 .attendance-mark { color: #206b51; background: #e1f1e7; }
@@ -767,6 +796,54 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .empty-state > span { width: 45px; height: 45px; border-radius: 50%; display: grid; place-items: center; color: var(--green); background: var(--green-soft); }
 .empty-state h3 { margin: 13px 0 5px; font-size: 16px; }
 .empty-state p { margin: 0; color: var(--muted); font-size: 12px; }
+.survey-mark { color: #7452a2; font-weight: 800; }
+.survey-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #7452a2; }
+.survey-editor, .survey-results { display: grid; gap: 16px; padding: 18px; border: 1px solid #dce7e1; border-radius: 16px; background: #fff; }
+.survey-list { display: grid; gap: 10px; }
+.survey-card { width: 100%; padding: 15px; border: 1px solid #dce7e1; border-radius: 14px; display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: start; gap: 11px; color: var(--ink); background: #fff; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.survey-card:hover { border-color: #9fc5b2; box-shadow: 0 5px 15px rgba(31,63,54,.07); }
+.survey-card:focus-visible { outline: 3px solid rgba(30,111,92,.25); outline-offset: 2px; }
+.survey-number { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--green); font-size: 13px; font-weight: 800; }
+.survey-card-copy { min-width: 0; display: grid; gap: 5px; }
+.survey-card-copy strong { font-size: 15px; }
+.survey-card-copy small { color: var(--muted); font-size: 11px; }
+.survey-editor-dialog, .survey-results-dialog { width: min(720px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }
+.survey-editor-dialog .modal-form-contents, .survey-results-dialog { display: grid; gap: 16px; }
+.survey-response-dialog { width: min(650px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }
+.season-holiday-dialog { width: min(620px,100%); }
+.season-holiday-help { margin: 0; color: var(--muted); font-size: 12px; }
+.season-holiday-calendar { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 2px; padding: 2px; background: var(--line); }
+.season-holiday-calendar > span, .season-holiday-calendar button { min-height: 48px; border: 0; background: #fff; font: inherit; }
+.season-holiday-calendar button { cursor: pointer; }
+.season-holiday-calendar button.holiday { color: #56625d; background: #e6eae8; font-weight: 800; }
+.season-holiday-calendar button.disabled-day { color: #c5cdca; background: #f7f8f7; cursor: not-allowed; }
+.modal-later-actions { display: flex; align-items: center; gap: 4px; }
+.modal-later-actions .text-button { min-height: 34px; padding-inline: 7px; white-space: nowrap; }
+.survey-draft-summary, .survey-player-filter { display: grid; gap: 10px; }
+.survey-draft-summary p, .survey-filter-message { margin: 0; color: var(--muted); line-height: 1.5; }
+.survey-player-filter { color: var(--muted); font-size: 12px; font-weight: 700; }
+.survey-filter-input { position: relative; display: block; }
+.survey-player-filter input { width: 100%; box-sizing: border-box; }
+.survey-filter-input input { padding-right: 42px; }
+.survey-filter-input button { position: absolute; top: 50%; right: 9px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; transform: translateY(-50%); color: #6c7e77; background: #e8efeb; font-size: 18px; line-height: 1; cursor: pointer; }
+.survey-filter-input button:hover { color: #fff; background: var(--green); }
+.survey-questions-editor { display: grid; gap: 12px; }
+.survey-questions-editor > article, .survey-result { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 14px; border: 1px solid #e1e9e5; border-radius: 12px; background: #f8fbf9; }
+.survey-questions-editor > article > b, .survey-result > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--green); }
+.survey-questions-editor label { display: grid; gap: 5px; margin-bottom: 9px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.survey-questions-editor input, .survey-questions-editor select { width: 100%; box-sizing: border-box; }
+.survey-option-list { display: grid; gap: 8px; }
+.survey-option-list .text-button { justify-self: start; padding-inline: 0; }
+.survey-option-editor { display: grid; grid-template-columns: minmax(0,1fr) 24px; align-items: center; gap: 8px; }
+.survey-remove-option { width: 22px; height: 22px; padding: 0; border: 1px solid #e0a19a; border-radius: 50%; color: #b84a40; background: #fff7f5; font-size: 18px; font-weight: 700; line-height: 1; cursor: pointer; }
+.survey-remove-option:hover { color: #fff; background: #b84a40; }
+.survey-result h3 { margin: 0 0 12px; font-size: 15px; }
+.survey-result p { margin: 8px 0; padding: 10px; border-radius: 8px; background: #fff; color: var(--muted); font-size: 13px; }
+.survey-bar { display: grid; gap: 5px; margin: 10px 0; }
+.survey-bar span { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.survey-bar small { color: var(--muted); }
+.survey-bar i { overflow: hidden; height: 8px; border-radius: 8px; background: #dfe9e4; }
+.survey-bar em { display: block; height: 100%; border-radius: inherit; background: var(--green); }
 .toast { position: fixed; z-index: 30; top: 22px; right: 28px; max-width: 380px; padding: 12px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; color: white; box-shadow: 0 12px 35px rgba(0,0,0,.16); font-size: 13px; }
 .toast.success { background: var(--green); }
 .toast.error { background: #a94d41; }
@@ -1463,8 +1540,16 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
   .day-announcement-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .day-training-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .task-planning-calendar > button > .birthday-mark { position: absolute; top: 6px; right: 3px; width: auto; }
-  .announcement-card { grid-template-columns: auto minmax(0,1fr); padding: 14px; gap: 10px; }
-  .announcement-card .task-actions { grid-column: 2; }
+  .announcement-card { grid-template-columns: 30px minmax(0,1fr) 46px; padding: 12px; gap: 8px; }
+  .announcement-card-readonly { grid-template-columns: 30px minmax(0,1fr); }
+  .announcement-card-icon { width: 30px; height: 30px; border-radius: 9px; }
+  .announcement-card-side { gap: 5px; }
+  .announcement-status { padding: 3px 4px; font-size: 6px; }
+  .announcement-edit-button { width: 25px; height: 25px; border-radius: 7px; font-size: 14px; }
+  .announcement-card .task-actions { grid-column: auto; }
+  .announcement-card-main .eyebrow { font-size: 8px; }
+  .announcement-card-main h3 { margin: 3px 0 4px; font-size: 13px; }
+  .announcement-card-main p { -webkit-line-clamp: 3; font-size: 10px; line-height: 1.35; }
   .statistics-calendar > button.today strong { width: 22px; height: 22px; margin: -2px 0 0 -1px; }
   .statistics-calendar > button small { width: 100%; padding: 2px 3px; font-size: 7px; }
   .calendar-legend { padding: 10px 10px 13px; gap: 7px 12px; }

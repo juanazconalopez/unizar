@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Modal } from '../../components/ui/Modal'
 import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import { canViewTeamData, isPlayer } from '../../lib/permissions'
 import { membershipCoversDate } from '../../lib/selectors'
@@ -11,8 +12,10 @@ import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValue
 import { PlayerSeasonSummaryDialog } from '../matches/PlayerSeasonSummaryDialog'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskResultsSummary } from '../tasks/TaskResultsSummary'
+import type { PendingSurvey } from '../../services/surveysService'
+import { SurveyResponseDialog } from '../surveys/SurveyResponseDialog'
 
-export function Dashboard({ profile, profiles = [], memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, todayBirthdays = [], userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onSaveResult }: {
+export function Dashboard({ profile, profiles = [], memberships, tasks, announcements = [], matches = [], results, attendance, trainingSessions = [], season, todayBirthdays = [], userId, onGoToTasks, onOpenMatch, onOpenAnnouncement, onLoadSeasonSummary, onLoadPendingSurveys, onSaveResult }: {
   profile: Profile
   profiles?: Profile[]
   memberships: SeasonPlayer[]
@@ -29,12 +32,16 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
   onOpenMatch?: (match: Match) => void
   onOpenAnnouncement?: (announcement: TeamAnnouncement) => void
   onLoadSeasonSummary?: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
+  onLoadPendingSurveys?: () => Promise<PendingSurvey[]>
   onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
 }) {
   const [motivationVariant] = useState(() => Math.random())
   const [seasonSummary, setSeasonSummary] = useState<PlayerSeasonSummary | null>(null)
   const [seasonSummaryUnavailable, setSeasonSummaryUnavailable] = useState(false)
   const [showSeasonSummary, setShowSeasonSummary] = useState(false)
+  const [pendingSurveys, setPendingSurveys] = useState<PendingSurvey[]>([])
+  const [showPendingSurveys, setShowPendingSurveys] = useState(false)
+  const [respondingSurvey, setRespondingSurvey] = useState<PendingSurvey | null>(null)
   const currentMonday = mondayFor(new Date())
   const isTeamDashboard = canViewTeamData(profile)
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
@@ -104,6 +111,18 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
     return () => { active = false }
   }, [isTeamDashboard, onLoadSeasonSummary, season, userId])
 
+  useEffect(() => {
+    let active = true
+    if (!onLoadPendingSurveys) return () => { active = false }
+    void onLoadPendingSurveys().then((surveys) => {
+      if (!active) return
+      setPendingSurveys(surveys)
+      setShowPendingSurveys(surveys.length > 0)
+      setRespondingSurvey(surveys.length === 1 ? surveys[0] : null)
+    }).catch(() => undefined)
+    return () => { active = false }
+  }, [onLoadPendingSurveys])
+
   return (
     <div className="page">
       <PageHeader
@@ -131,6 +150,12 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
         </button>}
       </section>
       {showSeasonSummary && season && onLoadSeasonSummary && seasonSummary && <PlayerSeasonSummaryDialog initialSummary={seasonSummary} onClose={() => setShowSeasonSummary(false)} onLoad={onLoadSeasonSummary} playerId={userId} season={season} />}
+      {showPendingSurveys && !respondingSurvey && <Modal labelledBy="pending-surveys-title" onClose={() => setShowPendingSurveys(false)}>
+        <div className="panel-form-heading"><div><span className="eyebrow">ENCUESTAS PENDIENTES</span><h2 id="pending-surveys-title">Tu opinión cuenta</h2></div><div className="modal-later-actions"><button className="text-button" onClick={() => setShowPendingSurveys(false)} type="button">Responder más tarde</button><button aria-label="Cerrar encuestas pendientes" className="icon-button" onClick={() => setShowPendingSurveys(false)} type="button">×</button></div></div>
+        <p>Responde las encuestas activas antes de su fecha límite.</p>
+          <div className="dashboard-next-list">{pendingSurveys.map((survey) => <button key={survey.id} onClick={() => setRespondingSurvey(survey)} type="button"><span className="dashboard-next-icon announcement">Q</span><span><strong>{survey.title}</strong><small>Hasta el {formatDate(survey.endsOn, { day: 'numeric', month: 'long' })}</small></span><span className="secondary-button compact">Responder</span></button>)}</div>
+      </Modal>}
+      {respondingSurvey && <SurveyResponseDialog onClose={() => { setRespondingSurvey(null); setShowPendingSurveys(false) }} onDone={async () => { const surveys = await onLoadPendingSurveys?.() ?? []; setPendingSurveys(surveys); setRespondingSurvey(null); setShowPendingSurveys(surveys.length > 0) }} surveyId={respondingSurvey.id} />}
       <section className={`motivation-card${isTeamDashboard ? ' team-insight-card' : ''}`}>
         <span><Icon name="spark" size={22} /></span>
         <div><strong>{isTeamDashboard ? insight.title : motivation.title}</strong><p>{isTeamDashboard ? insight.text : motivation.text}</p></div>

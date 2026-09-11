@@ -270,7 +270,7 @@ export type LibraryItem = {
   synced_at: string
 }
 
-export type ViewName = 'home' | 'statistics' | 'calendar' | 'training' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings' | 'library'
+export type ViewName = 'home' | 'statistics' | 'calendar' | 'training' | 'tasks' | 'matches' | 'competition' | 'attendance' | 'settings' | 'library' | 'surveys' | 'survey'
 
 export type ResultValues = {
   resultText: string

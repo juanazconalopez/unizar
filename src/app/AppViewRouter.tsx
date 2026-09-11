@@ -9,11 +9,13 @@ import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/per
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
 import { fetchPublishedTrainingPlans } from '../services/trainingPlansService'
+import { fetchMyPendingSurveys } from '../services/surveysService'
+import { fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
-import { AttendanceView, CalendarView, CompetitionView, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, TasksView, TrainingPlansView } from './viewModules'
+import { AttendanceView, CalendarView, CompetitionView, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingPlansView } from './viewModules'
 
 type TrainingController = ReturnType<typeof useTrainingData>
 type CompetitionController = ReturnType<typeof useCompetitionData>
@@ -75,6 +77,7 @@ export function AppViewRouter({
         userId={userId}
         onGoToTasks={canAccessTasks(profile, permissionKeys) ? () => navigate('calendar') : undefined}
         onLoadSeasonSummary={isPlayer(profile) ? fetchPlayerSeasonSummary : undefined}
+        onLoadPendingSurveys={can(PERMISSIONS.surveys.respondOwn) ? fetchMyPendingSurveys : undefined}
         onOpenAnnouncement={(announcement) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'home', date: announcement.announcement_date, announcementId: announcement.id })}
         onOpenMatch={(match) => navigate({ view: canManage || isPlayer(profile) ? 'calendar' : 'matches', date: match.match_date })}
         onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
@@ -144,6 +147,8 @@ export function AppViewRouter({
         onLoadPublishedTrainingPlans={fetchPublishedTrainingPlans}
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
+        onLoadSurveyClosures={fetchVisibleSurveyClosures}
+        onOpenSurveyResults={(surveyId) => navigate({ view: 'surveys', surveyId })}
         onReorderTasks={actions.tasks.reorder}
         onSaveAnnouncement={actions.announcements.save}
         onSaveLineup={actions.matches.saveLineup}
@@ -170,6 +175,8 @@ export function AppViewRouter({
         onLoadTaskRange={data.loadTaskRange}
         onSaveAvailability={can(PERMISSIONS.matches.ownAvailability) ? actions.matches.saveAvailability : undefined}
         onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
+        onLoadSurveyClosures={fetchVisibleSurveyClosures}
+        onOpenSurveyResults={(surveyId) => navigate({ view: 'surveys', surveyId })}
       />}
       {view === 'tasks' && canAccessTasks(profile) && <TasksView
         announcements={data.announcements}
@@ -233,6 +240,8 @@ export function AppViewRouter({
         onSync={competition.synchronize}
       />}
       {view === 'library' && <LibraryView items={data.libraryItems} />}
+      {view === 'surveys' && can(PERMISSIONS.surveys.manage) && <SurveysView initialSurveyId={navigation.surveyId} isOwner={profile.is_owner} />}
+      {view === 'survey' && navigation.surveyId && can(PERMISSIONS.surveys.respondOwn) && <SurveyResponseView surveyId={navigation.surveyId} onDone={() => { notify('Encuesta enviada. ¡Gracias por tu respuesta!'); navigate('home') }} />}
       {view === 'settings' && hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SettingsView
         currentUserId={userId}
         memberships={data.memberships}

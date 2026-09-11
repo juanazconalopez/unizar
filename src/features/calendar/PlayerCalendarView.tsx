@@ -20,14 +20,18 @@ import type {
 } from '../../types'
 import { MatchCard } from '../matches/MatchCard'
 import { MatchLineupDialog } from '../matches/MatchLineupDialog'
+import { SurveyClosureCards } from '../surveys/SurveyClosureCards'
+import { HolidayDayContext } from './HolidayDayContext'
 import { AnnouncementCard } from '../tasks/AnnouncementCard'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskPlanningCalendar } from '../tasks/TaskPlanningCalendar'
+import type { CalendarSurvey } from '../tasks/TaskPlanningCalendar'
 
 export function PlayerCalendarView({
   announcements,
   availability,
   birthdays,
+  holidays = [],
   focusedAnnouncementId,
   focusedDate,
   lineups,
@@ -39,12 +43,15 @@ export function PlayerCalendarView({
   userId,
   onLoadMatchMonth,
   onLoadTaskRange,
+  onLoadSurveyClosures,
+  onOpenSurveyResults,
   onSaveAvailability,
   onSaveResult,
 }: {
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
   birthdays: CalendarBirthday[]
+  holidays?: string[]
   focusedAnnouncementId?: string
   focusedDate?: string
   lineups: MatchLineup[]
@@ -58,12 +65,15 @@ export function PlayerCalendarView({
   onLoadTaskRange: (fromWeek: string, toWeek: string) => Promise<void>
   onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
+  onLoadSurveyClosures?: (from: string, until: string) => Promise<CalendarSurvey[]>
+  onOpenSurveyResults?: (surveyId: string) => void
 }) {
   const today = todayIso()
   const initialDate = focusedDate ?? today
   const [selectedDate, setSelectedDate] = useState(initialDate)
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
   const [lineupMatch, setLineupMatch] = useState<Match | null>(null)
+  const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const visibleTasks = tasks.filter((task) => task.status === 'published' && canUserCompleteTask(task, memberships, userId))
   const visibleAnnouncements = announcements.filter((announcement) => announcement.status === 'published')
   const visibleMatches = matches.filter((match) => match.status === 'published')
@@ -74,6 +84,8 @@ export function PlayerCalendarView({
     .filter((match) => match.match_date === selectedDate)
     .sort((first, second) => (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? ''))
   const selectedBirthdays = birthdays.filter((birthday) => birthday.birthday_on === selectedDate)
+  const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
+  const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
 
   useEffect(() => {
     if (!focusedDate || focusedDate.slice(0, 7) === today.slice(0, 7)) return
@@ -90,7 +102,10 @@ export function PlayerCalendarView({
       onLoadTaskRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))),
       onLoadMatchMonth(nextMonth),
     ]).catch(() => undefined)
+    if (onLoadSurveyClosures) setSurveyClosures(await onLoadSurveyClosures(monthStart(nextMonth), monthEnd(nextMonth)).catch(() => []))
   }
+
+  useEffect(() => { if (onLoadSurveyClosures) void onLoadSurveyClosures(monthStart(month), monthEnd(month)).then(setSurveyClosures).catch(() => setSurveyClosures([])) }, [month, onLoadSurveyClosures])
 
   function goToToday() {
     setSelectedDate(today)
@@ -131,28 +146,33 @@ export function PlayerCalendarView({
       <TaskPlanningCalendar
         announcements={visibleAnnouncements}
         birthdays={birthdays}
+        holidays={holidays}
         legendVariant="player"
         matches={visibleMatches}
         month={month}
         selectedDate={selectedDate}
         tasks={visibleTasks}
+        surveys={surveyClosures}
         onMonthChange={(nextMonth) => void changeMonth(nextMonth)}
         onSelectDate={setSelectedDate}
       />
       <section className="selected-planning-week">
+        {hasSelectedDayContent && <div className="selected-day-date"><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>}
+        {holidays.includes(selectedDate) && <HolidayDayContext />}
         {selectedBirthdays.length > 0 && <div className="birthday-day-detail" role="status">
           <span aria-hidden="true">🎂</span>
           <p><strong>Cumpleaños del día</strong>{selectedBirthdays.map((birthday) => birthday.display_name).join(' · ')}</p>
         </div>}
         {selectedAnnouncements.length > 0 && <div className="selected-calendar-group selected-day-announcements">
-          <div className="task-week-heading"><div><span className="eyebrow">AVISOS DEL DÍA</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedAnnouncements.length}</span></div>
+          <div className="task-week-heading"><h2>Avisos</h2><span>{selectedAnnouncements.length}</span></div>
           <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
         </div>}
-        {selectedMatches.length > 0 && <div className="selected-calendar-group">
-          <div className="task-week-heading"><div><span className="eyebrow">PARTIDOS DEL DÍA</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedMatches.length}</span></div>
+        {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={onOpenSurveyResults} />}
+        {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
+          <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
           <div className="match-list">{selectedMatches.map(renderMatch)}</div>
         </div>}
-        <div className="selected-calendar-group">
+        <div className="selected-calendar-group selected-week-tasks">
           <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>
           <div className="task-list">
             {selectedTasks.map((task) => <TaskCard

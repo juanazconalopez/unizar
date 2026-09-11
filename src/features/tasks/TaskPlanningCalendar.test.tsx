@@ -39,4 +39,9 @@ describe('planning calendar training plans', () => {
     expect(screen.getByText('🎂 · Cumpleaños')).toBeInTheDocument()
     expect(screen.queryByText(/\d+ años/)).not.toBeInTheDocument()
   })
+
+  test('shows configured season holidays with a light background class', () => {
+    render(<TaskPlanningCalendar announcements={[]} holidays={['2026-09-08']} month="2026-09-01" onMonthChange={vi.fn()} onSelectDate={vi.fn()} selectedDate="2026-09-08" tasks={[]} />)
+    expect(screen.getByRole('button', { name: /^8 de septiembre/i })).toHaveClass('holiday')
+  })
 })

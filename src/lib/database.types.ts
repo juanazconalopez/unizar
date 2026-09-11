@@ -852,6 +852,12 @@ export type Database = {
           },
         ]
       }
+      season_holidays: {
+        Row: { created_at: string; holiday_date: string; season_id: string }
+        Insert: { created_at?: string; holiday_date: string; season_id: string }
+        Update: { created_at?: string; holiday_date?: string; season_id?: string }
+        Relationships: [{ foreignKeyName: "season_holidays_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] }]
+      }
       seasons: {
         Row: {
           created_at: string
@@ -1292,7 +1298,16 @@ export type Database = {
       }
       current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
       get_my_permissions: { Args: never; Returns: string[] }
+      get_my_pending_surveys: { Args: never; Returns: Json }
+      get_survey_for_response: { Args: { checked_survey_id: string }; Returns: Json }
+      get_visible_survey_closures: { Args: { checked_from: string; checked_until: string }; Returns: Json }
+      get_manage_surveys: { Args: never; Returns: Json }
+      get_survey_results: { Args: { checked_player_id?: string; checked_survey_id: string }; Returns: Json }
+      publish_survey: { Args: { checked_survey_id: string }; Returns: undefined }
+      submit_survey_response: { Args: { checked_survey_id: string; submitted_answers: Json }; Returns: undefined }
+      cancel_survey: { Args: { checked_survey_id: string }; Returns: undefined }
       set_role_permissions: { Args: { checked_permissions: string[]; checked_role: string }; Returns: undefined }
+      set_season_holidays: { Args: { checked_dates: string[]; checked_season_id: string }; Returns: undefined }
       reset_role_permissions: { Args: { checked_role: string }; Returns: undefined }
       current_user_can_view_private_profile_details: {
         Args: never

@@ -5,10 +5,11 @@ export type NavigationTarget = {
   date?: string
   announcementId?: string
   trainingPlanId?: string
+  surveyId?: string
   settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
 }
 
-const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library'])
+const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library', 'surveys', 'survey'])
 const settingsSections = new Set<NonNullable<NavigationTarget['settingsSection']>>(['team', 'seasons', 'library', 'permissions'])
 
 export function navigationFromLocation(location: Pick<Location, 'search'> = window.location): NavigationTarget {
@@ -18,6 +19,7 @@ export function navigationFromLocation(location: Pick<Location, 'search'> = wind
   const date = params.get('date') ?? undefined
   const announcementId = params.get('announcement') ?? undefined
   const trainingPlanId = params.get('training') ?? undefined
+  const surveyId = params.get('survey') ?? undefined
   const settingsSectionCandidate = params.get('section') as NavigationTarget['settingsSection'] | null
   const settingsSection = view === 'settings' && settingsSectionCandidate && settingsSections.has(settingsSectionCandidate)
     ? settingsSectionCandidate
@@ -27,6 +29,7 @@ export function navigationFromLocation(location: Pick<Location, 'search'> = wind
     ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { date } : {}),
     ...(announcementId ? { announcementId } : {}),
     ...(trainingPlanId ? { trainingPlanId } : {}),
+    ...(surveyId ? { surveyId } : {}),
     ...(settingsSection ? { settingsSection } : {}),
   }
 }
@@ -37,6 +40,7 @@ export function urlForNavigation(target: NavigationTarget) {
   if (target.date) params.set('date', target.date)
   if (target.announcementId) params.set('announcement', target.announcementId)
   if (target.trainingPlanId) params.set('training', target.trainingPlanId)
+  if (target.surveyId) params.set('survey', target.surveyId)
   if (target.view === 'settings' && target.settingsSection) params.set('section', target.settingsSection)
   const query = params.toString()
   return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`

@@ -48,8 +48,8 @@ export function MatchCard({
           </span>
           <h2>
             {match.is_home
-              ? <>CDU Rugby <i>vs</i> {match.opponent}</>
-              : <>{match.opponent} <i>vs</i> CDU Rugby</>}
+              ? <>Unizar Fem. <i>vs</i> {match.opponent}</>
+              : <>{match.opponent} <i>vs</i> Unizar Fem.</>}
           </h2>
           <p>
             {formatDate(match.match_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
