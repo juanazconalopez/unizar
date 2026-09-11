@@ -1,5 +1,5 @@
 begin;
-select plan(193);
+select plan(200);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -649,6 +649,19 @@ select like(
   '%if tg_op = ''DELETE'' then%availability_player_id := old.player_id%',
   'the shared permission trigger handles availability deletes without NEW rows'
 );
+select has_table('public', 'season_holidays', 'season holidays are persisted');
+select has_function('public', 'set_season_holidays', array['uuid', 'date[]'], 'owners can replace a season holiday list atomically');
+select ok((select relrowsecurity from pg_class where oid = 'public.season_holidays'::regclass), 'season holidays use RLS');
+select ok(
+  exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'season_holidays' and policyname = 'Active members can read season holidays'),
+  'eligible members can read season holidays'
+);
+select ok(
+  exists (select 1 from pg_trigger where tgname = 'season_holidays_guard_date' and not tgisinternal),
+  'season holidays reject dates outside their season'
+);
+select ok(has_function_privilege('authenticated', 'public.set_season_holidays(uuid,date[])', 'EXECUTE'), 'authenticated owners can call the protected holiday update');
+select ok(not has_function_privilege('anon', 'public.set_season_holidays(uuid,date[])', 'EXECUTE'), 'anonymous users cannot update holidays');
 
 select * from finish();
 rollback;

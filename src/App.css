@@ -654,7 +654,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .holiday-calendar-context small { color: #69766f; font-size: 10px; }
 .selected-day-date { margin: 18px 0 12px; }
 .selected-day-date h2 { margin: 0; color: var(--ink); font-size: 17px; text-transform: capitalize; }
-.survey-closure-group .task-week-heading h2, .selected-day-announcements .task-week-heading h2, .selected-day-matches .task-week-heading h2 { margin: 0; color: var(--green); font-size: 15px; }
+.survey-closure-group .task-week-heading h2, .selected-day-announcements .task-week-heading h2, .selected-day-trainings .task-week-heading h2, .selected-day-matches .task-week-heading h2 { margin: 0; color: var(--green); font-size: 15px; }
 .selected-day-matches .match-card { background: #faf7ff; border-color: #ded3ee; }
 .selected-calendar-group + .selected-calendar-group { margin-top: 16px; padding-top: 0; border-top: 0; }
 .selected-week-tasks { margin-top: 26px !important; padding-top: 25px !important; border-top: 1px solid var(--line) !important; }

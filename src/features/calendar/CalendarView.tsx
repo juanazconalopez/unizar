@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
+import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import { compareTaskOrder } from '../../lib/taskOrder'
 import type {
@@ -106,6 +107,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [publishedTrainingPlans, setPublishedTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
+  const holidays = useSeasonHolidayDates(props.seasons.map((season) => season.id), props.holidays)
   const selectedWeek = mondayFor(selectedDate)
   const selectedTasks = props.tasks
     .filter((task) => task.week_start === selectedWeek)
@@ -117,7 +119,7 @@ export function CalendarView(props: CalendarViewProps) {
   const selectedTrainingPlans = publishedTrainingPlans.filter((plan) => plan.session_date === selectedDate)
   const selectedBirthdays = (props.birthdays ?? []).filter((birthday) => birthday.birthday_on === selectedDate)
   const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
-  const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedSurveyClosures.length > 0 || Boolean(props.holidays?.includes(selectedDate))
+  const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
   const activeSeason = seasonForDate(props.seasons, today)
 
   const loadPublishedTrainingPlans = useCallback(async (targetMonth: string) => {
@@ -241,7 +243,7 @@ export function CalendarView(props: CalendarViewProps) {
         <TaskPlanningCalendar
           announcements={props.announcements}
           birthdays={props.birthdays}
-          holidays={props.holidays}
+          holidays={holidays}
           matches={props.matches}
           month={month}
           selectedDate={selectedDate}
@@ -254,7 +256,7 @@ export function CalendarView(props: CalendarViewProps) {
         />
         <section className="selected-planning-week">
           {hasSelectedDayContent && <div className="selected-day-date"><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>}
-          {props.holidays?.includes(selectedDate) && <HolidayDayContext />}
+          {holidays.includes(selectedDate) && <HolidayDayContext />}
           {selectedBirthdays.length > 0 && <div className="birthday-day-detail" role="status">
             <span aria-hidden="true">🎂</span>
             <p><strong>Cumpleaños del día</strong>{selectedBirthdays.map((birthday) => `${birthday.display_name} cumple ${birthday.age_turning} años`).join(' · ')}</p>
@@ -264,13 +266,13 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActions(announcement)} announcement={announcement} initialOpen={props.focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
           </div>}
           {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={onOpenSurveyResults} />}
+          {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
+            <div className="task-week-heading"><h2>Entrenamientos</h2><span>{selectedTrainingPlans.length}</span></div>
+            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div><button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button></article>)}</div>
+          </div>}
           {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
             <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
             <div className="match-list">{selectedMatches.map(renderMatch)}</div>
-          </div>}
-          {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
-            <div className="task-week-heading"><div><span className="eyebrow">ENTRENAMIENTOS PUBLICADOS</span><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div><span>{selectedTrainingPlans.length}</span></div>
-            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div><button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button></article>)}</div>
           </div>}
           <div className="selected-calendar-group selected-week-tasks">
             <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>

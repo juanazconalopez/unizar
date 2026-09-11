@@ -1,10 +1,11 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import type { Match } from '../../types'
 
-export function MatchPlanningCalendar({ matches, month, selectedDate, onMonthChange, onSelectDate }: {
+export function MatchPlanningCalendar({ matches, month, selectedDate, holidays = [], onMonthChange, onSelectDate }: {
   matches: Match[]
   month: string
   selectedDate: string
+  holidays?: string[]
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
@@ -28,7 +29,7 @@ export function MatchPlanningCalendar({ matches, month, selectedDate, onMonthCha
       return <button
         aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${dayMatches.length} ${dayMatches.length === 1 ? 'partido' : 'partidos'}`}
         aria-pressed={selectedDate === date}
-        className={`${dayMatches.length ? 'has-match ' : ''}${date === today ? 'today' : ''}`}
+        className={`${dayMatches.length ? 'has-match ' : ''}${holidays.includes(date) ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
         key={date}
         onClick={() => onSelectDate(date)}
         type="button"

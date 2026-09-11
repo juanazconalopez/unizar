@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { addDays, formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { compareTaskOrder } from '../../lib/taskOrder'
@@ -15,7 +16,7 @@ import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 import { TaskResultsDialog, TaskResultsSummary } from './TaskResultsSummary'
 import { StatusControl } from './StatusControl'
 
-export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement }: {
+export function TasksView({ canManage, seasons, memberships, profiles = [], tasks, announcements = [], results, teamResults, userId, loadingRange = false, focusedDate, focusedAnnouncementId, holidays: providedHolidays, onCreate, onDelete, onUpdate, onLoadRange, onSaveResult, onReorder, onStatusChange, onSaveAnnouncement, onDeleteAnnouncement }: {
   canManage: boolean
   seasons: Season[]
   memberships: SeasonPlayer[]
@@ -28,6 +29,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
   loadingRange?: boolean
   focusedDate?: string
   focusedAnnouncementId?: string
+  holidays?: string[]
   onCreate: (values: TaskValues) => Promise<void>
   onDelete: (task: TrainingTask) => Promise<void>
   onUpdate: (task: TrainingTask, values: TaskValues) => Promise<void>
@@ -51,6 +53,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
   const [selectedPlanningDate, setSelectedPlanningDate] = useState(focusedDate ?? todayIso())
   const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null)
   const [planningMonth, setPlanningMonth] = useState(`${(focusedDate ?? todayIso()).slice(0, 7)}-01`)
+  const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
   const currentWeekRef = useRef<HTMLElement>(null)
   const resultIds = new Set(results.map((result) => result.task_id))
   const normalizedSearch = search.trim().toLocaleLowerCase('es')
@@ -310,6 +313,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
             selectedDate={selectedPlanningDate}
             tasks={visiblePlanningTasks}
             announcements={visibleAnnouncements}
+            holidays={holidays}
             onMonthChange={changePlanningMonth}
             onSelectDate={setSelectedPlanningDate}
           />

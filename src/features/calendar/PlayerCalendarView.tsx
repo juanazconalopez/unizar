@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } from '../../lib/dates'
+import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { compareTaskOrder } from '../../lib/taskOrder'
 import type {
@@ -31,7 +32,7 @@ export function PlayerCalendarView({
   announcements,
   availability,
   birthdays,
-  holidays = [],
+  holidays: providedHolidays,
   focusedAnnouncementId,
   focusedDate,
   lineups,
@@ -74,6 +75,7 @@ export function PlayerCalendarView({
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
   const [lineupMatch, setLineupMatch] = useState<Match | null>(null)
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
+  const holidays = useSeasonHolidayDates(memberships.map((membership) => membership.season_id), providedHolidays)
   const visibleTasks = tasks.filter((task) => task.status === 'published' && canUserCompleteTask(task, memberships, userId))
   const visibleAnnouncements = announcements.filter((announcement) => announcement.status === 'published')
   const visibleMatches = matches.filter((match) => match.status === 'published')

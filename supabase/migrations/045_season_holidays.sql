@@ -43,7 +43,8 @@ begin
   end loop;
   delete from public.season_holidays where season_id = checked_season_id;
   insert into public.season_holidays (season_id, holiday_date)
-  select distinct checked_season_id, checked_date from unnest(coalesce(checked_dates, '{}'::date[])) checked_date;
+  select distinct checked_season_id, selected_dates.holiday_date
+  from unnest(coalesce(checked_dates, '{}'::date[])) as selected_dates(holiday_date);
 end;
 $$;
 

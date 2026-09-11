@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { mondayFor, todayIso } from '../../lib/dates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import type {
@@ -38,6 +39,7 @@ type MatchesViewProps = {
   userId: string
   focusedDate?: string
   canViewReport?: boolean
+  holidays?: string[]
   onDelete: (match: Match) => Promise<void>
   onLoadMonth?: (month: string) => Promise<void>
   onSaveAvailability: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
@@ -68,6 +70,7 @@ export function MatchesView({
   userId,
   focusedDate,
   canViewReport = false,
+  holidays: providedHolidays,
   onDelete,
   onLoadMonth,
   onSaveAvailability,
@@ -87,6 +90,7 @@ export function MatchesView({
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
   const currentWeekRef = useRef<HTMLElement>(null)
   const visibleMatches = canManage ? matches : matches.filter((match) => match.status !== 'draft')
   const selectedWeek = mondayFor(selectedDate)
@@ -180,6 +184,7 @@ export function MatchesView({
         <MatchCalendarView
           canManage={canManage}
           matches={visibleMatches}
+          holidays={holidays}
           month={month}
           renderMatch={renderMatch}
           selectedDate={selectedDate}

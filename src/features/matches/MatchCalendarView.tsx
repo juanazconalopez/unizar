@@ -8,6 +8,7 @@ import { MatchPlanningCalendar } from './MatchPlanningCalendar'
 export function MatchCalendarView({
   canManage,
   matches,
+  holidays,
   month,
   selectedDate,
   selectedMatches,
@@ -20,6 +21,7 @@ export function MatchCalendarView({
 }: {
   canManage: boolean
   matches: Match[]
+  holidays?: string[]
   month: string
   selectedDate: string
   selectedMatches: Match[]
@@ -39,6 +41,7 @@ export function MatchCalendarView({
       </div>
       <MatchPlanningCalendar
         matches={matches}
+        holidays={holidays}
         month={month}
         selectedDate={selectedDate}
         onMonthChange={onMonthChange}

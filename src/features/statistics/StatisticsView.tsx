@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { formatDate, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } from '../../lib/dates'
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
@@ -36,12 +37,14 @@ type StatisticsProps = {
   birthdays?: SeasonBirthday[]
   canViewAttendance?: boolean
   canViewTasks?: boolean
+  holidays?: string[]
 }
 
-export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
+export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, holidays: providedHolidays, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
+  const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
   const historicalPlayers = useMemo(() => profiles.filter(isPlayer), [profiles])
   const playerIds = useMemo(() => new Set(historicalPlayers.map((profile) => profile.id)), [historicalPlayers])
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
@@ -160,6 +163,7 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
             const attended = teamAttended + guestAttendance.length
             const taskPlayers = new Set(playerResults.filter((result) => result.performed_on === date).map((result) => result.player_id)).size
             const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
+            const isHoliday = holidays.includes(date)
             const hasData = (canViewAttendance && (dayAttendance.length > 0 || guestAttendance.length > 0)) || (canViewTasks && taskPlayers > 0) || dayBirthdays.length > 0
             const daySummary = [
               canViewAttendance ? `${attended} asistencias${guestAttendance.length ? `, ${guestAttendance.length} de invitadas` : ''}` : '',
@@ -170,7 +174,7 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
               <button
                 aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${daySummary || 'sin datos'}`}
                 aria-pressed={selectedDate === date}
-                className={`${hasData ? 'has-data ' : ''}${date === today ? 'today' : ''}`}
+                className={`${hasData ? 'has-data ' : ''}${isHoliday ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
                 key={date}
                 onClick={() => setSelectedDate(date)}
                 type="button"
