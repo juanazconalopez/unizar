@@ -36,8 +36,10 @@ describe('ContentImageTextarea', () => {
       },
     })
 
-    await waitFor(() => expect(mocks.stage).toHaveBeenCalledWith(file))
-    expect(textarea).toHaveValue(`Indicaciones\n[[imagen:${imageId}]]`)
+    await waitFor(() => {
+      expect(mocks.stage).toHaveBeenCalledWith(file)
+      expect(textarea).toHaveValue(`Indicaciones\n[[imagen:${imageId}]]`)
+    })
     expect(screen.getByText(`Vista ${imageId}`)).toBeInTheDocument()
     expect(screen.getByText('Imagen preparada. Se subirá al guardar.')).toBeInTheDocument()
   })
