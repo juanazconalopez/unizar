@@ -1,3 +1,5 @@
+import { addDays } from '../../lib/dates'
+
 export type SurveyVisibility = 'team' | 'management' | 'private'
 export type SurveyQuestionType = 'long' | 'single' | 'multiple'
 
@@ -14,9 +16,7 @@ export function surveyIsActive(survey: SurveySummary, date: string) {
 }
 
 export function surveyResultDate(survey: SurveySummary) {
-  const date = new Date(`${survey.endsOn}T12:00:00`)
-  date.setDate(date.getDate() + 1)
-  return date.toISOString().slice(0, 10)
+  return addDays(survey.endsOn, 1)
 }
 
 export function canViewSurveyResults(visibility: SurveyVisibility, role: 'owner' | 'coach' | 'viewer' | 'player') {

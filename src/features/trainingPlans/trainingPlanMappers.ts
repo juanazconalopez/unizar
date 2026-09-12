@@ -1,4 +1,4 @@
-import { todayIso } from '../../lib/dates'
+import { addDays, todayIso } from '../../lib/dates'
 import { seasonForDate } from '../../lib/selectors'
 import { EMPTY_TACTICS_BOARD } from '../../services/trainingPlansService'
 import type { Season, TrainingExercisePreset, TrainingExerciseValues, TrainingPlan, TrainingPlanValues } from '../../types'
@@ -51,7 +51,17 @@ export function demoPresetFromExercise(exercise: TrainingExerciseValues, userId:
 }
 
 export function demoTrainingPlans(seasons: Season[]): TrainingPlan[] {
-  return preseasonTrainingPlanValues(seasons).map((values) => demoPlanFromValues(values, seasons))
+  const today = todayIso()
+  const season = seasonForDate(seasons, today)
+    ?? seasons.filter((item) => item.end_date >= today).sort((first, second) => first.start_date.localeCompare(second.start_date))[0]
+  if (!season) return []
+  const firstDate = season.start_date > today ? season.start_date : today
+  const dates = [0, 2, 7, 9].map((offset) => addDays(firstDate, offset)).filter((date) => date <= season.end_date)
+  return preseasonTrainingPlanValues(seasons).slice(0, dates.length).map((values, index) => demoPlanFromValues({
+    ...values,
+    seasonId: season.id,
+    sessionDate: dates[index],
+  }, seasons))
 }
 
 export function demoPlanFromValues(values: TrainingPlanValues, seasons: Season[], existing?: TrainingPlan): TrainingPlan {

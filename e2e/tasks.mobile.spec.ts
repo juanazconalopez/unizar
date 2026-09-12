@@ -21,7 +21,8 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
 
 test('owner can open demo training plans and find the PDF action', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'Entrenamientos' }).click()
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Entrenamientos' }).click()
 
   await expect(page.getByText('Modo de muestra local.')).toBeVisible()
   await page.getByRole('button', { name: /Ver entrenamiento/ }).first().click()
@@ -200,7 +201,8 @@ test('Dirección can inspect team data but cannot edit it', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Tareas' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Asistencia' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Ajustes' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
   await page.getByRole('button', { name: 'Vista de lista' }).click()
   await expect(page.locator('.availability-summary').first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Editar partido' })).toHaveCount(0)
