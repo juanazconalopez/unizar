@@ -8,15 +8,18 @@ import { downloadText } from '../../lib/fileExport'
 import { activeMembershipFor, isActivePlayer } from '../../lib/selectors'
 import { activePlayersXml, currentSeasonPlayers } from '../../lib/seasonExports'
 import { isPlayer } from '../../lib/permissions'
-import type { Profile, ProfilePrivateDetails, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { Profile, ProfilePrivateDetails, Season, SeasonCompetition, SeasonPlayer, SeasonValues } from '../../types'
+import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
 import { SeasonForm } from './SeasonForm'
 import { SeasonHolidayDialog } from './SeasonHolidayDialog'
+import { SeasonCompetitionsDialog } from './SeasonCompetitionsDialog'
 import { fetchSeasonHolidays, saveSeasonHolidays } from '../../services/seasonHolidaysService'
 
-export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onToggleMembership, onSaveHolidays }: {
+export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, competitions = [], profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onToggleMembership, onSaveHolidays, onCreateCompetition, onDeleteCompetition, onSetDefaultCompetition, onUpdateCompetition }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   seasons: Season[]
+  competitions?: SeasonCompetition[]
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
@@ -26,11 +29,16 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
   onUpdate: (season: Season, values: SeasonValues) => Promise<void>
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
   onSaveHolidays?: (seasonId: string, dates: string[]) => Promise<void>
+  onCreateCompetition?: (season: Season, values: SeasonCompetitionValues) => Promise<void>
+  onDeleteCompetition?: (competition: SeasonCompetition) => Promise<void>
+  onSetDefaultCompetition?: (competition: SeasonCompetition) => Promise<void>
+  onUpdateCompetition?: (competition: SeasonCompetition, values: SeasonCompetitionValues) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingSeason, setEditingSeason] = useState<Season | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [holidaySeason, setHolidaySeason] = useState<Season | null>(null)
+  const [competitionSeason, setCompetitionSeason] = useState<Season | null>(null)
   const [loadedHolidays, setLoadedHolidays] = useState<{ season_id: string; holiday_date: string }[]>([])
   const holidays = providedHolidays ?? loadedHolidays
   useEffect(() => { if (!providedHolidays) void fetchSeasonHolidays(seasons.map((season) => season.id)).then(setLoadedHolidays).catch(() => undefined) }, [providedHolidays, seasons])
@@ -51,7 +59,7 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
               .filter((item) => item.season_id === season.id)
               .map((item) => item.player_id)).size
             const confirmed = window.confirm(
-              `¿Eliminar “${season.name}”?\n\nSe eliminarán en cascada sus ${memberCount} inscripciones, tareas y respuestas, entrenamientos de campo y asistencias, y partidos con sus disponibilidades y alineaciones. Esta acción no se puede deshacer.`,
+              `¿Eliminar “${season.name}”?\n\nSe eliminarán en cascada sus ${memberCount} inscripciones, competiciones, tareas y respuestas, entrenamientos de campo y asistencias, y partidos con sus disponibilidades y alineaciones. Esta acción no se puede deshacer.`,
             )
             if (!confirmed) return false
             await onDelete(season)
@@ -76,6 +84,8 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
             profilePrivateDetails={profilePrivateDetails}
             season={season}
             holidayCount={holidays.filter((holiday) => holiday.season_id === season.id).length}
+            competitionCount={competitions.filter((competition) => competition.season_id === season.id).length}
+            onCompetitions={() => setCompetitionSeason(season)}
             onEdit={() => { setShowForm(false); setEditingSeason(season) }}
             onHolidays={() => setHolidaySeason(season)}
             onToggle={() => setExpanded(expanded === season.id ? null : season.id)}
@@ -85,18 +95,21 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
         {!seasons.length && <EmptyState title="Sin temporadas" text="Crea la primera temporada para comenzar a planificar entrenamientos." />}
       </div>
       {holidaySeason && <SeasonHolidayDialog holidays={holidays.filter((holiday) => holiday.season_id === holidaySeason.id).map((holiday) => holiday.holiday_date)} onClose={() => setHolidaySeason(null)} onSave={async (dates) => { await (onSaveHolidays ?? saveSeasonHolidays)(holidaySeason.id, dates); if (!providedHolidays) setLoadedHolidays((current) => [...current.filter((holiday) => holiday.season_id !== holidaySeason.id), ...dates.map((holiday_date) => ({ season_id: holidaySeason.id, holiday_date }))]) }} season={holidaySeason} />}
+      {competitionSeason && onCreateCompetition && onDeleteCompetition && onSetDefaultCompetition && onUpdateCompetition && <SeasonCompetitionsDialog competitions={competitions} season={competitionSeason} onClose={() => setCompetitionSeason(null)} onCreate={onCreateCompetition} onDelete={onDeleteCompetition} onSetDefault={onSetDefaultCompetition} onUpdate={onUpdateCompetition} />}
     </div>
 }
 
-function SeasonCard({ season, profiles, profilePrivateDetails, memberships, holidayCount, expanded, onEdit, onHolidays, onToggle, onToggleMembership }: {
+function SeasonCard({ season, profiles, profilePrivateDetails, memberships, holidayCount, competitionCount, expanded, onEdit, onHolidays, onCompetitions, onToggle, onToggleMembership }: {
   season: Season
   profiles: Profile[]
   profilePrivateDetails: ProfilePrivateDetails[]
   memberships: SeasonPlayer[]
   holidayCount: number
+  competitionCount: number
   expanded: boolean
   onEdit: () => void
   onHolidays: () => void
+  onCompetitions: () => void
   onToggle: () => void
   onToggleMembership: (season: Season, player: Profile, active: boolean) => Promise<void>
 }) {
@@ -114,6 +127,7 @@ function SeasonCard({ season, profiles, profilePrivateDetails, memberships, holi
       <p>{formatDate(season.start_date, { day: 'numeric', month: 'long', year: 'numeric' })} — {formatDate(season.end_date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       <div className="season-card-actions">
         <button className="secondary-button" onClick={onToggle}><Icon name="users" size={17} />Gestionar participantes</button>
+        <button className="secondary-button" onClick={onCompetitions}><Icon name="trophy" size={17} />Competiciones{competitionCount ? ` (${competitionCount})` : ''}</button>
         <button className="secondary-button" onClick={onHolidays}>Festivos{holidayCount ? ` (${holidayCount})` : ''}</button>
         <button className="secondary-button" onClick={onEdit}>Editar</button>
       </div>

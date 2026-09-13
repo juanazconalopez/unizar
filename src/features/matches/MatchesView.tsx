@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { mondayFor, todayIso } from '../../lib/dates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
+import { compareMatches } from '../../lib/seasonCompetitions'
 import type {
   AvailabilityStatus,
   Match,
@@ -13,6 +14,7 @@ import type {
   PlayerSeasonSummary,
   Profile,
   Season,
+  SeasonCompetition,
   SeasonPlayer,
   SeasonCallupReport,
 } from '../../types'
@@ -36,6 +38,7 @@ type MatchesViewProps = {
   memberships: SeasonPlayer[]
   profiles: Profile[]
   seasons: Season[]
+  seasonCompetitions?: SeasonCompetition[]
   userId: string
   focusedDate?: string
   canViewReport?: boolean
@@ -67,6 +70,7 @@ export function MatchesView({
   memberships,
   profiles,
   seasons,
+  seasonCompetitions = [],
   userId,
   focusedDate,
   canViewReport = false,
@@ -208,6 +212,7 @@ export function MatchesView({
 
       {!reportOpen && formMatch !== undefined && (
         <MatchForm
+          competitions={seasonCompetitions}
           initialDate={managementView === 'calendar' ? selectedDate : today}
           match={formMatch ?? undefined}
           seasons={seasons}
@@ -271,10 +276,7 @@ export function MatchesView({
 }
 
 function orderedMatches(matches: Match[]) {
-  return [...matches].sort((first, second) => (
-    first.match_date.localeCompare(second.match_date)
-    || (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? '')
-  ))
+  return [...matches].sort(compareMatches)
 }
 
 function groupMatchesByWeek(matches: Match[], currentWeek: string) {

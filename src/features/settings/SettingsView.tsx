@@ -1,15 +1,16 @@
 import { PageHeader } from '../../components/ui/PageHeader'
 import { todayIso } from '../../lib/dates'
-import type { LibrarySettings, ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { LibrarySettings, ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonCompetition, SeasonPlayer, SeasonValues } from '../../types'
 import { SeasonsView } from '../seasons/SeasonsView'
 import { TeamView } from '../team/TeamView'
 import { LibrarySettingsView } from '../library/LibrarySettingsView'
 import { PermissionsSettingsView } from './PermissionsSettingsView'
 import type { ConfigurableRole, PermissionDefinition, PermissionKey, RolePermission } from '../../lib/permissions'
+import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
 
 type SettingsSection = 'team' | 'seasons' | 'library' | 'permissions'
 
-export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, holidays, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onUpdateSeason, onSaveHolidays, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
+export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], seasons, seasonCompetitions = [], holidays, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onToggleMembership, onUpdateProfile, onUpdateProfileDetails, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onUpdateSeason, onSaveHolidays, onCreateSeasonCompetition, onDeleteSeasonCompetition, onSetDefaultSeasonCompetition, onUpdateSeasonCompetition, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
   section?: SettingsSection
   currentUserId: string
   memberships: SeasonPlayer[]
@@ -18,6 +19,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   seasons: Season[]
+  seasonCompetitions?: SeasonCompetition[]
   holidays?: { season_id: string; holiday_date: string }[]
   librarySettings?: LibrarySettings | null
   permissionDefinitions?: PermissionDefinition[]
@@ -32,6 +34,10 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onUpdateProfileDetails?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onUpdateSeason: (season: Season, values: SeasonValues) => Promise<void>
   onSaveHolidays?: (seasonId: string, dates: string[]) => Promise<void>
+  onCreateSeasonCompetition?: (season: Season, values: SeasonCompetitionValues) => Promise<void>
+  onDeleteSeasonCompetition?: (competition: SeasonCompetition) => Promise<void>
+  onSetDefaultSeasonCompetition?: (competition: SeasonCompetition) => Promise<void>
+  onUpdateSeasonCompetition?: (competition: SeasonCompetition, values: SeasonCompetitionValues) => Promise<void>
   onSaveLibraryFolder?: (folderUrl: string) => Promise<void>
   onSyncLibrary?: () => Promise<void>
   onSaveRolePermissions?: (role: ConfigurableRole, permissions: PermissionKey[]) => Promise<void>
@@ -43,7 +49,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   return <div className="page settings-page">
     <PageHeader eyebrow="ADMINISTRACIÓN" title={`Ajustes - ${sectionTitle}`} subtitle="Gestiona la estructura y los accesos del club." />
     {section === 'team' && <TeamView currentUserId={currentUserId} embedded hideEmbeddedTitle profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onUpdate={onUpdateProfile} />}
-    {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle holidays={holidays} memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onDelete={onDeleteSeason} onSaveHolidays={onSaveHolidays} onUpdate={onUpdateSeason} onToggleMembership={onToggleMembership} />}
+    {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle competitions={seasonCompetitions} holidays={holidays} memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} seasons={seasons} onCreate={onCreateSeason} onCreateCompetition={onCreateSeasonCompetition} onDelete={onDeleteSeason} onDeleteCompetition={onDeleteSeasonCompetition} onSaveHolidays={onSaveHolidays} onSetDefaultCompetition={onSetDefaultSeasonCompetition} onUpdate={onUpdateSeason} onUpdateCompetition={onUpdateSeasonCompetition} onToggleMembership={onToggleMembership} />}
     {section === 'library' && <LibrarySettingsView hideEmbeddedTitle settings={librarySettings} onSaveFolder={onSaveLibraryFolder} onSync={onSyncLibrary} />}
     {section === 'permissions' && onSaveRolePermissions && onResetRolePermissions && <PermissionsSettingsView definitions={permissionDefinitions} grants={rolePermissions} onReset={onResetRolePermissions} onSave={onSaveRolePermissions} />}
   </div>

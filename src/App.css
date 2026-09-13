@@ -216,14 +216,17 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 @keyframes content-image-loading { to { background-position-x: -220%; } }
 .match-form-dialog { width: min(760px,100%); }
 .match-list { display: grid; gap: 16px; }
-.match-card { padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: white; box-shadow: var(--shadow); }
+.match-card { padding: 22px; border: 1px solid var(--match-border,var(--line)); border-left: 4px solid var(--match-color,var(--green)); border-radius: 15px; background: var(--match-soft,white); box-shadow: var(--shadow); }
 .match-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.match-card-labels { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.match-competition-label { padding: 4px 8px; border-radius: 20px; color: var(--match-text,var(--green)); background: white; box-shadow: inset 0 0 0 1px var(--match-border,var(--line)); font-size: 8px; font-weight: 900; letter-spacing: .45px; text-transform: uppercase; }
 .match-card-heading h2 { margin: 5px 0; font-size: 20px; }
 .match-card-heading h2 i { color: var(--muted); font-size: 12px; font-style: normal; }
 .match-card-heading p, .match-notes { margin: 0; color: var(--muted); font-size: 12px; }
 .match-notes { margin-top: 12px; white-space: pre-wrap; }
 .match-status { padding: 6px 9px; border-radius: 20px; color: var(--green); background: var(--green-soft); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .match-status.draft, .match-status.cancelled { color: var(--muted); background: #f0f3f1; }
+.field-hint { margin-top: 6px; display: block; color: #8a6818; font-size: 9px; font-weight: 600; line-height: 1.4; }
 .availability-summary { margin-top: 17px; display: flex; flex-wrap: wrap; gap: 7px; }
 .availability-summary button { padding: 6px 9px; border: 0; border-radius: 8px; font-size: 10px; font-weight: 700; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 2px; }
 .availability-summary button:hover { text-decoration-color: currentColor; }
@@ -362,8 +365,8 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .lineup-roster span { font-size: 12px; font-weight: 700; }
 .match-week-list { display: grid; gap: 30px; }
 .match-list-create { display: flex; justify-content: flex-end; }
-.match-planning-calendar > button.has-match { border-color: #9a87cf; background: #f5f1ff; box-shadow: inset 0 0 0 1px #9a87cf; }
-.match-planning-calendar > button.has-match[aria-pressed='true'] { box-shadow: inset 0 0 0 2px #644ca0; }
+.match-planning-calendar > button.has-match { border-color: var(--day-match-border,#9a87cf); background: var(--day-match-soft,#f5f1ff); box-shadow: inset 0 0 0 1px var(--day-match-border,#9a87cf); }
+.match-planning-calendar > button.has-match[aria-pressed='true'] { box-shadow: inset 0 0 0 2px var(--day-match-color,#644ca0); }
 .match-day-marks { display: flex; flex-wrap: wrap; gap: 3px; }
 .match-day-marks i { width: 19px; height: 19px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: white; background: #7459ae; font-style: normal; font-size: 8px; font-weight: 900; }
 .match-day-marks small { color: #644ca0; font-size: 8px; font-weight: 900; }
@@ -655,7 +658,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .selected-day-date { margin: 18px 0 12px; }
 .selected-day-date h2 { margin: 0; color: var(--ink); font-size: 17px; text-transform: capitalize; }
 .survey-closure-group .task-week-heading h2, .selected-day-announcements .task-week-heading h2, .selected-day-trainings .task-week-heading h2, .selected-day-matches .task-week-heading h2 { margin: 0; color: var(--green); font-size: 15px; }
-.selected-day-matches .match-card { background: #faf7ff; border-color: #ded3ee; }
+.selected-day-matches .match-card { background: var(--match-soft,#faf7ff); border-color: var(--match-border,#ded3ee); border-left-color: var(--match-color,var(--green)); }
 .selected-calendar-group + .selected-calendar-group { margin-top: 16px; padding-top: 0; border-top: 0; }
 .selected-week-tasks { margin-top: 26px !important; padding-top: 25px !important; border-top: 1px solid var(--line) !important; }
 .statistics-calendar > button strong { font-size: 12px; }
@@ -735,6 +738,23 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .season-card > p { min-height: 36px; margin-bottom: 20px; color: var(--muted); font-size: 12px; }
 .season-card-actions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
 .season-card-export { width: 100%; margin-top: 8px; }
+.season-competitions-dialog { width: min(780px,100%); }
+.season-competition-list { margin: 18px 0; display: grid; gap: 9px; }
+.season-competition-row { min-height: 62px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 11px; display: grid; grid-template-columns: 15px minmax(140px,1fr) auto auto auto; align-items: center; gap: 10px; background: #fbfcfb; }
+.season-competition-row > i { width: 13px; height: 38px; border-radius: 8px; }
+.season-competition-row > div { display: grid; gap: 3px; }
+.season-competition-row > div strong { font-size: 12px; }
+.season-competition-row > div span { color: var(--muted); font-size: 9px; }
+.season-competition-row > .text-button { padding: 7px; font-size: 10px; }
+.competition-default-label { padding: 5px 8px; border-radius: 20px; color: var(--green); background: var(--green-soft); font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.competition-color-field { padding: 0; border: 0; }
+.competition-color-palette { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
+.competition-color-palette label { position: relative; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 10px; display: grid; grid-template-columns: 26px minmax(0,1fr); align-items: center; gap: 8px; cursor: pointer; }
+.competition-color-palette label:has(input:checked) { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
+.competition-color-palette label.unavailable { opacity: .38; cursor: not-allowed; }
+.competition-color-palette input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+.competition-color-palette span { width: 26px; height: 26px; border-radius: 50%; }
+.competition-color-palette small { overflow: hidden; color: var(--ink); font-size: 9px; font-weight: 700; text-overflow: ellipsis; }
 .season-state-help { margin: -2px 0 2px; color: var(--muted); font-size: 11px; font-weight: 500; }
 .season-context-notice { width: min(1016px,calc(100% - 104px)); margin: 22px auto -35px; padding: 13px 15px; border: 1px solid #e6d49a; border-radius: 12px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; color: #775f18; background: #fffaf0; }
 .season-context-notice > span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: white; background: #b3912e; }
@@ -1639,4 +1659,9 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
   .competition-ranking article > small { display: none; }
   .competition-stat-value { font-size: 19px; }
   .competition-source { flex-direction: column; }
+  .season-competition-row { grid-template-columns: 12px minmax(0,1fr) auto; }
+  .season-competition-row > i { grid-row: 1 / 3; }
+  .season-competition-row > .competition-default-label, .season-competition-row > .text-button { grid-column: 3; }
+  .season-competition-row > .secondary-button, .season-competition-row > .danger-button { grid-column: auto; }
+  .competition-color-palette { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }

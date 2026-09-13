@@ -135,6 +135,7 @@ export function AppViewRouter({
         profiles={data.profiles}
         results={data.results}
         seasons={data.seasons}
+        seasonCompetitions={data.seasonCompetitions}
         tasks={data.tasks}
         onAnnouncementStatusChange={actions.announcements.changeStatus}
         onCreateTask={actions.tasks.create}
@@ -216,6 +217,7 @@ export function AppViewRouter({
         memberships={data.memberships}
         profiles={data.profiles}
         seasons={data.seasons}
+        seasonCompetitions={data.seasonCompetitions}
         userId={userId}
         onDelete={actions.matches.delete}
         onLoadCallupReport={fetchSeasonCallupReport}
@@ -250,12 +252,15 @@ export function AppViewRouter({
         provisionalAttendance={data.provisionalAttendance}
         provisionalPlayers={data.provisionalPlayers}
         seasons={data.seasons}
+        seasonCompetitions={data.seasonCompetitions}
         section={navigation.settingsSection}
         librarySettings={data.librarySettings}
         permissionDefinitions={data.permissionConfiguration.definitions}
         rolePermissions={data.permissionConfiguration.grants}
         onCreateSeason={actions.club.createSeason}
+        onCreateSeasonCompetition={actions.club.createSeasonCompetition}
         onDeleteSeason={actions.club.deleteSeason}
+        onDeleteSeasonCompetition={actions.club.deleteSeasonCompetition}
         onArchiveProfile={actions.club.archiveProfile}
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
@@ -266,7 +271,9 @@ export function AppViewRouter({
         onSaveLibraryFolder={actions.library.saveFolder}
         onSyncLibrary={actions.library.sync}
         onSaveRolePermissions={actions.club.saveRolePermissions}
+        onSetDefaultSeasonCompetition={actions.club.setDefaultSeasonCompetition}
         onResetRolePermissions={actions.club.resetRolePermissions}
+        onUpdateSeasonCompetition={actions.club.updateSeasonCompetition}
       />}
       {view === 'settings' && !hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
     </Suspense>

@@ -7,7 +7,7 @@ import type { Match } from '../../types'
 import { MatchesView } from './MatchesView'
 
 const match = (overrides: Partial<Match> = {}): Match => ({
-  id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, ...overrides,
+  id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,
 })
 
 const common = { seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', canManage: false, canViewAvailability: false, isPlayer: true, onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
@@ -37,7 +37,7 @@ describe('MatchesView', () => {
   test('lets a player accept attendance directly', async () => {
     const user = userEvent.setup(); const onSaveAvailability = vi.fn().mockResolvedValue(undefined)
     render(<MatchesView {...common} onSaveAvailability={onSaveAvailability} />)
-    expect(screen.getByRole('region', { name: 'Calendario de partidos' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Calendario de partidos' })).toHaveTextContent('P · Liga Aragonesa')
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     await user.click(screen.getByRole('button', { name: 'Asistiré' }))
     expect(onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }), 'available', '')
@@ -58,7 +58,7 @@ describe('MatchesView', () => {
   test('hides drafts from players in calendar and list views', async () => {
     const user = userEvent.setup()
     render(<MatchesView {...common} matches={[match({ status: 'draft', opponent: 'Rival secreto' })]} onSaveAvailability={vi.fn()} />)
-    expect(screen.getByRole('region', { name: 'Calendario de partidos' })).toHaveTextContent('P · Día de partido')
+    expect(screen.getByRole('region', { name: 'Calendario de partidos' })).not.toHaveTextContent('P · Liga Aragonesa')
     expect(screen.queryByText('Rival secreto')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     expect(screen.queryByText('Rival secreto')).not.toBeInTheDocument()

@@ -122,9 +122,16 @@ export type MatchKind = Enums<'match_kind'>
 export type RugbyFormat = Enums<'rugby_format'>
 export type AvailabilityStatus = Enums<'availability_status'>
 export type LineupRole = Enums<'lineup_role'>
+export type SeasonCompetitionColor = 'purple' | 'blue' | 'orange' | 'red' | 'teal' | 'pink' | 'slate' | 'gold'
+export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color'> & {
+  color: SeasonCompetitionColor
+  match_count?: number
+}
 
-export type Match = Tables<'matches'> & {
+export type Match = Omit<Tables<'matches'>, 'competition_id'> & {
+  competition_id?: string | null
   seasons: { name: string } | null
+  season_competitions?: { id: string; name: string; color: string; is_default: boolean } | null
 }
 
 export type MatchAvailability = Tables<'match_availability'>
@@ -303,6 +310,7 @@ export type SeasonValues = {
 
 export type MatchValues = {
   seasonId: string
+  competitionId: string
   opponent: string
   matchDate: string
   kickoffTime: string

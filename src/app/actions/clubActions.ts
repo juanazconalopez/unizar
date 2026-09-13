@@ -5,10 +5,12 @@ import { createSeason, deleteSeason, updateSeason } from '../../services/seasons
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
 import { linkProvisionalPlayers } from '../../services/provisionalPlayersService'
 import { setSeasonMembership } from '../../services/trainingMembershipService'
-import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, ProvisionalAttendanceEntry, ProvisionalPlayer, Season, SeasonPlayer, SeasonValues } from '../../types'
+import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange, ProvisionalAttendanceEntry, ProvisionalPlayer, Season, SeasonCompetition, SeasonPlayer, SeasonValues } from '../../types'
 import type { ActionContext } from './actionContext'
 import { resetRolePermissions, saveRolePermissions } from '../../services/permissionsService'
 import type { ConfigurableRole, PermissionKey } from '../../lib/permissions'
+import { createSeasonCompetition, deleteSeasonCompetition, setDefaultSeasonCompetition, updateSeasonCompetition } from '../../services/seasonCompetitionsService'
+import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
   return {
@@ -29,6 +31,30 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       await deleteSeason(season.id)
       context.notify('Temporada y todos sus datos asociados eliminados.')
+      await context.reloadData()
+    },
+    createSeasonCompetition: async (season: Season, values: SeasonCompetitionValues) => {
+      context.requireConnection()
+      await createSeasonCompetition(season.id, values)
+      context.notify('Competición creada.')
+      await context.reloadData()
+    },
+    updateSeasonCompetition: async (competition: SeasonCompetition, values: SeasonCompetitionValues) => {
+      context.requireConnection()
+      await updateSeasonCompetition(competition.id, values)
+      context.notify('Competición actualizada.')
+      await context.reloadData()
+    },
+    setDefaultSeasonCompetition: async (competition: SeasonCompetition) => {
+      context.requireConnection()
+      await setDefaultSeasonCompetition(competition.id)
+      context.notify(`${competition.name} es ahora la competición predeterminada.`)
+      await context.reloadData()
+    },
+    deleteSeasonCompetition: async (competition: SeasonCompetition) => {
+      context.requireConnection()
+      const deletedMatches = await deleteSeasonCompetition(competition.id)
+      context.notify(`Competición eliminada${deletedMatches ? ` junto con ${deletedMatches} ${deletedMatches === 1 ? 'partido' : 'partidos'}` : ''}.`)
       await context.reloadData()
     },
     updateProfile: async (profile: Profile) => {

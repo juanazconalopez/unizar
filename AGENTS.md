@@ -146,6 +146,11 @@ Reglas importantes:
 - Una vinculación abierta de una temporada terminada no convierte a la jugadora en activa en una temporada posterior.
 - Al aprobar y activar una jugadora puede asignarse automáticamente a la temporada vigente.
 - Antes de reducir las fechas de una temporada se comprueba que tareas, partidos, entrenamientos y avisos sigan dentro de ella.
+- `season_competitions` contiene las competiciones manuales de cada temporada (ligas y copas); no sustituye a las instantáneas sincronizadas de MatchReady.
+- Cada temporada puede tener varias competiciones, con nombre y color únicos dentro de ella, y exactamente una predeterminada mientras exista alguna. La primera creada es la predeterminada.
+- Los partidos oficiales deben pertenecer a una competición de su misma temporada. Los amistosos no pertenecen a ninguna; amistosos y borradores se representan con el verde corporativo.
+- El owner gestiona las competiciones dentro de Ajustes → Temporadas. Eliminar una competición elimina en cascada sus partidos, disponibilidades, convocatorias e historial de cambios de disponibilidad.
+- Los partidos oficiales publicados usan el color de su competición en las `P` del calendario y en sus tarjetas. La competición predeterminada tiene prioridad en el orden diario.
 
 ## Secciones visibles
 

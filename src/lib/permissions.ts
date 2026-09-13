@@ -22,7 +22,7 @@ export const PERMISSIONS = {
   library: { view: 'library.view', configure: 'library.configure', sync: 'library.sync' },
   settings: { view: 'settings.view', team: 'settings.team', seasons: 'settings.seasons', permissions: 'settings.permissions' },
   team: { view: 'team.view', edit: 'team.edit', privateDetails: 'team.private_details', roles: 'team.roles', archive: 'team.archive', linkGuests: 'team.link_guests' },
-  seasons: { view: 'seasons.view', create: 'seasons.create', edit: 'seasons.edit', delete: 'seasons.delete', memberships: 'seasons.memberships' },
+  seasons: { view: 'seasons.view', create: 'seasons.create', edit: 'seasons.edit', delete: 'seasons.delete', memberships: 'seasons.memberships', competitions: 'seasons.competitions' },
 } as const
 
 type NestedValues<T> = T extends string ? T : { [K in keyof T]: NestedValues<T[K]> }[keyof T]

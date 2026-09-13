@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react'
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
+import { compareMatches, matchColor, matchLegendItems } from '../../lib/seasonCompetitions'
 import type { Match } from '../../types'
 
 export function MatchPlanningCalendar({ matches, month, selectedDate, holidays = [], onMonthChange, onSelectDate }: {
@@ -25,17 +27,19 @@ export function MatchPlanningCalendar({ matches, month, selectedDate, holidays =
     <div aria-hidden="true" className="calendar-weekdays">{['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>
     <div className="statistics-calendar match-planning-calendar">{calendarDays(month).map((date, index) => {
       if (!date) return <span className="calendar-empty" key={`empty-${index}`} />
-      const dayMatches = matches.filter((match) => match.status !== 'cancelled' && match.match_date === date)
+      const dayMatches = matches.filter((match) => match.status !== 'cancelled' && match.match_date === date).sort(compareMatches)
+      const dayColor = dayMatches[0] ? matchColor(dayMatches[0]) : null
       return <button
         aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${dayMatches.length} ${dayMatches.length === 1 ? 'partido' : 'partidos'}`}
         aria-pressed={selectedDate === date}
         className={`${dayMatches.length ? 'has-match ' : ''}${holidays.includes(date) ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
         key={date}
         onClick={() => onSelectDate(date)}
+        style={dayColor ? { '--day-match-border': dayColor.border, '--day-match-soft': dayColor.soft, '--day-match-color': dayColor.solid } as CSSProperties : undefined}
         type="button"
-      ><strong>{Number(date.slice(-2))}</strong>{dayMatches.length > 0 && <span aria-hidden="true" className="match-day-marks">{dayMatches.slice(0, 3).map((match) => <i key={match.id}>P</i>)}{dayMatches.length > 3 && <small>+{dayMatches.length - 3}</small>}</span>}</button>
+      ><strong>{Number(date.slice(-2))}</strong>{dayMatches.length > 0 && <span aria-hidden="true" className="match-day-marks">{dayMatches.slice(0, 3).map((match) => <i key={match.id} style={{ backgroundColor: matchColor(match).solid }}>P</i>)}{dayMatches.length > 3 && <small>+{dayMatches.length - 3}</small>}</span>}</button>
     })}</div>
-    <div className="calendar-legend"><span><i className="match-dot" />P · Día de partido</span></div>
+    <div className="calendar-legend">{matchLegendItems(matches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}</div>
   </section>
 }
 

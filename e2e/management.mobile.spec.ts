@@ -66,6 +66,40 @@ test('owner saves a holiday and sees it in the calendar', async ({ page }) => {
   await expect(page.getByText('Sin entrenamiento de campo programado')).toBeVisible()
 })
 
+test('owner creates a season competition and uses it as the default match competition', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Temporadas' }).click()
+  const seasonCard = page.locator('.season-card').filter({ hasText: 'Temporada 2026/2027' })
+  await seasonCard.getByRole('button', { name: 'Competiciones (2)' }).click()
+
+  const competitionsDialog = page.getByRole('dialog', { name: 'Competiciones' })
+  await expect(competitionsDialog.getByText('Liga Aragonesa')).toBeVisible()
+  await expect(competitionsDialog.getByText('Copa Aragón')).toBeVisible()
+  await competitionsDialog.getByRole('button', { name: 'Nueva competición' }).click()
+  await competitionsDialog.getByLabel('Nombre').fill('Copa Catalana')
+  await competitionsDialog.getByRole('radio', { name: 'Azul' }).check()
+  await competitionsDialog.getByRole('button', { name: 'Crear competición' }).click()
+
+  const catalana = competitionsDialog.locator('.season-competition-row').filter({ hasText: 'Copa Catalana' })
+  await catalana.getByRole('button', { name: 'Hacer predeterminada' }).click()
+  await expect(catalana.getByText('Predeterminada')).toBeVisible()
+  await competitionsDialog.getByRole('button', { name: 'Cerrar', exact: true }).last().click()
+
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  await page.getByRole('button', { name: 'Añadir' }).click()
+  await page.getByRole('menuitem', { name: 'Nuevo partido' }).click()
+  const matchDialog = page.getByRole('dialog', { name: 'Nuevo partido' })
+  await expect(matchDialog.getByLabel('Competición').locator('option:checked')).toContainText('Copa Catalana · Predeterminada')
+  await matchDialog.getByLabel('Rival').fill('Rival multiliga E2E')
+  await matchDialog.getByLabel('Estado').selectOption('published')
+  await matchDialog.getByRole('button', { name: 'Guardar partido' }).click()
+
+  const matchCard = page.locator('.match-card').filter({ hasText: 'Rival multiliga E2E' })
+  await expect(matchCard.getByText('Copa Catalana')).toBeVisible()
+  await expect(matchCard).toHaveCSS('border-left-color', 'rgb(57, 123, 159)')
+})
+
 test('permission dependencies remain consistent when saving on mobile', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()

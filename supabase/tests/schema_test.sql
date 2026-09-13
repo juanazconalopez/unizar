@@ -1,5 +1,5 @@
 begin;
-select plan(200);
+select plan(215);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -277,6 +277,54 @@ select like(
   'automatic assignment selects only the current season'
 );
 select ok(to_regclass('public.matches') is not null, 'matches table exists');
+select ok(to_regclass('public.season_competitions') is not null, 'season competitions table exists');
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'matches' and column_name = 'competition_id'),
+  'matches identify their season competition'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'matches_competition_season_fkey' and confdeltype = 'c'),
+  'deleting a season competition cascades to its matches'
+);
+select ok(
+  exists (select 1 from pg_constraint where conname = 'matches_kind_competition_check'),
+  'official and friendly matches enforce their competition assignment'
+);
+select is(
+  (select count(*)::integer from pg_indexes where schemaname = 'public' and indexname = 'season_competitions_default_idx'),
+  1,
+  'each season has at most one default competition'
+);
+select ok(
+  exists (select 1 from public.permission_definitions where key = 'seasons.competitions' and owner_only and not configurable),
+  'season competition management is an owner-only capability'
+);
+select has_function('public', 'create_season_competition', array['uuid','text','text'], 'season competitions can be created atomically');
+select has_function('public', 'update_season_competition', array['uuid','text','text'], 'season competitions can be updated atomically');
+select has_function('public', 'set_default_season_competition', array['uuid'], 'the default season competition can be changed atomically');
+select has_function('public', 'delete_season_competition', array['uuid'], 'season competitions can be deleted atomically');
+select like(
+  pg_get_functiondef('public.create_season_competition(uuid,text,text)'::regprocedure),
+  '%current_user_has_permission(''seasons.competitions'')%',
+  'creating a season competition checks its owner-only permission'
+);
+select like(
+  pg_get_functiondef('public.delete_season_competition(uuid)'::regprocedure),
+  '%set lineup_published = false%',
+  'competition deletion unlocks published lineups before cascading their data'
+);
+select ok(
+  has_function_privilege('authenticated', 'public.create_season_competition(uuid,text,text)', 'EXECUTE'),
+  'authenticated owners can call season competition creation'
+);
+select ok(
+  not has_function_privilege('anon', 'public.create_season_competition(uuid,text,text)', 'EXECUTE'),
+  'anonymous users cannot create season competitions'
+);
+select ok(
+  not has_function_privilege('anon', 'public.delete_season_competition(uuid)', 'EXECUTE'),
+  'anonymous users cannot delete season competitions'
+);
 select ok(to_regclass('public.match_availability') is not null, 'match availability table exists');
 select ok(to_regclass('public.match_lineup') is not null, 'match lineup table exists');
 select ok(

@@ -8,7 +8,7 @@ import type { PermissionConfiguration } from '../services/permissionsService'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
-import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
@@ -18,6 +18,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [ownProfileDetails, setOwnProfileDetails] = useState<ProfilePrivateDetails | null>(null)
   const [profilePrivateDetails, setProfilePrivateDetails] = useState<ProfilePrivateDetails[]>([])
   const [seasons, setSeasons] = useState<Season[]>([])
+  const [seasonCompetitions, setSeasonCompetitions] = useState<SeasonCompetition[]>([])
   const [memberships, setMemberships] = useState<SeasonPlayer[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [tasks, setTasks] = useState<TrainingTask[]>([])
@@ -200,6 +201,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setOwnProfileDetails(data.ownProfileDetails)
         setProfilePrivateDetails(data.profilePrivateDetails)
         setSeasons(data.seasons)
+        setSeasonCompetitions(data.seasonCompetitions)
         setTasks(data.tasks)
         setResults(data.results)
         setMemberships(data.memberships)
@@ -274,6 +276,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     ownProfileDetails,
     profilePrivateDetails,
     seasons,
+    seasonCompetitions,
     memberships,
     profiles,
     tasks,

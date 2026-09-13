@@ -6,6 +6,7 @@ import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } fro
 import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { activePlayers, membershipCoversDate, seasonForDate } from '../../lib/selectors'
 import { compareTaskOrder } from '../../lib/taskOrder'
+import { compareMatches } from '../../lib/seasonCompetitions'
 import type {
   AnnouncementValues,
   AvailabilityStatus,
@@ -16,6 +17,7 @@ import type {
   PlayerSeasonSummary,
   Profile,
   Season,
+  SeasonCompetition,
   SeasonCallupReport,
   SeasonBirthday,
   SeasonPlayer,
@@ -59,6 +61,7 @@ type CalendarViewProps = {
   profiles: Profile[]
   results: TaskResult[]
   seasons: Season[]
+  seasonCompetitions?: SeasonCompetition[]
   tasks: TrainingTask[]
   focusedDate?: string
   focusedAnnouncementId?: string
@@ -115,7 +118,7 @@ export function CalendarView(props: CalendarViewProps) {
   const selectedAnnouncements = props.announcements.filter((announcement) => announcement.announcement_date === selectedDate)
   const selectedMatches = props.matches
     .filter((match) => match.match_date === selectedDate)
-    .sort((first, second) => (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? ''))
+    .sort(compareMatches)
   const selectedTrainingPlans = publishedTrainingPlans.filter((plan) => plan.session_date === selectedDate)
   const selectedBirthdays = (props.birthdays ?? []).filter((birthday) => birthday.birthday_on === selectedDate)
   const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
@@ -320,6 +323,7 @@ export function CalendarView(props: CalendarViewProps) {
       onSubmit={async (values) => { await props.onSaveAnnouncement(announcementForm ?? undefined, values); await props.onLoadTaskRange(mondayFor(values.date), mondayFor(values.date)); setSelectedDate(values.date); setMonth(`${values.date.slice(0, 7)}-01`); setAnnouncementForm(undefined) }}
     />}
     {matchForm !== undefined && <MatchForm
+      competitions={props.seasonCompetitions}
       initialDate={selectedDate}
       match={matchForm ?? undefined}
       seasons={props.seasons}

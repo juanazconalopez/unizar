@@ -19,6 +19,7 @@ import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonAttendan
 
 const values: MatchValues = {
   seasonId: 'season-1',
+  competitionId: 'competition-1',
   opponent: '  Fénix CR  ',
   matchDate: '2026-09-12',
   kickoffTime: '',
@@ -50,7 +51,7 @@ describe('matchesService', () => {
   test('creates and updates matches with normalized optional values', async () => {
     await createMatch(values, 'owner-1')
     expect(mocks.insert).toHaveBeenCalledWith({
-      season_id: 'season-1', opponent: 'Fénix CR', match_date: '2026-09-12',
+      season_id: 'season-1', competition_id: 'competition-1', opponent: 'Fénix CR', match_date: '2026-09-12',
       kickoff_time: null, venue: null, is_home: true, notes: 'Partido de liga',
       status: 'published', match_kind: 'official', rugby_format: 'xv', created_by: 'owner-1',
     })

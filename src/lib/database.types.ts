@@ -562,6 +562,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          competition_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -579,6 +580,7 @@ export type Database = {
           venue: string | null
         }
         Insert: {
+          competition_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -596,6 +598,7 @@ export type Database = {
           venue?: string | null
         }
         Update: {
+          competition_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
@@ -613,6 +616,13 @@ export type Database = {
           venue?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_competition_season_fkey"
+            columns: ["competition_id", "season_id"]
+            isOneToOne: false
+            referencedRelation: "season_competitions"
+            referencedColumns: ["id", "season_id"]
+          },
           {
             foreignKeyName: "matches_created_by_fkey"
             columns: ["created_by"]
@@ -857,6 +867,15 @@ export type Database = {
         Insert: { created_at?: string; holiday_date: string; season_id: string }
         Update: { created_at?: string; holiday_date?: string; season_id?: string }
         Relationships: [{ foreignKeyName: "season_holidays_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] }]
+      }
+      season_competitions: {
+        Row: { color: string; created_at: string; created_by: string; id: string; is_default: boolean; name: string; season_id: string; updated_at: string }
+        Insert: { color: string; created_at?: string; created_by: string; id?: string; is_default?: boolean; name: string; season_id: string; updated_at?: string }
+        Update: { color?: string; created_at?: string; created_by?: string; id?: string; is_default?: boolean; name?: string; season_id?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "season_competitions_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "season_competitions_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
+        ]
       }
       seasons: {
         Row: {
@@ -1297,6 +1316,11 @@ export type Database = {
         Returns: boolean
       }
       current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
+      create_season_competition: {
+        Args: { checked_color: string; checked_name: string; checked_season_id: string }
+        Returns: string
+      }
+      delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
       get_my_pending_surveys: { Args: never; Returns: Json }
       get_survey_for_response: { Args: { checked_survey_id: string }; Returns: Json }
@@ -1307,6 +1331,7 @@ export type Database = {
       submit_survey_response: { Args: { checked_survey_id: string; submitted_answers: Json }; Returns: undefined }
       cancel_survey: { Args: { checked_survey_id: string }; Returns: undefined }
       set_role_permissions: { Args: { checked_permissions: string[]; checked_role: string }; Returns: undefined }
+      set_default_season_competition: { Args: { checked_competition_id: string }; Returns: undefined }
       set_season_holidays: { Args: { checked_dates: string[]; checked_season_id: string }; Returns: undefined }
       reset_role_permissions: { Args: { checked_role: string }; Returns: undefined }
       current_user_can_view_private_profile_details: {
@@ -1517,6 +1542,10 @@ export type Database = {
           new_display_name: string
           new_phone: string
         }
+        Returns: undefined
+      }
+      update_season_competition: {
+        Args: { checked_color: string; checked_competition_id: string; checked_name: string }
         Returns: undefined
       }
     }

@@ -1,4 +1,5 @@
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
+import { compareMatches, matchColor, matchLegendItems } from '../../lib/seasonCompetitions'
 import type { CalendarBirthday, Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
 export type CalendarSurvey = { id: string; result_date: string; title?: string }
@@ -51,7 +52,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const taskCount = plannedTasks.length
           const dayAnnouncements = announcements.filter((announcement) => announcement.status !== 'cancelled' && announcement.announcement_date === date)
           const announcementCount = dayAnnouncements.length
-          const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date)
+          const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date).sort(compareMatches)
           const matchCount = dayMatches.length
           const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.status === 'published' && plan.session_date === date)
           const trainingPlanCount = dayTrainingPlans.length
@@ -90,7 +91,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
               )}
               {matchCount > 0 && (
                 <span className="match-day-marks" aria-hidden="true">
-                  {dayMatches.slice(0, 3).map((match) => <i key={match.id}>P</i>)}
+                  {dayMatches.slice(0, 3).map((match) => <i key={match.id} style={{ backgroundColor: matchColor(match).solid }}>P</i>)}
                   {matchCount > 3 && <small>+{matchCount - 3}</small>}
                 </span>
               )}
@@ -104,7 +105,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
         <span><i className="task-dot" />T · {legendVariant === 'player' ? 'Tareas publicadas' : 'Tareas publicadas o en borrador guardadas en el lunes de su semana'}</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
-        {includesMatches && <span><i className="match-dot" />P · Partidos en su fecha exacta</span>}
+        {includesMatches && matchLegendItems(visibleMatches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
         {surveys.length > 0 && <span><i className="survey-dot" />Q · Resultados de encuestas</span>}
       </div>}

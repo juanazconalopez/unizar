@@ -3,7 +3,7 @@ import { canManageSport, canViewTeamData, hasPermission, PERMISSIONS } from '../
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
-  Season, SeasonBirthday, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday,
+  Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday,
   TrainingSession, TrainingTask, ViewName, LibraryItem, LibrarySettings,
 } from '../types'
 import { fetchActiveSeasonBirthdays, fetchPlayerCalendarBirthdays, fetchTodayBirthdays } from './birthdayService'
@@ -12,6 +12,7 @@ import { fetchLibraryItems, fetchLibrarySettings } from './libraryService'
 import { fetchMyPermissions, fetchPermissionConfiguration } from './permissionsService'
 import type { PermissionConfiguration } from './permissionsService'
 import type { PermissionKey } from '../lib/permissions'
+import { fetchSeasonCompetitions } from './seasonCompetitionsService'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -23,6 +24,7 @@ export type TrainingData = {
   ownProfileDetails: ProfilePrivateDetails | null
   profilePrivateDetails: ProfilePrivateDetails[]
   seasons: Season[]
+  seasonCompetitions: SeasonCompetition[]
   memberships: SeasonPlayer[]
   profiles: Profile[]
   tasks: TrainingTask[]
@@ -53,7 +55,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (ownDetailsResponse.error) throw ownDetailsResponse.error
   const profile = profileResponse.data
   const emptyData: TrainingData = {
-    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], memberships: [], profiles: [],
+    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], seasonCompetitions: [], memberships: [], profiles: [],
     tasks: [], results: [], trainingSessions: [], attendance: [], provisionalPlayers: [], provisionalAttendance: [], matches: [], matchAvailability: [], matchLineups: [],
     announcements: [], todayBirthdays: [], seasonBirthdays: [], calendarBirthdays: [], libraryItems: [], librarySettings: null,
     permissionKeys: [], permissionConfiguration: { definitions: [], grants: [] },
@@ -90,6 +92,14 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (privateDetailsResponse.error) throw privateDetailsResponse.error
 
   const seasons = seasonsResponse.data ?? []
+  const needsCompetitionCatalog = scope === 'settings'
+    || ((scope === 'calendar' || scope === 'matches') && (
+      hasPermission(profile, PERMISSIONS.matches.create, permissionKeys)
+      || hasPermission(profile, PERMISSIONS.matches.edit, permissionKeys)
+    ))
+  const seasonCompetitions = needsCompetitionCatalog
+    ? await fetchSeasonCompetitions(seasons.map((season) => season.id))
+    : []
   let taskData = emptyTaskWindow
   let attendanceData = emptyAttendanceWindow
   let matchData = emptyMatchWindow
@@ -142,7 +152,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   }
 
   return {
-    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: privateDetailsResponse.data ?? [], seasons,
+    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: privateDetailsResponse.data ?? [], seasons, seasonCompetitions,
     memberships: membershipsResponse.data ?? [], profiles: profilesResponse.data ?? [], tasks: taskData.tasks,
     results: taskData.results, trainingSessions: attendanceData.trainingSessions, attendance: attendanceData.attendance,
     provisionalPlayers, provisionalAttendance: scope === 'settings' ? settingsProvisionalAttendance : attendanceData.provisionalAttendance,

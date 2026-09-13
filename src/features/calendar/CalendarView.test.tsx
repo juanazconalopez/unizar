@@ -9,11 +9,11 @@ import { CalendarView } from './CalendarView'
 
 function makeMatch(overrides: Partial<Match> = {}): Match {
   return {
-    id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: todayIso(),
+    id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: todayIso(),
     kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: null,
     status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false,
     created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    seasons: { name: 'Temporada 2026' }, ...overrides,
+    seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,
   }
 }
 
@@ -51,6 +51,7 @@ describe('CalendarView', () => {
     expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument()
     expect(screen.getByText('Cambio de horario')).toBeInTheDocument()
     expect(screen.getByText(/Rival Rugby/)).toBeInTheDocument()
+    expect(screen.getByText('Liga Aragonesa')).toBeInTheDocument()
     expect(screen.getByText('Velocidad y cambios de dirección')).toBeInTheDocument()
     expect(screen.getByText('Cumpleaños del día').closest('.birthday-day-detail')).toHaveTextContent('Ana Martín cumple 28 años')
     const todayButton = screen.getByRole('button', { name: /1 partido/ })

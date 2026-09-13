@@ -75,7 +75,7 @@ export async function fetchAnnouncementWindow(fromDate: string, toDate: string):
 export async function fetchHomeAttention(today: string, seasonEnd: string) {
   const announcementEnd = homeAgendaEnd(today, seasonEnd)
   const [matchesResponse, announcementsResponse] = await Promise.all([
-    supabase.from('matches').select('*, seasons(name)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
+    supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
     supabase.from('team_announcements').select('*, seasons(name)').eq('status', 'published').gte('announcement_date', today).lte('announcement_date', announcementEnd).order('announcement_date', { ascending: true }).limit(4),
   ])
   if (matchesResponse.error) throw matchesResponse.error
@@ -137,7 +137,7 @@ export async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
 }
 
 export async function fetchMatchWindow(fromDate: string, toDate?: string): Promise<MatchWindowData> {
-  let query = supabase.from('matches').select('*, seasons(name)').gte('match_date', fromDate).order('match_date', { ascending: true })
+  let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default)').gte('match_date', fromDate).order('match_date', { ascending: true })
   if (toDate) query = query.lte('match_date', toDate)
   const { data, error } = await query
   if (error) throw error

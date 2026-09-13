@@ -6,6 +6,7 @@ import { formatDate, formatWeek, mondayFor, monthEnd, monthStart, todayIso } fro
 import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
 import { canUserCompleteTask } from '../../lib/tasks'
 import { compareTaskOrder } from '../../lib/taskOrder'
+import { compareMatches } from '../../lib/seasonCompetitions'
 import type {
   AvailabilityStatus,
   CalendarBirthday,
@@ -84,7 +85,7 @@ export function PlayerCalendarView({
   const selectedAnnouncements = visibleAnnouncements.filter((announcement) => announcement.announcement_date === selectedDate)
   const selectedMatches = visibleMatches
     .filter((match) => match.match_date === selectedDate)
-    .sort((first, second) => (first.kickoff_time ?? '').localeCompare(second.kickoff_time ?? ''))
+    .sort(compareMatches)
   const selectedBirthdays = birthdays.filter((birthday) => birthday.birthday_on === selectedDate)
   const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
   const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)

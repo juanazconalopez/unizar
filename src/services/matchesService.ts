@@ -4,6 +4,7 @@ import type { AvailabilityStatus, Match, MatchLineup, MatchValues, PlayerSeasonS
 function matchPayload(values: MatchValues) {
   return {
     season_id: values.seasonId,
+    competition_id: values.matchKind === 'official' ? values.competitionId : null,
     opponent: values.opponent.trim(),
     match_date: values.matchDate,
     kickoff_time: values.kickoffTime || null,

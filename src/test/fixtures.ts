@@ -5,6 +5,7 @@ import type {
   ProvisionalAttendanceRecord,
   ProvisionalPlayer,
   Season,
+  SeasonCompetition,
   SeasonPlayer,
   TaskResult,
   TeamAnnouncement,
@@ -47,6 +48,21 @@ export function makeSeason(overrides: Partial<Season> = {}): Season {
     name: 'Temporada 2026',
     start_date: '2026-01-01',
     end_date: '2026-12-31',
+    created_by: 'owner-1',
+    created_at: createdAt,
+    updated_at: createdAt,
+    ...overrides,
+  }
+}
+
+export function makeSeasonCompetition(overrides: Partial<SeasonCompetition> = {}): SeasonCompetition {
+  return {
+    id: 'competition-1',
+    season_id: 'season-1',
+    name: 'Liga Aragonesa',
+    color: 'purple',
+    is_default: true,
+    match_count: 1,
     created_by: 'owner-1',
     created_at: createdAt,
     updated_at: createdAt,

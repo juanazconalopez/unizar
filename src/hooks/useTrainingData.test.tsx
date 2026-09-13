@@ -27,6 +27,7 @@ const trainingData = {
   ownProfileDetails: null,
   profilePrivateDetails: [],
   seasons: [],
+  seasonCompetitions: [],
   memberships: [],
   profiles: [],
   tasks: [],

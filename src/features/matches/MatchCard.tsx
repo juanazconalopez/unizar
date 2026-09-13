@@ -1,4 +1,5 @@
 import { formatDate } from '../../lib/dates'
+import { matchColorStyle } from '../../lib/seasonCompetitions'
 import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup } from '../../types'
 import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 
@@ -40,12 +41,12 @@ export function MatchCard({
   const canViewLineup = match.lineup_published && lineup.length > 0
 
   return (
-    <article className="match-card">
+    <article className="match-card" style={matchColorStyle(match)}>
       <div className="match-card-heading">
         <div>
-          <span className="eyebrow">
-            {match.is_home ? 'LOCAL' : 'VISITANTE'} · {match.match_kind === 'official' ? 'OFICIAL' : 'AMISTOSO'} · {match.rugby_format === 'sevens' ? 'SEVEN' : 'XV'}
-          </span>
+          <div className="match-card-labels"><span className="match-competition-label">{match.match_kind === 'official' ? match.season_competitions?.name ?? 'Competición' : 'Amistoso'}</span><span className="eyebrow">
+            {match.is_home ? 'LOCAL' : 'VISITANTE'} · {match.rugby_format === 'sevens' ? 'SEVEN' : 'XV'}
+          </span></div>
           <h2>
             {match.is_home
               ? <>Unizar Fem. <i>vs</i> {match.opponent}</>
