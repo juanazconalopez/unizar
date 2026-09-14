@@ -1,5 +1,5 @@
 begin;
-select plan(215);
+select plan(223);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -665,6 +665,10 @@ select like(
   'the shared permission trigger narrows task rows before reading task-only fields'
 );
 select has_table('public', 'surveys', 'season surveys are persisted');
+select ok(
+  exists (select 1 from pg_constraint where conname = 'surveys_description_length'),
+  'survey descriptions have a bounded optional length'
+);
 select has_table('public', 'survey_questions', 'survey questions are persisted');
 select has_table('public', 'survey_recipients', 'published survey recipients are fixed');
 select has_table('public', 'survey_responses', 'survey responses are persisted separately');
@@ -672,6 +676,25 @@ select has_table('public', 'survey_answers', 'answers support every question typ
 select has_function('public', 'publish_survey', array['uuid'], 'surveys are published atomically');
 select has_function('public', 'submit_survey_response', array['uuid', 'jsonb'], 'players submit immutable answers atomically');
 select has_function('public', 'get_survey_results', array['uuid', 'uuid'], 'results enforce visibility through a protected RPC');
+select has_function('public', 'save_survey_draft', array['uuid', 'uuid', 'text', 'text', 'date', 'date', 'public.survey_visibility', 'jsonb'], 'survey drafts are saved atomically');
+select has_function('public', 'get_survey_draft', array['uuid'], 'draft editors can load their existing description and questions');
+select like(
+  pg_get_functiondef('public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)'::regprocedure),
+  '%La descripción no puede superar los 600 caracteres%',
+  'draft saving limits the optional survey description'
+);
+select like(
+  pg_get_functiondef('public.get_manage_surveys()'::regprocedure),
+  '%''description'', survey.description%',
+  'survey management receives the description'
+);
+select like(
+  pg_get_functiondef('public.get_survey_results(uuid,uuid)'::regprocedure),
+  '%''description'', checked_survey.description%',
+  'survey results retain their description'
+);
+select ok(has_function_privilege('authenticated', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'authenticated managers can invoke protected draft saving');
+select ok(not has_function_privilege('anon', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'anonymous users cannot save survey drafts');
 select like(
   pg_get_functiondef('public.get_manage_surveys()'::regprocedure),
   '%survey.visibility <> ''private''%',

@@ -1323,11 +1323,25 @@ export type Database = {
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
       get_my_pending_surveys: { Args: never; Returns: Json }
+      get_survey_draft: { Args: { checked_survey_id: string }; Returns: Json }
       get_survey_for_response: { Args: { checked_survey_id: string }; Returns: Json }
       get_visible_survey_closures: { Args: { checked_from: string; checked_until: string }; Returns: Json }
       get_manage_surveys: { Args: never; Returns: Json }
       get_survey_results: { Args: { checked_player_id?: string; checked_survey_id: string }; Returns: Json }
       publish_survey: { Args: { checked_survey_id: string }; Returns: undefined }
+      save_survey_draft: {
+        Args: {
+          checked_description: string | null
+          checked_ends_on: string
+          checked_questions: Json
+          checked_season_id: string
+          checked_starts_on: string
+          checked_survey_id: string | null
+          checked_title: string
+          checked_visibility: Database["public"]["Enums"]["survey_visibility"]
+        }
+        Returns: string
+      }
       submit_survey_response: { Args: { checked_survey_id: string; submitted_answers: Json }; Returns: undefined }
       cancel_survey: { Args: { checked_survey_id: string }; Returns: undefined }
       set_role_permissions: { Args: { checked_permissions: string[]; checked_role: string }; Returns: undefined }
@@ -1555,6 +1569,7 @@ export type Database = {
       match_kind: "official" | "friendly"
       match_status: "draft" | "published" | "cancelled" | "completed"
       rugby_format: "xv" | "sevens"
+      survey_visibility: "team" | "management" | "private"
       task_status: "draft" | "published" | "cancelled"
     }
     CompositeTypes: {
@@ -1688,6 +1703,7 @@ export const Constants = {
       match_kind: ["official", "friendly"],
       match_status: ["draft", "published", "cancelled", "completed"],
       rugby_format: ["xv", "sevens"],
+      survey_visibility: ["team", "management", "private"],
       task_status: ["draft", "published", "cancelled"],
     },
   },

@@ -827,6 +827,8 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-card-copy { min-width: 0; display: grid; gap: 5px; }
 .survey-card-copy strong { font-size: 15px; }
 .survey-card-copy small { color: var(--muted); font-size: 11px; }
+.survey-card-description { display: -webkit-box; overflow: hidden; color: #455b55 !important; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.survey-description, .survey-header-description { margin: 0; color: #455b55; font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
 .survey-editor-dialog, .survey-results-dialog { width: min(720px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }
 .survey-editor-dialog .modal-form-contents, .survey-results-dialog { display: grid; gap: 16px; }
 .survey-response-dialog { width: min(650px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }

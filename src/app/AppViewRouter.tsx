@@ -242,7 +242,7 @@ export function AppViewRouter({
         onSync={competition.synchronize}
       />}
       {view === 'library' && <LibraryView items={data.libraryItems} />}
-      {view === 'surveys' && can(PERMISSIONS.surveys.manage) && <SurveysView initialSurveyId={navigation.surveyId} isOwner={profile.is_owner} />}
+      {view === 'surveys' && can(PERMISSIONS.surveys.manage) && <SurveysView initialSurveyId={navigation.surveyId} isOwner={profile.is_owner} seasons={data.seasons} />}
       {view === 'survey' && navigation.surveyId && can(PERMISSIONS.surveys.respondOwn) && <SurveyResponseView surveyId={navigation.surveyId} onDone={() => { notify('Encuesta enviada. ¡Gracias por tu respuesta!'); navigate('home') }} />}
       {view === 'settings' && hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SettingsView
         currentUserId={userId}

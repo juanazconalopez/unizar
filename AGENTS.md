@@ -210,6 +210,12 @@ Reglas importantes:
 - Las alineaciones publicadas tienen restricciones de edición y desbloqueo.
 - Las convocatorias y resúmenes deben respetar la jugadora, el partido, la temporada y el periodo de vinculación.
 
+### Encuestas
+
+- Las encuestas pueden incluir una descripción opcional, de texto plano y hasta 600 caracteres, para explicar su finalidad antes de que las jugadoras respondan.
+- La descripción se muestra en Inicio y dentro de la respuesta, y solo sigue la misma visibilidad que la encuesta; no constituye un dato privado adicional.
+- Los borradores se guardan de forma atómica junto con sus preguntas y opciones. Una encuesta publicada no puede cambiar su título, descripción ni preguntas.
+
 ### Competición
 
 - Clasificación, calendario y estadísticas procedentes de la fuente de competición.

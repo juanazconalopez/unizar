@@ -9,6 +9,7 @@ test('owner creates and reopens a survey draft on mobile', async ({ page }) => {
   const editor = page.getByRole('dialog', { name: 'Crear encuesta' })
   await expect(editor.getByLabel('Visibilidad')).toHaveValue('Privada')
   await editor.getByLabel('Título').fill('Encuesta E2E de recuperación')
+  await editor.getByLabel('Descripción / finalidad').fill('Explica cómo ha ido la recuperación para adaptar la próxima semana.')
   await editor.getByRole('textbox', { name: 'Pregunta 1', exact: true }).fill('¿Cómo valoras la recuperación?')
   await editor.getByRole('textbox', { name: 'Opción 1 de pregunta 1', exact: true }).fill('Buena')
   await editor.getByRole('textbox', { name: 'Opción 2 de pregunta 1', exact: true }).fill('Mejorable')
@@ -22,8 +23,10 @@ test('owner creates and reopens a survey draft on mobile', async ({ page }) => {
   const surveyCard = page.getByRole('button', { name: /Encuesta E2E de recuperación/ })
   await expect(surveyCard).toContainText('Privada')
   await expect(surveyCard).toContainText('Borrador')
+  await expect(surveyCard).toContainText('Explica cómo ha ido la recuperación para adaptar la próxima semana.')
   await surveyCard.click()
   const results = page.getByRole('dialog', { name: /Encuesta \d+ · Encuesta E2E de recuperación/ })
+  await expect(results.getByText('Explica cómo ha ido la recuperación para adaptar la próxima semana.')).toBeVisible()
   await expect(results.getByRole('button', { name: 'Editar encuesta' })).toBeVisible()
 })
 

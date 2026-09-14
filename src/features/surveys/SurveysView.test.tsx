@@ -33,6 +33,22 @@ describe('SurveysView draft editor', () => {
     expect(within(screen.getByRole('button', { name: /valoración del viaje/i })).getByText('Activa')).toBeInTheDocument()
   })
 
+  test('keeps the optional description when publishing and shows it in the survey summary', async () => {
+    const user = userEvent.setup()
+    render(<SurveysView demo isOwner />)
+
+    await user.click(screen.getByRole('button', { name: 'Crear encuesta' }))
+    await user.type(screen.getByLabelText('Título'), 'Encuesta de recuperación')
+    await user.type(screen.getByLabelText('Descripción / finalidad'), 'Queremos adaptar la carga de la próxima semana a vuestra recuperación.')
+    await user.type(screen.getByLabelText('Pregunta 1'), '¿Cómo te encuentras tras el partido?')
+    await user.click(screen.getByRole('button', { name: 'Publicar encuesta' }))
+
+    const card = screen.getByRole('button', { name: /encuesta de recuperación/i })
+    expect(within(card).getByText('Queremos adaptar la carga de la próxima semana a vuestra recuperación.')).toBeInTheDocument()
+    await user.click(card)
+    expect(within(screen.getByRole('dialog')).getByText('Queremos adaptar la carga de la próxima semana a vuestra recuperación.')).toBeInTheDocument()
+  })
+
   test('does not expose private surveys or the private visibility to staff', async () => {
     const user = userEvent.setup()
     render(<SurveysView demo isOwner={false} />)

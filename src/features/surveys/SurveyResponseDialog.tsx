@@ -11,6 +11,7 @@ export function SurveyResponseDialog({ surveyId, onClose, onDone }: { surveyId: 
     <div className="panel-form-heading"><div><span className="eyebrow">ENCUESTA PENDIENTE</span><h2 id="survey-response-title">{survey?.title ?? 'Cargando encuesta…'}</h2></div><div className="modal-later-actions"><button className="text-button" onClick={onClose} type="button">Responder más tarde</button><button aria-label="Cerrar encuesta" className="icon-button" onClick={onClose} type="button">×</button></div></div>
     {error && <p className="form-error">{error}</p>}
     {!error && !survey && <p>Cargando preguntas…</p>}
+    {survey?.description && <p className="survey-description">{survey.description}</p>}
     {survey && <SurveyResponseForm questions={survey.questions} onSubmit={async (answers) => { await submitSurveyResponse(survey.id, answers); await onDone() }} />}
   </Modal>
 }
