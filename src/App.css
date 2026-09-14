@@ -872,6 +872,8 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-recipient:focus-visible { position: relative; outline: 2px solid var(--green); outline-offset: -2px; }
 .survey-recipient small { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .survey-owner-tracking details > .survey-filter-message { padding: 10px 12px; }
+.survey-filter-matches { border: 1px solid #dce7e1; border-radius: 10px; background: #fff; }
+.survey-filter-matches .survey-filter-message { padding: 10px 12px; }
 .survey-player-answers { margin-top: 2px; }
 .survey-questions-editor { display: grid; gap: 12px; }
 .survey-questions-editor > article, .survey-result { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 14px; border: 1px solid #e1e9e5; border-radius: 12px; background: #f8fbf9; }

@@ -236,12 +236,18 @@ function OwnerSurveyTracking({ recipients, selectedPlayerId, selectedResults, lo
   loading: boolean
   onSelect: (playerId: string, hasResponded: boolean) => void
 }) {
+  const [playerFilter, setPlayerFilter] = useState('')
   const responded = recipients.filter((recipient) => recipient.respondedAt)
   const pending = recipients.filter((recipient) => !recipient.respondedAt)
+  const matchingRecipients = playerFilter.trim()
+    ? recipients.filter((recipient) => recipient.playerName.toLocaleLowerCase().includes(playerFilter.trim().toLocaleLowerCase()))
+    : []
   const selectedRecipient = recipients.find((recipient) => recipient.playerId === selectedPlayerId)
   return <section className="survey-owner-tracking" aria-label="Seguimiento de respuestas">
     <h3>Seguimiento de respuestas</h3>
-    <p>Consulta quién ha respondido. Los listados se abren solo cuando los necesitas.</p>
+    <p>Filtra una jugadora para ver su respuesta o consulta los listados cuando los necesites.</p>
+    <label className="survey-player-filter">Filtrar respuestas por jugadora<span className="survey-filter-input"><input aria-label="Filtrar respuestas por jugadora" onChange={(event) => setPlayerFilter(event.target.value)} placeholder="Escribe el nombre de la jugadora…" value={playerFilter} />{playerFilter && <button aria-label="Quitar filtro de jugadora" onClick={() => setPlayerFilter('')} type="button">×</button>}</span></label>
+    {playerFilter && <div className="survey-filter-matches">{matchingRecipients.length ? <RecipientList emptyMessage="" loading={loading} onSelect={onSelect} recipients={matchingRecipients} selectedPlayerId={selectedPlayerId} /> : <p className="survey-filter-message">No hay ninguna jugadora invitada llamada “{playerFilter}”.</p>}</div>}
     <details>
       <summary>Han respondido <span>{responded.length}</span></summary>
       <RecipientList emptyMessage="Aún no ha respondido ninguna jugadora." loading={loading} onSelect={onSelect} recipients={responded} selectedPlayerId={selectedPlayerId} />

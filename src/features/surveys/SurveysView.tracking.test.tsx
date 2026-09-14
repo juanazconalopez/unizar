@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
@@ -36,8 +36,8 @@ describe('SurveysView owner response tracking', () => {
     await screen.findByText('Seguimiento de respuestas')
 
     expect(screen.getByText(/^Han respondido/).closest('details')).not.toHaveAttribute('open')
-    await user.click(screen.getByText(/^Han respondido/))
-    await user.click(screen.getByRole('button', { name: /alba garcía/i }))
+    await user.type(screen.getByLabelText('Filtrar respuestas por jugadora'), 'Alba')
+    await user.click(within(document.querySelector('.survey-filter-matches')!).getByRole('button', { name: /alba garcía/i }))
 
     await waitFor(() => expect(surveys.fetchSurveyResults).toHaveBeenLastCalledWith('survey-1', 'player-1'))
     expect(await screen.findByText(/Respuestas de/)).toHaveTextContent('Alba García')
