@@ -41,6 +41,23 @@ test('desktop calendar presents daily groups in the agreed order', async ({ page
   expect(headings.slice(0, 5)).toEqual(['Avisos', 'Resultados de encuestas', 'Entrenamientos', 'Partidos', '7 sept – 13 sept 2026'])
 })
 
+test('player opens survey results from calendar and remains there after closing', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Ver como').selectOption('player')
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  const calendar = page.getByRole('region', { name: 'Calendario de planificación' })
+  await calendar.getByRole('button', { name: /^8 de septiembre:/ }).click()
+
+  await page.getByRole('button', { name: /Disponibilidad para concentración/ }).click()
+  const dialog = page.getByRole('dialog', { name: 'Disponibilidad para concentración' })
+  await expect(dialog).toContainText('17 de 18 jugadoras')
+  await dialog.getByRole('button', { name: 'Cerrar resultados' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Calendario' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Disponibilidad para concentración' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Encuestas', exact: true })).toHaveCount(0)
+})
+
 test('desktop survey filtering returns to aggregate results after clearing', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Gestión' }).click()

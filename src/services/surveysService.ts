@@ -27,6 +27,14 @@ export type SurveyResults = {
   questions: { id: string; prompt: string; type: string; options: { id: string; label: string; count: number }[]; longAnswers: { text: string }[] }[]
 }
 
+export type SurveyCalendarResults = {
+  title: string
+  description: string | null
+  responses: number
+  recipients: number
+  questions: { prompt: string; options: { label: string; count: number }[]; longAnswers: { text: string }[] }[]
+}
+
 export async function fetchMyPendingSurveys() {
   const { data, error } = await supabase.rpc('get_my_pending_surveys')
   if (error) throw error
@@ -76,6 +84,21 @@ export async function fetchSurveyResults(surveyId: string) {
   if (error) throw error
   if (!data || Array.isArray(data)) throw new Error('No se pudieron cargar los resultados.')
   return data as SurveyResults
+}
+
+export async function fetchSurveyCalendarResults(surveyId: string): Promise<SurveyCalendarResults> {
+  const results = await fetchSurveyResults(surveyId)
+  return {
+    title: results.survey.title,
+    description: results.survey.description,
+    responses: results.participation.responses,
+    recipients: results.participation.recipients,
+    questions: results.questions.map((question) => ({
+      prompt: question.prompt,
+      options: question.options.map((option) => ({ label: option.label, count: option.count })),
+      longAnswers: question.longAnswers,
+    })),
+  }
 }
 
 export type SurveyForResponse = { id: string; title: string; description: string | null; endsOn: string; questions: SurveyQuestionForm[] }

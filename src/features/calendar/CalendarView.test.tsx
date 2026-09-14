@@ -41,6 +41,8 @@ function props() {
     onLoadPlayerSeasonSummary: vi.fn(),
     onLoadPublishedTrainingPlans: vi.fn().mockResolvedValue([]),
     onOpenTrainingPlan: vi.fn(),
+    onLoadSurveyClosures: vi.fn().mockResolvedValue([]),
+    onOpenSurveyResults: vi.fn(),
   }
 }
 
@@ -86,6 +88,18 @@ describe('CalendarView', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento' }, { timeout: 3000 }))
     expect(common.onOpenTrainingPlan).toHaveBeenCalledWith('training-1')
+  })
+
+  test('opens survey results without changing the calendar context', async () => {
+    const common = props()
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{ id: 'survey-1', title: 'Valoración semanal', result_date: todayIso() }])
+    common.onOpenSurveyResults = vi.fn()
+    const user = userEvent.setup()
+    render(<CalendarView {...common} />)
+
+    await user.click(await screen.findByRole('button', { name: /valoración semanal/i }))
+    expect(common.onOpenSurveyResults).toHaveBeenCalledWith('survey-1')
+    expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument()
   })
 
   test('opens the callup report from the header', async () => {

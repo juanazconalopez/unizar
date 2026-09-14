@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
 import { Dashboard } from '../features/dashboard/Dashboard'
 import type { useCompetitionData } from '../hooks/useCompetitionData'
@@ -9,13 +9,13 @@ import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/per
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
 import { fetchPublishedTrainingPlans } from '../services/trainingPlansService'
-import { fetchMyPendingSurveys } from '../services/surveysService'
-import { fetchVisibleSurveyClosures } from '../services/surveysService'
+import { fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
 import { AttendanceView, CalendarView, CompetitionView, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingPlansView } from './viewModules'
+import { SurveyCalendarResultsDialog } from '../features/surveys/SurveyCalendarResultsDialog'
 
 type TrainingController = ReturnType<typeof useTrainingData>
 type CompetitionController = ReturnType<typeof useCompetitionData>
@@ -48,6 +48,7 @@ export function AppViewRouter({
   userId: string
 }) {
   const view = navigation.view
+  const [surveyResultId, setSurveyResultId] = useState<string>()
   const personalResults = data.results.filter((result) => result.player_id === userId)
   const can = (permission: PermissionKey) => hasPermission(profile, permission, permissionKeys)
 
@@ -149,7 +150,7 @@ export function AppViewRouter({
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
         onLoadSurveyClosures={fetchVisibleSurveyClosures}
-        onOpenSurveyResults={(surveyId) => navigate({ view: 'surveys', surveyId })}
+        onOpenSurveyResults={setSurveyResultId}
         onReorderTasks={actions.tasks.reorder}
         onSaveAnnouncement={actions.announcements.save}
         onSaveLineup={actions.matches.saveLineup}
@@ -177,7 +178,7 @@ export function AppViewRouter({
         onSaveAvailability={can(PERMISSIONS.matches.ownAvailability) ? actions.matches.saveAvailability : undefined}
         onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
         onLoadSurveyClosures={fetchVisibleSurveyClosures}
-        onOpenSurveyResults={(surveyId) => navigate({ view: 'surveys', surveyId })}
+        onOpenSurveyResults={setSurveyResultId}
       />}
       {view === 'tasks' && canAccessTasks(profile) && <TasksView
         announcements={data.announcements}
@@ -276,6 +277,7 @@ export function AppViewRouter({
         onUpdateSeasonCompetition={actions.club.updateSeasonCompetition}
       />}
       {view === 'settings' && !hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
+      {surveyResultId && <SurveyCalendarResultsDialog onClose={() => setSurveyResultId(undefined)} onLoad={fetchSurveyCalendarResults} surveyId={surveyResultId} />}
     </Suspense>
   </ViewErrorBoundary>
 }

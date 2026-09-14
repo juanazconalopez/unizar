@@ -37,6 +37,8 @@ function props() {
     userId: 'player-1',
     onLoadMatchMonth: vi.fn().mockResolvedValue(undefined),
     onLoadTaskRange: vi.fn().mockResolvedValue(undefined),
+    onLoadSurveyClosures: vi.fn().mockResolvedValue([]),
+    onOpenSurveyResults: vi.fn(),
     onSaveAvailability: vi.fn().mockResolvedValue(undefined),
     onSaveResult: vi.fn().mockResolvedValue(undefined),
   }
@@ -74,5 +76,17 @@ describe('PlayerCalendarView', () => {
 
     expect(common.onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }), 'available', '')
     expect(common.onLoadMatchMonth).toHaveBeenCalledWith('2026-09-01')
+  })
+
+  test('opens visible aggregate survey results from the calendar', async () => {
+    const common = props()
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{ id: 'survey-1', title: 'Valoración semanal', result_date: today }])
+    common.onOpenSurveyResults = vi.fn()
+    const user = userEvent.setup()
+    render(<PlayerCalendarView {...common} />)
+
+    await user.click(await screen.findByRole('button', { name: /valoración semanal/i }))
+    expect(common.onOpenSurveyResults).toHaveBeenCalledWith('survey-1')
+    expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument()
   })
 })
