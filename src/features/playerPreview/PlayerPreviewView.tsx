@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PlayerCalendarView } from '../calendar/PlayerCalendarView'
 import { Dashboard } from '../dashboard/Dashboard'
-import { fetchPlayerPreview } from '../../services/playerPreviewService'
+import { SurveyCalendarResultsDialog } from '../surveys/SurveyCalendarResultsDialog'
+import { fetchSurveyCalendarResults } from '../../services/surveysService'
+import { fetchPlayerPreview, fetchPlayerPreviewSurveyClosures } from '../../services/playerPreviewService'
 import type { PlayerPreviewData } from '../../services/playerPreviewService'
 
 export function PlayerPreviewView({ playerId }: { playerId: string }) {
@@ -10,6 +12,7 @@ export function PlayerPreviewView({ playerId }: { playerId: string }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [screen, setScreen] = useState<'home' | 'calendar'>('home')
+  const [surveyResultId, setSurveyResultId] = useState<string>()
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -38,6 +41,9 @@ export function PlayerPreviewView({ playerId }: { playerId: string }) {
       userId={data.player.id}
       onLoadMatchMonth={async () => undefined}
       onLoadTaskRange={async () => undefined}
+      onLoadSurveyClosures={(from, until) => fetchPlayerPreviewSurveyClosures(data.player.id, from, until)}
+      onOpenSurveyResults={setSurveyResultId}
     />}
+    {surveyResultId && <SurveyCalendarResultsDialog onClose={() => setSurveyResultId(undefined)} onLoad={fetchSurveyCalendarResults} surveyId={surveyResultId} />}
   </main>
 }

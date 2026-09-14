@@ -1,5 +1,5 @@
 begin;
-select plan(226);
+select plan(232);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -668,6 +668,9 @@ select has_table('public', 'surveys', 'season surveys are persisted');
 select has_function('public', 'can_preview_player', array['uuid'], 'owners can validate a player preview target');
 select ok(has_function_privilege('authenticated', 'public.can_preview_player(uuid)', 'EXECUTE'), 'authenticated users can invoke the protected preview validator');
 select ok(not has_function_privilege('anon', 'public.can_preview_player(uuid)', 'EXECUTE'), 'anonymous users cannot validate preview targets');
+select has_function('public', 'get_player_preview_survey_closures', array['uuid', 'date', 'date'], 'preview calendars receive only player-visible survey closures');
+select ok(has_function_privilege('authenticated', 'public.get_player_preview_survey_closures(uuid,date,date)', 'EXECUTE'), 'authenticated owners can invoke protected preview survey closures');
+select ok(not has_function_privilege('anon', 'public.get_player_preview_survey_closures(uuid,date,date)', 'EXECUTE'), 'anonymous users cannot invoke preview survey closures');
 select ok(
   exists (select 1 from pg_constraint where conname = 'surveys_description_length'),
   'survey descriptions have a bounded optional length'
@@ -695,6 +698,21 @@ select like(
   pg_get_functiondef('public.get_survey_results(uuid,uuid)'::regprocedure),
   '%''description'', checked_survey.description%',
   'survey results retain their description'
+);
+select like(
+  pg_get_functiondef('public.get_survey_results(uuid,uuid)'::regprocedure),
+  '%''recipientStatus'', case when is_owner%',
+  'only the owner receives the recipient response status list'
+);
+select like(
+  pg_get_functiondef('public.get_survey_results(uuid,uuid)'::regprocedure),
+  '%''selectedAnswer'', case when checked_player_id is null%',
+  'individual survey responses include the selected answer values'
+);
+select like(
+  pg_get_functiondef('public.get_survey_results(uuid,uuid)'::regprocedure),
+  '%La jugadora no forma parte de esta encuesta%',
+  'individual response access is limited to invited recipients'
 );
 select ok(has_function_privilege('authenticated', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'authenticated managers can invoke protected draft saving');
 select ok(not has_function_privilege('anon', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'anonymous users cannot save survey drafts');

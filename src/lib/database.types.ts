@@ -1327,6 +1327,7 @@ export type Database = {
       get_survey_draft: { Args: { checked_survey_id: string }; Returns: Json }
       get_survey_for_response: { Args: { checked_survey_id: string }; Returns: Json }
       get_visible_survey_closures: { Args: { checked_from: string; checked_until: string }; Returns: Json }
+      get_player_preview_survey_closures: { Args: { checked_from: string; checked_player_id: string; checked_until: string }; Returns: Json }
       get_manage_surveys: { Args: never; Returns: Json }
       get_survey_results: { Args: { checked_player_id?: string; checked_survey_id: string }; Returns: Json }
       publish_survey: { Args: { checked_survey_id: string }; Returns: undefined }

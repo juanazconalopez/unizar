@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { todayIso } from '../../lib/dates'
+import { formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { Season } from '../../types'
 import { fetchManageSurveys, fetchSurveyDraft, fetchSurveyResults, publishSurvey, saveSurveyDraft } from '../../services/surveysService'
@@ -46,6 +46,9 @@ export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [results, setResults] = useState<SurveyResults | null>(null)
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
+  const [selectedPlayerResults, setSelectedPlayerResults] = useState<SurveyResults | null>(null)
+  const [loadingPlayerResults, setLoadingPlayerResults] = useState(false)
   const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso()) ?? seasons[0]
   const defaultSurveyDate = activeSeason
     ? todayIso() < activeSeason.start_date ? activeSeason.start_date : todayIso() > activeSeason.end_date ? activeSeason.end_date : todayIso()
@@ -89,6 +92,35 @@ export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = 
     void fetchSurveyResults(selected.id).then((value) => { if (active) setResults(value) }).catch((cause) => { if (active) setError(errorText(cause)) })
     return () => { active = false }
   }, [demo, selected])
+
+  function openResults(survey: DisplaySurvey) {
+    setPlayerQuery('')
+    setSelectedPlayerId(null)
+    setSelectedPlayerResults(null)
+    setError('')
+    setSelected(survey)
+  }
+
+  function closeResults() {
+    setSelected(null)
+    setSelectedPlayerId(null)
+    setSelectedPlayerResults(null)
+  }
+
+  async function selectRecipient(playerId: string, hasResponded: boolean) {
+    if (!selected || selectedPlayerId === playerId || loadingPlayerResults) return
+    setSelectedPlayerId(playerId)
+    setSelectedPlayerResults(null)
+    if (!hasResponded) return
+    setLoadingPlayerResults(true)
+    try {
+      setSelectedPlayerResults(await fetchSurveyResults(selected.id, playerId))
+    } catch (cause) {
+      setError(errorText(cause))
+    } finally {
+      setLoadingPlayerResults(false)
+    }
+  }
 
   function openEditor(mode: 'create' | 'edit', survey: DisplaySurvey | null = null) {
     setError('')
@@ -149,7 +181,7 @@ export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = 
     {error && !editor && <p className="form-error">{error}</p>}
     {loading && <p className="page-loading">Cargando encuestas…</p>}
     {!loading && !surveys.length && <div className="empty-state"><h2>Aún no hay encuestas</h2><p>Crea un borrador para preparar la primera consulta del equipo.</p></div>}
-    {!!surveys.length && <div className="survey-list">{surveys.map((survey) => <button className="survey-card" key={survey.id} onClick={() => { setPlayerQuery(''); setSelected(survey) }} type="button"><span className="survey-number">{survey.number}</span><span className="survey-card-copy"><span className="task-meta"><span>{survey.visibility}</span><span>·</span><span>{survey.status}</span></span><strong>{survey.title}</strong>{survey.description && <small className="survey-card-description">{survey.description}</small>}<small>{periodLabel(survey)} · {survey.responses}/{survey.recipients} respuestas ({participationPercentage(survey.responses, survey.recipients)}%)</small></span></button>)}</div>}
+    {!!surveys.length && <div className="survey-list">{surveys.map((survey) => <button className="survey-card" key={survey.id} onClick={() => openResults(survey)} type="button"><span className="survey-number">{survey.number}</span><span className="survey-card-copy"><span className="task-meta"><span>{survey.visibility}</span><span>·</span><span>{survey.status}</span></span><strong>{survey.title}</strong>{survey.description && <small className="survey-card-description">{survey.description}</small>}<small>{periodLabel(survey)} · {survey.responses}/{survey.recipients} respuestas ({participationPercentage(survey.responses, survey.recipients)}%)</small></span></button>)}</div>}
 
     {editor && <Modal className="survey-editor-dialog" disabled={saving} labelledBy="survey-editor-title" onClose={closeEditor} onSubmit={saveSurvey}>
       <div className="panel-form-heading"><div><span className="eyebrow">{editor === 'edit' ? 'BORRADOR' : 'NUEVA ENCUESTA'}</span><h2 id="survey-editor-title">{editor === 'edit' ? 'Editar encuesta' : 'Crear encuesta'}</h2></div><button aria-label="Cerrar editor" className="icon-button" onClick={closeEditor} type="button">×</button></div>
@@ -160,12 +192,12 @@ export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = 
       <button className="secondary-button compact" disabled={saving} onClick={() => setQuestions((current) => [...current, { id: `new-${current.length + 1}`, type: 'single', text: '', options: ['', ''] }])} type="button">+ Añadir pregunta</button><div className="form-actions"><button className="secondary-button" disabled={saving} onClick={closeEditor} type="button">Cancelar</button><button className="secondary-button" disabled={saving} name="action" type="submit" value="draft">Guardar borrador</button><button className="primary-button" disabled={saving} name="action" type="submit" value="publish">{saving ? 'Guardando…' : 'Publicar encuesta'}</button></div>
     </Modal>}
 
-    {selected && <Modal className="survey-results-dialog" labelledBy="survey-results-title" onClose={() => setSelected(null)}>
-      <div className="panel-form-heading"><div><span className="eyebrow">RESULTADOS {selected.status === 'Activa' ? 'PROVISIONALES' : ''}</span><h2 id="survey-results-title">Encuesta {selected.number} · {selected.title}</h2></div><button aria-label="Cerrar resultados" className="icon-button" onClick={() => setSelected(null)} type="button">×</button></div>
+    {selected && <Modal className="survey-results-dialog" labelledBy="survey-results-title" onClose={closeResults}>
+      <div className="panel-form-heading"><div><span className="eyebrow">RESULTADOS {selected.status === 'Activa' ? 'PROVISIONALES' : ''}</span><h2 id="survey-results-title">Encuesta {selected.number} · {selected.title}</h2></div><button aria-label="Cerrar resultados" className="icon-button" onClick={closeResults} type="button">×</button></div>
       {selected.description && <p className="survey-description">{selected.description}</p>}
       {selected.status === 'Borrador' ? <div className="survey-draft-summary"><p>Este borrador todavía no tiene respuestas. Puedes revisarlo antes de publicarlo.</p><button className="primary-button" onClick={() => openEditor('edit', selected)} type="button">Editar encuesta</button></div> : <>
         {demo && selected.visibility === 'Compartida con el equipo' && <label className="survey-player-filter">Ver respuestas de una jugadora<span className="survey-filter-input"><input onChange={(event) => setPlayerQuery(event.target.value)} placeholder="Buscar jugadora de la temporada…" value={playerQuery} />{playerQuery && <button aria-label="Quitar filtro de jugadora" onClick={() => setPlayerQuery('')} type="button">×</button>}</span></label>}
-        {demo ? (playerQuery && selected.visibility === 'Compartida con el equipo' ? <PlayerAnswers player={player} query={playerQuery} /> : <AggregatedResults survey={selected} />) : selectedResults ? <ManagedAggregatedResults results={selectedResults} /> : <p className="page-loading">Cargando resultados…</p>}
+        {demo ? (playerQuery && selected.visibility === 'Compartida con el equipo' ? <PlayerAnswers player={player} query={playerQuery} /> : <AggregatedResults survey={selected} />) : selectedResults ? <><ManagedAggregatedResults results={selectedResults} />{isOwner && selectedResults.recipientStatus && <OwnerSurveyTracking loading={loadingPlayerResults} onSelect={selectRecipient} recipients={selectedResults.recipientStatus} selectedPlayerId={selectedPlayerId} selectedResults={selectedPlayerResults} />}</> : <p className="page-loading">Cargando resultados…</p>}
         {((demo && selected.responses > 0 && (!playerQuery || Boolean(player?.responded))) || (!demo && (selectedResults?.participation.responses ?? 0) > 0)) && <div className="form-actions"><button className="secondary-button" onClick={() => window.print()} type="button">Guardar PDF</button></div>}
       </>}
     </Modal>}
@@ -195,6 +227,54 @@ function AggregatedResults({ survey }: { survey: DisplaySurvey }) {
 
 function ManagedAggregatedResults({ results }: { results: SurveyResults }) {
   return <section className="survey-results"><header><p>{results.participation.responses} de {results.participation.recipients} jugadoras · {participationPercentage(results.participation.responses, results.participation.recipients)}% participación</p></header>{results.questions.map((question, index) => <article className="survey-result" key={question.id}><b>{index + 1}</b><div><h3>{question.prompt}</h3>{question.options.map((option) => <div className="survey-bar" key={option.id}><span>{option.label}<small>{option.count} · {participationPercentage(option.count, results.participation.responses)}%</small></span><i><em style={{ width: `${participationPercentage(option.count, results.participation.responses)}%` }} /></i></div>)}{question.longAnswers.map((answer, answerIndex) => <p key={answerIndex}>“{answer.text}”</p>)}</div></article>)}</section>
+}
+
+function OwnerSurveyTracking({ recipients, selectedPlayerId, selectedResults, loading, onSelect }: {
+  recipients: NonNullable<SurveyResults['recipientStatus']>
+  selectedPlayerId: string | null
+  selectedResults: SurveyResults | null
+  loading: boolean
+  onSelect: (playerId: string, hasResponded: boolean) => void
+}) {
+  const responded = recipients.filter((recipient) => recipient.respondedAt)
+  const pending = recipients.filter((recipient) => !recipient.respondedAt)
+  const selectedRecipient = recipients.find((recipient) => recipient.playerId === selectedPlayerId)
+  return <section className="survey-owner-tracking" aria-label="Seguimiento de respuestas">
+    <h3>Seguimiento de respuestas</h3>
+    <p>Consulta quién ha respondido. Los listados se abren solo cuando los necesitas.</p>
+    <details>
+      <summary>Han respondido <span>{responded.length}</span></summary>
+      <RecipientList emptyMessage="Aún no ha respondido ninguna jugadora." loading={loading} onSelect={onSelect} recipients={responded} selectedPlayerId={selectedPlayerId} />
+    </details>
+    <details>
+      <summary>Pendientes <span>{pending.length}</span></summary>
+      <RecipientList emptyMessage="No quedan jugadoras pendientes." loading={false} onSelect={onSelect} recipients={pending} selectedPlayerId={selectedPlayerId} />
+    </details>
+    {selectedRecipient && (loading ? <p className="survey-filter-message">Cargando la respuesta de <strong>{selectedRecipient.playerName}</strong>…</p> : selectedResults ? <SelectedPlayerAnswers playerName={selectedRecipient.playerName} respondedAt={selectedRecipient.respondedAt} results={selectedResults} /> : !selectedRecipient.respondedAt ? <p className="survey-filter-message"><strong>{selectedRecipient.playerName}</strong> todavía no ha respondido a la encuesta.</p> : null)}
+  </section>
+}
+
+function RecipientList({ recipients, selectedPlayerId, loading, emptyMessage, onSelect }: {
+  recipients: NonNullable<SurveyResults['recipientStatus']>
+  selectedPlayerId: string | null
+  loading: boolean
+  emptyMessage: string
+  onSelect: (playerId: string, hasResponded: boolean) => void
+}) {
+  if (!recipients.length) return <p className="survey-filter-message">{emptyMessage}</p>
+  return <div className="survey-recipient-list">{recipients.map((recipient) => <button aria-pressed={selectedPlayerId === recipient.playerId} className="survey-recipient" disabled={loading} key={recipient.playerId} onClick={() => onSelect(recipient.playerId, Boolean(recipient.respondedAt))} type="button"><span>{recipient.playerName}</span>{recipient.respondedAt ? <small>{formatResponseDate(recipient.respondedAt)}</small> : <small>Sin responder</small>}</button>)}</div>
+}
+
+function SelectedPlayerAnswers({ playerName, respondedAt, results }: { playerName: string; respondedAt: string | null; results: SurveyResults }) {
+  return <section className="survey-results survey-player-answers"><header><p>Respuestas de <strong>{playerName}</strong>{respondedAt && <> · {formatResponseDate(respondedAt)}</>}</p></header>{results.questions.map((question, index) => {
+    const answer = question.selectedAnswer
+    const selectedOptions = question.options.filter((option) => answer?.optionIds.includes(option.id))
+    return <article className="survey-result" key={question.id}><b>{index + 1}</b><div><h3>{question.prompt}</h3>{!answer ? <p>Sin respuesta.</p> : <>{selectedOptions.map((option) => <p key={option.id}>{option.label}</p>)}{answer.text && <p>“{answer.text}”</p>}{!selectedOptions.length && !answer.text && <p>Sin respuesta.</p>}</>}</div></article>
+  })}</section>
+}
+
+function formatResponseDate(value: string) {
+  return formatDate(value.slice(0, 10), { day: 'numeric', month: 'short' })
 }
 
 function PlayerAnswers({ player, query }: { player: typeof demoPlayers[number] | undefined; query: string }) {

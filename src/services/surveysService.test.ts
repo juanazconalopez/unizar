@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 const rpc = vi.hoisted(() => vi.fn())
 vi.mock('../lib/supabase', () => ({ supabase: { rpc } }))
-import { fetchMyPendingSurveys, fetchSurveyCalendarResults, saveSurveyDraft } from './surveysService'
+import { fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchSurveyResults, saveSurveyDraft } from './surveysService'
 
 describe('surveysService', () => {
   test('loads only the pending surveys returned by the protected RPC', async () => {
@@ -37,5 +37,13 @@ describe('surveysService', () => {
       questions: [{ prompt: '¿Cómo estás?', options: [], longAnswers: [{ text: 'Muy bien.' }] }],
     })
     expect(rpc).toHaveBeenCalledWith('get_survey_results', { checked_survey_id: 'survey-1' })
+  })
+
+  test('requests an individual answer only for the selected player', async () => {
+    rpc.mockResolvedValueOnce({ data: { survey: { id: 'survey-1' }, participation: {}, questions: [] }, error: null })
+
+    await fetchSurveyResults('survey-1', 'player-1')
+
+    expect(rpc).toHaveBeenCalledWith('get_survey_results', { checked_survey_id: 'survey-1', checked_player_id: 'player-1' })
   })
 })

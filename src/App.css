@@ -858,6 +858,21 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-filter-input input { padding-right: 42px; }
 .survey-filter-input button { position: absolute; top: 50%; right: 9px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; transform: translateY(-50%); color: #6c7e77; background: #e8efeb; font-size: 18px; line-height: 1; cursor: pointer; }
 .survey-filter-input button:hover { color: #fff; background: var(--green); }
+.survey-owner-tracking { display: grid; gap: 10px; padding: 16px; border: 1px solid #dce7e1; border-radius: 14px; background: #f8fbf9; }
+.survey-owner-tracking > h3, .survey-owner-tracking > p { margin: 0; }
+.survey-owner-tracking > h3 { font-size: 14px; }
+.survey-owner-tracking > p { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.survey-owner-tracking details { border: 1px solid #dce7e1; border-radius: 10px; background: #fff; }
+.survey-owner-tracking summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; color: var(--ink); font-size: 13px; font-weight: 800; cursor: pointer; }
+.survey-owner-tracking summary span { min-width: 24px; padding: 2px 6px; border-radius: 20px; color: var(--green); background: var(--green-soft); text-align: center; }
+.survey-recipient-list { display: grid; max-height: 270px; overflow-y: auto; border-top: 1px solid #e3ebe7; }
+.survey-recipient { width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid #edf2ef; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink); background: #fff; font: inherit; text-align: left; cursor: pointer; }
+.survey-recipient:last-child { border-bottom: 0; }
+.survey-recipient:hover:not(:disabled), .survey-recipient[aria-pressed="true"] { background: var(--green-soft); }
+.survey-recipient:focus-visible { position: relative; outline: 2px solid var(--green); outline-offset: -2px; }
+.survey-recipient small { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.survey-owner-tracking details > .survey-filter-message { padding: 10px 12px; }
+.survey-player-answers { margin-top: 2px; }
 .survey-questions-editor { display: grid; gap: 12px; }
 .survey-questions-editor > article, .survey-result { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 14px; border: 1px solid #e1e9e5; border-radius: 12px; background: #f8fbf9; }
 .survey-questions-editor > article > b, .survey-result > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--green); }

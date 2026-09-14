@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask } from '../types'
+import type { SurveyClosure } from './surveysService'
 
 export type PlayerPreviewData = {
   player: Profile
@@ -51,4 +52,14 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
     profiles: profilesResponse.data ?? [], tasks: tasksResponse.data ?? [], results: resultsResponse.data ?? [],
     announcements: announcementsResponse.data ?? [], matches, availability: availabilityResponse.data ?? [], lineups: lineupsResponse.data ?? [],
   }
+}
+
+export async function fetchPlayerPreviewSurveyClosures(playerId: string, from: string, until: string): Promise<SurveyClosure[]> {
+  const { data, error } = await supabase.rpc('get_player_preview_survey_closures', {
+    checked_player_id: playerId,
+    checked_from: from,
+    checked_until: until,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data as SurveyClosure[] : []
 }

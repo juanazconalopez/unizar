@@ -24,7 +24,15 @@ export type SurveyDraftValues = Omit<SurveyDraft, 'id'> & { id?: string | null }
 export type SurveyResults = {
   survey: { id: string; title: string; description: string | null; visibility: SurveyVisibility; status: string; startsOn: string; endsOn: string }
   participation: { recipients: number; responses: number }
-  questions: { id: string; prompt: string; type: string; options: { id: string; label: string; count: number }[]; longAnswers: { text: string }[] }[]
+  recipientStatus?: { playerId: string; playerName: string; respondedAt: string | null }[]
+  questions: {
+    id: string
+    prompt: string
+    type: string
+    options: { id: string; label: string; count: number }[]
+    longAnswers: { text: string }[]
+    selectedAnswer?: { text: string | null; optionIds: string[] } | null
+  }[]
 }
 
 export type SurveyCalendarResults = {
@@ -79,8 +87,11 @@ export async function publishSurvey(surveyId: string) {
   if (error) throw error
 }
 
-export async function fetchSurveyResults(surveyId: string) {
-  const { data, error } = await supabase.rpc('get_survey_results', { checked_survey_id: surveyId })
+export async function fetchSurveyResults(surveyId: string, playerId?: string) {
+  const { data, error } = await supabase.rpc('get_survey_results', {
+    checked_survey_id: surveyId,
+    ...(playerId ? { checked_player_id: playerId } : {}),
+  })
   if (error) throw error
   if (!data || Array.isArray(data)) throw new Error('No se pudieron cargar los resultados.')
   return data as SurveyResults
