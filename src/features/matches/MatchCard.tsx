@@ -1,81 +1,38 @@
-import { formatDate } from '../../lib/dates'
 import { matchColorStyle } from '../../lib/seasonCompetitions'
-import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup } from '../../types'
+import type { AvailabilityStatus, Match, MatchAvailability } from '../../types'
 import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
+import { matchLogistics, matchTitle } from './matchPresentation'
 
 export type MatchCardProps = {
-  availability: MatchAvailability[]
-  eligiblePlayerCount: number
-  canManage: boolean
-  canEditMatch?: boolean
-  canManageLineup?: boolean
-  canViewAvailability: boolean
+  availability?: MatchAvailability[]
+  canEditMatch: boolean
+  canViewAvailability?: boolean
+  eligiblePlayerCount?: number
   isPlayer: boolean
-  lineup: MatchLineup[]
   match: Match
   ownAvailability?: MatchAvailability
-  onEdit: () => void
-  onManageLineup: () => void
+  onOpen: () => void
   onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
-  onViewAvailability: () => void
-  onViewLineup: () => void
+  onViewAvailability?: () => void
 }
 
-export function MatchCard({
-  availability,
-  eligiblePlayerCount,
-  canManage,
-  canEditMatch = canManage,
-  canManageLineup = canManage,
-  canViewAvailability,
-  isPlayer,
-  lineup,
-  match,
-  ownAvailability,
-  onEdit,
-  onManageLineup,
-  onSaveAvailability,
-  onViewAvailability,
-  onViewLineup,
-}: MatchCardProps) {
-  const canViewLineup = match.lineup_published && lineup.length > 0
-
+export function MatchCard({ availability = [], canEditMatch, canViewAvailability = false, eligiblePlayerCount = 0, isPlayer, match, ownAvailability, onOpen, onSaveAvailability, onViewAvailability }: MatchCardProps) {
   return (
     <article className="match-card" style={matchColorStyle(match)}>
-      <div className="match-card-heading">
-        <div>
-          <div className="match-card-labels"><span className="match-competition-label">{match.match_kind === 'official' ? match.season_competitions?.name ?? 'Competición' : 'Amistoso'}</span><span className="eyebrow">
-            {match.is_home ? 'LOCAL' : 'VISITANTE'} · {match.rugby_format === 'sevens' ? 'SEVEN' : 'XV'}
-          </span></div>
-          <h2>
-            {match.is_home
-              ? <>Unizar Fem. <i>vs</i> {match.opponent}</>
-              : <>{match.opponent} <i>vs</i> Unizar Fem.</>}
-          </h2>
-          <p>
-            {formatDate(match.match_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            {match.kickoff_time ? ` · ${match.kickoff_time.slice(0, 5)}` : ''}
-            {match.venue ? ` · ${match.venue}` : ''}
-          </p>
-        </div>
-        <span className={`match-status ${match.status}`}>{matchStatus(match.status)}</span>
-      </div>
-
-      {match.notes && <p className="match-notes">{match.notes}</p>}
-
-      {canViewAvailability && (
-        <>
-          <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />
-          <div className="match-actions">
-            {canEditMatch && <button className="secondary-button compact" onClick={onEdit}>Editar partido</button>}
-            {canViewLineup && <button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button>}
-            {canManageLineup && !match.lineup_published && <button className="primary-button compact" onClick={onManageLineup}>Gestionar alineación</button>}
+      <button aria-label={`Ver detalle de ${matchTitle(match)}`} className="match-card-summary" onClick={onOpen} type="button">
+        <div className="match-card-heading">
+          <div>
+            <div className="match-card-labels"><span className="match-competition-label">{match.match_kind === 'official' ? match.season_competitions?.name ?? 'Competición' : 'Amistoso'}</span><span className="eyebrow">
+              {match.is_home ? 'LOCAL' : 'VISITANTE'} · {match.rugby_format === 'sevens' ? 'SEVEN' : 'XV'}
+            </span></div>
+            <h2>{matchTitle(match)}</h2>
+            <p>{matchLogistics(match)}</p>
           </div>
-        </>
-      )}
-      {!canViewAvailability && canViewLineup && (
-        <div className="match-actions"><button className={`${isPlayer ? 'primary' : 'secondary'}-button compact`} onClick={onViewLineup}>Ver convocatoria</button></div>
-      )}
+          {canEditMatch && <span className={`match-status ${match.status}`}>{matchStatus(match.status)}</span>}
+        </div>
+        {match.notes && <p className="match-notes">{match.notes}</p>}
+      </button>
+      {canViewAvailability && onViewAvailability && <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />}
       {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
     </article>
   )
@@ -86,14 +43,12 @@ function AvailabilitySummary({ availability, eligiblePlayerCount, onView }: { av
   const responseCount = new Set(availability.map((item) => item.player_id)).size
   const missingCount = Math.max(0, eligiblePlayerCount - responseCount)
 
-  return (
-    <div className="availability-summary">
-      <button className="available" onClick={onView}>{count('available')} disponibles</button>
-      <button className="doubt" onClick={onView}>{count('doubt')} dudas</button>
-      <button className="unavailable" onClick={onView}>{count('unavailable')} no disponibles</button>
-      <button className="unanswered" onClick={onView}>{missingCount} sin responder</button>
-    </div>
-  )
+  return <div className="availability-summary">
+    <button className="available" onClick={onView} type="button">{count('available')} disponibles</button>
+    <button className="doubt" onClick={onView} type="button">{count('doubt')} dudas</button>
+    <button className="unavailable" onClick={onView} type="button">{count('unavailable')} no disponibles</button>
+    <button className="unanswered" onClick={onView} type="button">{missingCount} sin responder</button>
+  </div>
 }
 
 function matchStatus(status: Match['status']) {

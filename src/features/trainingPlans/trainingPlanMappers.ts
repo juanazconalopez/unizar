@@ -6,8 +6,8 @@ import { preseasonTrainingPlanValues } from './preseasonDemoPlans'
 
 export function initialTrainingPlanValues(plan: TrainingPlan | undefined, template: TrainingPlan | undefined, seasons: Season[]): TrainingPlanValues {
   const source = plan ?? template
-  const date = plan?.session_date ?? todayIso()
-  const selectedSeason = source ? seasons.find((season) => season.id === source.season_id) : seasonForDate(seasons, date) ?? seasons[0]
+  const date = plan?.session_date ?? (template ? nextTrainingDate(seasons) : todayIso())
+  const selectedSeason = seasonForDate(seasons, date) ?? (source ? seasons.find((season) => season.id === source.season_id) : seasons[0])
   return {
     seasonId: selectedSeason?.id ?? '', sessionDate: date,
     title: template ? `Copia de ${template.title}` : source?.title ?? '',
@@ -19,6 +19,15 @@ export function initialTrainingPlanValues(plan: TrainingPlan | undefined, templa
         }))
       : [emptyTrainingExercise(1)],
   }
+}
+
+function nextTrainingDate(seasons: Season[]) {
+  const tomorrow = addDays(todayIso(), 1)
+  if (seasonForDate(seasons, tomorrow)) return tomorrow
+  const nextSeason = seasons
+    .filter((season) => season.end_date >= tomorrow)
+    .sort((first, second) => first.start_date.localeCompare(second.start_date))[0]
+  return nextSeason ? (nextSeason.start_date > tomorrow ? nextSeason.start_date : tomorrow) : tomorrow
 }
 
 export function emptyTrainingExercise(index: number): TrainingExerciseValues {

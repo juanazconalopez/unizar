@@ -15,7 +15,22 @@ describe('MatchForm competitions', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar partido' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      competitionId: 'competition-1', matchKind: 'official', matchDate: '2026-09-20', opponent: 'Fénix CR',
+      competitionId: 'competition-1', matchKind: 'official', matchDate: '2026-09-20', opponent: 'Fénix CR', callupTime: '', callupVenue: '',
+    }))
+  })
+
+  test('saves optional meeting time and place separately from the match venue', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<MatchForm competitions={[makeSeasonCompetition()]} initialDate="2026-09-20" seasons={[makeSeason()]} onCancel={vi.fn()} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText('Rival'), 'Quebrantahuesos')
+    await user.type(screen.getByLabelText('Hora de convocatoria'), '10:30')
+    await user.type(screen.getByLabelText('Lugar de convocatoria'), 'Aparcamiento del campus')
+    await user.click(screen.getByRole('button', { name: 'Guardar partido' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      callupTime: '10:30', callupVenue: 'Aparcamiento del campus',
     }))
   })
 

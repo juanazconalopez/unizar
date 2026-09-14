@@ -4,7 +4,7 @@ import type { Match, MatchLineup, SeasonCallupReport } from '../types'
 import { callupReportTsv, callupReportXml, lineupPlainText, lineupXml } from './matchExports'
 
 const match: Match = {
-  id: 'match-1', season_id: 'season-1', opponent: 'Rival & Compañía', match_date: '2026-08-20', kickoff_time: '12:00:00', venue: 'Campo <Norte>', is_home: true,
+  id: 'match-1', season_id: 'season-1', opponent: 'Rival & Compañía', match_date: '2026-08-20', kickoff_time: '12:00:00', venue: 'Campo <Norte>', callup_time: '10:30:00', callup_venue: 'Salida <Norte>', is_home: true,
   notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: true, created_by: 'owner-1', created_at: '2026-08-01T10:00:00Z', updated_at: '2026-08-01T10:00:00Z', seasons: { name: 'Temporada 2026/27' },
 }
 const entries: MatchLineup[] = [

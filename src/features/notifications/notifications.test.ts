@@ -5,7 +5,7 @@ import { buildNotifications, type NotificationFeedData } from './notifications'
 
 const match = (overrides: Partial<Match> = {}): Match => ({
   id: 'match-1', season_id: 'season-1', opponent: 'Rival Rugby', match_date: '2026-08-12',
-  kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: null,
+  kickoff_time: '12:00:00', venue: 'Campo central', callup_time: null, callup_venue: null, is_home: true, notes: null,
   status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: true,
   created_by: 'owner-1', created_at: '2026-08-03T10:00:00.000Z', updated_at: '2026-08-07T10:00:00.000Z',
   seasons: { name: 'Temporada 2026' }, ...overrides,

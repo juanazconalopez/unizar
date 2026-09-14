@@ -8,7 +8,7 @@ import { MatchAvailabilityDialog } from './MatchAvailabilityDialog'
 
 const match: Match = {
   id: 'match-1', season_id: 'season-1', opponent: 'Rival', match_date: addDays(todayIso(), 4), kickoff_time: null,
-  venue: null, is_home: true, notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv',
+  venue: null, callup_time: null, callup_venue: null, is_home: true, notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv',
   lineup_published: false, created_by: 'coach-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   seasons: { name: 'Temporada' },
 }

@@ -217,13 +217,15 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .match-form-dialog { width: min(760px,100%); }
 .match-list { display: grid; gap: 16px; }
 .match-card { padding: 22px; border: 1px solid var(--match-border,var(--line)); border-left: 4px solid var(--match-color,var(--green)); border-radius: 15px; background: var(--match-soft,white); box-shadow: var(--shadow); }
+.match-card-summary { width: 100%; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: pointer; }
+.match-card-summary:focus-visible { outline: 2px solid var(--match-color,var(--green)); outline-offset: 5px; border-radius: 8px; }
 .match-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
 .match-card-labels { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
 .match-competition-label { padding: 4px 8px; border-radius: 20px; color: var(--match-text,var(--green)); background: white; box-shadow: inset 0 0 0 1px var(--match-border,var(--line)); font-size: 8px; font-weight: 900; letter-spacing: .45px; text-transform: uppercase; }
 .match-card-heading h2 { margin: 5px 0; font-size: 20px; }
 .match-card-heading h2 i { color: var(--muted); font-size: 12px; font-style: normal; }
 .match-card-heading p, .match-notes { margin: 0; color: var(--muted); font-size: 12px; }
-.match-notes { margin-top: 12px; white-space: pre-wrap; }
+.match-notes { margin-top: 12px; display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: pre-wrap; }
 .match-status { padding: 6px 9px; border-radius: 20px; color: var(--green); background: var(--green-soft); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .match-status.draft, .match-status.cancelled { color: var(--muted); background: #f0f3f1; }
 .field-hint { margin-top: 6px; display: block; color: #8a6818; font-size: 9px; font-weight: 600; line-height: 1.4; }
@@ -320,6 +322,23 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .availability-dialog label { margin-top: 16px; }
 .availability-dialog textarea { min-height: 130px; resize: vertical; }
 .lineup-dialog { width: min(850px,100%); }
+.match-detail-dialog { width: min(700px,100%); }
+.match-detail-heading-actions { display: flex; gap: 7px; }
+.match-detail-date { margin: 6px 0 0; color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.match-detail-logistics { display: grid; gap: 11px; margin: 20px 0; }
+.match-detail-logistics-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+.match-detail-logistics-row > div, .match-detail-notes, .match-detail-callup { padding: 13px 14px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfb; }
+.match-detail-logistics dt { margin-bottom: 4px; color: var(--green); font-size: 8px; font-weight: 900; letter-spacing: .65px; text-transform: uppercase; }
+.match-detail-logistics dd { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.4; }
+.match-detail-logistics dd strong { font-size: 15px; }
+.match-detail-notes { margin-bottom: 18px; }
+.match-detail-notes h3, .match-detail-section-heading h3 { margin: 0; font-size: 16px; }
+.match-detail-notes p { margin: 8px 0 0; white-space: pre-wrap; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.match-detail-callup { margin-top: 18px; background: var(--match-soft,#fbfcfb); }
+.match-detail-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.match-detail-section-heading .eyebrow { display: block; margin-bottom: 4px; }
+.match-callup-pending { margin: 16px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.match-detail-actions { margin-top: 16px; }
 .lineup-dialog .task-detail-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
 .lineup-board { margin: 20px 0; display: grid; grid-template-columns: minmax(230px,.8fr) minmax(330px,1.2fr); align-items: start; gap: 16px; }
 .lineup-board h3 { margin: 0; font-size: 15px; }
@@ -1153,6 +1172,8 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .training-plan-meta span { display: inline-flex; align-items: center; gap: 5px; }
 .training-plan-meta .training-diagram-count { color: #7254a8; }
 .training-plan-card-actions { position: relative; z-index: 2; display: flex; gap: 7px; }
+.training-plan-card-actions .icon-button { width: 35px; height: 35px; border: 1px solid var(--line); color: var(--green); background: white; }
+.training-plan-card-actions .icon-button:hover { border-color: #a6cabb; background: var(--green-soft); }
 .training-header-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .training-library-page, .training-preset-editor-page { max-width: 1180px; }
 .training-library-toolbar { margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -1194,6 +1215,9 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .training-detail-hero-actions .primary-button { border-color: white; color: var(--green-dark); background: white; box-shadow: none; }
 .training-detail-hero-actions .training-pdf-button { border-color: rgba(255,255,255,.5); color: white; background: rgba(255,255,255,.1); }
 .training-detail-hero-actions .primary-button:hover { background: #eff8f2; }
+.training-detail-quick-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.training-detail-quick-actions .icon-button { width: 38px; height: 38px; border: 1px solid rgba(255,255,255,.6); color: white; background: rgba(255,255,255,.1); }
+.training-detail-quick-actions .icon-button:hover { background: rgba(255,255,255,.22); }
 .training-detail-duration { padding: 15px; border: 1px solid rgba(255,255,255,.25); border-radius: 13px; display: flex; align-items: baseline; justify-content: center; gap: 7px; background: rgba(255,255,255,.1); backdrop-filter: blur(5px); }
 .training-detail-duration strong { font-family: 'Manrope',system-ui,sans-serif; font-size: 32px; }
 .training-detail-duration span { color: rgba(255,255,255,.75); font-size: 10px; font-weight: 700; }
@@ -1379,7 +1403,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
   .training-library-card-preview { min-height: 180px; }
   .training-plan-card { padding: 14px; gap: 12px; }
   .training-plan-card-actions { width: 100%; }
-  .training-plan-card-actions button { flex: 1; }
+  .training-plan-card-actions .icon-button { width: 40px; height: 40px; flex: 0 0 40px; }
   .training-detail-hero { padding: 23px 18px; grid-template-columns: 1fr; }
   .training-detail-hero h1 { font-size: 28px; }
   .training-detail-hero-actions { width: 100%; grid-template-columns: 1fr; }
@@ -1512,6 +1536,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
   .task-form-description textarea { min-height: 220px; }
   .match-card { padding: 17px 14px; }
   .match-card-heading { flex-direction: column; gap: 9px; }
+  .match-detail-logistics-row { grid-template-columns: 1fr; }
   .availability-response { align-items: stretch; flex-direction: column; }
   .availability-response-actions { width: 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
   .availability-response-actions button { width: 100%; }

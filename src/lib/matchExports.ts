@@ -7,7 +7,7 @@ export function lineupXml(match: Match, entries: MatchLineup[], profiles: Profil
   const playersById = new Map(profiles.map((profile) => [profile.id, profile.display_name]))
   return `<?xml version="1.0" encoding="UTF-8"?>
 <convocatoria temporada="${escapeXml(match.seasons?.name)}" fecha="${escapeXml(match.match_date)}">
-  <partido rival="${escapeXml(match.opponent)}" condicion="${match.is_home ? 'local' : 'visitante'}" tipo="${match.match_kind === 'official' ? 'oficial' : 'amistoso'}" formato="${match.rugby_format === 'sevens' ? 'seven' : 'xv'}" hora="${escapeXml(match.kickoff_time?.slice(0, 5))}" campo="${escapeXml(match.venue)}" />
+  <partido rival="${escapeXml(match.opponent)}" condicion="${match.is_home ? 'local' : 'visitante'}" tipo="${match.match_kind === 'official' ? 'oficial' : 'amistoso'}" formato="${match.rugby_format === 'sevens' ? 'seven' : 'xv'}" hora="${escapeXml(match.kickoff_time?.slice(0, 5))}" campo="${escapeXml(match.venue)}" hora_convocatoria="${escapeXml(match.callup_time?.slice(0, 5))}" lugar_convocatoria="${escapeXml(match.callup_venue)}" />
   <jugadoras>
 ${ordered.map((entry) => `    <jugadora dorsal="${entry.slot_number}" nombre="${escapeXml(playersById.get(entry.player_id) ?? 'Jugadora')}" rol="${entry.role === 'starter' ? 'titular' : 'suplente'}" />`).join('\n')}
   </jugadoras>
@@ -18,7 +18,7 @@ export function lineupPlainText(match: Match, entries: MatchLineup[], profiles: 
   const playersById = new Map(profiles.map((profile) => [profile.id, profile.display_name]))
   const type = match.match_kind === 'official' ? 'Oficial' : 'Amistoso'
   const format = match.rugby_format === 'sevens' ? 'Rugby Seven' : 'Rugby XV'
-  const details = [formatDate(match.match_date), match.kickoff_time?.slice(0, 5), match.venue].filter(Boolean).join(' · ')
+  const details = [formatDate(match.match_date), match.callup_time && `Convocatoria ${match.callup_time.slice(0, 5)}`, match.callup_venue, match.kickoff_time && `Inicio ${match.kickoff_time.slice(0, 5)}`, match.venue].filter(Boolean).join(' · ')
   const players = orderedLineup(entries).map((entry) => `${entry.slot_number}. ${playersById.get(entry.player_id) ?? 'Jugadora'}`)
   return [`CONVOCATORIA · ${type} · ${format}`, `Partido contra ${match.opponent}`, details, '', ...players].join('\n')
 }

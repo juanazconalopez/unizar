@@ -7,7 +7,7 @@ import type { Match } from '../../types'
 import { MatchesView } from './MatchesView'
 
 const match = (overrides: Partial<Match> = {}): Match => ({
-  id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,
+  id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', callup_time: null, callup_venue: null, is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,
 })
 
 const common = { seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', canManage: false, canViewAvailability: false, isPlayer: true, onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
@@ -48,7 +48,7 @@ describe('MatchesView', () => {
     render(<MatchesView {...common} onSaveAvailability={onSaveAvailability} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
     await user.click(screen.getByRole('button', { name: 'Rechazar' }))
-    const dialog = screen.getByRole('dialog', { name: /Partido contra/ })
+    const dialog = screen.getByRole('dialog', { name: /Unizar Fem\. vs/ })
     await user.selectOptions(within(dialog).getByLabelText('Respuesta'), 'doubt')
     await user.type(within(dialog).getByLabelText('Comentario opcional'), 'Molestias leves')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar respuesta' }))
@@ -64,23 +64,19 @@ describe('MatchesView', () => {
     expect(screen.queryByText('Rival secreto')).not.toBeInTheDocument()
   })
 
-  test('shows the lineup button only after a non-empty lineup is published', async () => {
+  test('shows the published lineup inside the match detail', async () => {
     const user = userEvent.setup()
     const lineup = [{ match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }]
     const view = render(<MatchesView {...common} lineups={lineup} onSaveAvailability={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    expect(screen.queryByRole('button', { name: 'Ver convocatoria' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Convocatoria publicada')).not.toBeInTheDocument()
 
     view.rerender(<MatchesView {...common} lineups={lineup} matches={[match({ lineup_published: true })]} onSaveAvailability={vi.fn()} />)
-    const lineupButton = screen.getByRole('button', { name: 'Ver convocatoria' })
-    const availabilityClosed = screen.getByText('Disponibilidad cerrada')
-    expect(lineupButton).toHaveClass('primary-button')
-    expect(lineupButton.compareDocumentPosition(availabilityClosed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
-    await user.click(lineupButton)
-    const dialog = screen.getByRole('dialog', { name: /Partido contra Rival Rugby/ })
-    expect(within(dialog).queryByRole('button', { name: 'Copiar convocatoria' })).not.toBeInTheDocument()
-    expect(within(dialog).queryByRole('button', { name: 'Descargar XML' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    const dialog = screen.getByRole('dialog', { name: /Unizar Fem\. vs Rival Rugby/ })
+    expect(within(dialog).getByText('Convocatoria publicada')).toBeInTheDocument()
+    expect(within(dialog).getByText('Ana Martín')).toBeInTheDocument()
+    expect(within(dialog).getByText('Disponibilidad cerrada')).toBeInTheDocument()
   })
 
   test('does not let the owner manage a lineup after publication', async () => {
@@ -88,8 +84,9 @@ describe('MatchesView', () => {
     const lineup = [{ match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }]
     render(<MatchesView {...common} lineups={lineup} matches={[match({ lineup_published: true })]} canManage canViewAvailability isPlayer={false} userId="owner-1" onSaveAvailability={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    expect(screen.getByRole('button', { name: 'Ver convocatoria' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Gestionar alineación' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    expect(screen.getByRole('button', { name: 'Gestionar convocatoria' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Preparar convocatoria' })).not.toBeInTheDocument()
   })
 
   test('offers the explicit unlock flow to owners and coaches', async () => {
@@ -108,7 +105,8 @@ describe('MatchesView', () => {
       onUnlockLineup={onUnlockLineup}
     />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    await user.click(screen.getByRole('button', { name: 'Ver convocatoria' }))
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    await user.click(screen.getByRole('button', { name: 'Gestionar convocatoria' }))
     await user.click(screen.getByRole('button', { name: 'Desbloquear para editar' }))
     await user.click(screen.getByRole('button', { name: 'Sí, desbloquear' }))
     expect(onUnlockLineup).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }))
@@ -128,8 +126,9 @@ describe('MatchesView', () => {
     ]
     render(<MatchesView {...common} availability={availability} profiles={profiles} canManage canViewAvailability isPlayer={false} userId="owner-1" onSaveAvailability={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    await user.click(screen.getByRole('button', { name: '1 dudas' }))
-    const dialog = screen.getByRole('dialog', { name: /Partido contra Rival Rugby/ })
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    await user.click(screen.getByRole('button', { name: 'Ver disponibilidades' }))
+    const dialog = screen.getByRole('dialog', { name: /Unizar Fem\. vs Rival Rugby/ })
     expect(dialog).toHaveTextContent('Disponibles1')
     expect(dialog).toHaveTextContent('En duda1')
     expect(dialog).toHaveTextContent('No disponibles1')
@@ -145,12 +144,13 @@ describe('MatchesView', () => {
     render(<MatchesView {...common} availability={availability} canViewAvailability canViewReport isPlayer={false} onLoadCallupReport={vi.fn()} onSaveAvailability={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    expect(screen.getByRole('button', { name: '1 dudas' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Editar partido' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Gestionar alineación' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Preparar convocatoria' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '1 dudas' }))
-    expect(screen.getByRole('dialog', { name: /Partido contra/ })).toHaveTextContent('Pendiente del trabajo')
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    await user.click(screen.getByRole('button', { name: 'Ver disponibilidades' }))
+    expect(screen.getByRole('dialog', { name: /Unizar Fem/ })).toHaveTextContent('Pendiente del trabajo')
   })
 
   test('shows active season players who have not answered yet', async () => {
@@ -159,8 +159,9 @@ describe('MatchesView', () => {
     const memberships = [makeMembership(), makeMembership({ id: 'membership-2', player_id: 'player-2' })]
     render(<MatchesView {...common} availability={[]} memberships={memberships} profiles={profiles} canManage canViewAvailability isPlayer={false} userId="owner-1" onSaveAvailability={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    await user.click(screen.getByRole('button', { name: '2 sin responder' }))
-    const dialog = screen.getByRole('dialog', { name: /Partido contra Rival Rugby/ })
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    await user.click(screen.getByRole('button', { name: 'Ver disponibilidades' }))
+    const dialog = screen.getByRole('dialog', { name: /Unizar Fem\. vs Rival Rugby/ })
     expect(dialog).toHaveTextContent('Sin responder2')
     expect(dialog).toHaveTextContent('Bea Sin Responder')
   })
@@ -169,8 +170,9 @@ describe('MatchesView', () => {
     const user = userEvent.setup(); const onSaveLineup = vi.fn().mockResolvedValue(undefined)
     render(<MatchesView {...common} availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} canManage canViewAvailability isPlayer={false} userId="owner-1" onSaveAvailability={vi.fn()} onSaveLineup={onSaveLineup} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    await user.click(screen.getByRole('button', { name: 'Gestionar alineación' }))
-    const dialog = screen.getByRole('dialog', { name: /Partido contra/ })
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem/ }))
+    await user.click(screen.getByRole('button', { name: 'Preparar convocatoria' }))
+    const dialog = screen.getByRole('dialog', { name: /Unizar Fem/ })
     await user.click(within(dialog).getByRole('button', { name: 'Añadir' }))
     await user.click(within(dialog).getByRole('checkbox', { name: 'Publicar convocatoria para las jugadoras' }))
     await user.click(within(dialog).getByRole('button', { name: 'Guardar alineación' }))

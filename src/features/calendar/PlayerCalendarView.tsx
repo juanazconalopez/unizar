@@ -21,7 +21,7 @@ import type {
   TrainingTask,
 } from '../../types'
 import { MatchCard } from '../matches/MatchCard'
-import { MatchLineupDialog } from '../matches/MatchLineupDialog'
+import { MatchDetailDialog } from '../matches/MatchDetailDialog'
 import { SurveyClosureCards } from '../surveys/SurveyClosureCards'
 import { HolidayDayContext } from './HolidayDayContext'
 import { AnnouncementCard } from '../tasks/AnnouncementCard'
@@ -74,7 +74,7 @@ export function PlayerCalendarView({
   const initialDate = focusedDate ?? today
   const [selectedDate, setSelectedDate] = useState(initialDate)
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
-  const [lineupMatch, setLineupMatch] = useState<Match | null>(null)
+  const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const holidays = useSeasonHolidayDates(memberships.map((membership) => membership.season_id), providedHolidays)
   const visibleTasks = tasks.filter((task) => task.status === 'published' && canUserCompleteTask(task, memberships, userId))
@@ -118,23 +118,16 @@ export function PlayerCalendarView({
 
   function renderMatch(match: Match) {
     return <MatchCard
-      availability={availability.filter((item) => item.match_id === match.id)}
-      canManage={false}
-      canViewAvailability={false}
-      eligiblePlayerCount={0}
+      canEditMatch={false}
       isPlayer
       key={match.id}
-      lineup={lineups.filter((entry) => entry.match_id === match.id)}
       match={match}
       ownAvailability={availability.find((item) => item.match_id === match.id && item.player_id === userId)}
-      onEdit={() => undefined}
-      onManageLineup={() => undefined}
+      onOpen={() => setDetailMatch(match)}
       onSaveAvailability={onSaveAvailability ? async (...args) => {
         await onSaveAvailability(...args)
         await onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`)
       } : undefined}
-      onViewAvailability={() => undefined}
-      onViewLineup={() => setLineupMatch(match)}
     />
   }
 
@@ -190,14 +183,23 @@ export function PlayerCalendarView({
         </div>
       </section>
     </div>
-    {lineupMatch && <MatchLineupDialog
-      availability={availability.filter((item) => item.match_id === lineupMatch.id)}
-      canExport={false}
-      entries={lineups.filter((entry) => entry.match_id === lineupMatch.id)}
-      match={lineupMatch}
-      memberships={memberships}
+    {detailMatch && <MatchDetailDialog
+      canEditMatch={false}
+      canManageLineup={false}
+      canViewAvailability={false}
+      isPlayer
+      lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
+      match={detailMatch}
+      ownAvailability={availability.find((item) => item.match_id === detailMatch.id && item.player_id === userId)}
       profiles={profiles}
-      onClose={() => setLineupMatch(null)}
+      onClose={() => setDetailMatch(null)}
+      onEdit={() => undefined}
+      onManageLineup={() => undefined}
+      onSaveAvailability={onSaveAvailability ? async (...args) => {
+        await onSaveAvailability(...args)
+        await onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`)
+      } : undefined}
+      onViewAvailability={() => undefined}
     />}
   </div>
 }

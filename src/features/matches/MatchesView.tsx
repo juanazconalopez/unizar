@@ -21,6 +21,7 @@ import type {
 import { MatchAvailabilityDialog } from './MatchAvailabilityDialog'
 import { MatchCalendarView } from './MatchCalendarView'
 import { MatchCard } from './MatchCard'
+import { MatchDetailDialog } from './MatchDetailDialog'
 import { MatchForm } from './MatchForm'
 import { MatchLineupDialog } from './MatchLineupDialog'
 import { MatchListView } from './MatchListView'
@@ -92,6 +93,7 @@ export function MatchesView({
   const [month, setMonth] = useState(`${(focusedDate ?? today).slice(0, 7)}-01`)
   const [formMatch, setFormMatch] = useState<Match | null | undefined>(undefined)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
+  const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
@@ -138,32 +140,29 @@ export function MatchesView({
   }
 
   function renderMatch(match: Match) {
-    const eligibleProfiles = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
+    const eligiblePlayerCount = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
       membership.player_id === profile.id
       && membership.season_id === match.season_id
       && membershipCoversDate(membership, match.match_date)
-    )))
+    ))).length
     return (
       <MatchCard
         availability={availability.filter((item) => item.match_id === match.id)}
-        eligiblePlayerCount={eligibleProfiles.length}
-        canManage={canManage}
+        canEditMatch={canManage}
         canViewAvailability={canViewAvailability}
+        eligiblePlayerCount={eligiblePlayerCount}
         isPlayer={isPlayer}
         key={match.id}
-        lineup={lineups.filter((entry) => entry.match_id === match.id)}
         match={match}
         ownAvailability={availability.find(
           (item) => item.match_id === match.id && item.player_id === userId,
         )}
-        onEdit={() => setFormMatch(match)}
-        onManageLineup={() => setLineupMatch({ match, editable: true })}
+        onOpen={() => setDetailMatch(match)}
         onSaveAvailability={async (...args) => {
           await onSaveAvailability(...args)
           await refreshMatchMonth(match.match_date)
         }}
         onViewAvailability={() => setAvailabilityMatch(match)}
-        onViewLineup={() => setLineupMatch({ match, editable: canManage })}
       />
     )
   }
@@ -252,6 +251,25 @@ export function MatchesView({
           } : undefined}
         />
       )}
+
+      {detailMatch && <MatchDetailDialog
+        canEditMatch={canManage}
+        canManageLineup={canManage}
+        canViewAvailability={canViewAvailability}
+        isPlayer={isPlayer}
+        lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
+        match={detailMatch}
+        ownAvailability={availability.find((item) => item.match_id === detailMatch.id && item.player_id === userId)}
+        profiles={profiles}
+        onClose={() => setDetailMatch(null)}
+        onEdit={() => { setDetailMatch(null); setFormMatch(detailMatch) }}
+        onManageLineup={() => { setDetailMatch(null); setLineupMatch({ match: detailMatch, editable: true }) }}
+        onSaveAvailability={async (...args) => {
+          await onSaveAvailability(...args)
+          await refreshMatchMonth(detailMatch.match_date)
+        }}
+        onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
+      />}
 
       {availabilityMatch && (
         <MatchAvailabilityDialog

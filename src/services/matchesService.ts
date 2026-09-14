@@ -9,6 +9,8 @@ function matchPayload(values: MatchValues) {
     match_date: values.matchDate,
     kickoff_time: values.kickoffTime || null,
     venue: values.venue.trim() || null,
+    callup_time: values.callupTime || null,
+    callup_venue: values.callupVenue.trim() || null,
     is_home: values.isHome,
     notes: values.notes.trim() || null,
     status: values.status,

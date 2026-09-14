@@ -315,6 +315,8 @@ export type MatchValues = {
   matchDate: string
   kickoffTime: string
   venue: string
+  callupTime: string
+  callupVenue: string
   isHome: boolean
   notes: string
   status: MatchStatus

@@ -52,7 +52,8 @@ export function MatchForm({ competitions = [], initialDate, match, seasons, onCa
         seasonId: String(form.get('seasonId')), opponent: String(form.get('opponent')),
         competitionId: matchKind === 'official' ? competitionId : '',
         matchDate: String(form.get('matchDate')), kickoffTime: String(form.get('kickoffTime')),
-        venue: String(form.get('venue')), isHome: form.get('isHome') === 'true', notes: String(form.get('notes')),
+        venue: String(form.get('venue')), callupTime: String(form.get('callupTime')), callupVenue: String(form.get('callupVenue')),
+        isHome: form.get('isHome') === 'true', notes: String(form.get('notes')),
         status: String(form.get('status')) as MatchStatus,
         matchKind,
         rugbyFormat: String(form.get('rugbyFormat')) as RugbyFormat,
@@ -72,6 +73,8 @@ export function MatchForm({ competitions = [], initialDate, match, seasons, onCa
       <label>Fecha<input disabled={structureLocked} name="matchDate" onChange={(event) => changeDate(event.target.value)} required type="date" value={matchDate} />{structureLocked && <input name="matchDate" type="hidden" value={match?.match_date} />}</label>
       <label>Hora<input defaultValue={match?.kickoff_time?.slice(0, 5) ?? ''} name="kickoffTime" type="time" /></label>
       <label>Campo o localidad<input defaultValue={match?.venue ?? ''} name="venue" /></label>
+      <label>Hora de convocatoria<input defaultValue={match?.callup_time?.slice(0, 5) ?? ''} name="callupTime" type="time" /></label>
+      <label>Lugar de convocatoria<input defaultValue={match?.callup_venue ?? ''} name="callupVenue" placeholder="Ej. aparcamiento del campus" /></label>
       <label>Condición<select defaultValue={String(match?.is_home ?? true)} name="isHome"><option value="true">Local</option><option value="false">Visitante</option></select></label>
       <label>Tipo de partido<select disabled={structureLocked} name="matchKind" onChange={(event) => setMatchKind(event.target.value as MatchKind)} value={matchKind}><option value="official">Oficial</option><option value="friendly">Amistoso</option></select>{structureLocked && <input name="matchKind" type="hidden" value={match?.match_kind} />}</label>
       {matchKind === 'official' && <label>Competición<select disabled={structureLocked || !availableCompetitions.length} name="competitionId" onChange={(event) => setCompetitionId(event.target.value)} required value={competitionId}><option disabled value="">Selecciona una competición</option>{availableCompetitions.map((competition) => <option key={competition.id} value={competition.id}>{competition.name}{competition.is_default ? ' · Predeterminada' : ''}</option>)}</select>{structureLocked && <input name="competitionId" type="hidden" value={competitionId} />}{!availableCompetitions.length && <small className="field-hint">Crea primero una competición dentro de esta temporada.</small>}</label>}

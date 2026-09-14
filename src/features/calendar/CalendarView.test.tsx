@@ -10,7 +10,7 @@ import { CalendarView } from './CalendarView'
 function makeMatch(overrides: Partial<Match> = {}): Match {
   return {
     id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: todayIso(),
-    kickoff_time: '12:00:00', venue: 'Campo central', is_home: true, notes: null,
+    kickoff_time: '12:00:00', venue: 'Campo central', callup_time: null, callup_venue: null, is_home: true, notes: null,
     status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false,
     created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,

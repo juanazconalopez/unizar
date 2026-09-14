@@ -30,6 +30,7 @@ import type {
 } from '../../types'
 import { MatchAvailabilityDialog } from '../matches/MatchAvailabilityDialog'
 import { MatchCard } from '../matches/MatchCard'
+import { MatchDetailDialog } from '../matches/MatchDetailDialog'
 import { MatchForm } from '../matches/MatchForm'
 import { MatchLineupDialog } from '../matches/MatchLineupDialog'
 import { SeasonCallupReportView } from '../matches/SeasonCallupReportView'
@@ -107,6 +108,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [matchForm, setMatchForm] = useState<Match | null | undefined>(undefined)
   const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
+  const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [publishedTrainingPlans, setPublishedTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
@@ -205,27 +207,22 @@ export function CalendarView(props: CalendarViewProps) {
   }
 
   function renderMatch(match: Match) {
-    const eligibleProfiles = activePlayers(props.profiles).filter((profile) => props.memberships.some((membership) => (
+    const eligiblePlayerCount = activePlayers(props.profiles).filter((profile) => props.memberships.some((membership) => (
       membership.player_id === profile.id
       && membership.season_id === match.season_id
       && membershipCoversDate(membership, match.match_date)
-    )))
+    ))).length
     return <MatchCard
       availability={props.availability.filter((item) => item.match_id === match.id)}
-      canManage={access.matchEdit || access.lineupEdit}
       canEditMatch={access.matchEdit}
-      canManageLineup={access.lineupEdit}
       canViewAvailability
-      eligiblePlayerCount={eligibleProfiles.length}
+      eligiblePlayerCount={eligiblePlayerCount}
       isPlayer={false}
       key={match.id}
-      lineup={props.lineups.filter((entry) => entry.match_id === match.id)}
       match={match}
-      onEdit={() => { if (access.matchEdit) setMatchForm(match) }}
-      onManageLineup={() => { if (access.lineupEdit) setLineupMatch({ match, editable: true }) }}
+      onOpen={() => setDetailMatch(match)}
       onSaveAvailability={async () => undefined}
       onViewAvailability={() => setAvailabilityMatch(match)}
-      onViewLineup={() => setLineupMatch({ match, editable: access.lineupEdit })}
     />
   }
 
@@ -342,6 +339,19 @@ export function CalendarView(props: CalendarViewProps) {
       onClose={() => setLineupMatch(null)}
       onUnlock={access.lineupUnlock ? async () => { await props.onUnlockLineup(lineupMatch.match); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`) } : undefined}
       onSave={access.lineupEdit ? async (entries, published) => { await props.onSaveLineup(lineupMatch.match, entries, published); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`); setLineupMatch(null) } : undefined}
+    />}
+    {detailMatch && <MatchDetailDialog
+      canEditMatch={access.matchEdit}
+      canManageLineup={access.lineupEdit}
+      canViewAvailability
+      isPlayer={false}
+      lineup={props.lineups.filter((entry) => entry.match_id === detailMatch.id)}
+      match={detailMatch}
+      profiles={props.profiles}
+      onClose={() => setDetailMatch(null)}
+      onEdit={() => { setDetailMatch(null); setMatchForm(detailMatch) }}
+      onManageLineup={() => { setDetailMatch(null); setLineupMatch({ match: detailMatch, editable: true }) }}
+      onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
     />}
     {availabilityMatch && <MatchAvailabilityDialog
       availability={props.availability.filter((item) => item.match_id === availabilityMatch.id)}

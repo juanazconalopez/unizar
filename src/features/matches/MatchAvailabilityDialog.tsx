@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
 import type { AvailabilityStatus, Match, MatchAvailability, Profile } from '../../types'
+import { matchTitle } from './matchPresentation'
 
 const groups: { status: AvailabilityStatus | 'unanswered'; title: string; empty: string }[] = [
   { status: 'available', title: 'Disponibles', empty: 'Ninguna jugadora disponible.' },
@@ -28,7 +29,7 @@ export function MatchAvailabilityDialog({ availability, canEdit = false, eligibl
   const respondedIds = new Set(availability.map((item) => item.player_id))
 
   return <Modal className="availability-details-dialog" labelledBy={titleId} onClose={onClose}>
-    <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD DEL EQUIPO</span><h2 id={titleId}>Partido contra {match.opponent}</h2><p>{availability.length} {availability.length === 1 ? 'respuesta recibida' : 'respuestas recibidas'}</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
+    <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD DEL EQUIPO</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{availability.length} {availability.length === 1 ? 'respuesta recibida' : 'respuestas recibidas'}</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
     {canEdit && match.lineup_published && <div className="availability-locked"><strong>Edición de disponibilidad cerrada</strong><span>Desbloquea primero la convocatoria para registrar cambios comunicados por las jugadoras.</span></div>}
     <div className="availability-groups">{groups.map((group) => {
       const responses = group.status === 'unanswered'

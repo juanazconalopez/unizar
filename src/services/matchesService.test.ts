@@ -24,6 +24,8 @@ const values: MatchValues = {
   matchDate: '2026-09-12',
   kickoffTime: '',
   venue: '  ',
+  callupTime: '',
+  callupVenue: '  ',
   isHome: true,
   notes: '  Partido de liga  ',
   status: 'published',
@@ -52,7 +54,7 @@ describe('matchesService', () => {
     await createMatch(values, 'owner-1')
     expect(mocks.insert).toHaveBeenCalledWith({
       season_id: 'season-1', competition_id: 'competition-1', opponent: 'Fénix CR', match_date: '2026-09-12',
-      kickoff_time: null, venue: null, is_home: true, notes: 'Partido de liga',
+      kickoff_time: null, venue: null, callup_time: null, callup_venue: null, is_home: true, notes: 'Partido de liga',
       status: 'published', match_kind: 'official', rugby_format: 'xv', created_by: 'owner-1',
     })
 

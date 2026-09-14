@@ -4,7 +4,7 @@ import { compareMatches, matchColor } from './seasonCompetitions'
 
 function match(overrides: Partial<Match> = {}): Match {
   return {
-    id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival', match_date: '2026-09-20', kickoff_time: '12:00:00', venue: null,
+    id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival', match_date: '2026-09-20', kickoff_time: '12:00:00', venue: null, callup_time: null, callup_venue: null,
     is_home: true, notes: null, status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false,
     created_by: 'owner-1', created_at: '2026-09-01T10:00:00Z', updated_at: '2026-09-01T10:00:00Z', seasons: { name: '2026' },
     season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,

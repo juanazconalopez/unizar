@@ -8,6 +8,7 @@ import { copyText, downloadText } from '../../lib/fileExport'
 import { lineupPlainText, lineupXml } from '../../lib/matchExports'
 import { activePlayers, membershipCoversDate } from '../../lib/selectors'
 import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer } from '../../types'
+import { matchLogistics, matchTitle } from './matchPresentation'
 
 export function MatchLineupDialog({ availability, canExport = true, canPublish = true, entries, match, memberships, profiles, onClose, onSave, onUnlock }: {
   availability: MatchAvailability[]
@@ -97,7 +98,7 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
   }
 
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
-    <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>Partido contra {match.opponent}</h2><p>{matchTypeLabel(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
+    <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{matchLogistics(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
     {editable ? <div className="lineup-board">
       <section className="available-player-pool"><h3>Disponibles</h3><p>Arrastra una jugadora a un dorsal o pulsa Añadir.</p><div>{selectable.map((player) => <article draggable key={player.id} onDragStart={(event) => event.dataTransfer.setData('text/player-id', player.id)}><Avatar name={player.display_name} /><strong>{player.display_name}</strong><button className="secondary-button compact" onClick={() => { const empty = Array.from({ length: limit }, (_, index) => index + 1).find((slot) => !slots[slot]); if (empty) assign(player.id, empty) }} type="button">Añadir</button></article>)}{!selectable.length && <span className="lineup-empty">No quedan jugadoras disponibles sin asignar.</span>}</div></section>
       <section className="numbered-lineup"><h3>Alineación</h3><div className="lineup-section-label">Titulares</div>{Array.from({ length: limit }, (_, index) => index + 1).map((slot) => {
@@ -141,7 +142,7 @@ function MissingStartersDialog({ missing, onCancel, onConfirm }: { missing: numb
 
 function IconWarning() { return <span aria-hidden="true">!</span> }
 
-function PublishedLineup({ entries, profiles, starters }: { entries: MatchLineup[]; profiles: Profile[]; starters: number }) {
+export function PublishedLineup({ entries, profiles, starters }: { entries: MatchLineup[]; profiles: Profile[]; starters: number }) {
   const ordered = [...entries].sort((first, second) => first.slot_number - second.slot_number)
   return <div className="lineup-roster"><RosterSection entries={ordered.filter((entry) => entry.slot_number <= starters)} label="Titulares" profiles={profiles} /><RosterSection entries={ordered.filter((entry) => entry.slot_number > starters)} label="Suplentes" profiles={profiles} /></div>
 }
@@ -154,8 +155,4 @@ function RosterSection({ entries, label, profiles }: { entries: MatchLineup[]; l
 function lineupLimit(match: Match) {
   if (match.match_kind === 'official') return 23
   return match.rugby_format === 'sevens' ? 7 : 15
-}
-
-function matchTypeLabel(match: Match) {
-  return `${match.match_kind === 'official' ? 'Oficial' : 'Amistoso'} · ${match.rugby_format === 'sevens' ? 'Rugby Seven' : 'Rugby XV'}`
 }

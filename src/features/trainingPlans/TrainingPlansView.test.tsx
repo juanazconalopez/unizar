@@ -102,6 +102,20 @@ describe('training plan reading view', () => {
     expect(mocks.fetchTrainingPlan).toHaveBeenCalledWith(pastPlan.id)
   })
 
+  test('duplicates a past training plan from its detail into a future editable session', async () => {
+    const pastPlan = { ...plan, id: 'past-plan', session_date: addDays(todayIso(), -10), title: 'Entrenamiento histórico' }
+    mocks.fetchTrainingPlans.mockResolvedValue([])
+    mocks.fetchTrainingPlan.mockResolvedValue(pastPlan)
+    const user = userEvent.setup()
+    render(<TrainingPlansView focusedPlanId={pastPlan.id} onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    await user.click((await screen.findAllByRole('button', { name: 'Duplicar entrenamiento' }))[0])
+
+    expect(screen.getByText('DUPLICAR ENTRENAMIENTO')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Copia de Entrenamiento histórico')).toBeInTheDocument()
+    expect(screen.getByLabelText('Fecha')).toHaveValue(addDays(todayIso(), 1))
+  })
+
   test('opens the card in read mode and keeps Editar for the form', async () => {
     mocks.fetchTrainingPlans.mockResolvedValue([plan])
     const print = vi.spyOn(window, 'print').mockImplementation(() => undefined)
@@ -153,7 +167,7 @@ describe('training plan reading view', () => {
     const user = userEvent.setup()
     render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
 
-    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    await user.click(await screen.findByRole('button', { name: `Editar entrenamiento ${plan.title}` }))
     const description = screen.getByLabelText('Descripción')
     await user.clear(description)
     await user.type(description, 'Descripción que no quiero perder.')
@@ -163,7 +177,7 @@ describe('training plan reading view', () => {
     expect(localStorage.getItem(storageKey)).toContain('Descripción que no quiero perder.')
 
     await user.click(screen.getByRole('button', { name: '← Volver a entrenamientos' }))
-    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    await user.click(await screen.findByRole('button', { name: `Editar entrenamiento ${plan.title}` }))
     expect(screen.getByText('Hay un borrador sin guardar')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Recuperar borrador' }))
@@ -183,7 +197,7 @@ describe('training plan reading view', () => {
     const user = userEvent.setup()
     render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
 
-    await user.click(await screen.findByRole('button', { name: 'Editar' }))
+    await user.click(await screen.findByRole('button', { name: `Editar entrenamiento ${plan.title}` }))
     await user.click(screen.getByRole('button', { name: 'Guardar Juego de evasión como predefinido' }))
     expect(mocks.saveTrainingExercisePreset).toHaveBeenCalledWith(expect.objectContaining({ title: 'Juego de evasión' }), 'owner-1')
 

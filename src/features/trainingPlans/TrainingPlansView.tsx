@@ -217,6 +217,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     return <TrainingPlanDetail
       plan={viewingPlan}
       onBack={() => setViewingPlan(null)}
+      onDuplicate={access.create ? () => { setViewingPlan(null); setEditor({ template: viewingPlan }) } : undefined}
       onEdit={access.edit ? () => { setViewingPlan(null); setEditor({ plan: viewingPlan }) } : undefined}
     />
   }
@@ -256,8 +257,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
                   </div>
                 </div>
                 <div className="training-plan-card-actions">
-                  {access.create && <button className="secondary-button compact" onClick={() => setEditor({ template: plan })} type="button"><Icon name="copy" size={14} />Duplicar</button>}
-                  {access.edit && <button className="secondary-button compact" onClick={() => setEditor({ plan })} type="button">Editar</button>}
+                  {access.create && <button aria-label={`Duplicar entrenamiento ${plan.title}`} className="icon-button" onClick={() => setEditor({ template: plan })} title="Duplicar entrenamiento" type="button"><Icon name="copy" size={16} /></button>}
+                  {access.edit && <button aria-label={`Editar entrenamiento ${plan.title}`} className="icon-button" onClick={() => setEditor({ plan })} title="Editar entrenamiento" type="button"><Icon name="edit" size={16} /></button>}
                 </div>
               </article>
             )

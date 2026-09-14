@@ -1,5 +1,5 @@
 begin;
-select plan(232);
+select plan(234);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -349,6 +349,14 @@ select ok(
 select ok(
   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'matches' and column_name = 'rugby_format'),
   'matches store rugby format'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'matches' and column_name = 'callup_time'),
+  'matches store the optional callup time'
+);
+select ok(
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'matches' and column_name = 'callup_venue'),
+  'matches store the optional callup venue'
 );
 select ok(
   exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'match_lineup' and column_name = 'slot_number'),

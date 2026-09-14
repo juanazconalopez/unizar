@@ -5,12 +5,13 @@ import { SurveyResponseForm } from './SurveyResponseForm'
 import type { SurveyForResponse } from '../../services/surveysService'
 
 export function SurveyResponseDialog({ surveyId, initialSurvey, onClose, onDone }: { surveyId: string; initialSurvey?: SurveyForResponse; onClose: () => void; onDone: () => Promise<void> }) {
-  const [survey, setSurvey] = useState<SurveyForResponse | null>(initialSurvey ?? null)
+  const [loadedSurvey, setLoadedSurvey] = useState<SurveyForResponse | null>(null)
   const [error, setError] = useState('')
+  const survey = initialSurvey ?? loadedSurvey
   useEffect(() => {
-    if (initialSurvey) { setSurvey(initialSurvey); setError(''); return }
+    if (initialSurvey) return
     let active = true
-    void fetchSurveyForResponse(surveyId).then((value) => { if (active) setSurvey(value) }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'No se pudo cargar la encuesta.') })
+    void fetchSurveyForResponse(surveyId).then((value) => { if (active) setLoadedSurvey(value) }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : 'No se pudo cargar la encuesta.') })
     return () => { active = false }
   }, [initialSurvey, surveyId])
   return <Modal className="survey-response-dialog" labelledBy="survey-response-title" onClose={onClose}>

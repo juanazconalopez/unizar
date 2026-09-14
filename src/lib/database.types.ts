@@ -562,6 +562,8 @@ export type Database = {
       }
       matches: {
         Row: {
+          callup_time: string | null
+          callup_venue: string | null
           competition_id: string | null
           created_at: string
           created_by: string
@@ -580,6 +582,8 @@ export type Database = {
           venue: string | null
         }
         Insert: {
+          callup_time?: string | null
+          callup_venue?: string | null
           competition_id?: string | null
           created_at?: string
           created_by: string
@@ -598,6 +602,8 @@ export type Database = {
           venue?: string | null
         }
         Update: {
+          callup_time?: string | null
+          callup_venue?: string | null
           competition_id?: string | null
           created_at?: string
           created_by?: string

@@ -4,6 +4,7 @@ import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
 import { addDays, formatDate, mondayFor, todayIso } from '../../lib/dates'
 import type { AvailabilityStatus, Match, MatchAvailability } from '../../types'
+import { matchTitle } from './matchPresentation'
 
 export function MatchAvailabilityResponse({ initial, match, onSave }: {
   initial?: MatchAvailability
@@ -52,7 +53,7 @@ function RejectAvailabilityDialog({ initial, match, onClose, onSave }: {
   }
 
   return <Modal className="availability-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={submit}>
-    <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD</span><h2 id={titleId}>Partido contra {match.opponent}</h2></div><button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
+    <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD</span><h2 id={titleId}>{matchTitle(match)}</h2></div><button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
     <label>Respuesta<select autoFocus onChange={(event) => setStatus(event.target.value as Exclude<AvailabilityStatus, 'available'>)} value={status}><option value="doubt">Estoy en duda</option><option value="unavailable">No asistiré</option></select></label>
     <label>Comentario opcional<textarea onChange={(event) => setComment(event.target.value)} placeholder="Lesión, incompatibilidad de horario…" rows={5} value={comment} /></label>
     {error && <p className="form-error">{error}</p>}
