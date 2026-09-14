@@ -13,6 +13,7 @@ export type PlayerPreviewData = {
   matches: Match[]
   availability: MatchAvailability[]
   lineups: MatchLineup[]
+  holidays: string[]
 }
 
 const profileFields = 'id, display_name, avatar_path, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at'
@@ -30,15 +31,16 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
   if (membershipsResponse.error) throw membershipsResponse.error
   const memberships = membershipsResponse.data ?? []
   const seasonIds = memberships.map((membership) => membership.season_id)
-  const [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse] = await Promise.all([
+  const [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse] = await Promise.all([
     seasonIds.length ? supabase.from('seasons').select('*').in('id', seasonIds).order('start_date', { ascending: false }) : Promise.resolve({ data: [], error: null }),
     supabase.from('profiles').select(profileFields).eq('is_approved', true).eq('is_active', true).eq('is_archived', false).order('display_name'),
     seasonIds.length ? supabase.from('tasks').select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
     supabase.from('task_results').select('*').eq('player_id', playerId),
     seasonIds.length ? supabase.from('team_announcements').select('*, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
     seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default)').in('season_id', seasonIds).eq('status', 'published').order('match_date') : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? supabase.from('season_holidays').select('holiday_date').in('season_id', seasonIds) : Promise.resolve({ data: [], error: null }),
   ])
-  for (const response of [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse]) if (response.error) throw response.error
+  for (const response of [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse]) if (response.error) throw response.error
   const matches = matchesResponse.data ?? []
   const matchIds = matches.map((match) => match.id)
   const [availabilityResponse, lineupsResponse] = await Promise.all([
@@ -51,6 +53,7 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
     player, seasons: seasonsResponse.data ?? [], memberships,
     profiles: profilesResponse.data ?? [], tasks: tasksResponse.data ?? [], results: resultsResponse.data ?? [],
     announcements: announcementsResponse.data ?? [], matches, availability: availabilityResponse.data ?? [], lineups: lineupsResponse.data ?? [],
+    holidays: (holidaysResponse.data ?? []).map((holiday) => holiday.holiday_date),
   }
 }
 

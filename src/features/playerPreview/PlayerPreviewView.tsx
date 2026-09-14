@@ -32,6 +32,7 @@ export function PlayerPreviewView({ playerId }: { playerId: string }) {
       announcements={data.announcements}
       availability={data.availability}
       birthdays={[]}
+      holidays={data.holidays}
       lineups={data.lineups}
       matches={data.matches}
       memberships={data.memberships}

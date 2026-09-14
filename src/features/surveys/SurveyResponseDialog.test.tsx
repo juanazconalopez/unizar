@@ -17,4 +17,16 @@ describe('SurveyResponseDialog', () => {
     expect(await screen.findByText('Responde pensando en cómo te has sentido después del último partido.')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Escribe tu respuesta…')).toBeInTheDocument()
   })
+
+  test('renders an injected survey without requesting Supabase, for the local preview', () => {
+    mocks.fetchSurveyForResponse.mockClear()
+    render(<SurveyResponseDialog initialSurvey={{
+      id: 'demo-survey', title: 'Disponibilidad de ejemplo', description: 'Así verá la jugadora la encuesta.', endsOn: '2026-10-10',
+      questions: [{ id: 'question-1', prompt: '¿Puedes asistir?', type: 'single', required: true, options: [{ id: 'yes', label: 'Disponible seguro' }, { id: 'maybe', label: 'No, duda o depende' }] }],
+    }} onClose={vi.fn()} onDone={vi.fn().mockResolvedValue(undefined)} surveyId="demo-survey" />)
+
+    expect(screen.getByRole('dialog', { name: 'Disponibilidad de ejemplo' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Disponible seguro')).toBeInTheDocument()
+    expect(mocks.fetchSurveyForResponse).not.toHaveBeenCalled()
+  })
 })
