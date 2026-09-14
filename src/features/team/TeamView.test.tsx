@@ -38,6 +38,17 @@ describe('TeamView', () => {
     expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
+  test('opens an active player preview in a separate read-only tab', async () => {
+    const user = userEvent.setup()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa de Ana Martín como jugadora' }))
+
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('view=player-preview&player=player-1'), '_blank', 'noopener')
+  })
+
   test('edits details and permissions only after opening the detail pencil', async () => {
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)

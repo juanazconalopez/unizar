@@ -6,10 +6,11 @@ export type NavigationTarget = {
   announcementId?: string
   trainingPlanId?: string
   surveyId?: string
+  playerPreviewId?: string
   settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
 }
 
-const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library', 'surveys', 'survey'])
+const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library', 'surveys', 'survey', 'player-preview'])
 const settingsSections = new Set<NonNullable<NavigationTarget['settingsSection']>>(['team', 'seasons', 'library', 'permissions'])
 
 export function navigationFromLocation(location: Pick<Location, 'search'> = window.location): NavigationTarget {
@@ -20,6 +21,7 @@ export function navigationFromLocation(location: Pick<Location, 'search'> = wind
   const announcementId = params.get('announcement') ?? undefined
   const trainingPlanId = params.get('training') ?? undefined
   const surveyId = params.get('survey') ?? undefined
+  const playerPreviewId = params.get('player') ?? undefined
   const settingsSectionCandidate = params.get('section') as NavigationTarget['settingsSection'] | null
   const settingsSection = view === 'settings' && settingsSectionCandidate && settingsSections.has(settingsSectionCandidate)
     ? settingsSectionCandidate
@@ -30,6 +32,7 @@ export function navigationFromLocation(location: Pick<Location, 'search'> = wind
     ...(announcementId ? { announcementId } : {}),
     ...(trainingPlanId ? { trainingPlanId } : {}),
     ...(surveyId ? { surveyId } : {}),
+    ...(playerPreviewId ? { playerPreviewId } : {}),
     ...(settingsSection ? { settingsSection } : {}),
   }
 }
@@ -41,6 +44,7 @@ export function urlForNavigation(target: NavigationTarget) {
   if (target.announcementId) params.set('announcement', target.announcementId)
   if (target.trainingPlanId) params.set('training', target.trainingPlanId)
   if (target.surveyId) params.set('survey', target.surveyId)
+  if (target.playerPreviewId) params.set('player', target.playerPreviewId)
   if (target.view === 'settings' && target.settingsSection) params.set('section', target.settingsSection)
   const query = params.toString()
   return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`

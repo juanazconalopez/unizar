@@ -1,5 +1,5 @@
 begin;
-select plan(223);
+select plan(226);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -665,6 +665,9 @@ select like(
   'the shared permission trigger narrows task rows before reading task-only fields'
 );
 select has_table('public', 'surveys', 'season surveys are persisted');
+select has_function('public', 'can_preview_player', array['uuid'], 'owners can validate a player preview target');
+select ok(has_function_privilege('authenticated', 'public.can_preview_player(uuid)', 'EXECUTE'), 'authenticated users can invoke the protected preview validator');
+select ok(not has_function_privilege('anon', 'public.can_preview_player(uuid)', 'EXECUTE'), 'anonymous users cannot validate preview targets');
 select ok(
   exists (select 1 from pg_constraint where conname = 'surveys_description_length'),
   'survey descriptions have a bounded optional length'

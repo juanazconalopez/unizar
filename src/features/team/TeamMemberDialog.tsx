@@ -9,7 +9,7 @@ import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateD
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], onClose, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
@@ -17,6 +17,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   onClose: () => void
+  onPreviewPlayer?: (player: Profile) => void
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
@@ -140,7 +141,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   return <Modal className="team-member-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={editing ? submit : undefined}>
     <div className="task-detail-heading">
       <div><span className="eyebrow">DATOS DE PERFIL</span><h2 id={titleId}>{person.display_name}</h2></div>
-      <div className="team-member-heading-actions">{approved && onSave && !editing && <button aria-label={`Editar datos de ${person.display_name}`} className="icon-button" onClick={() => setEditing(true)} title={`Editar datos de ${person.display_name}`} type="button"><Icon name="edit" size={17} /></button>}<button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
+      <div className="team-member-heading-actions">{approved && person.is_player && <button aria-label={`Vista previa de ${person.display_name} como jugadora`} className="icon-button" onClick={() => onPreviewPlayer?.(person)} title="Vista previa como jugadora" type="button"><Icon name="arrow" size={17} /></button>}{approved && onSave && !editing && <button aria-label={`Editar datos de ${person.display_name}`} className="icon-button" onClick={() => setEditing(true)} title={`Editar datos de ${person.display_name}`} type="button"><Icon name="edit" size={17} /></button>}<button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
     </div>
     {editing ? <>
       {isPlayer && <ProfilePhotoField avatarPath={person.avatar_path} editable name={displayName || person.display_name} onChange={setPhotoChange} onLoadPhoto={onLoadPhoto} photoChange={photoChange} />}

@@ -253,6 +253,8 @@ Reglas importantes:
   - edad;
   - fecha de nacimiento.
 
+- Desde Datos de perfil, el owner puede abrir una vista previa de calendario como jugadora en una pestaña independiente. Es estrictamente de solo lectura: no permite completar tareas ni modificar disponibilidad, convocatorias, encuestas o perfil. La ruta `player-preview` valida el owner y la jugadora activa antes de cargar datos.
+
 ## Cumpleaños
 
 - Solo cuentan jugadoras de la temporada activa que estén aprobadas, activas, no archivadas y vinculadas en la fecha del cumpleaños.

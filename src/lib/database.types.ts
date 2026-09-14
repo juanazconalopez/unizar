@@ -1316,6 +1316,7 @@ export type Database = {
         Returns: boolean
       }
       current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
+      can_preview_player: { Args: { checked_player_id: string }; Returns: boolean }
       create_season_competition: {
         Args: { checked_color: string; checked_name: string; checked_season_id: string }
         Returns: string

@@ -24,6 +24,7 @@ export function canAccessView(profile: Profile, view: ViewName, permissionKeys?:
   if (view === 'training') return hasPermission(profile, PERMISSIONS.training.view, permissionKeys)
   if (view === 'surveys') return hasPermission(profile, PERMISSIONS.surveys.manage, permissionKeys)
   if (view === 'survey') return hasPermission(profile, PERMISSIONS.surveys.respondOwn, permissionKeys)
+  if (view === 'player-preview') return profile.is_owner
   if (view === 'attendance') return hasPermission(profile, PERMISSIONS.attendance.view, permissionKeys)
   if (view === 'tasks') return false
   if (view === 'matches') return hasPermission(profile, PERMISSIONS.matches.teamAvailability, permissionKeys)

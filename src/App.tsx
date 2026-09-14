@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { AppViewRouter } from './app/AppViewRouter'
+import { PlayerPreviewView } from './app/viewModules'
 import { createAnnouncementActions } from './app/actions/announcementActions'
 import type { AppActions } from './app/actions/appActions'
 import { createClubActions } from './app/actions/clubActions'
@@ -80,6 +81,11 @@ function App() {
   const canManage = canManageSport(profile, data.permissionKeys)
   const canViewTeam = canViewTeamData(profile, data.permissionKeys)
   const errorMessage = feedback.operationError || data.errorMessage || auth.errorMessage
+
+  if (view === 'player-preview') {
+    if (!profile.is_owner || !navigation.playerPreviewId) return <DisabledScreen name={profile.display_name} onSignOut={handleSignOut} />
+    return <Suspense fallback={<LoadingScreen />}><PlayerPreviewView playerId={navigation.playerPreviewId} /></Suspense>
+  }
 
   return <AppLayout
     email={auth.session.user.email ?? ''}

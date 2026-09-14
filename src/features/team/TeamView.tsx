@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { urlForNavigation } from '../../lib/navigation'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
 import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
@@ -124,7 +125,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onSave={onSave} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onUpdate={onUpdate} />}
   </div>
 }
 
