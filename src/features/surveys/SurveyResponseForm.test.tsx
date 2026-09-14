@@ -10,9 +10,9 @@ const questions = [
 ]
 
 describe('SurveyResponseForm', () => {
-  test('preselects the first answer of a single-choice question', () => {
+  test('starts single-choice questions without a preselected answer', () => {
     render(<SurveyResponseForm questions={questions} onSubmit={vi.fn()} />)
-    expect(screen.getByLabelText('Sí')).toBeChecked()
+    expect(screen.getByLabelText('Sí')).not.toBeChecked()
     expect(screen.getByLabelText('No')).not.toBeChecked()
   })
 

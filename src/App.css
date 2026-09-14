@@ -841,6 +841,24 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-editor-dialog, .survey-results-dialog { width: min(720px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }
 .survey-editor-dialog .modal-form-contents, .survey-results-dialog { display: grid; gap: 16px; }
 .survey-response-dialog { width: min(650px,100%); max-height: min(810px,calc(100vh - 32px)); overflow-y: auto; }
+.survey-response-dialog .survey-response-form { margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+.survey-response-form { display: grid; gap: 14px; }
+.survey-response-question { min-width: 0; padding: 16px; border: 1px solid #dce7e1; border-radius: 14px; display: grid; gap: 13px; background: #fbfcfb; }
+.survey-response-question legend { width: 100%; margin: 0; display: flex; align-items: flex-start; gap: 9px; color: var(--ink); font-family: 'Manrope',system-ui,sans-serif; font-size: 14px; line-height: 1.4; }
+.survey-question-number { width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; color: var(--green); background: var(--green-soft); font-size: 11px; font-weight: 800; }
+.survey-options { display: grid; gap: 8px; }
+.survey-option { position: relative; min-height: 52px; margin: 0; padding: 0; border: 1px solid #d8e3de; border-radius: 11px; display: block; color: var(--ink); background: white; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+.survey-option:hover { border-color: #9fc5b2; background: #fbfefc; }
+.survey-option input { position: absolute; width: 1px; min-height: 0; height: 1px; margin: 0; padding: 0; border: 0; overflow: hidden; opacity: 0; clip-path: inset(50%); white-space: nowrap; }
+.survey-option > span { min-height: 50px; padding: 12px 13px; display: grid; grid-template-columns: 22px minmax(0,1fr); align-items: center; gap: 10px; color: #38524a; font-size: 14px; font-weight: 700; line-height: 1.35; }
+.survey-option > span::before { width: 20px; height: 20px; border: 2px solid #84938e; border-radius: 50%; content: ''; display: block; box-sizing: border-box; background: white; }
+.survey-option.multiple > span::before { border-radius: 5px; }
+.survey-option input:checked + span::before { border-color: var(--green); background: var(--green); box-shadow: inset 0 0 0 4px white; }
+.survey-option.multiple input:checked + span::before { border-radius: 5px; box-shadow: inset 0 0 0 4px var(--green), inset 0 0 0 7px white; }
+.survey-option:has(input:checked) { border-color: var(--green); background: var(--green-soft); box-shadow: inset 0 0 0 1px var(--green); }
+.survey-option:focus-within { outline: 3px solid rgba(30,111,92,.24); outline-offset: 2px; }
+.survey-response-question textarea { min-height: 130px; margin: 0; line-height: 1.55; }
+.survey-response-form > .form-actions { margin-top: 2px; }
 .season-holiday-dialog { width: min(620px,100%); }
 .season-holiday-help { margin: 0; color: var(--muted); font-size: 12px; }
 .season-holiday-calendar { display: grid; grid-template-columns: repeat(7,minmax(0,1fr)); gap: 2px; padding: 2px; background: var(--line); }
@@ -1632,6 +1650,10 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
   .form-actions button { width: 100%; }
   .task-form-delete { margin-right: 0; }
   .task-form-dialog .form-actions, .match-form-dialog .form-actions, .availability-dialog .form-actions { position: sticky; z-index: 3; bottom: -21px; margin: 8px -18px -21px; padding: 12px 18px max(14px,env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255,255,255,.96); box-shadow: 0 -8px 18px rgba(31,63,54,.06); backdrop-filter: blur(8px); }
+  .survey-response-dialog .survey-response-form .form-actions { position: sticky; z-index: 3; bottom: -21px; margin: 4px -18px -21px; padding: 12px 18px max(14px,env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255,255,255,.96); box-shadow: 0 -8px 18px rgba(31,63,54,.06); backdrop-filter: blur(8px); }
+  .survey-response-question { padding: 14px; gap: 11px; }
+  .survey-response-question legend { font-size: 15px; }
+  .survey-option > span { min-height: 54px; font-size: 15px; }
   .notification-dialog { padding: 18px 14px; }
   .notification-center > header { align-items: flex-start; flex-direction: column; gap: 8px; }
   .notification-item { grid-template-columns: 8px minmax(0,1fr); }

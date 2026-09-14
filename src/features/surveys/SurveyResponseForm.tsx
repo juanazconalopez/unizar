@@ -20,10 +20,10 @@ export function SurveyResponseForm({ questions, onSubmit }: { questions: SurveyQ
   }
 
   return <form className="panel-form survey-response-form" onSubmit={submit}>
-    {questions.map((question, index) => <fieldset key={question.id}>
-      <legend>{index + 1}. {question.prompt}{question.required && <span aria-label="Obligatoria"> *</span>}</legend>
+    {questions.map((question, index) => <fieldset className="survey-response-question" key={question.id}>
+      <legend><span className="survey-question-number">{index + 1}</span><span>{question.prompt}{question.required && <span aria-label="Obligatoria"> *</span>}</span></legend>
       {question.type === 'long' && <textarea name={`text-${question.id}`} rows={5} placeholder="Escribe tu respuesta…" />}
-      {question.type !== 'long' && <div className="survey-options">{question.options.map((option, optionIndex) => <label key={option.id}><input defaultChecked={question.type === 'single' && optionIndex === 0} name={`option-${question.id}`} type={question.type === 'single' ? 'radio' : 'checkbox'} value={option.id} />{option.label}</label>)}</div>}
+      {question.type !== 'long' && <div className="survey-options">{question.options.map((option) => <label className={`survey-option ${question.type}`} key={option.id}><input name={`option-${question.id}`} type={question.type === 'single' ? 'radio' : 'checkbox'} value={option.id} /><span>{option.label}</span></label>)}</div>}
     </fieldset>)}
     {error && <p className="form-error">{error}</p>}
     <div className="form-actions"><button className="primary-button" disabled={saving} type="submit">{saving ? 'Enviando…' : 'Enviar respuesta'}</button></div>
