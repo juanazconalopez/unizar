@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, test, vi } from 'vitest'
-import type { Match } from '../../types'
+import { makeProfile } from '../../test/fixtures'
+import type { Match, MatchLineup } from '../../types'
 import { MatchDetailDialog } from './MatchDetailDialog'
 
 const match: Match = {
@@ -17,5 +18,12 @@ describe('MatchDetailDialog', () => {
     expect(screen.getByText('Lugar de convocatoria')).toBeInTheDocument()
     expect(screen.getByText('Hora de inicio')).toBeInTheDocument()
     expect(screen.getByText(/Tu disponibilidad ayuda a preparar la convocatoria/)).toBeInTheDocument()
+  })
+
+  test('offers the published lineup copy action to every role', () => {
+    const entries: MatchLineup[] = [{ match_id: match.id, player_id: 'player-1', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]
+    render(<MatchDetailDialog canEditMatch={false} canManageLineup={false} canViewAvailability={false} isPlayer={false} lineup={entries} match={{ ...match, lineup_published: true }} profiles={[makeProfile()]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onViewAvailability={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
   })
 })

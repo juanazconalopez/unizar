@@ -1,6 +1,9 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/ui/Modal'
+import { errorText } from '../../lib/errors'
+import { copyText } from '../../lib/fileExport'
+import { lineupPlainText } from '../../lib/matchExports'
 import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup, Profile } from '../../types'
 import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 import { PublishedLineup } from './MatchLineupDialog'
@@ -36,8 +39,21 @@ export function MatchDetailDialog({
   onViewAvailability: () => void
 }) {
   const titleId = useId()
+  const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState('')
   const starters = match.rugby_format === 'sevens' ? 7 : 15
-  const hasPublishedLineup = match.lineup_published && lineup.length > 0
+  const hasPublishedLineup = match.lineup_published
+
+  async function copyLineup() {
+    try {
+      setCopyError('')
+      await copyText(lineupPlainText(match, lineup, profiles))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2500)
+    } catch (caught) {
+      setCopyError(errorText(caught))
+    }
+  }
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading">
@@ -63,8 +79,9 @@ export function MatchDetailDialog({
     {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
 
     <section className="match-detail-callup">
-      <div className="match-detail-section-heading"><div><span className="eyebrow">CONVOCATORIA</span><h3>{hasPublishedLineup ? 'Convocatoria publicada' : 'Próximamente'}</h3></div>{canViewAvailability && <button className="secondary-button compact" onClick={onViewAvailability} type="button">Ver disponibilidades</button>}</div>
-      {hasPublishedLineup ? <PublishedLineup entries={lineup} profiles={profiles} starters={starters} /> : <p className="match-callup-pending">{isPlayer ? 'Tu disponibilidad ayuda a preparar la convocatoria. En cuanto esté lista podrás revisarla aquí.' : 'Prepara la convocatoria cuando dispongas de las respuestas del equipo.'}</p>}
+      <div className="match-detail-section-heading"><div><span className="eyebrow">CONVOCATORIA</span><h3>{hasPublishedLineup ? 'Convocatoria publicada' : 'Próximamente'}</h3></div><div className="match-detail-section-actions">{canViewAvailability && <button className="secondary-button compact" onClick={onViewAvailability} type="button">Ver disponibilidades</button>}{hasPublishedLineup && <button aria-label={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} className="icon-button match-copy-button" onClick={() => void copyLineup()} title={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} type="button"><Icon name={copied ? 'check' : 'copy'} size={16} /></button>}</div></div>
+      {hasPublishedLineup ? lineup.length ? <PublishedLineup entries={lineup} profiles={profiles} starters={starters} /> : <p className="match-callup-pending">La convocatoria se ha publicado sin jugadoras asignadas.</p> : <p className="match-callup-pending">{isPlayer ? 'Tu disponibilidad ayuda a preparar la convocatoria. En cuanto esté lista podrás revisarla aquí.' : 'Prepara la convocatoria cuando dispongas de las respuestas del equipo.'}</p>}
+      {copyError && <p className="form-error">{copyError}</p>}
       {canManageLineup && <div className="match-detail-actions"><button className="primary-button" onClick={onManageLineup} type="button">{match.lineup_published ? 'Gestionar convocatoria' : 'Preparar convocatoria'}</button></div>}
     </section>
   </Modal>

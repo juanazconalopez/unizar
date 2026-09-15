@@ -28,6 +28,7 @@ describe('match exports', () => {
     expect(xml).toContain('nombre="Inés &amp; Ana"')
 
     const text = lineupPlainText(match, entries, profiles)
+    expect(text).toContain('Unizar Fem. vs Rival & Compañía\nHora convocatoria 10:30\nAlineación:')
     expect(text).toContain('1. Inés & Ana\n2. Luisa')
   })
 

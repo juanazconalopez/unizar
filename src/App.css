@@ -337,6 +337,9 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .match-detail-callup { margin-top: 18px; background: var(--match-soft,#fbfcfb); }
 .match-detail-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .match-detail-section-heading .eyebrow { display: block; margin-bottom: 4px; }
+.match-detail-section-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.match-copy-button { border: 1px solid var(--line); color: var(--green); background: white; }
+.match-copy-button:hover { border-color: #a6cabb; background: var(--green-soft); }
 .match-callup-pending { margin: 16px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .match-detail-actions { margin-top: 16px; }
 .lineup-dialog .task-detail-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
@@ -1537,6 +1540,10 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
   .match-card { padding: 17px 14px; }
   .match-card-heading { flex-direction: column; gap: 9px; }
   .match-detail-logistics-row { grid-template-columns: 1fr; }
+  .match-detail-section-heading { align-items: flex-start; flex-direction: column; }
+  .match-detail-section-actions { width: 100%; justify-content: stretch; }
+  .match-detail-section-actions button { flex: 1; }
+  .match-detail-section-actions .icon-button { flex: 0 0 auto; }
   .availability-response { align-items: stretch; flex-direction: column; }
   .availability-response-actions { width: 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
   .availability-response-actions button { width: 100%; }

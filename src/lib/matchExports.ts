@@ -1,4 +1,3 @@
-import { formatDate } from './dates'
 import { escapeXml } from './fileExport'
 import type { Match, MatchLineup, Profile, SeasonCallupReport } from '../types'
 
@@ -16,11 +15,9 @@ ${ordered.map((entry) => `    <jugadora dorsal="${entry.slot_number}" nombre="${
 
 export function lineupPlainText(match: Match, entries: MatchLineup[], profiles: Profile[]) {
   const playersById = new Map(profiles.map((profile) => [profile.id, profile.display_name]))
-  const type = match.match_kind === 'official' ? 'Oficial' : 'Amistoso'
-  const format = match.rugby_format === 'sevens' ? 'Rugby Seven' : 'Rugby XV'
-  const details = [formatDate(match.match_date), match.callup_time && `Convocatoria ${match.callup_time.slice(0, 5)}`, match.callup_venue, match.kickoff_time && `Inicio ${match.kickoff_time.slice(0, 5)}`, match.venue].filter(Boolean).join(' · ')
   const players = orderedLineup(entries).map((entry) => `${entry.slot_number}. ${playersById.get(entry.player_id) ?? 'Jugadora'}`)
-  return [`CONVOCATORIA · ${type} · ${format}`, `Partido contra ${match.opponent}`, details, '', ...players].join('\n')
+  const title = match.is_home ? `Unizar Fem. vs ${match.opponent}` : `${match.opponent} vs Unizar Fem.`
+  return [title, match.callup_time && `Hora convocatoria ${match.callup_time.slice(0, 5)}`, 'Alineación:', ...players].filter(Boolean).join('\n')
 }
 
 export function callupReportXml(report: SeasonCallupReport) {
