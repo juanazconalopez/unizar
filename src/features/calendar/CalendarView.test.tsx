@@ -39,7 +39,8 @@ function props() {
       totals: { officialMatches: 1, friendlyMatches: 0, trainingSessions: 0 }, players: [],
     }),
     onLoadPlayerSeasonSummary: vi.fn(),
-    onLoadPublishedTrainingPlans: vi.fn().mockResolvedValue([]),
+    onLoadTrainingPlans: vi.fn().mockResolvedValue([]),
+    onEditTrainingPlan: vi.fn(),
     onOpenTrainingPlan: vi.fn(),
     onLoadSurveyClosures: vi.fn().mockResolvedValue([]),
     onOpenSurveyResults: vi.fn(),
@@ -80,7 +81,7 @@ describe('CalendarView', () => {
 
   test('opens a published training plan from its calendar card', async () => {
     const common = props()
-    common.onLoadPublishedTrainingPlans.mockResolvedValueOnce([{
+    common.onLoadTrainingPlans.mockResolvedValueOnce([{
       id: 'training-1', session_date: todayIso(), title: 'Defensa organizada', status: 'published',
     }])
     const user = userEvent.setup()
@@ -88,6 +89,21 @@ describe('CalendarView', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Ver entrenamiento' }, { timeout: 3000 }))
     expect(common.onOpenTrainingPlan).toHaveBeenCalledWith('training-1')
+  })
+
+  test('shows a draft training plan and opens its editor instead of its detail', async () => {
+    const common = props()
+    common.onLoadTrainingPlans.mockResolvedValue([{
+      id: 'training-draft', session_date: todayIso(), title: 'Repaso de lanzamiento', status: 'draft',
+    }])
+    const user = userEvent.setup()
+    render(<CalendarView {...common} />)
+
+    expect(await screen.findByText('Repaso de lanzamiento')).toBeInTheDocument()
+    expect(screen.getByText('Borrador', { selector: 'b' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Editar entrenamiento' }))
+    expect(common.onEditTrainingPlan).toHaveBeenCalledWith('training-draft')
+    expect(common.onOpenTrainingPlan).not.toHaveBeenCalled()
   })
 
   test('opens survey results without changing the calendar context', async () => {

@@ -8,7 +8,7 @@ import type { NavigationTarget } from '../lib/navigation'
 import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/permissions'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
-import { fetchPublishedTrainingPlans } from '../services/trainingPlansService'
+import { fetchCalendarTrainingPlans } from '../services/trainingPlansService'
 import { fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
@@ -114,7 +114,7 @@ export function AppViewRouter({
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
-      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} seasons={data.seasons} userId={userId} onNotify={notify} permissions={{
+      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} permissions={{
         create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
         viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
       }} />}
@@ -146,9 +146,10 @@ export function AppViewRouter({
         onLoadCallupReport={fetchSeasonCallupReport}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
-        onLoadPublishedTrainingPlans={fetchPublishedTrainingPlans}
+        onLoadTrainingPlans={fetchCalendarTrainingPlans}
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
+        onEditTrainingPlan={can(PERMISSIONS.training.edit) ? (trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' }) : undefined}
         onLoadSurveyClosures={fetchVisibleSurveyClosures}
         onOpenSurveyResults={setSurveyResultId}
         onReorderTasks={actions.tasks.reorder}

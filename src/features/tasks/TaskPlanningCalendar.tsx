@@ -54,7 +54,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const announcementCount = dayAnnouncements.length
           const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date).sort(compareMatches)
           const matchCount = dayMatches.length
-          const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.status === 'published' && plan.session_date === date)
+          const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.session_date === date)
           const trainingPlanCount = dayTrainingPlans.length
           const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
           const birthdayCount = dayBirthdays.length
@@ -62,7 +62,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const isHoliday = holidays.includes(date)
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento publicado' : 'entrenamientos publicados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}${surveyCount ? ` y ${surveyCount} ${surveyCount === 1 ? 'encuesta cerrada' : 'encuestas cerradas'}` : ''}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento programado' : 'entrenamientos programados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}${surveyCount ? ` y ${surveyCount} ${surveyCount === 1 ? 'encuesta cerrada' : 'encuestas cerradas'}` : ''}`}
               aria-pressed={selectedDate === date}
               className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount || surveyCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${isHoliday ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
               key={date}
@@ -104,7 +104,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
       {showLegend && <div className="calendar-legend">
         <span><i className="task-dot" />T · {legendVariant === 'player' ? 'Tareas publicadas' : 'Tareas publicadas o en borrador guardadas en el lunes de su semana'}</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
-        {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados</span>}
+        {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados y borradores</span>}
         {includesMatches && matchLegendItems(visibleMatches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
         {surveys.length > 0 && <span><i className="survey-dot" />Q · Resultados de encuestas</span>}

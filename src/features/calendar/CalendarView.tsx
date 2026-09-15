@@ -83,8 +83,9 @@ type CalendarViewProps = {
   onUnlockLineup: (match: Match) => Promise<void>
   onLoadCallupReport: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
-  onLoadPublishedTrainingPlans: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
+  onLoadTrainingPlans: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
   onOpenTrainingPlan: (trainingPlanId: string) => void
+  onEditTrainingPlan?: (trainingPlanId: string) => void
   holidays?: string[]
   onLoadSurveyClosures?: (from: string, until: string) => Promise<CalendarSurvey[]>
   onOpenSurveyResults?: (surveyId: string) => void
@@ -97,7 +98,7 @@ export function CalendarView(props: CalendarViewProps) {
     matchCreate: true, matchEdit: true, matchDelete: true, availabilityEdit: true,
     lineupEdit: true, lineupPublish: true, lineupUnlock: true, report: true,
   }
-  const { onLoadPublishedTrainingPlans, onLoadSurveyClosures, onOpenSurveyResults } = props
+  const { onLoadTrainingPlans, onLoadSurveyClosures, onOpenSurveyResults } = props
   const today = todayIso()
   const [selectedDate, setSelectedDate] = useState(props.focusedDate ?? today)
   const [month, setMonth] = useState(`${(props.focusedDate ?? today).slice(0, 7)}-01`)
@@ -110,7 +111,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
-  const [publishedTrainingPlans, setPublishedTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
+  const [trainingPlans, setTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const holidays = useSeasonHolidayDates(props.seasons.map((season) => season.id), props.holidays)
   const selectedWeek = mondayFor(selectedDate)
@@ -121,28 +122,28 @@ export function CalendarView(props: CalendarViewProps) {
   const selectedMatches = props.matches
     .filter((match) => match.match_date === selectedDate)
     .sort(compareMatches)
-  const selectedTrainingPlans = publishedTrainingPlans.filter((plan) => plan.session_date === selectedDate)
+  const selectedTrainingPlans = trainingPlans.filter((plan) => plan.session_date === selectedDate)
   const selectedBirthdays = (props.birthdays ?? []).filter((birthday) => birthday.birthday_on === selectedDate)
   const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
   const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
   const activeSeason = seasonForDate(props.seasons, today)
 
-  const loadPublishedTrainingPlans = useCallback(async (targetMonth: string) => {
+  const loadTrainingPlans = useCallback(async (targetMonth: string) => {
     try {
-      setPublishedTrainingPlans(await onLoadPublishedTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
+      setTrainingPlans(await onLoadTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
     } catch {
-      setPublishedTrainingPlans([])
+      setTrainingPlans([])
     }
-  }, [onLoadPublishedTrainingPlans])
+  }, [onLoadTrainingPlans])
   const loadSurveyClosures = useCallback(async (targetMonth: string) => {
     if (!onLoadSurveyClosures) return
     try { setSurveyClosures(await onLoadSurveyClosures(monthStart(targetMonth), monthEnd(targetMonth))) } catch { setSurveyClosures([]) }
   }, [onLoadSurveyClosures])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void loadPublishedTrainingPlans(month), 0)
+    const timer = window.setTimeout(() => void loadTrainingPlans(month), 0)
     return () => window.clearTimeout(timer)
-  }, [loadPublishedTrainingPlans, month])
+  }, [loadTrainingPlans, month])
   useEffect(() => { const timer = window.setTimeout(() => void loadSurveyClosures(month), 0); return () => window.clearTimeout(timer) }, [loadSurveyClosures, month])
 
   async function changeMonth(nextMonth: string) {
@@ -150,7 +151,7 @@ export function CalendarView(props: CalendarViewProps) {
     await Promise.all([
       props.onLoadTaskRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))),
       props.onLoadMatchMonth(nextMonth),
-      loadPublishedTrainingPlans(nextMonth),
+      loadTrainingPlans(nextMonth),
     ]).catch(() => undefined)
   }
 
@@ -164,7 +165,7 @@ export function CalendarView(props: CalendarViewProps) {
     await Promise.all([
       props.onLoadTaskRange(mondayFor(date), mondayFor(date)),
       props.onLoadMatchMonth(`${date.slice(0, 7)}-01`),
-      loadPublishedTrainingPlans(`${date.slice(0, 7)}-01`),
+      loadTrainingPlans(`${date.slice(0, 7)}-01`),
     ])
   }
 
@@ -232,7 +233,7 @@ export function CalendarView(props: CalendarViewProps) {
     <PageHeader
       action={access.report && <button className={reportOpen ? 'primary-button' : 'secondary-button'} onClick={() => setReportOpen((open) => !open)} type="button"><Icon name="statistics" size={18} />{reportOpen ? 'Volver al calendario' : 'Resumen de convocatorias'}</button>}
       eyebrow="PLANIFICACIÓN"
-      subtitle="Organiza tareas, avisos, partidos y entrenamientos publicados desde una única vista."
+      subtitle="Organiza tareas, avisos, partidos y entrenamientos desde una única vista."
       title="Calendario"
     />
 
@@ -249,7 +250,7 @@ export function CalendarView(props: CalendarViewProps) {
           selectedDate={selectedDate}
           showLegend={false}
           tasks={props.tasks}
-          trainingPlans={publishedTrainingPlans}
+          trainingPlans={trainingPlans}
           surveys={surveyClosures}
           onMonthChange={(nextMonth) => void changeMonth(nextMonth)}
           onSelectDate={setSelectedDate}
@@ -268,7 +269,7 @@ export function CalendarView(props: CalendarViewProps) {
           {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={onOpenSurveyResults} />}
           {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
             <div className="task-week-heading"><h2>Entrenamientos</h2><span>{selectedTrainingPlans.length}</span></div>
-            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article key={plan.id}><span>E</span><div><strong>{plan.title}</strong><small>Plan de entrenamiento preparado</small></div><button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button></article>)}</div>
+            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article className={plan.status === 'draft' ? 'training-calendar-draft' : undefined} key={plan.id}><span>E</span><div><div className="calendar-training-title"><strong>{plan.title}</strong>{plan.status === 'draft' && <b>Borrador</b>}</div><small>{plan.status === 'draft' ? 'Solo visible para el equipo técnico' : 'Plan de entrenamiento preparado'}</small></div>{plan.status === 'draft' ? props.onEditTrainingPlan && <button className="secondary-button compact" onClick={() => props.onEditTrainingPlan?.(plan.id)} type="button"><Icon name="edit" size={14} />Editar entrenamiento</button> : <button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button>}</article>)}</div>
           </div>}
           {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
             <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
@@ -278,7 +279,7 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-week-heading"><div><span className="eyebrow">TAREAS DE LA SEMANA</span><h2>{formatWeek(selectedWeek)}</h2></div><span>{selectedTasks.length} {selectedTasks.length === 1 ? 'tarea' : 'tareas'}</span></div>
             <div className="task-list">{selectedTasks.map((task) => <TaskCard hideWeek key={task.id} managerActions={taskActions(task)} managementSummary={access.taskResults ? <TaskResultsSummary profiles={props.profiles} results={props.results} task={task} /> : undefined} result={undefined} task={task} />)}</div>
           </div>
-          {!hasSelectedContent && <EmptyState text="No hay tareas, avisos, partidos ni entrenamientos publicados en este periodo." title="Sin planificación" />}
+          {!hasSelectedContent && <EmptyState text="No hay tareas, avisos, partidos ni entrenamientos en este periodo." title="Sin planificación" />}
           {(access.taskCreate || access.announcementCreate || access.matchCreate) && <div className="selected-week-actions calendar-add-actions">
             <div className="calendar-add-menu">
               <button aria-expanded={addMenuOpen} className="primary-button" onClick={() => setAddMenuOpen((open) => !open)} type="button"><Icon name="plus" size={18} />Añadir</button>

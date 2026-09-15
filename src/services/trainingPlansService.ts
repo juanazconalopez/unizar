@@ -76,11 +76,10 @@ export async function fetchTrainingPlan(planId: string): Promise<TrainingPlan> {
   }
 }
 
-export async function fetchPublishedTrainingPlans(fromDate: string, toDate: string): Promise<TrainingPlanCalendarItem[]> {
+export async function fetchCalendarTrainingPlans(fromDate: string, toDate: string): Promise<TrainingPlanCalendarItem[]> {
   const { data, error } = await supabase
     .from('training_plans')
     .select('id, session_date, title, status')
-    .eq('status', 'published')
     .gte('session_date', fromDate)
     .lte('session_date', toDate)
     .order('session_date')

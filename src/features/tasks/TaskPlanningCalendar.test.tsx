@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { TaskPlanningCalendar } from './TaskPlanningCalendar'
 
 describe('planning calendar training plans', () => {
-  test('shows only published training plans as a light-green E', () => {
+  test('shows published and draft training plans as E marks for staff planning', () => {
     render(<TaskPlanningCalendar
       announcements={[]}
       month="2026-09-01"
@@ -17,9 +17,9 @@ describe('planning calendar training plans', () => {
       ]}
     />)
 
-    const day = screen.getByRole('button', { name: /1 de septiembre.*1 entrenamiento publicado/i })
-    expect(within(day).getAllByText('E')).toHaveLength(1)
-    expect(screen.getByText('E · Entrenamientos publicados')).toBeInTheDocument()
+    const day = screen.getByRole('button', { name: /1 de septiembre.*2 entrenamientos programados/i })
+    expect(within(day).getAllByText('E')).toHaveLength(2)
+    expect(screen.getByText('E · Entrenamientos publicados y borradores')).toBeInTheDocument()
   })
 
   test('marks birthdays without exposing an age', () => {

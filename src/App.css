@@ -113,6 +113,7 @@
 .dashboard-next-icon.availability { color: #82691e; background: #fff6d8; }
 .dashboard-next-icon.lineup { color: #6c4f91; background: #f1eafb; }
 .dashboard-next-icon.announcement { color: #a96110; background: #fff0d9; }
+.dashboard-next-icon.survey { color: #8e365a; background: #fceef3; }
 .section-block + .section-block { margin-top: 44px; }
 .section-heading { margin-bottom: 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .section-heading h2 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.5px; }
@@ -523,10 +524,14 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .calendar-training-list strong, .calendar-training-list small { display: block; }
 .calendar-training-list strong { font-size: 12px; }
 .calendar-training-list small { margin-top: 3px; color: var(--muted); font-size: 9px; }
-.calendar-training-list .survey-closure-card { width: 100%; min-height: 0; padding: 9px 11px; border: 1px solid #cfe5d7; border-left: 3px solid #8bc9a4; border-radius: 10px; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: var(--ink); background: #f4faf6; text-align: left; }
+.calendar-training-title { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.calendar-training-title b { padding: 3px 6px; border-radius: 12px; color: #75631f; background: #fff4d2; font-size: 8px; letter-spacing: .4px; text-transform: uppercase; }
+.calendar-training-draft { border-color: #e7d39b !important; border-left-color: #c7a44e !important; background: #fffdf6 !important; }
+.calendar-training-draft > span { color: #75631f !important; background: #fff1c8 !important; }
+.calendar-training-list .survey-closure-card { width: 100%; min-height: 0; padding: 9px 11px; border: 1px solid #e4a7bc; border-left: 3px solid #b04a72; border-radius: 10px; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: var(--ink); background: #fceef3; text-align: left; }
 button.survey-closure-card { cursor: pointer; }
-button.survey-closure-card:hover { border-color: #75b994; background: #edf8f1; }
-button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25); outline-offset: 2px; }
+button.survey-closure-card:hover { border-color: #c87091; background: #fae4ec; }
+button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.25); outline-offset: 2px; }
 .calendar-training-list .survey-closure-card > .survey-mark { width: 21px; height: 21px; font-size: 9px; }
 .selected-calendar-group + .selected-calendar-group { margin-top: 26px; padding-top: 25px; border-top: 1px solid var(--line); }
 .calendar-add-actions { position: relative; }
@@ -838,14 +843,14 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .empty-state > span { width: 45px; height: 45px; border-radius: 50%; display: grid; place-items: center; color: var(--green); background: var(--green-soft); }
 .empty-state h3 { margin: 13px 0 5px; font-size: 16px; }
 .empty-state p { margin: 0; color: var(--muted); font-size: 12px; }
-.survey-mark { color: #7452a2; font-weight: 800; }
-.survey-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #7452a2; }
+.survey-mark { color: #b04a72; font-weight: 800; }
+.survey-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #b04a72; }
 .survey-editor, .survey-results { display: grid; gap: 16px; padding: 18px; border: 1px solid #dce7e1; border-radius: 16px; background: #fff; }
 .survey-list { display: grid; gap: 10px; }
-.survey-card { width: 100%; padding: 15px; border: 1px solid #dce7e1; border-radius: 14px; display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: start; gap: 11px; color: var(--ink); background: #fff; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-.survey-card:hover { border-color: #9fc5b2; box-shadow: 0 5px 15px rgba(31,63,54,.07); }
-.survey-card:focus-visible { outline: 3px solid rgba(30,111,92,.25); outline-offset: 2px; }
-.survey-number { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--green); font-size: 13px; font-weight: 800; }
+.survey-card { width: 100%; padding: 15px; border: 1px solid #e4a7bc; border-left: 4px solid #b04a72; border-radius: 14px; display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: start; gap: 11px; color: var(--ink); background: #fff9fb; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.survey-card:hover { border-color: #c87091; box-shadow: 0 5px 15px rgba(176,74,114,.1); }
+.survey-card:focus-visible { outline: 3px solid rgba(176,74,114,.25); outline-offset: 2px; }
+.survey-number { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: #b04a72; font-size: 13px; font-weight: 800; }
 .survey-card-copy { min-width: 0; display: grid; gap: 5px; }
 .survey-card-copy strong { font-size: 15px; }
 .survey-card-copy small { color: var(--muted); font-size: 11px; }
@@ -917,7 +922,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-player-answers { margin-top: 2px; }
 .survey-questions-editor { display: grid; gap: 12px; }
 .survey-questions-editor > article, .survey-result { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 14px; border: 1px solid #e1e9e5; border-radius: 12px; background: #f8fbf9; }
-.survey-questions-editor > article > b, .survey-result > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--green); }
+.survey-questions-editor > article > b, .survey-result > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #b04a72; }
 .survey-questions-editor label { display: grid; gap: 5px; margin-bottom: 9px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .survey-questions-editor input, .survey-questions-editor select { width: 100%; box-sizing: border-box; }
 .survey-option-list { display: grid; gap: 8px; }
@@ -931,7 +936,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(30,111,92,.25
 .survey-bar span { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .survey-bar small { color: var(--muted); }
 .survey-bar i { overflow: hidden; height: 8px; border-radius: 8px; background: #dfe9e4; }
-.survey-bar em { display: block; height: 100%; border-radius: inherit; background: var(--green); }
+.survey-bar em { display: block; height: 100%; border-radius: inherit; background: #b04a72; }
 .toast { position: fixed; z-index: 30; top: 22px; right: 28px; max-width: 380px; padding: 12px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; color: white; box-shadow: 0 12px 35px rgba(0,0,0,.16); font-size: 13px; }
 .toast.success { background: var(--green); }
 .toast.error { background: #a94d41; }

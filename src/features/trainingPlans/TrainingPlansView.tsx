@@ -37,9 +37,10 @@ import {
 
 type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
 
-export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId, onNotify, permissions }: {
+export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, seasons, userId, onNotify, permissions }: {
   demo?: boolean
   focusedPlanId?: string
+  focusedPlanMode?: 'edit'
   seasons: Season[]
   userId: string
   onNotify: (message: string) => void
@@ -71,7 +72,11 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
         const loadedPlans = demoTrainingPlans(seasons)
         setPlans(loadedPlans)
         setDemoPresets((current) => current.length ? current : demoExercisePresets(seasons, userId))
-        if (focusedPlanId) setViewingPlan(loadedPlans.find((plan) => plan.id === focusedPlanId) ?? null)
+        if (focusedPlanId) {
+          const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? null
+          if (focusedPlanMode === 'edit' && access.edit && focusedPlan) setEditor({ plan: focusedPlan })
+          else setViewingPlan(focusedPlan)
+        }
         setDemoMode(true)
         return
       }
@@ -79,7 +84,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
       setPlans(loadedPlans)
       if (focusedPlanId) {
         const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? await fetchTrainingPlan(focusedPlanId)
-        setViewingPlan(focusedPlan)
+        if (focusedPlanMode === 'edit' && access.edit) setEditor({ plan: focusedPlan })
+        else setViewingPlan(focusedPlan)
       }
       setDemoMode(false)
     } catch (error) {
@@ -93,7 +99,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, seasons, userId
     } finally {
       setLoading(false)
     }
-  }, [demo, focusedPlanId, seasons, userId])
+  }, [access.edit, demo, focusedPlanId, focusedPlanMode, seasons, userId])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0)
