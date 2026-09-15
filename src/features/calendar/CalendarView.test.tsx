@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { mondayFor, todayIso } from '../../lib/dates'
@@ -77,6 +77,15 @@ describe('CalendarView', () => {
     expect(within(menu).getByRole('menuitem', { name: 'Nueva tarea' })).toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: 'Nuevo aviso' })).toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: 'Nuevo partido' })).toBeInTheDocument()
+  })
+
+  test('loads the month of a focused match notification', async () => {
+    const common = props()
+    render(<CalendarView {...common} focusedDate="2026-11-12" />)
+
+    await waitFor(() => expect(common.onLoadMatchMonth).toHaveBeenCalledWith('2026-11-01', { force: true }))
+    expect(common.onLoadTaskRange).toHaveBeenCalledWith('2026-10-26', '2026-11-30')
+    expect(screen.getByRole('button', { name: /12 de noviembre/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('opens a published training plan from its calendar card', async () => {

@@ -119,6 +119,7 @@ export function AppViewRouter({
         viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
       }} />}
       {view === 'calendar' && can(PERMISSIONS.calendar.manage) && <CalendarView
+        key={`calendar:${navigation.date ?? ''}:${navigation.announcementId ?? ''}`}
         permissions={{
           taskCreate: can(PERMISSIONS.tasks.create), taskEdit: can(PERMISSIONS.tasks.edit), taskDelete: can(PERMISSIONS.tasks.delete), taskPublish: can(PERMISSIONS.tasks.publish), taskReorder: can(PERMISSIONS.tasks.reorder), taskResults: can(PERMISSIONS.tasks.results),
           announcementCreate: can(PERMISSIONS.announcements.create), announcementEdit: can(PERMISSIONS.announcements.edit), announcementDelete: can(PERMISSIONS.announcements.delete), announcementPublish: can(PERMISSIONS.announcements.publish),
@@ -162,6 +163,7 @@ export function AppViewRouter({
         onUpdateTask={actions.tasks.update}
       />}
       {view === 'calendar' && !can(PERMISSIONS.calendar.manage) && can(PERMISSIONS.calendar.personal) && <PlayerCalendarView
+        key={`calendar:${navigation.date ?? ''}:${navigation.announcementId ?? ''}`}
         announcements={data.announcements}
         availability={data.matchAvailability}
         birthdays={data.calendarBirthdays}

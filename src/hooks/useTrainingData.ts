@@ -8,10 +8,13 @@ import type { PermissionConfiguration } from '../services/permissionsService'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
+import type { MatchWindowData } from '../services/trainingQueriesService'
 import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
+export const MATCH_WINDOW_CACHE_TTL_MS = 60 * 1000
+const MAX_CACHED_MATCH_MONTHS = 6
 
 export function useTrainingData(session: Session | null, view: ViewName = 'home') {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -47,11 +50,13 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const inFlightReload = useRef<Promise<void> | null>(null)
   const lastReloadAttempt = useRef(0)
   const pendingRangeLoads = useRef(0)
-  const rangeRequestIds = useRef({ tasks: 0, statistics: 0, attendance: 0, matches: 0 })
+  const rangeRequestIds = useRef({ tasks: 0, statistics: 0, attendance: 0 })
+  const matchRequestIds = useRef(new Map<string, number>())
   const loadedTaskRanges = useRef(new Map<string, { from: string; to: string }>())
   const loadedStatisticsMonth = useRef<string | null>(null)
   const loadedAttendanceDate = useRef<string | null>(null)
   const loadedMatchMonth = useRef<string | null>(null)
+  const matchWindowCache = useRef(new Map<string, { loadedAt: number; data: MatchWindowData }>())
   const rangesUserId = useRef<string | undefined>(undefined)
   const userId = session?.user.id
 
@@ -137,31 +142,53 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     }
   }, [beginRangeLoad, endRangeLoad, userId])
 
-  const loadMatchMonth = useCallback(async (month: string) => {
+  const applyMatchWindow = useCallback((from: string, to: string, data: MatchWindowData) => {
+    setMatches((current) => {
+      const oldMatchIds = new Set(current.filter((match) => match.match_date >= from && match.match_date <= to).map((match) => match.id))
+      const affectedIds = new Set([...oldMatchIds, ...data.matches.map((match) => match.id)])
+      setMatchAvailability((currentAvailability) => replaceRelated(currentAvailability, data.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey))
+      setMatchLineups((currentLineups) => replaceRelated(currentLineups, data.matchLineups, affectedIds, (item) => item.match_id, lineupKey))
+      return replaceDateRange(current, data.matches, 'match_date', from, to)
+    })
+  }, [])
+
+  const cacheMatchWindow = useCallback((month: string, data: MatchWindowData) => {
+    const cache = matchWindowCache.current
+    cache.delete(month)
+    cache.set(month, { loadedAt: Date.now(), data })
+    while (cache.size > MAX_CACHED_MATCH_MONTHS) cache.delete(cache.keys().next().value as string)
+  }, [])
+
+  const loadMatchMonth = useCallback(async (month: string, options: { force?: boolean } = {}) => {
     if (!userId) return
-    const requestId = ++rangeRequestIds.current.matches
     beginRangeLoad()
     setErrorMessage('')
     try {
       const from = monthStart(month)
       const to = monthEnd(month)
+      const requestId = (matchRequestIds.current.get(from) ?? 0) + 1
+      matchRequestIds.current.set(from, requestId)
+      const cached = matchWindowCache.current.get(from)
+      if (cached && !options.force) {
+        applyMatchWindow(from, to, cached.data)
+        if (Date.now() - cached.loadedAt < MATCH_WINDOW_CACHE_TTL_MS) return
+      }
       const data = await withAuthRecovery(() => fetchMatchWindow(from, to))
-      if (rangeRequestIds.current.matches !== requestId) return
+      if (matchRequestIds.current.get(from) !== requestId) return
       loadedMatchMonth.current = monthStart(month)
-      setMatches((current) => {
-        const oldMatchIds = new Set(current.filter((match) => match.match_date >= from && match.match_date <= to).map((match) => match.id))
-        const affectedIds = new Set([...oldMatchIds, ...data.matches.map((match) => match.id)])
-        setMatchAvailability((currentAvailability) => replaceRelated(currentAvailability, data.matchAvailability, affectedIds, (item) => item.match_id, availabilityKey))
-        setMatchLineups((currentLineups) => replaceRelated(currentLineups, data.matchLineups, affectedIds, (item) => item.match_id, lineupKey))
-        return replaceDateRange(current, data.matches, 'match_date', from, to)
-      })
+      cacheMatchWindow(from, data)
+      applyMatchWindow(from, to, data)
     } catch (error) {
-      if (rangeRequestIds.current.matches === requestId) setErrorMessage(errorText(error))
+      setErrorMessage(errorText(error))
       throw error
     } finally {
       endRangeLoad()
     }
-  }, [beginRangeLoad, endRangeLoad, userId])
+  }, [applyMatchWindow, beginRangeLoad, cacheMatchWindow, endRangeLoad, userId])
+
+  const invalidateMatchMonths = useCallback((...dates: string[]) => {
+    dates.forEach((date) => matchWindowCache.current.delete(monthStart(date)))
+  }, [])
 
   const reload = useCallback(async () => {
     if (!userId) {
@@ -175,6 +202,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       loadedStatisticsMonth.current = null
       loadedAttendanceDate.current = null
       loadedMatchMonth.current = null
+      matchWindowCache.current.clear()
+      matchRequestIds.current.clear()
     }
 
     while (inFlightReload.current) await inFlightReload.current
@@ -182,7 +211,6 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     if (view === 'tasks' || view === 'calendar') rangeRequestIds.current.tasks += 1
     if (view === 'statistics') rangeRequestIds.current.statistics += 1
     if (view === 'attendance') rangeRequestIds.current.attendance += 1
-    if (view === 'matches' || view === 'calendar') rangeRequestIds.current.matches += 1
 
     lastReloadAttempt.current = Date.now()
     const request = (async () => {
@@ -306,5 +334,6 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     loadStatisticsMonth,
     loadAttendanceDate,
     loadMatchMonth,
+    invalidateMatchMonths,
   }
 }

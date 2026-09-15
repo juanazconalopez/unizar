@@ -125,8 +125,10 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   } else if (scope === 'tasks' || scope === 'calendar') {
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     const managerEnd = activeSeason?.end_date && activeSeason.end_date >= currentWeek ? mondayFor(activeSeason.end_date) : addDays(currentWeek, 84)
-    const taskFrom = scope === 'calendar' && !canManageTasks ? mondayFor(monthStart(todayIso())) : addDays(currentWeek, -14)
-    const taskTo = scope === 'calendar' && !canManageTasks ? mondayFor(monthEnd(todayIso())) : canManageTasks ? managerEnd : currentWeek
+    const calendarTaskFrom = mondayFor(monthStart(todayIso()))
+    const calendarTaskTo = mondayFor(monthEnd(todayIso()))
+    const taskFrom = scope === 'calendar' ? calendarTaskFrom : addDays(currentWeek, -14)
+    const taskTo = scope === 'calendar' ? calendarTaskTo : canManageTasks ? managerEnd : currentWeek
     taskData = await fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo)
     if (scope === 'calendar') {
       matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))

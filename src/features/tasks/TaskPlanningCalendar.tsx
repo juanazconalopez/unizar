@@ -1,8 +1,11 @@
+import { useMemo } from 'react'
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import { compareMatches, matchColor, matchLegendItems } from '../../lib/seasonCompetitions'
 import type { CalendarBirthday, Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
 
 export type CalendarSurvey = { id: string; result_date: string; title?: string }
+const EMPTY_MATCHES: Match[] = []
+const EMPTY_TRAINING_PLANS: TrainingPlanCalendarItem[] = []
 
 export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements = [], birthdays = [], holidays = [], matches, trainingPlans, surveys = [], showLegend = true, legendVariant = 'management', onMonthChange, onSelectDate }: {
   month: string
@@ -21,10 +24,33 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
 }) {
   const days = calendarDays(month)
   const today = todayIso()
-  const visibleMatches = matches ?? []
+  const visibleMatches = matches ?? EMPTY_MATCHES
   const includesMatches = matches !== undefined
-  const visibleTrainingPlans = trainingPlans ?? []
+  const visibleTrainingPlans = trainingPlans ?? EMPTY_TRAINING_PLANS
   const includesTrainingPlans = trainingPlans !== undefined
+  const itemsByDate = useMemo(() => {
+    const tasksByDate = new Map<string, TrainingTask[]>()
+    const announcementsByDate = new Map<string, TeamAnnouncement[]>()
+    const matchesByDate = new Map<string, Match[]>()
+    const trainingPlansByDate = new Map<string, TrainingPlanCalendarItem[]>()
+    const birthdaysByDate = new Map<string, CalendarBirthday[]>()
+    const surveysByDate = new Map<string, CalendarSurvey[]>()
+    const add = <T,>(map: Map<string, T[]>, date: string, item: T) => {
+      const items = map.get(date)
+      if (items) items.push(item)
+      else map.set(date, [item])
+    }
+
+    tasks.filter((task) => task.status !== 'cancelled').forEach((task) => add(tasksByDate, task.week_start, task))
+    announcements.filter((announcement) => announcement.status !== 'cancelled').forEach((announcement) => add(announcementsByDate, announcement.announcement_date, announcement))
+    visibleMatches.filter((match) => match.status !== 'cancelled').forEach((match) => add(matchesByDate, match.match_date, match))
+    visibleTrainingPlans.forEach((plan) => add(trainingPlansByDate, plan.session_date, plan))
+    birthdays.forEach((birthday) => add(birthdaysByDate, birthday.birthday_on, birthday))
+    surveys.forEach((survey) => add(surveysByDate, survey.result_date, survey))
+    matchesByDate.forEach((dayMatches) => dayMatches.sort(compareMatches))
+
+    return { tasksByDate, announcementsByDate, matchesByDate, trainingPlansByDate, birthdaysByDate, surveysByDate }
+  }, [announcements, birthdays, surveys, tasks, visibleMatches, visibleTrainingPlans])
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -48,17 +74,17 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
       <div className="statistics-calendar task-planning-calendar">
         {days.map((date, index) => {
           if (!date) return <span className="calendar-empty" key={`empty-${index}`} />
-          const plannedTasks = tasks.filter((task) => task.status !== 'cancelled' && task.week_start === date)
+          const plannedTasks = itemsByDate.tasksByDate.get(date) ?? []
           const taskCount = plannedTasks.length
-          const dayAnnouncements = announcements.filter((announcement) => announcement.status !== 'cancelled' && announcement.announcement_date === date)
+          const dayAnnouncements = itemsByDate.announcementsByDate.get(date) ?? []
           const announcementCount = dayAnnouncements.length
-          const dayMatches = visibleMatches.filter((match) => match.status !== 'cancelled' && match.match_date === date).sort(compareMatches)
+          const dayMatches = itemsByDate.matchesByDate.get(date) ?? []
           const matchCount = dayMatches.length
-          const dayTrainingPlans = visibleTrainingPlans.filter((plan) => plan.session_date === date)
+          const dayTrainingPlans = itemsByDate.trainingPlansByDate.get(date) ?? []
           const trainingPlanCount = dayTrainingPlans.length
-          const dayBirthdays = birthdays.filter((birthday) => birthday.birthday_on === date)
+          const dayBirthdays = itemsByDate.birthdaysByDate.get(date) ?? []
           const birthdayCount = dayBirthdays.length
-          const surveyCount = surveys.filter((survey) => survey.result_date === date).length
+          const surveyCount = (itemsByDate.surveysByDate.get(date) ?? []).length
           const isHoliday = holidays.includes(date)
           return (
             <button

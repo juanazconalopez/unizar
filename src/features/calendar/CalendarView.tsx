@@ -76,7 +76,7 @@ type CalendarViewProps = {
   onDeleteAnnouncement: (announcement: TeamAnnouncement) => Promise<void>
   onAnnouncementStatusChange: (id: string, status: TaskStatus) => Promise<void>
   onDeleteMatch: (match: Match) => Promise<void>
-  onLoadMatchMonth: (month: string) => Promise<void>
+  onLoadMatchMonth: (month: string, options?: { force?: boolean }) => Promise<void>
   onSavePlayerAvailability: (match: Match, playerId: string, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveLineup: (match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
@@ -98,7 +98,7 @@ export function CalendarView(props: CalendarViewProps) {
     matchCreate: true, matchEdit: true, matchDelete: true, availabilityEdit: true,
     lineupEdit: true, lineupPublish: true, lineupUnlock: true, report: true,
   }
-  const { onLoadTrainingPlans, onLoadSurveyClosures, onOpenSurveyResults } = props
+  const { focusedDate, onLoadMatchMonth, onLoadTaskRange, onLoadTrainingPlans, onLoadSurveyClosures, onOpenSurveyResults } = props
   const today = todayIso()
   const [selectedDate, setSelectedDate] = useState(props.focusedDate ?? today)
   const [month, setMonth] = useState(`${(props.focusedDate ?? today).slice(0, 7)}-01`)
@@ -145,6 +145,15 @@ export function CalendarView(props: CalendarViewProps) {
     return () => window.clearTimeout(timer)
   }, [loadTrainingPlans, month])
   useEffect(() => { const timer = window.setTimeout(() => void loadSurveyClosures(month), 0); return () => window.clearTimeout(timer) }, [loadSurveyClosures, month])
+
+  useEffect(() => {
+    if (!focusedDate) return
+    const focusedMonth = `${focusedDate.slice(0, 7)}-01`
+    void Promise.all([
+      onLoadTaskRange(mondayFor(monthStart(focusedMonth)), mondayFor(monthEnd(focusedMonth))),
+      onLoadMatchMonth(focusedMonth, { force: true }),
+    ]).catch(() => undefined)
+  }, [focusedDate, onLoadMatchMonth, onLoadTaskRange])
 
   async function changeMonth(nextMonth: string) {
     setMonth(nextMonth)

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeAnnouncement, makeMembership, makeProfile, makeTask } from '../../test/fixtures'
@@ -76,6 +76,15 @@ describe('PlayerCalendarView', () => {
 
     expect(common.onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }), 'available', '')
     expect(common.onLoadMatchMonth).toHaveBeenCalledWith('2026-09-01')
+  })
+
+  test('loads and selects the month linked by a match notification', async () => {
+    const common = props()
+    render(<PlayerCalendarView {...common} focusedDate="2026-10-14" />)
+
+    await waitFor(() => expect(common.onLoadMatchMonth).toHaveBeenCalledWith('2026-10-01', { force: true }))
+    expect(common.onLoadTaskRange).toHaveBeenCalledWith('2026-09-28', '2026-10-26')
+    expect(screen.getByRole('button', { name: /14 de octubre/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('opens visible aggregate survey results from the calendar', async () => {

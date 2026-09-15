@@ -3,7 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeProfile, makeResult, makeTask } from '../test/fixtures'
 import { fetchTrainingData } from '../services/trainingDataService'
-import { fetchTaskWindow } from '../services/trainingQueriesService'
+import { fetchMatchWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { ViewName } from '../types'
 import { AUTO_REFRESH_INTERVAL_MS, useTrainingData } from './useTrainingData'
 
@@ -62,6 +62,7 @@ describe('useTrainingData', () => {
     vi.mocked(fetchTrainingData).mockReset()
     vi.mocked(fetchTrainingData).mockResolvedValue(trainingData)
     vi.mocked(fetchTaskWindow).mockReset()
+    vi.mocked(fetchMatchWindow).mockReset()
   })
 
   afterEach(() => vi.useRealTimers())
@@ -184,6 +185,22 @@ describe('useTrainingData', () => {
 
     expect(fetchTaskWindow).toHaveBeenCalledTimes(2)
     expect(result.current.tasks).toContainEqual(refreshedTask)
+  })
+
+  test('reuses a recent match month and invalidates it after a match change', async () => {
+    vi.mocked(fetchMatchWindow).mockResolvedValue({ matches: [], matchAvailability: [], matchLineups: [] })
+    const { result } = renderHook(() => useTrainingData(session, 'calendar'))
+    await flushInitialLoad()
+
+    await act(async () => {
+      await result.current.loadMatchMonth('2026-10-01')
+      await result.current.loadMatchMonth('2026-10-01')
+    })
+    expect(fetchMatchWindow).toHaveBeenCalledTimes(1)
+
+    act(() => result.current.invalidateMatchMonths('2026-10-14'))
+    await act(async () => { await result.current.loadMatchMonth('2026-10-01') })
+    expect(fetchMatchWindow).toHaveBeenCalledTimes(2)
   })
 })
 

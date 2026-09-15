@@ -63,7 +63,7 @@ export function PlayerCalendarView({
   results: TaskResult[]
   tasks: TrainingTask[]
   userId: string
-  onLoadMatchMonth: (month: string) => Promise<void>
+  onLoadMatchMonth: (month: string, options?: { force?: boolean }) => Promise<void>
   onLoadTaskRange: (fromWeek: string, toWeek: string) => Promise<void>
   onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
@@ -91,13 +91,13 @@ export function PlayerCalendarView({
   const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
 
   useEffect(() => {
-    if (!focusedDate || focusedDate.slice(0, 7) === today.slice(0, 7)) return
+    if (!focusedDate) return
     const focusedMonth = `${focusedDate.slice(0, 7)}-01`
     void Promise.all([
       onLoadTaskRange(mondayFor(monthStart(focusedMonth)), mondayFor(monthEnd(focusedMonth))),
-      onLoadMatchMonth(focusedMonth),
+      onLoadMatchMonth(focusedMonth, { force: true }),
     ]).catch(() => undefined)
-  }, [focusedDate, onLoadMatchMonth, onLoadTaskRange, today])
+  }, [focusedDate, onLoadMatchMonth, onLoadTaskRange])
 
   async function changeMonth(nextMonth: string) {
     setMonth(nextMonth)

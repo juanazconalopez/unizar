@@ -37,6 +37,7 @@ function App() {
   const actionContext = {
     userId,
     reloadData,
+    invalidateMatchMonths: data.invalidateMatchMonths,
     notify: feedback.notify,
     reportError: feedback.reportError,
     requireConnection: feedback.requireConnection,
