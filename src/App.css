@@ -923,6 +923,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .survey-questions-editor { display: grid; gap: 12px; }
 .survey-questions-editor > article, .survey-result { display: grid; grid-template-columns: 32px 1fr; gap: 10px; padding: 14px; border: 1px solid #e1e9e5; border-radius: 12px; background: #f8fbf9; }
 .survey-questions-editor > article > b, .survey-result > b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #b04a72; }
+.survey-result > b { background: var(--green); }
 .survey-questions-editor label { display: grid; gap: 5px; margin-bottom: 9px; font-size: 12px; font-weight: 700; color: var(--muted); }
 .survey-questions-editor input, .survey-questions-editor select { width: 100%; box-sizing: border-box; }
 .survey-option-list { display: grid; gap: 8px; }
@@ -936,7 +937,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .survey-bar span { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
 .survey-bar small { color: var(--muted); }
 .survey-bar i { overflow: hidden; height: 8px; border-radius: 8px; background: #dfe9e4; }
-.survey-bar em { display: block; height: 100%; border-radius: inherit; background: #b04a72; }
+.survey-bar em { display: block; height: 100%; border-radius: inherit; background: var(--green); }
 .toast { position: fixed; z-index: 30; top: 22px; right: 28px; max-width: 380px; padding: 12px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; color: white; box-shadow: 0 12px 35px rgba(0,0,0,.16); font-size: 13px; }
 .toast.success { background: var(--green); }
 .toast.error { background: #a94d41; }
