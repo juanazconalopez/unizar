@@ -156,6 +156,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados y borradores</span>}
         {includesMatches && matchLegendItems(visibleMatches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
+        {calendarSurveys.some((survey) => survey.state === 'active') && <span><i className="survey-active-line-dot" />Encuestas abiertas</span>}
         {surveys.length > 0 && <span><i className="survey-dot" />Q · Respuesta o resultados de encuestas</span>}
       </div>}
     </section>

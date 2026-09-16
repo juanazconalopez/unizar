@@ -59,6 +59,7 @@ describe('planning calendar training plans', () => {
     expect(screen.getByRole('button', { name: /11 de septiembre.*encuesta abierta/i }).querySelector('.survey-active-range')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /12 de septiembre.*resultado de encuesta/i })).getByText('Q 1')).toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /11 de septiembre.*encuesta abierta/i })).queryByText('Q 1')).not.toBeInTheDocument()
+    expect(screen.getByText('Encuestas abiertas')).toBeInTheDocument()
   })
 
   test('removes the temporary range after closing and leaves the Q on the result day', () => {
