@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { formatDate, todayIso, toIsoDate } from '../../lib/dates'
 import { compareMatches, matchColor, matchLegendItems } from '../../lib/seasonCompetitions'
 import type { CalendarBirthday, Match, TeamAnnouncement, TrainingPlanCalendarItem, TrainingTask } from '../../types'
-
-export type CalendarSurvey = { id: string; result_date: string; title?: string }
+import { assignCalendarSurveyTones } from './calendarSurveys'
+import type { CalendarSurvey } from './calendarSurveys'
 const EMPTY_MATCHES: Match[] = []
 const EMPTY_TRAINING_PLANS: TrainingPlanCalendarItem[] = []
 
@@ -22,7 +22,8 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
   onMonthChange: (month: string) => void
   onSelectDate: (date: string) => void
 }) {
-  const days = calendarDays(month)
+  const days = useMemo(() => calendarDays(month), [month])
+  const calendarSurveys = useMemo(() => assignCalendarSurveyTones(surveys), [surveys])
   const today = todayIso()
   const visibleMatches = matches ?? EMPTY_MATCHES
   const includesMatches = matches !== undefined
@@ -34,7 +35,8 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
     const matchesByDate = new Map<string, Match[]>()
     const trainingPlansByDate = new Map<string, TrainingPlanCalendarItem[]>()
     const birthdaysByDate = new Map<string, CalendarBirthday[]>()
-    const surveysByDate = new Map<string, CalendarSurvey[]>()
+    const surveyMarksByDate = new Map<string, CalendarSurvey[]>()
+    const activeSurveysByDate = new Map<string, CalendarSurvey[]>()
     const add = <T,>(map: Map<string, T[]>, date: string, item: T) => {
       const items = map.get(date)
       if (items) items.push(item)
@@ -46,11 +48,24 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
     visibleMatches.filter((match) => match.status !== 'cancelled').forEach((match) => add(matchesByDate, match.match_date, match))
     visibleTrainingPlans.forEach((plan) => add(trainingPlansByDate, plan.session_date, plan))
     birthdays.forEach((birthday) => add(birthdaysByDate, birthday.birthday_on, birthday))
-    surveys.forEach((survey) => add(surveysByDate, survey.result_date, survey))
+    calendarSurveys.forEach((survey) => {
+      if (survey.state === 'active' && survey.startsOn && survey.endsOn) {
+        days.forEach((date) => {
+          if (date && date >= survey.startsOn! && date <= survey.endsOn!) add(activeSurveysByDate, date, survey)
+        })
+        // En el calendario de jugadora result_date es el día de su última respuesta.
+        // En el de gestión, en cambio, es el día posterior al cierre para consultar
+        // resultados provisionales mientras la encuesta siga abierta.
+        const markDate = survey.result_date ?? survey.respondedOn
+        if (markDate) add(surveyMarksByDate, markDate, survey)
+        return
+      }
+      if (survey.result_date) add(surveyMarksByDate, survey.result_date, survey)
+    })
     matchesByDate.forEach((dayMatches) => dayMatches.sort(compareMatches))
 
-    return { tasksByDate, announcementsByDate, matchesByDate, trainingPlansByDate, birthdaysByDate, surveysByDate }
-  }, [announcements, birthdays, surveys, tasks, visibleMatches, visibleTrainingPlans])
+    return { tasksByDate, announcementsByDate, matchesByDate, trainingPlansByDate, birthdaysByDate, surveyMarksByDate, activeSurveysByDate }
+  }, [announcements, birthdays, calendarSurveys, days, tasks, visibleMatches, visibleTrainingPlans])
 
   function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -84,18 +99,26 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
           const trainingPlanCount = dayTrainingPlans.length
           const dayBirthdays = itemsByDate.birthdaysByDate.get(date) ?? []
           const birthdayCount = dayBirthdays.length
-          const surveyCount = (itemsByDate.surveysByDate.get(date) ?? []).length
+          const surveyCount = (itemsByDate.surveyMarksByDate.get(date) ?? []).length
+          const activeSurveys = itemsByDate.activeSurveysByDate.get(date) ?? []
+          const activeSurveyCount = activeSurveys.length
+          const surveyTracks = activeSurveys
+            .slice()
+            .sort((left, right) => (left.calendarTone ?? 0) - (right.calendarTone ?? 0))
+            .slice(0, 3)
           const isHoliday = holidays.includes(date)
           return (
             <button
-              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento programado' : 'entrenamientos programados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}${surveyCount ? ` y ${surveyCount} ${surveyCount === 1 ? 'encuesta cerrada' : 'encuestas cerradas'}` : ''}`}
+              aria-label={`${formatDate(date, { day: 'numeric', month: 'long' })}: ${taskCount} ${taskCount === 1 ? 'tarea planificada' : 'tareas planificadas'} y ${announcementCount} ${announcementCount === 1 ? 'aviso' : 'avisos'}${includesTrainingPlans ? ` y ${trainingPlanCount} ${trainingPlanCount === 1 ? 'entrenamiento programado' : 'entrenamientos programados'}` : ''}${includesMatches ? ` y ${matchCount} ${matchCount === 1 ? 'partido' : 'partidos'}` : ''}${birthdayCount ? ` y ${birthdayCount} cumpleaños` : ''}${activeSurveyCount ? ` y ${activeSurveyCount} ${activeSurveyCount === 1 ? 'encuesta abierta' : 'encuestas abiertas'}` : ''}${surveyCount ? ` y ${surveyCount} ${surveyCount === 1 ? 'resultado de encuesta' : 'resultados de encuestas'}` : ''}`}
               aria-pressed={selectedDate === date}
-              className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount || surveyCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${isHoliday ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
+              className={`${taskCount || announcementCount || matchCount || trainingPlanCount || birthdayCount || surveyCount || activeSurveyCount ? 'has-data ' : ''}${announcementCount ? 'has-announcement ' : ''}${isHoliday ? 'holiday ' : ''}${date === today ? 'today' : ''}`}
               key={date}
               onClick={() => onSelectDate(date)}
               type="button"
             >
               <strong>{Number(date.slice(-2))}</strong>
+              {surveyTracks.map((survey, track) => <i aria-hidden="true" className={`survey-active-range survey-active-range-${track}${survey.startsOn === date ? ' survey-active-range-start' : ''}${survey.endsOn === date ? ' survey-active-range-end' : ''}`} data-survey-tone={survey.calendarTone} key={survey.id} title={`Encuesta abierta: ${survey.title ?? 'Encuesta'}`} />)}
+              {activeSurveyCount > 3 && <small aria-hidden="true" className="survey-active-overflow">+{activeSurveyCount - 3}</small>}
               {date === today && <small aria-hidden="true" className="today-label">HOY</small>}
               {taskCount > 0 && (
                 <span className="week-task-bubbles" aria-hidden="true">
@@ -133,7 +156,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
         {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados y borradores</span>}
         {includesMatches && matchLegendItems(visibleMatches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
-        {surveys.length > 0 && <span><i className="survey-dot" />Q · Resultados de encuestas</span>}
+        {surveys.length > 0 && <span><i className="survey-dot" />Q · Respuesta o resultados de encuestas</span>}
       </div>}
     </section>
   )

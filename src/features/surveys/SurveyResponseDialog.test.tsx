@@ -29,4 +29,16 @@ describe('SurveyResponseDialog', () => {
     expect(screen.getByLabelText('Disponible seguro')).toBeInTheDocument()
     expect(mocks.fetchSurveyForResponse).not.toHaveBeenCalled()
   })
+
+  test('makes responder más tarde the visible close action without a redundant cross', () => {
+    render(<SurveyResponseDialog initialSurvey={{
+      id: 'demo-survey', title: 'Disponibilidad de ejemplo', description: null, endsOn: '2026-10-10', responded: true,
+      answers: [{ questionId: 'question-1', optionIds: ['yes'] }],
+      questions: [{ id: 'question-1', prompt: '¿Puedes asistir?', type: 'single', required: true, options: [{ id: 'yes', label: 'Disponible seguro' }] }],
+    }} onClose={vi.fn()} onDone={vi.fn().mockResolvedValue(undefined)} surveyId="demo-survey" />)
+
+    expect(screen.getByRole('button', { name: 'Responder más tarde y cerrar encuesta' })).toHaveClass('primary-button')
+    expect(screen.queryByRole('button', { name: 'Cerrar encuesta' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument()
+  })
 })

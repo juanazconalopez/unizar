@@ -2,13 +2,27 @@ import { describe, expect, test, vi } from 'vitest'
 
 const rpc = vi.hoisted(() => vi.fn())
 vi.mock('../lib/supabase', () => ({ supabase: { rpc } }))
-import { fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchSurveyResults, saveSurveyDraft } from './surveysService'
+import { fetchMyCalendarSurveys, fetchMyPendingSurveys, fetchMySurveyResponse, fetchSurveyCalendarResults, fetchSurveyResults, saveSurveyDraft } from './surveysService'
 
 describe('surveysService', () => {
   test('loads only the pending surveys returned by the protected RPC', async () => {
     rpc.mockResolvedValueOnce({ data: [{ id: 'survey-1', title: 'Consulta' }], error: null })
     await expect(fetchMyPendingSurveys()).resolves.toEqual([{ id: 'survey-1', title: 'Consulta' }])
     expect(rpc).toHaveBeenCalledWith('get_my_pending_surveys')
+  })
+
+  test('loads all calendar surveys assigned to the player, including already answered ones', async () => {
+    rpc.mockResolvedValueOnce({ data: [{ id: 'survey-1', state: 'active', responded: true }], error: null })
+
+    await expect(fetchMyCalendarSurveys('2026-09-01', '2026-09-30')).resolves.toEqual([{ id: 'survey-1', state: 'active', responded: true }])
+    expect(rpc).toHaveBeenCalledWith('get_my_calendar_surveys', { checked_from: '2026-09-01', checked_until: '2026-09-30' })
+  })
+
+  test('loads only the player’s own response for a closed private survey', async () => {
+    rpc.mockResolvedValueOnce({ data: { survey: { id: 'survey-1' }, submittedAt: '2026-09-15T10:00:00Z', questions: [] }, error: null })
+
+    await fetchMySurveyResponse('survey-1')
+    expect(rpc).toHaveBeenCalledWith('get_my_survey_response', { checked_survey_id: 'survey-1' })
   })
 
   test('saves the description with the draft and normalizes its text', async () => {

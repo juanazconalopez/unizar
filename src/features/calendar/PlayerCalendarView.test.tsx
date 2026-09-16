@@ -89,7 +89,7 @@ describe('PlayerCalendarView', () => {
 
   test('opens visible aggregate survey results from the calendar', async () => {
     const common = props()
-    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{ id: 'survey-1', title: 'Valoración semanal', result_date: today }])
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{ id: 'survey-1', title: 'Valoración semanal', result_date: today, state: 'closed', visibility: 'team' }])
     common.onOpenSurveyResults = vi.fn()
     const user = userEvent.setup()
     render(<PlayerCalendarView {...common} />)
@@ -97,5 +97,17 @@ describe('PlayerCalendarView', () => {
     await user.click(await screen.findByRole('button', { name: /valoración semanal/i }))
     expect(common.onOpenSurveyResults).toHaveBeenCalledWith('survey-1')
     expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument()
+  })
+
+  test('keeps an active answered survey visible with a modify response action', async () => {
+    const common = props()
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{ id: 'survey-1', title: 'Disponibilidad de viaje', result_date: today, state: 'active', responded: true, respondedOn: today, startsOn: '2026-09-01', visibility: 'private', endsOn: '2026-09-04' }])
+    const user = userEvent.setup()
+    render(<PlayerCalendarView {...common} />)
+
+    await user.click(await screen.findByRole('button', { name: /3 de septiembre.*encuesta abierta/i }))
+
+    expect(await screen.findByRole('button', { name: 'Modificar respuesta' })).toBeInTheDocument()
+    expect(screen.getByText('Respuesta enviada. Puedes modificarla hasta el cierre.')).toBeInTheDocument()
   })
 })

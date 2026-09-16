@@ -44,4 +44,72 @@ describe('planning calendar training plans', () => {
     render(<TaskPlanningCalendar announcements={[]} holidays={['2026-09-08']} month="2026-09-01" onMonthChange={vi.fn()} onSelectDate={vi.fn()} selectedDate="2026-09-08" tasks={[]} />)
     expect(screen.getByRole('button', { name: /^8 de septiembre/i })).toHaveClass('holiday')
   })
+
+  test('draws an open survey as a temporary range and marks only the latest answer', () => {
+    render(<TaskPlanningCalendar
+      announcements={[]}
+      month="2026-09-01"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      selectedDate="2026-09-12"
+      surveys={[{ id: 'survey-1', title: 'Disponibilidad', state: 'active', startsOn: '2026-09-10', endsOn: '2026-09-14', respondedOn: '2026-09-12' }]}
+      tasks={[]}
+    />)
+
+    expect(screen.getByRole('button', { name: /11 de septiembre.*encuesta abierta/i }).querySelector('.survey-active-range')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /12 de septiembre.*resultado de encuesta/i })).getByText('Q 1')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /11 de septiembre.*encuesta abierta/i })).queryByText('Q 1')).not.toBeInTheDocument()
+  })
+
+  test('removes the temporary range after closing and leaves the Q on the result day', () => {
+    render(<TaskPlanningCalendar
+      announcements={[]}
+      month="2026-09-01"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      selectedDate="2026-09-15"
+      surveys={[{ id: 'survey-1', title: 'Disponibilidad', result_date: '2026-09-15', state: 'closed', startsOn: '2026-09-10', endsOn: '2026-09-14' }]}
+      tasks={[]}
+    />)
+
+    const resultDay = screen.getByRole('button', { name: /15 de septiembre.*resultado de encuesta/i })
+    expect(within(resultDay).getByText('Q 1')).toBeInTheDocument()
+    expect(resultDay.querySelector('.survey-active-range')).not.toBeInTheDocument()
+  })
+
+  test('marks the day after an open survey closes for provisional management results', () => {
+    render(<TaskPlanningCalendar
+      announcements={[]}
+      month="2026-09-01"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      selectedDate="2026-09-15"
+      surveys={[{ id: 'survey-1', title: 'Disponibilidad', result_date: '2026-09-15', state: 'active', startsOn: '2026-09-10', endsOn: '2026-09-14' }]}
+      tasks={[]}
+    />)
+
+    const resultDay = screen.getByRole('button', { name: /15 de septiembre.*resultado de encuesta/i })
+    expect(within(resultDay).getByText('Q 1')).toBeInTheDocument()
+    expect(resultDay.querySelector('.survey-active-range')).not.toBeInTheDocument()
+  })
+
+  test('keeps simultaneous open surveys in separate coloured tracks', () => {
+    render(<TaskPlanningCalendar
+      announcements={[]}
+      month="2026-09-01"
+      onMonthChange={vi.fn()}
+      onSelectDate={vi.fn()}
+      selectedDate="2026-09-12"
+      surveys={[
+        { id: 'survey-1', title: 'Viaje', state: 'active', startsOn: '2026-09-10', endsOn: '2026-09-14' },
+        { id: 'survey-2', title: 'Material', state: 'active', startsOn: '2026-09-12', endsOn: '2026-09-16' },
+      ]}
+      tasks={[]}
+    />)
+
+    const day = screen.getByRole('button', { name: /12 de septiembre.*2 encuestas abiertas/i })
+    expect(day.querySelectorAll('.survey-active-range')).toHaveLength(2)
+    expect(day.querySelector('.survey-active-range[data-survey-tone="0"]')).toBeInTheDocument()
+    expect(day.querySelector('.survey-active-range[data-survey-tone="1"]')).toBeInTheDocument()
+  })
 })

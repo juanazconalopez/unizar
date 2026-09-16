@@ -40,6 +40,7 @@ export function PlayerPreviewView({ playerId }: { playerId: string }) {
       results={data.results}
       tasks={data.tasks}
       userId={data.player.id}
+      canRespondToSurveys={false}
       onLoadMatchMonth={async () => undefined}
       onLoadTaskRange={async () => undefined}
       onLoadSurveyClosures={(from, until) => fetchPlayerPreviewSurveyClosures(data.player.id, from, until)}

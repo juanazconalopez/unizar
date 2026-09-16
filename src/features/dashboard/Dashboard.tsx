@@ -116,9 +116,10 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
     if (!onLoadPendingSurveys) return () => { active = false }
     void onLoadPendingSurveys().then((surveys) => {
       if (!active) return
+      const unanswered = surveys.filter((survey) => !survey.responded)
       setPendingSurveys(surveys)
-      setShowPendingSurveys(surveys.length > 0)
-      setRespondingSurvey(surveys.length === 1 ? surveys[0] : null)
+      setShowPendingSurveys(unanswered.length > 0)
+      setRespondingSurvey(unanswered.length === 1 ? unanswered[0] : null)
     }).catch(() => undefined)
     return () => { active = false }
   }, [onLoadPendingSurveys])
@@ -151,11 +152,11 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
       </section>
       {showSeasonSummary && season && onLoadSeasonSummary && seasonSummary && <PlayerSeasonSummaryDialog initialSummary={seasonSummary} onClose={() => setShowSeasonSummary(false)} onLoad={onLoadSeasonSummary} playerId={userId} season={season} />}
       {showPendingSurveys && !respondingSurvey && <Modal labelledBy="pending-surveys-title" onClose={() => setShowPendingSurveys(false)}>
-        <div className="panel-form-heading"><div><span className="eyebrow">ENCUESTAS PENDIENTES</span><h2 id="pending-surveys-title">Tu opinión cuenta</h2></div><div className="modal-later-actions"><button className="text-button" onClick={() => setShowPendingSurveys(false)} type="button">Responder más tarde</button><button aria-label="Cerrar encuestas pendientes" className="icon-button" onClick={() => setShowPendingSurveys(false)} type="button">×</button></div></div>
+        <div className="panel-form-heading"><div><span className="eyebrow">ENCUESTAS PENDIENTES</span><h2 id="pending-surveys-title">Tu opinión cuenta</h2></div><div className="modal-later-actions"><button aria-label="Responder más tarde y cerrar encuestas pendientes" className="primary-button compact" onClick={() => setShowPendingSurveys(false)} type="button">Responder más tarde</button></div></div>
         <p>Responde las encuestas activas antes de su fecha límite.</p>
-          <div className="dashboard-next-list">{pendingSurveys.map((survey) => <button key={survey.id} onClick={() => setRespondingSurvey(survey)} type="button"><span className="dashboard-next-icon survey">Q</span><span><strong>{survey.title}</strong><small>{survey.description ? `${survey.description} · ` : ''}Hasta el {formatDate(survey.endsOn, { day: 'numeric', month: 'long' })}</small></span><span className="secondary-button compact">Responder</span></button>)}</div>
+          <div className="dashboard-next-list">{pendingSurveys.filter((survey) => !survey.responded).map((survey) => <button key={survey.id} onClick={() => setRespondingSurvey(survey)} type="button"><span className="dashboard-next-icon survey">Q</span><span><strong>{survey.title}</strong><small>{survey.description ? `${survey.description} · ` : ''}Hasta el {formatDate(survey.endsOn, { day: 'numeric', month: 'long' })}</small></span><span className="secondary-button compact">Responder</span></button>)}</div>
       </Modal>}
-      {respondingSurvey && <SurveyResponseDialog onClose={() => { setRespondingSurvey(null); setShowPendingSurveys(false) }} onDone={async () => { const surveys = await onLoadPendingSurveys?.() ?? []; setPendingSurveys(surveys); setRespondingSurvey(null); setShowPendingSurveys(surveys.length > 0) }} surveyId={respondingSurvey.id} />}
+      {respondingSurvey && <SurveyResponseDialog onClose={() => { setRespondingSurvey(null); setShowPendingSurveys(false) }} onDone={async () => { const surveys = await onLoadPendingSurveys?.() ?? []; const unanswered = surveys.filter((survey) => !survey.responded); setPendingSurveys(surveys); setRespondingSurvey(null); setShowPendingSurveys(unanswered.length > 0) }} surveyId={respondingSurvey.id} />}
       <section className={`motivation-card${isTeamDashboard ? ' team-insight-card' : ''}`}>
         <span><Icon name="spark" size={22} /></span>
         <div><strong>{isTeamDashboard ? insight.title : motivation.title}</strong><p>{isTeamDashboard ? insight.text : motivation.text}</p></div>

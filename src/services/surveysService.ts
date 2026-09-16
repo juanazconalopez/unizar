@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { SurveyAnswerValues, SurveyQuestionForm } from '../features/surveys/SurveyResponseForm'
 
-export type PendingSurvey = { id: string; title: string; description: string | null; startsOn: string; endsOn: string; visibility: 'team' | 'management' | 'private' }
+export type PendingSurvey = { id: string; title: string; description: string | null; startsOn: string; endsOn: string; visibility: 'team' | 'management' | 'private'; responded?: boolean }
 
 export type SurveyVisibility = PendingSurvey['visibility']
 export type ManagedSurvey = PendingSurvey & {
@@ -112,7 +112,15 @@ export async function fetchSurveyCalendarResults(surveyId: string): Promise<Surv
   }
 }
 
-export type SurveyForResponse = { id: string; title: string; description: string | null; endsOn: string; questions: SurveyQuestionForm[] }
+export type SurveyForResponse = {
+  id: string
+  title: string
+  description: string | null
+  endsOn: string
+  responded?: boolean
+  answers?: SurveyAnswerValues[]
+  questions: SurveyQuestionForm[]
+}
 
 export async function fetchSurveyForResponse(surveyId: string) {
   const { data, error } = await supabase.rpc('get_survey_for_response', { checked_survey_id: surveyId })
@@ -126,7 +134,40 @@ export async function submitSurveyResponse(surveyId: string, answers: SurveyAnsw
   if (error) throw error
 }
 
-export type SurveyClosure = { id: string; title?: string; result_date: string }
+export type SurveyClosure = {
+  id: string
+  title?: string
+  result_date: string
+  state?: 'active' | 'closed'
+  responded?: boolean
+  visibility?: SurveyVisibility
+  endsOn?: string
+}
+
+export type MySurveyResponse = {
+  survey: { id: string; title: string; description: string | null; visibility: SurveyVisibility; endsOn: string }
+  submittedAt: string | null
+  questions: {
+    id: string
+    prompt: string
+    type: string
+    options: { id: string; label: string }[]
+    selectedAnswer: { text: string | null; optionIds: string[] } | null
+  }[]
+}
+
+export async function fetchMyCalendarSurveys(from: string, until: string) {
+  const { data, error } = await supabase.rpc('get_my_calendar_surveys', { checked_from: from, checked_until: until })
+  if (error) throw error
+  return Array.isArray(data) ? data as SurveyClosure[] : []
+}
+
+export async function fetchMySurveyResponse(surveyId: string) {
+  const { data, error } = await supabase.rpc('get_my_survey_response', { checked_survey_id: surveyId })
+  if (error) throw error
+  if (!data || Array.isArray(data)) throw new Error('Tu respuesta ya no está disponible.')
+  return data as MySurveyResponse
+}
 
 export async function fetchVisibleSurveyClosures(from: string, until: string) {
   const { data, error } = await supabase.rpc('get_visible_survey_closures', { checked_from: from, checked_until: until })

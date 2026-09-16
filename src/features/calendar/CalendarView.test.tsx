@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { mondayFor, todayIso } from '../../lib/dates'
+import { mondayFor, todayIso, toIsoDate } from '../../lib/dates'
 import { makeAnnouncement, makeMembership, makeProfile, makeResult, makeSeason, makeTask } from '../../test/fixtures'
 import type { Match } from '../../types'
 
@@ -125,6 +125,35 @@ describe('CalendarView', () => {
     await user.click(await screen.findByRole('button', { name: /valoración semanal/i }))
     expect(common.onOpenSurveyResults).toHaveBeenCalledWith('survey-1')
     expect(screen.getByRole('heading', { name: 'Calendario' })).toBeInTheDocument()
+  })
+
+  test('keeps an open survey as a calendar track without showing its results card yet', async () => {
+    const common = props()
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{
+      id: 'survey-1', title: 'Disponibilidad de viaje', state: 'active', startsOn: todayIso(), endsOn: '2099-12-31', visibility: 'team',
+    }])
+    render(<CalendarView {...common} />)
+
+    const today = await screen.findByRole('button', { name: /encuesta abierta/i, pressed: true })
+    expect(today.querySelector('.survey-active-range')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /disponibilidad de viaje/i })).not.toBeInTheDocument()
+  })
+
+  test('opens provisional results from the Q after the planned close while the survey remains open', async () => {
+    const common = props()
+    const closeDate = todayIso()
+    const resultDay = new Date(`${closeDate}T12:00:00`)
+    resultDay.setDate(resultDay.getDate() + 1)
+    const resultDate = toIsoDate(resultDay)
+    common.onLoadSurveyClosures = vi.fn().mockResolvedValue([{
+      id: 'survey-1', title: 'Disponibilidad de viaje', result_date: resultDate, state: 'active', startsOn: closeDate, endsOn: closeDate, visibility: 'team',
+    }])
+    const user = userEvent.setup()
+    render(<CalendarView {...common} focusedDate={resultDate} />)
+
+    expect(await screen.findByRole('heading', { name: 'Resultados provisionales' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /ver detalle de disponibilidad de viaje/i }))
+    expect(common.onOpenSurveyResults).toHaveBeenCalledWith('survey-1')
   })
 
   test('opens the callup report from the header', async () => {

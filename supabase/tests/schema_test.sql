@@ -1,5 +1,5 @@
 begin;
-select plan(234);
+select plan(245);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -688,7 +688,9 @@ select has_table('public', 'survey_recipients', 'published survey recipients are
 select has_table('public', 'survey_responses', 'survey responses are persisted separately');
 select has_table('public', 'survey_answers', 'answers support every question type');
 select has_function('public', 'publish_survey', array['uuid'], 'surveys are published atomically');
-select has_function('public', 'submit_survey_response', array['uuid', 'jsonb'], 'players submit immutable answers atomically');
+select has_function('public', 'submit_survey_response', array['uuid', 'jsonb'], 'players submit answers atomically');
+select has_function('public', 'get_my_calendar_surveys', array['date', 'date'], 'players receive their active and closed calendar surveys');
+select has_function('public', 'get_my_survey_response', array['uuid'], 'players can read their own private response without exposing team data');
 select has_function('public', 'get_survey_results', array['uuid', 'uuid'], 'results enforce visibility through a protected RPC');
 select has_function('public', 'save_survey_draft', array['uuid', 'uuid', 'text', 'text', 'date', 'date', 'public.survey_visibility', 'jsonb'], 'survey drafts are saved atomically');
 select has_function('public', 'get_survey_draft', array['uuid'], 'draft editors can load their existing description and questions');
@@ -722,6 +724,43 @@ select like(
   '%La jugadora no forma parte de esta encuesta%',
   'individual response access is limited to invited recipients'
 );
+select like(
+  pg_get_functiondef('public.submit_survey_response(uuid,jsonb)'::regprocedure),
+  '%on conflict (survey_id, player_id) do update set submitted_at = now()%',
+  'a player response is replaced atomically while the survey remains open'
+);
+select like(
+  pg_get_functiondef('public.get_survey_for_response(uuid)'::regprocedure),
+  '%''answers'', coalesce(%',
+  'active surveys return the player\'s saved answers for editing'
+);
+select like(
+  pg_get_functiondef('public.get_my_calendar_surveys(date,date)'::regprocedure),
+  '%join public.survey_recipients recipient%',
+  'calendar surveys are scoped to the invited player'
+);
+select like(
+  pg_get_functiondef('public.get_my_calendar_surveys(date,date)'::regprocedure),
+  '%survey.starts_on <= checked_until and survey.ends_on >= checked_from%',
+  'open surveys are returned for every overlapping calendar day'
+);
+select like(
+  pg_get_functiondef('public.get_my_calendar_surveys(date,date)'::regprocedure),
+  '%''respondedOn''%',
+  'calendar surveys expose only the date of the player’s latest active response'
+);
+select like(
+  pg_get_functiondef('public.get_visible_survey_closures(date,date)'::regprocedure),
+  '%survey.starts_on <= checked_until and survey.ends_on >= checked_from%',
+  'managers receive open survey ranges for calendar lines'
+);
+select like(
+  pg_get_functiondef('public.get_visible_survey_closures(date,date)'::regprocedure),
+  '%''result_date'', survey.ends_on + 1%',
+  'managers receive the Q on the day after the planned close, including for provisional results'
+);
+select ok(has_function_privilege('authenticated', 'public.get_my_survey_response(uuid)', 'EXECUTE'), 'authenticated players can load their own response');
+select ok(not has_function_privilege('anon', 'public.get_my_survey_response(uuid)', 'EXECUTE'), 'anonymous users cannot load player survey responses');
 select ok(has_function_privilege('authenticated', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'authenticated managers can invoke protected draft saving');
 select ok(not has_function_privilege('anon', 'public.save_survey_draft(uuid,uuid,text,text,date,date,public.survey_visibility,jsonb)', 'EXECUTE'), 'anonymous users cannot save survey drafts');
 select like(

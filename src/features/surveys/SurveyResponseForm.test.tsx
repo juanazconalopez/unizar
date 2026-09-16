@@ -26,4 +26,17 @@ describe('SurveyResponseForm', () => {
     await user.click(screen.getByRole('button', { name: 'Enviar respuesta' }))
     expect(onSubmit).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ questionId: 'long', text: 'Muy bien' }), expect.objectContaining({ questionId: 'single', optionIds: ['a'] })]))
   })
+
+  test('prefills a previous response and uses the update action', () => {
+    render(<SurveyResponseForm
+      answers={[{ questionId: 'long', text: 'Algo cansada' }, { questionId: 'single', optionIds: ['b'] }]}
+      questions={questions}
+      submitLabel="Guardar cambios"
+      onSubmit={vi.fn()}
+    />)
+
+    expect(screen.getByPlaceholderText('Escribe tu respuesta…')).toHaveValue('Algo cansada')
+    expect(screen.getByLabelText('No')).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument()
+  })
 })

@@ -1329,7 +1329,9 @@ export type Database = {
       }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
+      get_my_calendar_surveys: { Args: { checked_from: string; checked_until: string }; Returns: Json }
       get_my_pending_surveys: { Args: never; Returns: Json }
+      get_my_survey_response: { Args: { checked_survey_id: string }; Returns: Json }
       get_survey_draft: { Args: { checked_survey_id: string }; Returns: Json }
       get_survey_for_response: { Args: { checked_survey_id: string }; Returns: Json }
       get_visible_survey_closures: { Args: { checked_from: string; checked_until: string }; Returns: Json }

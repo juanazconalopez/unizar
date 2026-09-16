@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -23,11 +23,18 @@ import type {
 import { MatchCard } from '../matches/MatchCard'
 import { MatchDetailDialog } from '../matches/MatchDetailDialog'
 import { SurveyClosureCards } from '../surveys/SurveyClosureCards'
+import { SurveyOwnResponseDialog } from '../surveys/SurveyOwnResponseDialog'
+import { SurveyResponseDialog } from '../surveys/SurveyResponseDialog'
 import { HolidayDayContext } from './HolidayDayContext'
 import { AnnouncementCard } from '../tasks/AnnouncementCard'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskPlanningCalendar } from '../tasks/TaskPlanningCalendar'
-import type { CalendarSurvey } from '../tasks/TaskPlanningCalendar'
+import { assignCalendarSurveyTones, calendarSurveyAppearsOnDate } from '../tasks/calendarSurveys'
+import type { CalendarSurvey } from '../tasks/calendarSurveys'
+import type { MySurveyResponse, SurveyForResponse } from '../../services/surveysService'
+import type { SurveyAnswerValues } from '../surveys/SurveyResponseForm'
+
+const SURVEY_MONTH_CACHE_MS = 60_000
 
 export function PlayerCalendarView({
   announcements,
@@ -47,6 +54,10 @@ export function PlayerCalendarView({
   onLoadTaskRange,
   onLoadSurveyClosures,
   onOpenSurveyResults,
+  canRespondToSurveys = true,
+  initialSurveys,
+  initialOwnSurveyResponses,
+  onSubmitSurveyResponse,
   onSaveAvailability,
   onSaveResult,
 }: {
@@ -69,6 +80,10 @@ export function PlayerCalendarView({
   onSaveResult?: (task: TrainingTask, values: ResultValues) => Promise<void>
   onLoadSurveyClosures?: (from: string, until: string) => Promise<CalendarSurvey[]>
   onOpenSurveyResults?: (surveyId: string) => void
+  canRespondToSurveys?: boolean
+  initialSurveys?: Record<string, SurveyForResponse>
+  initialOwnSurveyResponses?: Record<string, MySurveyResponse>
+  onSubmitSurveyResponse?: (surveyId: string, answers: SurveyAnswerValues[]) => Promise<void>
 }) {
   const today = todayIso()
   const initialDate = focusedDate ?? today
@@ -76,6 +91,9 @@ export function PlayerCalendarView({
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
+  const [responseSurvey, setResponseSurvey] = useState<CalendarSurvey | null>(null)
+  const [closedSurvey, setClosedSurvey] = useState<CalendarSurvey | null>(null)
+  const surveyMonthCache = useRef(new Map<string, { loadedAt: number; surveys: CalendarSurvey[] }>())
   const holidays = useSeasonHolidayDates(memberships.map((membership) => membership.season_id), providedHolidays)
   const visibleTasks = tasks.filter((task) => task.status === 'published' && canUserCompleteTask(task, memberships, userId))
   const visibleAnnouncements = announcements.filter((announcement) => announcement.status === 'published')
@@ -87,7 +105,7 @@ export function PlayerCalendarView({
     .filter((match) => match.match_date === selectedDate)
     .sort(compareMatches)
   const selectedBirthdays = birthdays.filter((birthday) => birthday.birthday_on === selectedDate)
-  const selectedSurveyClosures = surveyClosures.filter((survey) => survey.result_date === selectedDate)
+  const selectedSurveyClosures = surveyClosures.filter((survey) => calendarSurveyAppearsOnDate(survey, selectedDate))
   const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
 
   useEffect(() => {
@@ -99,16 +117,28 @@ export function PlayerCalendarView({
     ]).catch(() => undefined)
   }, [focusedDate, onLoadMatchMonth, onLoadTaskRange])
 
+  const fetchSurveyMonth = useCallback(async (targetMonth: string, force = false) => {
+    if (!onLoadSurveyClosures) return []
+    const cached = surveyMonthCache.current.get(targetMonth)
+    if (!force && cached && Date.now() - cached.loadedAt < SURVEY_MONTH_CACHE_MS) return cached.surveys
+    const surveys = assignCalendarSurveyTones(await onLoadSurveyClosures(monthStart(targetMonth), monthEnd(targetMonth)))
+    surveyMonthCache.current.set(targetMonth, { loadedAt: Date.now(), surveys })
+    return surveys
+  }, [onLoadSurveyClosures])
+
   async function changeMonth(nextMonth: string) {
     setMonth(nextMonth)
     await Promise.all([
       onLoadTaskRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))),
       onLoadMatchMonth(nextMonth),
     ]).catch(() => undefined)
-    if (onLoadSurveyClosures) setSurveyClosures(await onLoadSurveyClosures(monthStart(nextMonth), monthEnd(nextMonth)).catch(() => []))
   }
 
-  useEffect(() => { if (onLoadSurveyClosures) void onLoadSurveyClosures(monthStart(month), monthEnd(month)).then(setSurveyClosures).catch(() => setSurveyClosures([])) }, [month, onLoadSurveyClosures])
+  useEffect(() => {
+    let current = true
+    void fetchSurveyMonth(month).then((surveys) => { if (current) setSurveyClosures(surveys) }).catch(() => { if (current) setSurveyClosures([]) })
+    return () => { current = false }
+  }, [fetchSurveyMonth, month])
 
   function goToToday() {
     setSelectedDate(today)
@@ -129,6 +159,19 @@ export function PlayerCalendarView({
         await onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`)
       } : undefined}
     />
+  }
+
+  function openSurveyDetail(survey: CalendarSurvey) {
+    if (!canRespondToSurveys) {
+      if (survey.visibility !== 'management' && survey.visibility !== 'private') onOpenSurveyResults?.(survey.id)
+      return
+    }
+    if (survey.visibility !== 'management' && survey.visibility !== 'private' && onOpenSurveyResults) onOpenSurveyResults(survey.id)
+    else setClosedSurvey(survey)
+  }
+
+  function modifySurvey(survey: CalendarSurvey) {
+    if (canRespondToSurveys && survey.state === 'active') setResponseSurvey(survey)
   }
 
   return <div className="page">
@@ -163,7 +206,7 @@ export function PlayerCalendarView({
           <div className="task-week-heading"><h2>Avisos</h2><span>{selectedAnnouncements.length}</span></div>
           <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
         </div>}
-        {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={onOpenSurveyResults} />}
+        {selectedSurveyClosures.length > 0 && <SurveyClosureCards canRespond={canRespondToSurveys} surveys={selectedSurveyClosures} onModify={modifySurvey} onOpen={openSurveyDetail} />}
         {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
           <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
           <div className="match-list">{selectedMatches.map(renderMatch)}</div>
@@ -201,5 +244,10 @@ export function PlayerCalendarView({
       } : undefined}
       onViewAvailability={() => undefined}
     />}
+    {responseSurvey && <SurveyResponseDialog initialSurvey={initialSurveys?.[responseSurvey.id]} onClose={() => setResponseSurvey(null)} onDone={async () => {
+      setSurveyClosures(await fetchSurveyMonth(month, true))
+      setResponseSurvey(null)
+    }} onSubmitResponse={onSubmitSurveyResponse} surveyId={responseSurvey.id} />}
+    {closedSurvey && <SurveyOwnResponseDialog initialResponse={initialOwnSurveyResponses?.[closedSurvey.id]} onClose={() => setClosedSurvey(null)} surveyId={closedSurvey.id} title={closedSurvey.title} />}
   </div>
 }

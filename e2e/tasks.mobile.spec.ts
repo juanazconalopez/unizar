@@ -146,7 +146,7 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
   await expect(page.getByText('Cumpleaños del día').locator('..')).toContainText('Claudia Pérez')
   await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
   await expect(page.getByText('Estás en duda')).toBeVisible()
-  await page.getByRole('button', { name: 'Modificar respuesta' }).click()
+  await page.locator('.selected-day-matches').getByRole('button', { name: 'Modificar respuesta' }).click()
   await page.getByLabel('Respuesta').selectOption('doubt')
   await page.getByLabel('Comentario opcional').fill('Pendiente de revisión')
   await page.getByRole('button', { name: 'Guardar respuesta' }).click()

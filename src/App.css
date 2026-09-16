@@ -528,11 +528,20 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .calendar-training-title b { padding: 3px 6px; border-radius: 12px; color: #75631f; background: #fff4d2; font-size: 8px; letter-spacing: .4px; text-transform: uppercase; }
 .calendar-training-draft { border-color: #e7d39b !important; border-left-color: #c7a44e !important; background: #fffdf6 !important; }
 .calendar-training-draft > span { color: #75631f !important; background: #fff1c8 !important; }
-.calendar-training-list .survey-closure-card { width: 100%; min-height: 0; padding: 9px 11px; border: 1px solid #e4a7bc; border-left: 3px solid #b04a72; border-radius: 10px; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: var(--ink); background: #fceef3; text-align: left; }
+.calendar-training-list .survey-closure-card { --survey-accent: #b04a72; --survey-border: #e4a7bc; --survey-card: #fceef3; width: 100%; min-height: 0; padding: 9px 11px; border: 1px solid var(--survey-border); border-left: 3px solid var(--survey-accent); border-radius: 10px; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: var(--ink); background: var(--survey-card); text-align: left; }
+.survey-active-card[data-survey-tone='1'] { --survey-accent: #c96c91; --survey-border: #eabbd0; --survey-card: #fff3f7; }
+.survey-active-card[data-survey-tone='2'] { --survey-accent: #8763a8; --survey-border: #d6c4e4; --survey-card: #f8f4fc; }
+.calendar-training-list .survey-active-card { grid-template-columns: minmax(0,1fr) auto; }
+.survey-active-card-main { min-width: 0; padding: 0; border: 0; display: grid; grid-template-columns: 23px minmax(0,1fr); align-items: center; gap: 8px; color: inherit; background: transparent; text-align: left; font: inherit; cursor: pointer; }
+.survey-active-card-main > span:last-child { min-width: 0; }
+.survey-active-card-main:hover strong { color: var(--survey-accent); }
+.survey-active-card-main:focus-visible { outline: 3px solid rgba(176,74,114,.25); outline-offset: 2px; }
+.survey-active-card .secondary-button { white-space: nowrap; }
 button.survey-closure-card { cursor: pointer; }
 button.survey-closure-card:hover { border-color: #c87091; background: #fae4ec; }
 button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.25); outline-offset: 2px; }
-.calendar-training-list .survey-closure-card > .survey-mark { width: 21px; height: 21px; font-size: 9px; }
+.calendar-training-list .survey-closure-card > .survey-mark { width: 21px; height: 21px; color: var(--survey-accent); font-size: 9px; }
+.survey-active-card .survey-mark { color: var(--survey-accent); }
 .selected-calendar-group + .selected-calendar-group { margin-top: 26px; padding-top: 25px; border-top: 1px solid var(--line); }
 .calendar-add-actions { position: relative; }
 .calendar-add-menu { position: relative; }
@@ -668,6 +677,14 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .statistics-calendar { gap: 1px; padding: 0 12px 12px; background: var(--line); }
 .statistics-calendar > button, .calendar-empty { min-width: 0; min-height: 92px; padding: 9px; border: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; background: white; text-align: left; }
 .statistics-calendar > button { position: relative; }
+.survey-active-range { position: absolute; z-index: 2; right: -1px; bottom: 0; left: -1px; height: 3px; border-radius: 0; background: #d77b9c; pointer-events: none; }
+.survey-active-range-1 { bottom: 3px; }
+.survey-active-range-2 { bottom: 6px; }
+.survey-active-range[data-survey-tone='1'] { background: #e29ab5; }
+.survey-active-range[data-survey-tone='2'] { background: #b49acc; }
+.survey-active-range-start { left: 5px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.survey-active-range-end { right: 5px; border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.survey-active-overflow { position: absolute; z-index: 3; right: 3px; bottom: 8px; padding: 1px 3px !important; color: #8e365a; background: #fff3f7; font-size: 7px !important; line-height: 1; }
 .statistics-calendar > button:hover { background: #f7faf8; }
 .statistics-calendar > button[aria-pressed='true'] { z-index: 1; box-shadow: inset 0 0 0 2px var(--green); background: #eaf7ef; }
 .statistics-calendar > button.today { background: #eaf3ff; }
@@ -693,6 +710,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .attendance-mark { color: #206b51; background: #e1f1e7; }
 .task-mark { color: #3f6970; background: #e3f0f2; }
 .birthday-mark { color: #7a5817; background: #fff0bd; }
+.task-planning-calendar > button > .survey-mark { align-self: flex-start; color: #fff; background: #b04a72; }
 .task-planning-calendar > button > .birthday-mark { position: absolute; top: 6px; right: 5px; }
 .calendar-legend { padding: 0 20px 15px; display: flex; flex-wrap: wrap; gap: 10px 18px; color: var(--muted); font-size: 10px; }
 .calendar-legend span { display: flex; align-items: center; gap: 6px; }
@@ -1639,6 +1657,10 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .statistics-calendar { padding: 0 5px 5px; }
   .statistics-calendar > button, .calendar-empty { min-height: 69px; padding: 6px 3px; gap: 3px; }
   .task-planning-calendar > button { min-height: 76px; }
+  .survey-active-range { height: 2px; }
+  .survey-active-range-1 { bottom: 2px; }
+  .survey-active-range-2 { bottom: 4px; }
+  .survey-active-overflow { bottom: 6px; }
   .week-task-bubbles { gap: 2px; }
   .week-task-bubbles i { width: 14px; height: 14px; font-size: 7px; }
   .day-announcement-bubbles i { width: 14px; height: 14px; font-size: 7px; }

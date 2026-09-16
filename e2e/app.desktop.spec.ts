@@ -58,6 +58,19 @@ test('player opens survey results from calendar and remains there after closing'
   await expect(page.getByRole('heading', { name: 'Encuestas', exact: true })).toHaveCount(0)
 })
 
+test('player can update an active survey from its calendar card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Ver como').selectOption('player')
+  await page.getByRole('button', { name: 'Calendario' }).click()
+
+  await page.getByRole('button', { name: 'Modificar respuesta' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Disponibilidad para dos convocatorias' })
+  await expect(dialog.getByRole('button', { name: 'Guardar cambios' })).toBeVisible()
+  await expect(dialog.getByLabel('Disponible seguro').first()).toBeChecked()
+  await expect(dialog.getByRole('button', { name: 'Responder más tarde y cerrar encuesta' })).toHaveClass(/primary-button/)
+  await expect(dialog.getByRole('button', { name: 'Cerrar encuesta', exact: true })).toHaveCount(0)
+})
+
 test('desktop survey filtering returns to aggregate results after clearing', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Gestión' }).click()

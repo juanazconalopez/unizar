@@ -14,7 +14,7 @@ describe('playerPreviewService', () => {
     expect(from).not.toHaveBeenCalled()
   })
 
-  test('loads shared survey closures for the player preview calendar', async () => {
+  test('loads player-visible survey cards for the preview calendar', async () => {
     rpc.mockResolvedValueOnce({ data: [{ id: 'survey-1', title: 'Valoración semanal', result_date: '2026-09-15' }], error: null })
 
     await expect(fetchPlayerPreviewSurveyClosures('player-1', '2026-09-01', '2026-09-30')).resolves.toEqual([

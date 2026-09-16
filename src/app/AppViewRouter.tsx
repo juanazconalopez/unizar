@@ -9,7 +9,7 @@ import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/per
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
 import { fetchCalendarTrainingPlans } from '../services/trainingPlansService'
-import { fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
+import { fetchMyCalendarSurveys, fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
@@ -180,7 +180,8 @@ export function AppViewRouter({
         onLoadTaskRange={data.loadTaskRange}
         onSaveAvailability={can(PERMISSIONS.matches.ownAvailability) ? actions.matches.saveAvailability : undefined}
         onSaveResult={can(PERMISSIONS.tasks.submitOwn) ? actions.tasks.saveResult : undefined}
-        onLoadSurveyClosures={fetchVisibleSurveyClosures}
+        canRespondToSurveys={can(PERMISSIONS.surveys.respondOwn)}
+        onLoadSurveyClosures={fetchMyCalendarSurveys}
         onOpenSurveyResults={setSurveyResultId}
       />}
       {view === 'tasks' && canAccessTasks(profile) && <TasksView
