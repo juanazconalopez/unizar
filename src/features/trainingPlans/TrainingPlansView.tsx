@@ -248,9 +248,13 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
           {visiblePlans.map((plan) => {
             const duration = plan.training_exercises.reduce((total, exercise) => total + exercise.duration_minutes, 0)
             return (
-              <article className="training-plan-card" key={plan.id}>
+              <article className={`training-plan-card ${plan.status}`} key={plan.id}>
                 <button aria-label={`Ver entrenamiento ${plan.title}`} className="training-plan-open" onClick={() => setViewingPlan(plan)} />
-                <div className="training-plan-date"><strong>{new Date(`${plan.session_date}T12:00:00`).getDate()}</strong><span>{formatDate(plan.session_date, { month: 'short' })}</span></div>
+                <div aria-label={formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'long' })} className="training-plan-date">
+                  <span className="training-plan-weekday">{formatDate(plan.session_date, { weekday: 'short' })}</span>
+                  <strong>{new Date(`${plan.session_date}T12:00:00`).getDate()}</strong>
+                  <span className="training-plan-month">{formatDate(plan.session_date, { month: 'short' })}</span>
+                </div>
                 <div className="training-plan-main">
                   <div className="training-plan-title-row"><span className={`training-plan-status ${plan.status}`}>{trainingPlanStatusLabel(plan.status)}</span><small>{plan.seasons?.name}</small></div>
                   <h2>{plan.title}</h2>

@@ -56,4 +56,11 @@ describe('ContentImageTextarea', () => {
     expect(textarea).toHaveValue('Indicaciones')
     expect(mocks.discard).toHaveBeenCalledWith(imageId)
   })
+
+  it('permite pegar imágenes sin mostrar el selector de archivos', () => {
+    render(<ContentImageTextarea label="Objetivos" onChange={vi.fn()} showFilePicker={false} value="" />)
+
+    expect(screen.getByText('Puedes pegar una imagen desde el portapapeles.')).toBeInTheDocument()
+    expect(screen.queryByText('Añadir imagen')).not.toBeInTheDocument()
+  })
 })

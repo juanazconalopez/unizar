@@ -18,6 +18,33 @@ test('desktop keeps the sidebar and content layout usable', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Encuestas', exact: true })).toBeVisible()
 })
 
+test('desktop training editor scrolls only its form and keeps the session summary fixed', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Entrenamientos' }).click()
+  await page.getByRole('button', { name: /Editar entrenamiento/ }).first().click()
+
+  const heading = page.locator('.training-editor-heading')
+  const editorScroll = page.locator('.training-editor-scroll')
+  const editorActions = page.locator('.training-editor-actions')
+  const initialHeadingTop = (await heading.boundingBox())?.y
+  await expect(editorActions).toHaveCSS('position', 'static')
+  expect(await editorActions.evaluate((element) => element.closest('.training-editor-scroll') !== null)).toBe(true)
+  await editorScroll.hover()
+  await page.mouse.wheel(0, 900)
+
+  await expect.poll(async () => editorScroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+  expect(await page.locator('.content').evaluate((element) => element.scrollTop)).toBe(0)
+  expect((await heading.boundingBox())?.y).toBe(initialHeadingTop)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(await page.evaluate(() => document.documentElement.clientHeight))
+
+  await editorScroll.evaluate((element) => { element.scrollTop = element.scrollHeight })
+  const scrollBox = await editorScroll.boundingBox()
+  const actionsBox = await editorActions.boundingBox()
+  expect((actionsBox?.y ?? 0) + (actionsBox?.height ?? 0)).toBeLessThanOrEqual((scrollBox?.y ?? 0) + (scrollBox?.height ?? 0))
+})
+
 test('desktop calendar presents daily groups in the agreed order', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()

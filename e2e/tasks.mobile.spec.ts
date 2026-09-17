@@ -1,4 +1,22 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+
+async function selectUpcomingMatchDay(page: Page, matchIndex: number) {
+  let remainingIndex = matchIndex
+
+  for (let monthOffset = 0; monthOffset < 3; monthOffset += 1) {
+    const matchDays = page.getByRole('button', { name: / y [1-9]\d* partidos?/ })
+    const visibleMatchDays = await matchDays.count()
+    if (remainingIndex < visibleMatchDays) {
+      await matchDays.nth(remainingIndex).click()
+      return
+    }
+
+    remainingIndex -= visibleMatchDays
+    await page.getByRole('button', { name: 'Mes siguiente' }).click()
+  }
+
+  throw new Error(`No se ha encontrado el partido futuro con índice ${matchIndex}.`)
+}
 
 test('owner plans and reviews task results on mobile', async ({ page }) => {
   await page.goto('/')
@@ -117,7 +135,7 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /1 cumpleaños/ }).click()
   await expect(page.getByText('Cumpleaños del día').locator('..')).toContainText(/Claudia Pérez cumple \d+ años/)
-  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
+  await selectUpcomingMatchDay(page, 1)
   await page.locator('.selected-day-matches .match-card-summary').click()
   await page.getByRole('button', { name: 'Ver disponibilidades' }).click()
   await expect(page.getByRole('dialog', { name: /Unizar Fem/ })).toContainText('En duda')
@@ -144,7 +162,7 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
   expect(Math.abs(birthdayMarkBox!.y - birthdayDayNumberBox!.y)).toBeLessThanOrEqual(3)
   await birthdayDay.click()
   await expect(page.getByText('Cumpleaños del día').locator('..')).toContainText('Claudia Pérez')
-  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
+  await selectUpcomingMatchDay(page, 1)
   await expect(page.getByText('Estás en duda')).toBeVisible()
   await page.locator('.selected-day-matches').getByRole('button', { name: 'Modificar respuesta' }).click()
   await page.getByLabel('Respuesta').selectOption('doubt')
@@ -190,7 +208,7 @@ test('coach manages sports areas without access to settings', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /1 cumpleaños/ }).click()
   await expect(page.getByText('Cumpleaños del día').locator('..')).toContainText(/Claudia Pérez cumple \d+ años/)
-  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
+  await selectUpcomingMatchDay(page, 1)
   await page.locator('.selected-day-matches .match-card-summary').click()
   await expect(page.getByRole('button', { name: 'Editar partido' })).toBeVisible()
   await page.getByRole('button', { name: 'Cerrar' }).click()
@@ -321,7 +339,7 @@ test('owner records an invited player and later links multiple provisional histo
 test('scrolling the lineup modal does not move the screen behind it', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
-  await page.getByRole('button', { name: /1 partido/ }).nth(1).click()
+  await selectUpcomingMatchDay(page, 1)
   await page.locator('.selected-day-matches .match-card-summary').click()
   await page.getByRole('button', { name: 'Preparar convocatoria' }).click()
 

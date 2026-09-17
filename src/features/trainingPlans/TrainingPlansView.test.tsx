@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { addDays, todayIso } from '../../lib/dates'
+import { addDays, formatDate, todayIso } from '../../lib/dates'
 import type { Season, TrainingPlan } from '../../types'
 
 const mocks = vi.hoisted(() => ({
@@ -90,6 +90,28 @@ describe('training plan reading view', () => {
     expect(screen.queryByText('Entrenamiento pasado')).not.toBeInTheDocument()
   })
 
+  test('shows the abbreviated weekday above the day number on each training card', async () => {
+    const thursdayPlan = { ...plan, session_date: '2026-09-17' }
+    mocks.fetchTrainingPlans.mockResolvedValue([thursdayPlan])
+    render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    expect(await screen.findByLabelText(/jueves, 17 de septiembre/i)).toHaveTextContent(/JUE\s*17\s*SEPT/i)
+  })
+
+  test('identifies prepared, draft and cancelled cards by their status', async () => {
+    const today = todayIso()
+    mocks.fetchTrainingPlans.mockResolvedValue([
+      { ...plan, id: 'prepared', title: 'Sesión preparada', session_date: today, status: 'published' },
+      { ...plan, id: 'draft', title: 'Sesión borrador', session_date: addDays(today, 1), status: 'draft' },
+      { ...plan, id: 'cancelled', title: 'Sesión cancelada', session_date: addDays(today, 2), status: 'cancelled' },
+    ])
+    render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+
+    expect((await screen.findByRole('button', { name: 'Ver entrenamiento Sesión preparada' })).closest('article')).toHaveClass('published')
+    expect(screen.getByRole('button', { name: 'Ver entrenamiento Sesión borrador' }).closest('article')).toHaveClass('draft')
+    expect(screen.getByRole('button', { name: 'Ver entrenamiento Sesión cancelada' }).closest('article')).toHaveClass('cancelled')
+  })
+
   test('opens a past training plan linked from the calendar', async () => {
     const pastPlan = { ...plan, id: 'past-plan', session_date: addDays(todayIso(), -10), title: 'Entrenamiento histórico' }
     mocks.fetchTrainingPlans.mockResolvedValue([])
@@ -138,6 +160,10 @@ describe('training plan reading view', () => {
     expect(screen.getByText('EDITAR ENTRENAMIENTO')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Pretemporada divertida')).toBeInTheDocument()
     expect(screen.getByLabelText('Material')).toHaveValue('Preparar conos.')
+    const expectedDate = formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'short' })
+    expect(screen.getByText(expectedDate.charAt(0).toUpperCase() + expectedDate.slice(1))).toHaveAttribute('dateTime', plan.session_date)
+    expect(screen.getAllByText('Añadir imagen')).toHaveLength(1)
+    expect(screen.getByRole('heading', { name: 'Datos de la sesión' }).closest('.training-editor-scroll')).toBeInTheDocument()
     expect(screen.queryByLabelText('Participantes')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Puntos técnicos')).not.toBeInTheDocument()
   })

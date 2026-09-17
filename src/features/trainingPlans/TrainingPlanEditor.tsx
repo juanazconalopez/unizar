@@ -3,6 +3,7 @@ import { ContentImageTextarea } from '../../components/ContentImageTextarea'
 import { Icon } from '../../components/Icon'
 import { RichContent } from '../../components/RichContent'
 import { Modal } from '../../components/ui/Modal'
+import { formatDate } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { seasonForDate } from '../../lib/selectors'
 import type { Season, TacticsBoardData, TrainingExercisePreset, TrainingExerciseValues, TrainingPlan, TrainingPlanValues } from '../../types'
@@ -39,6 +40,8 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
   const totalDuration = useMemo(() => values.exercises.reduce((total, exercise) => total + exercise.durationMinutes, 0), [values.exercises])
   const selectedSeason = seasons.find((season) => season.id === values.seasonId)
   const selectedPreset = presets.find((preset) => preset.id === selectedPresetId)
+  const sessionDateLabel = formatDate(values.sessionDate, { weekday: 'long', day: 'numeric', month: 'short' })
+  const headingTitle = values.title.trim() || (template ? `Copia de ${template.title}` : 'Prepara una nueva sesión')
   const draft = useTrainingPlanDraft({
     storageKey: trainingPlanDraftKey(userId, plan?.id, template?.id),
     initialValues,
@@ -162,29 +165,30 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
     <div className="page training-editor-page">
       <div className="training-editor-heading">
         <button className="text-button" onClick={onCancel} type="button">← Volver a entrenamientos</button>
-        <div><span className="eyebrow">{plan ? 'EDITAR ENTRENAMIENTO' : template ? 'DUPLICAR ENTRENAMIENTO' : 'NUEVO ENTRENAMIENTO'}</span><h1>{plan ? plan.title : template ? `Copia de ${template.title}` : 'Prepara una nueva sesión'}</h1></div>
+        <div><span className="eyebrow">{plan ? 'EDITAR ENTRENAMIENTO' : template ? 'DUPLICAR ENTRENAMIENTO' : 'NUEVO ENTRENAMIENTO'}</span><div className="training-editor-title"><h1>{headingTitle}</h1><time dateTime={values.sessionDate}>{sessionDateLabel.charAt(0).toUpperCase() + sessionDateLabel.slice(1)}</time></div></div>
         <div className="training-duration"><strong>{totalDuration}</strong><span>minutos<br />planificados</span></div>
       </div>
 
-      {draft.pendingDraft ? (
-        <div className="training-draft-notice" role="status">
-          <div><Icon name="save" size={18} /><span><strong>Hay un borrador sin guardar</strong><small>Puedes recuperar los cambios guardados anteriormente en este dispositivo.</small></span></div>
-          <span className="training-draft-actions">
-            <button className="secondary-button compact" onClick={draft.discardDraft} type="button">Descartar</button>
-            <button className="primary-button compact" onClick={draft.recoverDraft} type="button">Recuperar borrador</button>
-          </span>
-        </div>
-      ) : draft.status !== 'idle' && (
-        <div aria-live="polite" className={`training-draft-status ${draft.status === 'error' ? 'error' : ''}`}>
-          <Icon name="save" size={14} />
-          {draft.status === 'saving' && 'Guardando borrador…'}
-          {draft.status === 'saved' && 'Borrador guardado en este dispositivo'}
-          {draft.status === 'recovered' && 'Borrador recuperado'}
-          {draft.status === 'error' && 'No se ha podido guardar el borrador en este dispositivo'}
-        </div>
-      )}
+      <div className="training-editor-scroll">
+        {draft.pendingDraft ? (
+          <div className="training-draft-notice" role="status">
+            <div><Icon name="save" size={18} /><span><strong>Hay un borrador sin guardar</strong><small>Puedes recuperar los cambios guardados anteriormente en este dispositivo.</small></span></div>
+            <span className="training-draft-actions">
+              <button className="secondary-button compact" onClick={draft.discardDraft} type="button">Descartar</button>
+              <button className="primary-button compact" onClick={draft.recoverDraft} type="button">Recuperar borrador</button>
+            </span>
+          </div>
+        ) : draft.status !== 'idle' && (
+          <div aria-live="polite" className={`training-draft-status ${draft.status === 'error' ? 'error' : ''}`}>
+            <Icon name="save" size={14} />
+            {draft.status === 'saving' && 'Guardando borrador…'}
+            {draft.status === 'saved' && 'Borrador guardado en este dispositivo'}
+            {draft.status === 'recovered' && 'Borrador recuperado'}
+            {draft.status === 'error' && 'No se ha podido guardar el borrador en este dispositivo'}
+          </div>
+        )}
 
-      <form onBlurCapture={draft.saveNow} onSubmit={submit}>
+        <form onBlurCapture={draft.saveNow} onSubmit={submit}>
         <section className="training-editor-section training-basics">
           <div className="training-section-heading"><span>1</span><div><h2>Datos de la sesión</h2><p>Define cuándo se realiza y qué se quiere trabajar.</p></div></div>
           <div className="form-grid">
@@ -192,8 +196,8 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
             <label>Fecha<input onChange={(event) => changeDate(event.target.value)} required type="date" value={values.sessionDate} /></label>
             <label>Temporada<select onChange={(event) => update('seasonId', event.target.value)} value={values.seasonId}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
             <label>Estado<select disabled={!canPublish} onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option>{(canPublish || values.status === 'published') && <option value="published">Preparado</option>}{plan && (canPublish || values.status === 'cancelled') && <option value="cancelled">Cancelado</option>}</select></label>
-            <ContentImageTextarea className="full-field" label="Objetivos" onChange={(value) => update('objectives', value)} placeholder="Principios y objetivos principales de la sesión…" rows={3} value={values.objectives} />
-            <ContentImageTextarea className="full-field" label="Material" onChange={(value) => update('material', value)} placeholder="Balones, conos, petos, escudos…" rows={2} value={values.material} />
+            <ContentImageTextarea className="full-field" label="Objetivos" onChange={(value) => update('objectives', value)} placeholder="Principios y objetivos principales de la sesión…" rows={4} showFilePicker={false} value={values.objectives} />
+            <ContentImageTextarea className="full-field" label="Material" onChange={(value) => update('material', value)} placeholder="Balones, conos, petos, escudos…" rows={3} showFilePicker={false} value={values.material} />
           </div>
         </section>
 
@@ -234,7 +238,8 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
           <button className="secondary-button" disabled={saving || deleting} onClick={onCancel} type="button">Cancelar</button>
           <button className="primary-button" disabled={saving || deleting}>{saving ? 'Guardando…' : plan ? 'Guardar cambios' : 'Crear entrenamiento'}</button>
         </div>
-      </form>
+        </form>
+      </div>
 
       {activeBoardExercise && <TacticsBoard
         exerciseTitle={activeBoardExercise.title}

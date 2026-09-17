@@ -193,7 +193,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .task-form-description textarea { min-height: 190px; line-height: 1.55; }
 .content-image-field { min-width: 0; display: grid; align-content: start; }
 .content-image-field > label { width: fit-content; }
-.content-image-toolbar { margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; font-weight: 500; }
+.content-image-toolbar { position: relative; margin-top: 7px; display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; font-weight: 500; }
 .content-image-toolbar > span { line-height: 1.4; }
 .content-image-file-button { flex: 0 0 auto; margin: 0; color: var(--ink); text-transform: none; letter-spacing: 0; cursor: pointer; }
 .content-image-toolbar > input { position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; opacity: 0; clip-path: inset(50%); }
@@ -1182,12 +1182,20 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .training-loading { min-height: 220px; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 .training-plan-list { display: grid; gap: 13px; }
 .training-plan-card { position: relative; min-width: 0; padding: 20px; display: grid; grid-template-columns: 64px minmax(0,1fr) auto; align-items: center; gap: 18px; border: 1px solid var(--line); border-radius: 15px; background: white; box-shadow: var(--shadow); }
+.training-plan-card.published { border-color: #cfe2d6; background: linear-gradient(90deg,#e4f4e9 0%,#f4faf6 30%,#fff 72%); }
+.training-plan-card.draft { border-color: #eadfb7; background: linear-gradient(90deg,#fff3c9 0%,#fffaed 30%,#fff 72%); }
+.training-plan-card.cancelled { border-color: #ecd1cb; background: linear-gradient(90deg,#fde7e2 0%,#fff6f4 30%,#fff 72%); }
 .training-plan-card:hover { border-color: #b9cec5; box-shadow: 0 12px 30px rgba(31,63,54,.08); }
+.training-plan-card.published:hover { border-color: #acd0bb; }
+.training-plan-card.draft:hover { border-color: #d8c77f; }
+.training-plan-card.cancelled:hover { border-color: #dfb4aa; }
 .training-plan-open { position: absolute; z-index: 1; inset: 0; width: 100%; border: 0; border-radius: inherit; background: transparent; }
 .training-plan-open:focus-visible { outline: 3px solid rgba(30,111,92,.24); outline-offset: 3px; }
-.training-plan-date { width: 64px; height: 68px; border-radius: 12px; display: grid; place-items: center; align-content: center; color: white; background: linear-gradient(145deg,var(--green),var(--green-dark)); }
+.training-plan-date { width: 64px; height: 72px; border-radius: 12px; display: grid; place-items: center; align-content: center; gap: 2px; color: white; background: linear-gradient(145deg,var(--green),var(--green-dark)); }
 .training-plan-date strong { font-family: 'Manrope',system-ui,sans-serif; font-size: 25px; line-height: 1; }
-.training-plan-date span { margin-top: 4px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.training-plan-date span { font-size: 9px; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.training-plan-weekday { letter-spacing: .35px; opacity: .8; }
+.training-plan-month { letter-spacing: .25px; }
 .training-plan-main { min-width: 0; }
 .training-plan-title-row { display: flex; align-items: center; gap: 8px; }
 .training-plan-title-row small { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
@@ -1284,9 +1292,11 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .training-detail-no-board { min-height: 230px; border: 1px dashed #cbd7d1; border-radius: 11px; display: grid; place-items: center; color: var(--muted); background: #f8faf9; font-size: 10px; }
 .training-detail-footer { margin-top: 22px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; display: flex; justify-content: flex-end; gap: 8px; background: white; }
 .training-editor-page { max-width: 1100px; }
-.training-editor-heading { margin-bottom: 25px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 15px; }
+.training-editor-heading { position: sticky; z-index: 7; top: 0; margin: -18px 0 25px; padding: 18px 0 20px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: end; gap: 15px; background: var(--canvas); }
 .training-editor-heading > .text-button { grid-column: 1 / -1; width: fit-content; margin-bottom: 2px; }
+.training-editor-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 9px 13px; }
 .training-editor-heading h1 { margin: 6px 0 0; font-size: 34px; letter-spacing: -1.3px; }
+.training-editor-title time { color: var(--muted); font-size: 15px; font-weight: 700; }
 .training-duration { min-width: 145px; padding: 13px 16px; border: 1px solid #cfe2d6; border-radius: 12px; display: flex; align-items: center; gap: 10px; color: var(--green); background: var(--green-soft); }
 .training-duration strong { font-family: 'Manrope',system-ui,sans-serif; font-size: 28px; }
 .training-duration span { color: #60736c; font-size: 9px; font-weight: 700; line-height: 1.4; }
@@ -1299,6 +1309,8 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .training-draft-status { width: fit-content; margin: -10px 0 17px auto; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 700; }
 .training-draft-status.error { color: #984e42; }
 .training-editor-section { margin-bottom: 20px; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: white; box-shadow: var(--shadow); }
+.training-basics { padding: 29px; border-color: #c9e1d4; background: #f1f9f4; }
+.training-basics input, .training-basics select, .training-basics textarea { background: rgba(255,255,255,.94); }
 .training-section-heading { margin-bottom: 20px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; }
 .training-section-heading > span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: white; background: var(--green); font-size: 12px; font-weight: 800; }
 .training-section-heading h2 { margin: 0; font-size: 19px; }
@@ -1358,8 +1370,15 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .training-preset-empty p { font-size: 10px; }
 .training-preset-error { min-height: 180px; display: grid; place-items: center; align-content: center; gap: 10px; color: #984e42; text-align: center; }
 .training-form-error { margin: 0 0 15px; padding: 12px 14px; border: 1px solid #ebc7bf; border-radius: 10px; background: #fff7f5; }
-.training-editor-actions { position: sticky; z-index: 8; bottom: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; display: flex; justify-content: flex-end; gap: 8px; background: rgba(255,255,255,.95); box-shadow: 0 12px 38px rgba(31,63,54,.15); backdrop-filter: blur(10px); }
+.training-editor-actions { padding: 12px; border: 1px solid var(--line); border-radius: 13px; display: flex; justify-content: flex-end; gap: 8px; background: white; box-shadow: var(--shadow); }
 .training-editor-actions .danger-button { min-height: 42px; margin-right: auto; padding: 10px 15px; }
+@media (min-width: 901px) {
+  .content:has(> .training-editor-page) { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .content:has(> .training-editor-page) > .training-editor-page { min-height: 0; height: auto; flex: 1 1 auto; }
+  .training-editor-page { padding-bottom: 18px; display: grid; grid-template-rows: auto minmax(0,1fr); overflow: hidden; }
+  .training-editor-heading { position: relative; top: auto; }
+  .training-editor-scroll { min-height: 0; padding: 0 14px 18px 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+}
 .tactics-dialog { width: min(1180px,100%); max-height: calc(100vh - 32px); padding: 20px; overflow-y: auto; }
 .tactics-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
 .tactics-heading h2 { margin: 5px 0 0; font-size: 22px; }
@@ -1384,7 +1403,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 
 @media (max-width: 900px) {
   .training-plan-card { grid-template-columns: 55px minmax(0,1fr); }
-  .training-plan-date { width: 55px; height: 60px; }
+  .training-plan-date { width: 55px; height: 64px; }
   .training-plan-card-actions { grid-column: 2; }
   .training-detail-overview { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .training-detail-summary { grid-column: 1 / -1; grid-template-columns: repeat(2,1fr); }
@@ -1459,7 +1478,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .training-exercise-order .compact { min-height: 38px; }
   .training-exercise-fields { grid-template-columns: 1fr; padding: 13px; }
   .training-board-button { width: calc(100% - 26px); margin: 0 13px 13px; }
-  .training-editor-actions { bottom: 7px; align-items: stretch; flex-direction: column-reverse; }
+  .training-editor-actions { align-items: stretch; flex-direction: column-reverse; }
   .training-editor-actions button, .training-editor-actions .danger-button { width: 100%; margin: 0; }
   .tactics-dialog { padding: 15px 11px; }
   .tactics-controls { align-items: stretch; flex-direction: column; }
