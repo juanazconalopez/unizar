@@ -626,13 +626,36 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .statistics-summary-horizontal { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .statistics-summary-content { min-width: 0; }
 .statistics-summary-value { display: flex; align-items: baseline; gap: 12px; }
+.statistics-summary-horizontal .statistics-summary-value { gap: 4px; }
 .statistics-summary-horizontal .statistics-summary-value > strong { font-size: 30px; }
 .summary-attendance-range { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .summary-attendance-range > div { display: flex; align-items: baseline; justify-content: flex-end; gap: 7px; }
 .summary-attendance-range span, .summary-attendance-range strong { color: var(--muted); }
 .summary-attendance-range span { font-size: 8px; white-space: nowrap; }
 .summary-attendance-range strong { margin-top: 2px; font-size: 19px; }
-.statistics-summary-horizontal .summary-percentage { margin: 0; color: var(--muted); font-size: 22px; line-height: 1; white-space: nowrap; }
+.statistics-summary-horizontal .summary-attendance-context { margin: 0; display: inline-flex; align-items: baseline; gap: 4px; color: var(--muted); font-size: 22px; line-height: 1; white-space: nowrap; }
+.statistics-summary-horizontal .summary-attendance-context .summary-percentage { display: inline; margin: 0; color: var(--muted); font-size: 22px; line-height: 1; white-space: nowrap; }
+.summary-task-completed { margin-top: 7px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; color: var(--muted); font-size: 10px; }
+.summary-task-completed > span:first-child { font-size: 10px; }
+.summary-task-completed strong { margin: 0; color: var(--ink); font-size: 20px; line-height: 1.1; }
+.summary-task-completed .summary-task-percentage { color: var(--muted); font-size: 18px; white-space: nowrap; }
+.statistics-summary .summary-task-average { margin-top: 9px; color: var(--muted); font-size: 10px; }
+.summary-task-average strong { display: inline; margin: 0; color: var(--ink); font-size: 11px; }
+.statistics-evolution-action { white-space: nowrap; }
+.season-evolution-context { margin: -12px 0 18px; padding: 12px 15px; border: 1px solid #cfe2d6; border-radius: 11px; display: flex; align-items: baseline; gap: 9px; color: var(--green-dark); background: var(--green-soft); }
+.season-evolution-context .eyebrow { color: var(--green); font-size: 9px; }
+.season-evolution-context strong { font-size: 12px; }
+.season-evolution-context small { margin-left: auto; color: var(--muted); font-size: 10px; }
+.season-evolution-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.evolution-chart-card { min-width: 0; padding: 17px 18px 13px; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 8px 24px rgba(31,63,54,.035); }
+.evolution-chart-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.evolution-chart-heading h2 { margin: 4px 0 0; font-size: 17px; }
+.evolution-chart-heading > strong { color: var(--green); font-family: 'Manrope',system-ui,sans-serif; font-size: 23px; }
+.evolution-chart-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px 10px; color: var(--muted); font-size: 10px; }
+.evolution-chart-legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.evolution-chart-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.evolution-chart { width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+.evolution-chart-unit { margin-top: 1px; color: var(--muted); font-size: 9px; }
 .statistics-summary .statistics-attendance-card { display: flex; flex-direction: column; border-color: #bcd9c8; background: linear-gradient(145deg,#f4fbf6,#edf7f1); }
 .statistics-attendance-card .text-button { width: fit-content; margin-top: auto; padding: 8px 0 0; display: inline-flex; align-items: center; gap: 4px; font-size: 9px; text-align: left; }
 .season-attendance-dialog { width: min(900px,100%); }
@@ -1532,6 +1555,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .page { padding: 36px 25px 50px; }
   .season-context-notice { width: calc(100% - 50px); }
   .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .season-evolution-grid { grid-template-columns: 1fr; }
   .dashboard-next-list { grid-template-columns: 1fr; }
   .person-row { align-items: flex-start; flex-direction: column; }
   .person-summary-card { display: grid; grid-template-columns: minmax(0,1fr) auto; }
@@ -1552,6 +1576,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .page-header { margin-bottom: 27px; align-items: flex-start; flex-direction: column; }
   .page-header h1 { font-size: 34px; }
   .page-header .primary-button { width: 100%; }
+  .statistics-evolution-action { width: 100%; }
   .team-heading-actions { width: 100%; justify-content: flex-end; }
   .team-heading-actions .team-search-field { flex: 1 1 auto; width: auto; }
   .match-view-actions, .callup-report-actions { width: 100%; align-items: stretch; flex-direction: column; }
@@ -1658,11 +1683,20 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .statistics-summary strong { font-size: 20px; }
   .statistics-summary-horizontal .statistics-summary-value > strong { font-size: 24px; }
   .statistics-summary-value { gap: 8px; }
+  .statistics-summary-horizontal .summary-attendance-context { font-size: 18px; }
   .summary-attendance-range { gap: 1px; }
   .summary-attendance-range > div { gap: 4px; }
   .summary-attendance-range span { min-height: auto; font-size: 7px; }
   .summary-attendance-range strong { font-size: 17px; }
+  .statistics-summary-horizontal .summary-attendance-context .summary-percentage { font-size: 18px; }
   .statistics-summary-horizontal .summary-percentage { min-height: auto; font-size: 18px; }
+  .season-evolution-context { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .season-evolution-context small { margin-left: 0; }
+  .evolution-chart-card { padding: 14px 11px 11px; }
+  .evolution-chart-legend { justify-content: flex-start; margin-top: 5px; }
+  .summary-task-completed { gap: 3px; }
+  .summary-task-completed strong { font-size: 16px; }
+  .summary-task-completed .summary-task-percentage { font-size: 15px; }
   .monthly-alert { flex-direction: column; gap: 3px; }
   .season-attendance-heading, .season-attendance-toolbar { align-items: stretch; flex-direction: column; }
   .season-attendance-toolbar { gap: 6px; }

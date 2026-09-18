@@ -8,6 +8,7 @@ import type { NavigationTarget } from '../lib/navigation'
 import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/permissions'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
+import { fetchStatisticsSeason } from '../services/trainingQueriesService'
 import { fetchCalendarTrainingPlans } from '../services/trainingPlansService'
 import { fetchMyCalendarSurveys, fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
@@ -99,6 +100,14 @@ export function AppViewRouter({
         canViewTasks={can(PERMISSIONS.statistics.tasks)}
         onLoadMonth={data.loadStatisticsMonth}
         onLoadSeasonReport={fetchSeasonAttendanceReport}
+        onLoadSeasonEvolution={(seasonId) => {
+          const season = data.seasons.find((item) => item.id === seasonId)
+          if (!season) return Promise.reject(new Error('No se ha encontrado la temporada activa.'))
+          return fetchStatisticsSeason(season.id, season.start_date, season.end_date, {
+            tasks: can(PERMISSIONS.statistics.tasks),
+            attendance: can(PERMISSIONS.statistics.attendance),
+          })
+        }}
       />}
       {view === 'attendance' && can(PERMISSIONS.attendance.view) && <AttendanceView
         attendance={data.attendance}

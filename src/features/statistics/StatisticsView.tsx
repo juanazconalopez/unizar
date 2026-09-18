@@ -5,8 +5,10 @@ import { formatDate, monthEnd, monthStart, offsetMonth, todayIso, toIsoDate } fr
 import { membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
 import { SeasonAttendanceReport } from './SeasonAttendanceReport'
+import { SeasonEvolutionView } from './SeasonEvolutionView'
 import { StatisticsDayDetail } from './StatisticsDayDetail'
 import { monthlyAttendanceSummary, recordDate } from './statisticsSelectors'
+import type { StatisticsSeasonData } from '../../services/trainingQueriesService'
 import type {
   AttendanceRecord,
   ProvisionalAttendanceRecord,
@@ -34,16 +36,21 @@ type StatisticsProps = {
   loadingRange?: boolean
   onLoadMonth?: (month: string) => Promise<void>
   onLoadSeasonReport?: (seasonId: string) => Promise<SeasonCallupReport>
+  onLoadSeasonEvolution?: (seasonId: string) => Promise<StatisticsSeasonData>
   birthdays?: SeasonBirthday[]
   canViewAttendance?: boolean
   canViewTasks?: boolean
   holidays?: string[]
 }
 
-export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, holidays: providedHolidays, onLoadMonth, onLoadSeasonReport }: StatisticsProps) {
+export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, holidays: providedHolidays, onLoadMonth, onLoadSeasonReport, onLoadSeasonEvolution }: StatisticsProps) {
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
+  const [showEvolution, setShowEvolution] = useState(false)
+  const [evolutionData, setEvolutionData] = useState<StatisticsSeasonData | null>(null)
+  const [evolutionLoading, setEvolutionLoading] = useState(false)
+  const [evolutionError, setEvolutionError] = useState('')
   const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
   const historicalPlayers = useMemo(() => profiles.filter(isPlayer), [profiles])
   const playerIds = useMemo(() => new Set(historicalPlayers.map((profile) => profile.id)), [historicalPlayers])
@@ -65,9 +72,15 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
     .map((membership) => membership.player_id))
   const monthSessions = sessions.filter((session) => session.session_date.startsWith(monthPrefix))
   const monthAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(monthPrefix))
-  const monthResults = playerResults.filter((result) => result.performed_on.startsWith(monthPrefix))
+  const monthResults = playerResults.filter((result) => (
+    result.performed_on.startsWith(monthPrefix) && eligibleMonthPlayerIds.has(result.player_id)
+  ))
   const attendanceSummary = monthlyAttendanceSummary(monthSessions, monthAttendance, provisionalAttendance, playerIds)
   const attendanceRate = attendanceSummary.percentage
+  const completedTaskPlayerCount = new Set(monthResults.map((result) => result.player_id)).size
+  const taskCompletionPercentage = eligibleMonthPlayerIds.size
+    ? (completedTaskPlayerCount / eligibleMonthPlayerIds.size) * 100
+    : null
   const averageCompletedTasks = eligibleMonthPlayerIds.size
     ? monthResults.length / eligibleMonthPlayerIds.size
     : null
@@ -77,6 +90,28 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
   const attendanceDrop = attendanceRate !== null && previousAttendanceRate !== null
     ? Math.round(previousAttendanceRate - attendanceRate)
     : 0
+  const activeSeason = seasons.find((season) => season.start_date <= today && season.end_date >= today)
+
+  async function openEvolution() {
+    if (!activeSeason) return
+    if (evolutionData) {
+      setShowEvolution(true)
+      return
+    }
+    setEvolutionLoading(true)
+    setEvolutionError('')
+    try {
+      const data = onLoadSeasonEvolution
+        ? await onLoadSeasonEvolution(activeSeason.id)
+        : { tasks, results, announcements: [], trainingSessions: sessions, attendance, provisionalAttendance }
+      setEvolutionData(data)
+      setShowEvolution(true)
+    } catch (error) {
+      setEvolutionError(error instanceof Error ? error.message : 'No se ha podido cargar la evolución de la temporada.')
+    } finally {
+      setEvolutionLoading(false)
+    }
+  }
 
   async function changeMonth(offset: number) {
     const nextMonth = offsetMonth(month, offset)
@@ -100,13 +135,28 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
     setSelectedDate(today)
   }
 
+  if (showEvolution && activeSeason && evolutionData) {
+    return <SeasonEvolutionView
+      canViewAttendance={canViewAttendance}
+      canViewTasks={canViewTasks}
+      data={evolutionData}
+      memberships={memberships}
+      onBack={() => setShowEvolution(false)}
+      profiles={profiles}
+      provisionalAttendance={evolutionData.provisionalAttendance}
+      season={activeSeason}
+    />
+  }
+
   return (
     <div className="page statistics-page">
       <PageHeader
+        action={(canViewAttendance || canViewTasks) && activeSeason ? <button className="secondary-button statistics-evolution-action" disabled={evolutionLoading} onClick={() => void openEvolution()} type="button">{evolutionLoading ? 'Cargando evolución…' : 'Ver evolución'}</button> : undefined}
         eyebrow="RENDIMIENTO DEL EQUIPO"
         title="Resumen mensual"
         subtitle={canViewAttendance && canViewTasks ? 'Asistencia a campo y seguimiento de tareas del equipo.' : canViewAttendance ? 'Asistencia a campo del equipo.' : 'Seguimiento de tareas del equipo.'}
       />
+      {evolutionError && <div className="monthly-alert" role="status"><strong>No se ha podido cargar la evolución</strong><span>{evolutionError}</span></div>}
 
       <section className="statistics-summary" aria-label="Resumen del mes">
         {canViewAttendance && <SummaryMetric
@@ -120,17 +170,24 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
           ) : undefined}
         />}
         {canViewAttendance && <SummaryMetric
-          label="Media asistencia"
-          value={attendanceSummary.average === null ? '—' : formatAverage(attendanceSummary.average)}
-          valueAside={attendanceSummary.percentage === null ? undefined : <span className="summary-percentage">({Math.round(attendanceSummary.percentage)}%)</span>}
+          label="Media asistentes"
+          value={attendanceSummary.average === null ? '—' : formatAverage(attendanceSummary.average, 0)}
+          valueAside={attendanceSummary.average === null || !eligibleMonthPlayerIds.size ? undefined : <span className="summary-attendance-context">/{eligibleMonthPlayerIds.size}<span className="summary-percentage"> · {Math.round(attendanceSummary.percentage ?? 0)}%</span></span>}
         />}
-        {canViewTasks && <SummaryMetric
-          label="Media tareas realizadas"
-          value={averageCompletedTasks === null ? '—' : formatAverage(averageCompletedTasks)}
-        />}
+        {canViewTasks && <article className="statistics-summary-task">
+          <div className="statistics-summary-content">
+            <span>Tareas realizadas</span>
+            <div className="summary-task-completed">
+              <span>Completadas:</span>
+              <strong>{eligibleMonthPlayerIds.size ? `${completedTaskPlayerCount}/${eligibleMonthPlayerIds.size}` : '—'}</strong>
+              {taskCompletionPercentage !== null && <span className="summary-task-percentage">· {Math.round(taskCompletionPercentage)}%</span>}
+            </div>
+            <small className="summary-task-average">Media por jugadora: <strong>{averageCompletedTasks === null ? '—' : formatAverage(averageCompletedTasks)}</strong></small>
+          </div>
+        </article>}
         {canViewAttendance && onLoadSeasonReport && <SeasonAttendanceReport
           onLoad={onLoadSeasonReport}
-          season={seasons.find((season) => season.start_date <= today && season.end_date >= today)}
+          season={activeSeason}
         />}
       </section>
       {canViewAttendance && attendanceDrop >= 10 && (
@@ -217,8 +274,8 @@ function SummaryMetric({ label, value, valueAside, aside }: { label: string; val
   </article>
 }
 
-function formatAverage(value: number) {
-  return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(value)
+function formatAverage(value: number, maximumFractionDigits = 1) {
+  return new Intl.NumberFormat('es-ES', { maximumFractionDigits }).format(value)
 }
 
 function attendancePercentage(records: AttendanceRecord[]) {

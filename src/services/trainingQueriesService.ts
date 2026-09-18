@@ -16,6 +16,7 @@ import type {
 export type TaskWindowData = { tasks: TrainingTask[]; results: TaskResult[]; announcements?: TeamAnnouncement[] }
 export type AttendanceWindowData = { trainingSessions: TrainingSession[]; attendance: AttendanceRecord[]; provisionalAttendance: ProvisionalAttendanceRecord[] }
 export type MatchWindowData = { matches: Match[]; matchAvailability: MatchAvailability[]; matchLineups: MatchLineup[] }
+export type StatisticsSeasonData = TaskWindowData & AttendanceWindowData
 
 export const emptyTaskWindow: TaskWindowData = { tasks: [], results: [], announcements: [] }
 export const emptyAttendanceWindow: AttendanceWindowData = { trainingSessions: [], attendance: [], provisionalAttendance: [] }
@@ -122,6 +123,46 @@ export async function fetchStatisticsWindow(month: string, include: { tasks: boo
   ])
   if (sessionsResponse.error) throw sessionsResponse.error
   return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
+}
+
+export async function fetchStatisticsSeason(seasonId: string, fromDate: string, toDate: string, include: { tasks: boolean; attendance: boolean } = { tasks: true, attendance: true }): Promise<StatisticsSeasonData> {
+  const [tasksResponse, sessionsResponse] = await Promise.all([
+    include.tasks
+      ? supabase
+        .from('tasks')
+        .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)')
+        .eq('season_id', seasonId)
+        .gte('week_start', mondayFor(fromDate))
+        .lte('week_start', mondayFor(toDate))
+        .order('week_start', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    include.attendance
+      ? supabase
+        .from('training_sessions')
+        .select('*')
+        .eq('season_id', seasonId)
+        .gte('session_date', fromDate)
+        .lte('session_date', toDate)
+        .order('session_date', { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ])
+  if (tasksResponse.error) throw tasksResponse.error
+  if (sessionsResponse.error) throw sessionsResponse.error
+
+  const tasks = tasksResponse.data ?? []
+  const taskData = include.tasks && tasks.length
+    ? await fetchTaskResults(tasks)
+    : { tasks, results: [], announcements: [] }
+  return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
+}
+
+async function fetchTaskResults(tasks: TrainingTask[]): Promise<TaskWindowData> {
+  const { data, error } = await supabase
+    .from('task_results')
+    .select('*')
+    .in('task_id', tasks.map((task) => task.id))
+  if (error) throw error
+  return { tasks, results: data ?? [], announcements: [] }
 }
 
 export async function fetchAttendanceDate(date: string): Promise<AttendanceWindowData> {

@@ -82,8 +82,8 @@ describe('StatisticsView', () => {
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
     expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('1')
     expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('Máx. A.1Mín. A.1')
-    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('1(50%)')
-    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('0,5')
+    expect(within(summary).getByText('Media asistentes').closest('article')).toHaveTextContent(/1\s*\/\s*2\s*·\s*50%/)
+    expect(within(summary).getByText('Tareas realizadas').closest('article')).toHaveTextContent(/Completadas:\s*1\s*\/\s*2\s*·\s*50%.*Media por jugadora:\s*0,5/)
     expect(screen.getByText('Ana Martín')).toBeInTheDocument()
     expect(screen.getByText('María López')).toBeInTheDocument()
     expect(screen.queryByText('Owner Excluida')).not.toBeInTheDocument()
@@ -144,7 +144,37 @@ describe('StatisticsView', () => {
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
     expect(within(summary).getByText('Entrenamientos').closest('article')).toHaveTextContent('Máx. A.4Mín. A.0')
-    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('2(75%)')
+    expect(within(summary).getByText('Media asistentes').closest('article')).toHaveTextContent(/2\s*\/\s*4\s*·\s*75%/)
+  })
+
+  test('rounds average attendance to whole people while keeping task averages precise', () => {
+    const monthPrefix = todayIso().slice(0, 7)
+    const profiles = [
+      makeProfile({ id: 'player-1' }),
+      makeProfile({ id: 'player-2', display_name: 'Jugadora 2' }),
+    ]
+    render(
+      <StatisticsView
+        profiles={profiles}
+        seasons={seasons}
+        sessions={[
+          makeSession({ id: 'session-1', session_date: `${monthPrefix}-01` }),
+          makeSession({ id: 'session-2', session_date: `${monthPrefix}-02` }),
+        ]}
+        attendance={[
+          makeAttendance({ session_id: 'session-1', player_id: 'player-1', training_sessions: { session_date: `${monthPrefix}-01` } }),
+          makeAttendance({ session_id: 'session-1', player_id: 'player-2', attended: false, training_sessions: { session_date: `${monthPrefix}-01` } }),
+          makeAttendance({ session_id: 'session-2', player_id: 'player-1', training_sessions: { session_date: `${monthPrefix}-02` } }),
+          makeAttendance({ session_id: 'session-2', player_id: 'player-2', training_sessions: { session_date: `${monthPrefix}-02` } }),
+        ]}
+        memberships={profiles.map((profile, index) => makeMembership({ id: `membership-${index + 1}`, player_id: profile.id }))}
+        tasks={[]}
+        results={[]}
+      />,
+    )
+
+    const summary = screen.getByRole('region', { name: 'Resumen del mes' })
+    expect(within(summary).getByText('Media asistentes').closest('article')).toHaveTextContent(/2\s*\/\s*2\s*·\s*75%/)
   })
 
   test('averages completed published tasks across every active player', () => {
@@ -182,7 +212,7 @@ describe('StatisticsView', () => {
     )
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
-    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('1,7')
+    expect(within(summary).getByText('Tareas realizadas').closest('article')).toHaveTextContent(/Completadas:\s*2\s*\/\s*3\s*·\s*67%.*Media por jugadora:\s*1,7/)
   })
 
   test('keeps historical players in past statistics after they become inactive', () => {
@@ -204,8 +234,8 @@ describe('StatisticsView', () => {
     )
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
-    expect(within(summary).getByText('Media asistencia').closest('article')).toHaveTextContent('100%')
-    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('1')
+    expect(within(summary).getByText('Media asistentes').closest('article')).toHaveTextContent(/1\s*\/\s*1\s*·\s*100%/)
+    expect(within(summary).getByText('Tareas realizadas').closest('article')).toHaveTextContent(/Completadas:\s*1\s*\/\s*1\s*·\s*100%.*Media por jugadora:\s*1/)
     expect(screen.getByText('Jugadora Histórica')).toBeInTheDocument()
   })
 
@@ -322,7 +352,7 @@ describe('StatisticsView', () => {
     )
 
     const summary = screen.getByRole('region', { name: 'Resumen del mes' })
-    expect(within(summary).getByText('Media tareas realizadas').closest('article')).toHaveTextContent('—')
+    expect(within(summary).getByText('Tareas realizadas').closest('article')).toHaveTextContent(/Completadas:\s*—.*Media por jugadora:\s*—/)
     expect(screen.queryByText('Ana Martín')).not.toBeInTheDocument()
   })
 
