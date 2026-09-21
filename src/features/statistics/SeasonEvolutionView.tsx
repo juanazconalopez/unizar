@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { formatDate, monthEnd, monthStart, offsetMonth, todayIso } from '../../lib/dates'
 import { membershipCoversDate, membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
@@ -5,6 +7,7 @@ import type { Profile, ProvisionalAttendanceRecord, Season, SeasonPlayer } from 
 import type { StatisticsSeasonData } from '../../services/trainingQueriesService'
 import { monthlyAttendanceSummary, recordDate } from './statisticsSelectors'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Modal } from '../../components/ui/Modal'
 
 type EvolutionPoint = {
   month: string
@@ -23,7 +26,24 @@ type SeasonEvolutionViewProps = {
   onBack: () => void
 }
 
+type EvolutionChartDefinition = {
+  id: string
+  access: 'attendance' | 'tasks'
+  title: string
+  unit: string
+} & ({
+  kind: 'single'
+  color: string
+  fixedMax?: number
+  labelFormatter: (value: number) => string
+  points: EvolutionPoint[]
+} | {
+  kind: 'comparison'
+  series: EvolutionSeries[]
+})
+
 export function SeasonEvolutionView({ data, season, memberships, profiles, provisionalAttendance = [], canViewAttendance, canViewTasks, onBack }: SeasonEvolutionViewProps) {
+  const [selectedChartId, setSelectedChartId] = useState<string | null>(null)
   const playerIds = new Set(profiles.filter(isPlayer).map((profile) => profile.id))
   const publishedTaskIds = new Set(data.tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const months = seasonMonths(season)
@@ -54,7 +74,7 @@ export function SeasonEvolutionView({ data, season, memberships, profiles, provi
       available: monthIsAvailable,
       eligiblePlayerCount: eligiblePlayerIds.size,
       sessionCount: monthIsAvailable ? sessions.length : null,
-      attendanceAverage: monthIsAvailable ? summary.average : null,
+      attendanceAverage: monthIsAvailable && summary.average !== null ? Math.round(summary.average) : null,
       attendancePercentage: monthIsAvailable ? summary.percentage : null,
       attendancePerfectCount: monthIsAvailable ? attendanceThresholds.perfect : null,
       attendanceAtLeastHalfCount: monthIsAvailable ? attendanceThresholds.atLeastHalf : null,
@@ -65,6 +85,81 @@ export function SeasonEvolutionView({ data, season, memberships, profiles, provi
 
   const latest = [...points].reverse().find((point) => point.available && (point.sessionCount || point.taskAverage !== null))
   const subtitle = `${season.name} · Evolución mensual de asistencia, tareas y carga de trabajo.`
+  const chartDefinitions: EvolutionChartDefinition[] = [
+    {
+      access: 'attendance',
+      color: '#4c8ca2',
+      id: 'sessions',
+      kind: 'single',
+      labelFormatter: (value) => `${Math.round(value)}`,
+      points: points.map((point) => ({ month: point.month, value: point.sessionCount })),
+      title: 'Entrenamientos',
+      unit: 'entrenamientos',
+    },
+    {
+      access: 'attendance',
+      color: '#1e6f5c',
+      id: 'attendance-average',
+      kind: 'single',
+      labelFormatter: (value) => formatNumber(value),
+      points: points.map((point) => ({ month: point.month, value: point.attendanceAverage })),
+      title: 'Media de asistentes por entrenamiento',
+      unit: 'personas',
+    },
+    {
+      access: 'attendance',
+      color: '#277d68',
+      fixedMax: 100,
+      id: 'attendance-percentage',
+      kind: 'single',
+      labelFormatter: (value) => `${Math.round(value)}%`,
+      points: points.map((point) => ({ month: point.month, value: point.attendancePercentage })),
+      title: '% asistencia de equipo',
+      unit: 'porcentaje',
+    },
+    {
+      access: 'attendance',
+      id: 'attendance-thresholds',
+      kind: 'comparison',
+      series: [
+        {
+          color: '#1e6f5c',
+          label: '100% de asistencia',
+          points: points.map((point) => ({ month: point.month, value: point.attendancePerfectCount })),
+        },
+        {
+          color: '#d8892c',
+          label: '50% o más',
+          points: points.map((point) => ({ month: point.month, value: point.attendanceAtLeastHalfCount })),
+        },
+      ],
+      title: 'Jugadoras por porcentaje de asistencia',
+      unit: 'jugadoras',
+    },
+    {
+      access: 'tasks',
+      color: '#b87b2c',
+      fixedMax: 100,
+      id: 'task-player-percentage',
+      kind: 'single',
+      labelFormatter: (value) => `${Math.round(value)}%`,
+      points: points.map((point) => ({ month: point.month, value: point.taskPlayerPercentage })),
+      title: 'Jugadoras con tareas completadas',
+      unit: 'porcentaje',
+    },
+    {
+      access: 'tasks',
+      color: '#c05a50',
+      id: 'task-average',
+      kind: 'single',
+      labelFormatter: (value) => formatNumber(value),
+      points: points.map((point) => ({ month: point.month, value: point.taskAverage })),
+      title: 'Media de tareas por jugadora',
+      unit: 'tareas',
+    },
+  ]
+  const visibleCharts = chartDefinitions.filter((chart) => chart.access === 'attendance' ? canViewAttendance : canViewTasks)
+  const selectedChart = chartDefinitions.find((chart) => chart.id === selectedChartId)
 
   return (
     <div className="page statistics-page season-evolution-page">
@@ -82,62 +177,23 @@ export function SeasonEvolutionView({ data, season, memberships, profiles, provi
       </div>
 
       <section aria-label="Gráficas de evolución de la temporada" className="season-evolution-grid">
-        {canViewAttendance && <EvolutionChart
-          color="#1e6f5c"
-          labelFormatter={(value) => formatNumber(value)}
-          points={points.map((point) => ({ month: point.month, value: point.attendanceAverage, detail: point.sessionCount === null ? undefined : `${point.sessionCount} entrenamientos` }))}
-          title="Media de asistentes"
-          unit="personas"
-        />}
-        {canViewAttendance && <EvolutionChart
-          color="#277d68"
-          fixedMax={100}
-          labelFormatter={(value) => `${Math.round(value)}%`}
-          points={points.map((point) => ({ month: point.month, value: point.attendancePercentage }))}
-          title="Porcentaje de asistencia"
-          unit="porcentaje"
-        />}
-        {canViewAttendance && <EvolutionComparisonChart
-          series={[
-            {
-              color: '#1e6f5c',
-              label: '100% de asistencia',
-              points: points.map((point) => ({ month: point.month, value: point.attendancePerfectCount })),
-            },
-            {
-              color: '#d8892c',
-              label: '50% o más',
-              points: points.map((point) => ({ month: point.month, value: point.attendanceAtLeastHalfCount })),
-            },
-          ]}
-          title="Jugadoras por porcentaje de asistencia"
-          unit="jugadoras"
-        />}
-        {canViewAttendance && <EvolutionChart
-          color="#4c8ca2"
-          labelFormatter={(value) => `${Math.round(value)}`}
-          points={points.map((point) => ({ month: point.month, value: point.sessionCount }))}
-          title="Entrenamientos"
-          unit="entrenamientos"
-        />}
-        {canViewTasks && <EvolutionChart
-          color="#b87b2c"
-          fixedMax={100}
-          labelFormatter={(value) => `${Math.round(value)}%`}
-          points={points.map((point) => ({ month: point.month, value: point.taskPlayerPercentage }))}
-          title="Jugadoras con tareas completadas"
-          unit="porcentaje"
-        />}
-        {canViewTasks && <EvolutionChart
-          color="#c05a50"
-          labelFormatter={(value) => formatNumber(value)}
-          points={points.map((point) => ({ month: point.month, value: point.taskAverage }))}
-          title="Media de tareas por jugadora"
-          unit="tareas"
-        />}
+        {visibleCharts.map((chart) => renderChart(chart, () => setSelectedChartId(chart.id)))}
       </section>
+
+      {selectedChart && <Modal className="evolution-chart-dialog" labelledBy="evolution-chart-dialog-title" onClose={() => setSelectedChartId(null)}>
+        <div className="evolution-chart-dialog-toolbar">
+          <span className="eyebrow">EVOLUCIÓN AMPLIADA</span>
+          <button aria-label="Cerrar gráfica ampliada" className="modal-close-button" onClick={() => setSelectedChartId(null)} type="button">×</button>
+        </div>
+        {renderChart(selectedChart, undefined, 'evolution-chart-dialog-title')}
+      </Modal>}
     </div>
   )
+}
+
+function renderChart(chart: EvolutionChartDefinition, onOpen?: () => void, titleId?: string) {
+  if (chart.kind === 'comparison') return <EvolutionComparisonChart key={chart.id} onOpen={onOpen} series={chart.series} title={chart.title} titleId={titleId} unit={chart.unit} />
+  return <EvolutionChart key={chart.id} color={chart.color} fixedMax={chart.fixedMax} labelFormatter={chart.labelFormatter} onOpen={onOpen} points={chart.points} title={chart.title} titleId={titleId} unit={chart.unit} />
 }
 
 type EvolutionSeries = {
@@ -146,13 +202,13 @@ type EvolutionSeries = {
   points: EvolutionPoint[]
 }
 
-function EvolutionComparisonChart({ title, series, unit }: { title: string; series: EvolutionSeries[]; unit: string }) {
+function EvolutionComparisonChart({ onOpen, title, series, titleId, unit }: { onOpen?: () => void; title: string; series: EvolutionSeries[]; titleId?: string; unit: string }) {
   const width = 760
-  const height = 230
+  const height = 270
   const left = 42
   const right = 15
   const top = 18
-  const bottom = 45
+  const bottom = 85
   const plotWidth = width - left - right
   const plotHeight = height - top - bottom
   const points = series[0]?.points ?? []
@@ -163,9 +219,16 @@ function EvolutionComparisonChart({ title, series, unit }: { title: string; seri
   const accessibleValues = series.map((item) => `${item.label}: ${item.points.map((point) => `${monthLabel(point.month)} ${point.value === null ? 'sin datos' : formatNumber(point.value)}`).join(', ')}`).join('. ')
 
   return (
-    <article className="evolution-chart-card">
+    <article
+      aria-label={onOpen ? `Abrir gráfica ${title}` : undefined}
+      className={`evolution-chart-card${onOpen ? ' evolution-chart-card-interactive' : ''}`}
+      onClick={onOpen}
+      onKeyDown={onOpen ? (event: KeyboardEvent<HTMLElement>) => handleChartKeyDown(event, onOpen) : undefined}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+    >
       <div className="evolution-chart-heading">
-        <div><span className="eyebrow">EVOLUCIÓN MENSUAL</span><h2>{title}</h2></div>
+        <div><span className="eyebrow">EVOLUCIÓN MENSUAL</span><h2 id={titleId}>{title}</h2></div>
         <div aria-label="Leyenda" className="evolution-chart-legend">
           {series.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color }} />{item.label}</span>)}
         </div>
@@ -176,36 +239,44 @@ function EvolutionComparisonChart({ title, series, unit }: { title: string; seri
           const lineY = y(value)
           return <g key={ratio}>
             <line stroke="#dce8e3" strokeDasharray={ratio === 0 ? undefined : '3 5'} x1={left} x2={width - right} y1={lineY} y2={lineY} />
-            <text fill="#84938e" fontSize="10" textAnchor="end" x={left - 8} y={lineY + 4}>{formatNumber(value)}</text>
+            <text fill="#6b7e78" fontSize="12" textAnchor="end" x={left - 8} y={lineY + 4}>{formatNumber(value)}</text>
           </g>
         })}
         {series.map((item) => linePaths(item.points, x, y).map((path, index) => <path d={path} fill="none" key={`${item.label}-${index}`} stroke={item.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />))}
         {series.map((item) => item.points.map((point, index) => point.value === null ? null : (
           <circle cx={x(index)} cy={y(point.value)} fill="white" key={`${item.label}-${point.month}`} r="5" stroke={item.color} strokeWidth="3">
-            <title>{item.label} · {monthLabel(point.month)} · {formatNumber(point.value)}</title>
+            <title>{item.label}: {formatNumber(point.value)}</title>
           </circle>
         )))}
-        {points.map((point, index) => <text fill="#657872" fontSize="10" textAnchor="middle" x={x(index)} y={height - 15} key={`label-${point.month}`}>{monthLabel(point.month)}</text>)}
+        {points.map((point, index) => <g key={`label-${point.month}`}>
+          <text fill={point.value === null ? '#b1beb9' : '#354e46'} fontSize="11" textAnchor="middle" x={x(index)} y={height - 7}>{point.value === null ? '—' : series.map((item) => {
+            const seriesPoint = item.points[index]
+            return seriesPoint?.value === null || seriesPoint === undefined ? '—' : formatNumber(seriesPoint.value)
+          }).join(' / ')}</text>
+          <text fill="#657872" fontSize="11" textAnchor="end" transform={`rotate(-90 ${x(index)} ${height - 50})`} x={x(index)} y={height - 50}>{monthLabel(point.month)}</text>
+        </g>)}
       </svg>
-      <small className="evolution-chart-unit">{unit} · Los meses futuros aparecen sin datos hasta que termine el periodo.</small>
+      <small className="evolution-chart-unit">{unit}</small>
     </article>
   )
 }
 
-function EvolutionChart({ title, points, color, fixedMax, unit, labelFormatter }: {
+function EvolutionChart({ title, points, color, fixedMax, unit, labelFormatter, onOpen, titleId }: {
   title: string
   points: EvolutionPoint[]
   color: string
   fixedMax?: number
   unit: string
   labelFormatter: (value: number) => string
+  onOpen?: () => void
+  titleId?: string
 }) {
   const width = 760
-  const height = 230
+  const height = 270
   const left = 42
   const right = 15
   const top = 18
-  const bottom = 45
+  const bottom = 85
   const plotWidth = width - left - right
   const plotHeight = height - top - bottom
   const values = points.map((point) => point.value).filter((value): value is number => value !== null)
@@ -217,10 +288,17 @@ function EvolutionChart({ title, points, color, fixedMax, unit, labelFormatter }
   const accessibleValues = points.map((point) => `${monthLabel(point.month)}: ${point.value === null ? 'sin datos' : labelFormatter(point.value)}`).join(', ')
 
   return (
-    <article className="evolution-chart-card">
+    <article
+      aria-label={onOpen ? `Abrir gráfica ${title}` : undefined}
+      className={`evolution-chart-card${onOpen ? ' evolution-chart-card-interactive' : ''}`}
+      onClick={onOpen}
+      onKeyDown={onOpen ? (event: KeyboardEvent<HTMLElement>) => handleChartKeyDown(event, onOpen) : undefined}
+      role={onOpen ? 'button' : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+    >
       <div className="evolution-chart-heading">
-        <div><span className="eyebrow">EVOLUCIÓN MENSUAL</span><h2>{title}</h2></div>
-        {lastPoint && lastPoint.value !== null && <strong>{labelFormatter(lastPoint.value)}</strong>}
+        <div><span className="eyebrow">EVOLUCIÓN MENSUAL</span><h2 id={titleId}>{title}</h2></div>
+        {lastPoint && lastPoint.value !== null && <div className="evolution-chart-latest"><strong>{labelFormatter(lastPoint.value)}</strong><small>Último dato · {formatDate(lastPoint.month, { month: 'long', year: 'numeric' })}</small></div>}
       </div>
       <svg aria-label={`${title}: ${accessibleValues}`} className="evolution-chart" role="img" viewBox={`0 0 ${width} ${height}`}>
         {[0, .5, 1].map((ratio) => {
@@ -228,20 +306,29 @@ function EvolutionChart({ title, points, color, fixedMax, unit, labelFormatter }
           const lineY = y(value)
           return <g key={ratio}>
             <line stroke="#dce8e3" strokeDasharray={ratio === 0 ? undefined : '3 5'} x1={left} x2={width - right} y1={lineY} y2={lineY} />
-            <text fill="#84938e" fontSize="10" textAnchor="end" x={left - 8} y={lineY + 4}>{labelFormatter(value)}</text>
+            <text fill="#6b7e78" fontSize="12" textAnchor="end" x={left - 8} y={lineY + 4}>{labelFormatter(value)}</text>
           </g>
         })}
         {paths.map((path, index) => <path d={path} fill="none" key={index} stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />)}
         {points.map((point, index) => point.value === null ? null : (
           <circle cx={x(index)} cy={y(point.value)} fill="white" key={point.month} r="5" stroke={color} strokeWidth="3">
-            <title>{monthLabel(point.month)} · {labelFormatter(point.value)}{point.detail ? ` · ${point.detail}` : ''}</title>
+            <title>{labelFormatter(point.value)}</title>
           </circle>
         ))}
-        {points.map((point, index) => <text fill="#657872" fontSize="10" textAnchor="middle" x={x(index)} y={height - 15} key={`label-${point.month}`}>{monthLabel(point.month)}</text>)}
+        {points.map((point, index) => <g key={`label-${point.month}`}>
+          <text fill={point.value === null ? '#b1beb9' : '#354e46'} fontSize="11" textAnchor="middle" x={x(index)} y={height - 7}>{point.value === null ? '—' : labelFormatter(point.value)}</text>
+          <text fill="#657872" fontSize="11" textAnchor="end" transform={`rotate(-90 ${x(index)} ${height - 50})`} x={x(index)} y={height - 50}>{monthLabel(point.month)}</text>
+        </g>)}
       </svg>
-      <small className="evolution-chart-unit">{unit} · Los meses futuros aparecen sin datos hasta que termine el periodo.</small>
+      <small className="evolution-chart-unit">{unit}</small>
     </article>
   )
+}
+
+function handleChartKeyDown(event: KeyboardEvent<HTMLElement>, onOpen: () => void) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  onOpen()
 }
 
 function linePaths(points: EvolutionPoint[], x: (index: number) => number, y: (value: number) => number) {

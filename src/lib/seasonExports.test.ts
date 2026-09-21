@@ -28,7 +28,7 @@ describe('season exports', () => {
     })])
     expect(xml).toContain('temporada="Temporada &amp; 2026"')
     expect(xml).toContain('nombre="Inés &amp; Ana"')
-    expect(xml).toContain('email="ines&amp;ana@example.com" telefono="+34 600 123 123" edad="25" fecha-nacimiento="2000-09-01"')
+    expect(xml).toContain('email="ines&amp;ana@example.com" telefono="600 12 31 23" edad="25" fecha-nacimiento="2000-09-01"')
   })
 
   test('exports accumulated attendance for only the filtered players', () => {

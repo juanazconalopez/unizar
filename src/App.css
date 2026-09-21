@@ -648,14 +648,26 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .season-evolution-context small { margin-left: auto; color: var(--muted); font-size: 10px; }
 .season-evolution-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
 .evolution-chart-card { min-width: 0; padding: 17px 18px 13px; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: 0 8px 24px rgba(31,63,54,.035); }
+.evolution-chart-card-interactive { cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.evolution-chart-card-interactive:hover { border-color: #b3d0c0; box-shadow: 0 12px 30px rgba(31,63,54,.08); transform: translateY(-1px); }
+.evolution-chart-card-interactive:focus-visible { outline: 3px solid rgba(30,111,92,.24); outline-offset: 3px; }
 .evolution-chart-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .evolution-chart-heading h2 { margin: 4px 0 0; font-size: 17px; }
 .evolution-chart-heading > strong { color: var(--green); font-family: 'Manrope',system-ui,sans-serif; font-size: 23px; }
+.evolution-chart-latest { display: flex; align-items: flex-end; flex-direction: column; gap: 1px; text-align: right; }
+.evolution-chart-latest strong { color: var(--green); font-family: 'Manrope',system-ui,sans-serif; font-size: 23px; line-height: 1; }
+.evolution-chart-latest small { color: var(--muted); font-size: 9px; white-space: nowrap; }
 .evolution-chart-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px 10px; color: var(--muted); font-size: 10px; }
 .evolution-chart-legend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .evolution-chart-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .evolution-chart { width: 100%; height: auto; margin-top: 12px; overflow: visible; }
 .evolution-chart-unit { margin-top: 1px; color: var(--muted); font-size: 9px; }
+.evolution-chart-dialog { width: min(1120px,100%); max-height: min(900px,calc(100vh - 48px)); }
+.evolution-chart-dialog-toolbar { min-height: 35px; display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.evolution-chart-dialog-toolbar .eyebrow { color: var(--green); }
+.evolution-chart-dialog .evolution-chart-card { padding: 3px 0 0; border: 0; box-shadow: none; }
+.evolution-chart-dialog .evolution-chart-card-interactive { cursor: default; }
+.evolution-chart-dialog .evolution-chart-card-interactive:hover { border-color: transparent; box-shadow: none; transform: none; }
 .statistics-summary .statistics-attendance-card { display: flex; flex-direction: column; border-color: #bcd9c8; background: linear-gradient(145deg,#f4fbf6,#edf7f1); }
 .statistics-attendance-card .text-button { width: fit-content; margin-top: auto; padding: 8px 0 0; display: inline-flex; align-items: center; gap: 4px; font-size: 9px; text-align: left; }
 .season-attendance-dialog { width: min(900px,100%); }
@@ -1008,8 +1020,11 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
 .profile-details-help { margin: 18px 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .profile-details-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 15px; }
 .profile-details-fields label:first-child, .profile-details-fields label:nth-child(2) { grid-column: 1 / -1; }
+.profile-details-fields .profile-phone-field { display: grid; gap: 5px; }
 .profile-details-fields .readonly-field { color: var(--muted); background: #f3f6f4; }
-.profile-details-fields .profile-field-missing input { border-color: #d6ae3e; background: #fffaf0; box-shadow: 0 0 0 3px rgba(214,174,62,.12); }
+.phone-number-field { display: grid; grid-template-columns: minmax(142px,.9fr) minmax(0,1.1fr); gap: 8px; }
+.phone-number-field select { min-width: 0; }
+.profile-details-fields .profile-field-missing input, .profile-details-fields .profile-field-missing select { border-color: #d6ae3e; background: #fffaf0; box-shadow: 0 0 0 3px rgba(214,174,62,.12); }
 .profile-missing-help { margin-top: 5px; display: block; color: #876c18; font-size: 10px; font-weight: 700; }
 .profile-age-preview { margin-top: 5px; display: block; color: var(--green); font-size: 10px; font-weight: 700; }
 .profile-details-dialog .form-actions { margin-top: 22px; }
@@ -1640,6 +1655,7 @@ button.survey-closure-card:focus-visible { outline: 3px solid rgba(176,74,114,.2
   .person-profile-details > div { grid-template-columns: 1fr; gap: 5px; }
   .profile-details-fields { grid-template-columns: 1fr; }
   .profile-details-fields label:first-child, .profile-details-fields label:nth-child(2) { grid-column: 1; }
+  .phone-number-field { grid-template-columns: 1fr; }
   .team-member-detail-grid { grid-template-columns: 1fr; }
   .provisional-link-panel { grid-template-columns: 1fr; align-items: stretch; }
   .provisional-link-options, .provisional-link-history, .provisional-link-panel > button { grid-column: 1; grid-row: auto; }

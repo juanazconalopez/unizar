@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeAttendance, makeMembership, makeProfile, makeResult, makeSeason, makeSession, makeTask } from '../../test/fixtures'
 import type { StatisticsSeasonData } from '../../services/trainingQueriesService'
@@ -43,5 +43,11 @@ describe('SeasonEvolutionView', () => {
     expect(screen.getByText('100% de asistencia')).toBeInTheDocument()
     expect(screen.getByText('50% o más')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Volver al resumen' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir gráfica Entrenamientos' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cerrar gráfica ampliada' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar gráfica ampliada' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

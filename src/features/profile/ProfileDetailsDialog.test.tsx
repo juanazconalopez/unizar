@@ -22,13 +22,13 @@ describe('ProfileDetailsDialog', () => {
     expect(email).toHaveAttribute('readonly')
     await user.clear(name)
     await user.type(name, '  maría   lópez pérez  ')
-    await user.type(within(dialog).getByLabelText('Teléfono'), '+34 600 123 123')
+    await user.type(within(dialog).getByLabelText('Teléfono'), '600 123 123')
     await user.type(within(dialog).getByLabelText('Fecha de nacimiento'), '1997-05-12')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
 
     expect(onSave).toHaveBeenCalledWith({
       displayName: 'maría lópez pérez',
-      phone: '+34 600 123 123',
+      phone: '+34600123123',
       birthDate: '1997-05-12',
     })
     expect(onClose).toHaveBeenCalledOnce()
@@ -46,6 +46,31 @@ describe('ProfileDetailsDialog', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
 
     expect(within(dialog).getByRole('alert')).toHaveTextContent('nombre y al menos un apellido')
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  test('preselects Spain and validates the number with the selected country rules', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    render(<ProfileDetailsDialog currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onSave={onSave} />)
+
+    expect(screen.getByLabelText('País')).toHaveValue('ES')
+    await user.selectOptions(screen.getByLabelText('País'), 'FR')
+    await user.type(screen.getByLabelText('Teléfono'), '612345678')
+    await user.click(screen.getByRole('button', { name: 'Guardar datos' }))
+
+    expect(onSave).toHaveBeenCalledWith({ displayName: 'Ana Martín', phone: '+33612345678', birthDate: '' })
+  })
+
+  test('rejects an incomplete number for the selected country', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<ProfileDetailsDialog currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onSave={onSave} />)
+
+    await user.type(screen.getByLabelText('Teléfono'), '600')
+    await user.click(screen.getByRole('button', { name: 'Guardar datos' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('teléfono válido para el país seleccionado')
     expect(onSave).not.toHaveBeenCalled()
   })
 
@@ -78,7 +103,7 @@ describe('ProfileDetailsDialog', () => {
       />,
     )
 
-    expect(screen.getByLabelText(/^Teléfono/).closest('label')).not.toHaveClass('profile-field-missing')
+    expect(screen.getByLabelText(/^Teléfono/).closest('.profile-phone-field')).not.toHaveClass('profile-field-missing')
     expect(screen.getByLabelText(/^Fecha de nacimiento/).closest('label')).toHaveClass('profile-field-missing')
     expect(screen.getByText('Falta completar este dato.')).toBeInTheDocument()
   })

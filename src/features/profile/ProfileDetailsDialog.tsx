@@ -3,7 +3,9 @@ import type { FormEvent } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { ageOnDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
+import { isValidInternationalPhone } from '../../lib/phone'
 import type { ProfileDetailsValues, ProfilePhotoChange } from '../../types'
+import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from './ProfilePhotoField'
 
 export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', avatarPath = null, canEditPhoto = false, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
@@ -42,8 +44,8 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
       setFormError('Escribe tu nombre y al menos un apellido (entre 3 y 80 caracteres).')
       return
     }
-    if (normalizedPhone && (normalizedPhone.length < 6 || normalizedPhone.length > 30)) {
-      setFormError('Escribe un teléfono válido (entre 6 y 30 caracteres).')
+    if (!isValidInternationalPhone(normalizedPhone)) {
+      setFormError('Escribe un teléfono válido para el país seleccionado.')
       return
     }
     if (birthDate && birthDate > todayIso()) {
@@ -87,19 +89,11 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
         <label>Email de Google
           <input className="readonly-field" readOnly type="email" value={email} />
         </label>
-        <label className={highlightMissing && !phone.trim() ? 'profile-field-missing' : undefined}>Teléfono
-          <input
-            autoComplete="tel"
-            inputMode="tel"
-            maxLength={30}
-            name="phone"
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="Ej. +34 600 000 000"
-            type="tel"
-            value={phone}
-          />
+        <div className={highlightMissing && !phone.trim() ? 'profile-field-missing profile-phone-field' : 'profile-phone-field'}>
+          <label htmlFor="profile-phone">Teléfono</label>
+          <PhoneNumberField id="profile-phone" onChange={setPhone} value={phone} />
           {highlightMissing && !phone.trim() && <small className="profile-missing-help">Falta completar este dato.</small>}
-        </label>
+        </div>
         <label className={highlightMissing && !birthDate ? 'profile-field-missing' : undefined}>Fecha de nacimiento
           <input max={todayIso()} name="birthDate" onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />
           {highlightMissing && !birthDate && <small className="profile-missing-help">Falta completar este dato.</small>}

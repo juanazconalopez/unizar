@@ -1,5 +1,5 @@
 begin;
-select plan(245);
+select plan(249);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -91,6 +91,25 @@ select ok(
 select ok(to_regclass('public.profile_private_details') is not null, 'private profile details are persisted separately');
 select has_column('public', 'profile_private_details', 'email', 'private profile details store the Google email');
 select has_column('public', 'profile_private_details', 'phone', 'private profile details store the optional phone');
+select has_function('public', 'normalize_international_phone', array['text'], 'phone values are normalized to their international form');
+select ok(
+  exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.profile_private_details'::regclass
+      and conname = 'profile_private_details_phone_international'
+  ),
+  'private phone details require the E.164 international format'
+);
+select like(
+  pg_get_functiondef('public.update_own_profile(text,text,date,text)'::regprocedure),
+  '%normalize_international_phone%',
+  'own profile updates normalize telephone numbers'
+);
+select like(
+  pg_get_functiondef('public.update_managed_profile(uuid,text,text,date,boolean,boolean,boolean,boolean,boolean,text)'::regprocedure),
+  '%normalize_international_phone%',
+  'managed profile updates normalize telephone numbers'
+);
 select has_column('public', 'profile_private_details', 'birth_date', 'private profile details store the optional birth date');
 select ok(
   (select relrowsecurity from pg_class where oid = 'public.profile_private_details'::regclass),

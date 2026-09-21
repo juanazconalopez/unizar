@@ -1,6 +1,5 @@
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { Match } from '../../types'
 import { MatchCard } from './MatchCard'
 
@@ -9,8 +8,11 @@ const match: Match = {
 }
 
 describe('MatchCard', () => {
-  test('keeps the player card focused on logistics and quick availability', async () => {
-    const user = userEvent.setup()
+  afterEach(() => vi.useRealTimers())
+
+  test('keeps the player card focused on logistics and quick availability', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-19T12:00:00'))
     const onViewAvailability = vi.fn()
     render(<MatchCard availability={[{ match_id: match.id, player_id: 'player-1', status: 'doubt', comment: null, updated_at: '2026-09-01T10:00:00Z' }]} canViewAvailability eligiblePlayerCount={2} isPlayer canEditMatch={false} match={match} onOpen={vi.fn()} onSaveAvailability={vi.fn()} onViewAvailability={onViewAvailability} />)
 
@@ -20,7 +22,7 @@ describe('MatchCard', () => {
     expect(screen.queryByText('Publicado')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Asistiré' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '1 dudas' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '1 dudas' }))
+    fireEvent.click(screen.getByRole('button', { name: '1 dudas' }))
     expect(onViewAvailability).toHaveBeenCalledOnce()
   })
 })

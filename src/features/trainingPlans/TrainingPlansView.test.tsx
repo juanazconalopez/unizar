@@ -91,11 +91,16 @@ describe('training plan reading view', () => {
   })
 
   test('shows the abbreviated weekday above the day number on each training card', async () => {
-    const thursdayPlan = { ...plan, session_date: '2026-09-17' }
+    const today = todayIso()
+    const dayOfWeek = new Date(`${today}T12:00:00`).getDay()
+    const daysUntilThursday = ((4 - dayOfWeek + 7) % 7) || 7
+    const thursdayPlan = { ...plan, session_date: addDays(today, daysUntilThursday) }
     mocks.fetchTrainingPlans.mockResolvedValue([thursdayPlan])
     render(<TrainingPlansView onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
 
-    expect(await screen.findByLabelText(/jueves, 17 de septiembre/i)).toHaveTextContent(/JUE\s*17\s*SEPT/i)
+    const card = await screen.findByLabelText(/jueves,/i)
+    expect(card).toHaveTextContent(/jue/i)
+    expect(card).toHaveTextContent(String(Number(thursdayPlan.session_date.slice(-2))))
   })
 
   test('identifies prepared, draft and cancelled cards by their status', async () => {

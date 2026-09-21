@@ -187,10 +187,10 @@ describe('AppLayout', () => {
     const input = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(input)
     await user.type(input, 'María López')
-    await user.type(within(dialog).getByLabelText('Teléfono'), '+34 600 123 123')
+    await user.type(within(dialog).getByLabelText('Teléfono'), '600 123 123')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar datos' }))
 
-    expect(onUpdateProfileDetails).toHaveBeenCalledWith({ displayName: 'María López', phone: '+34 600 123 123', birthDate: '' })
+    expect(onUpdateProfileDetails).toHaveBeenCalledWith({ displayName: 'María López', phone: '+34600123123', birthDate: '' })
   })
 
   test('does not offer name editing to inactive users', () => {
@@ -237,7 +237,7 @@ describe('AppLayout', () => {
     await user.click(screen.getByRole('button', { name: /Completa tus datos de perfil/ }))
 
     const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
-    expect(within(dialog).getByLabelText(/^Teléfono/).closest('label')).toHaveClass('profile-field-missing')
+    expect(within(dialog).getByLabelText(/^Teléfono/).closest('.profile-phone-field')).toHaveClass('profile-field-missing')
     expect(within(dialog).getByLabelText(/^Fecha de nacimiento/).closest('label')).toHaveClass('profile-field-missing')
     expect(onNotificationRead).not.toHaveBeenCalled()
   })

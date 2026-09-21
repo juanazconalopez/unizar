@@ -1329,6 +1329,7 @@ export type Database = {
       }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
+      normalize_international_phone: { Args: { phone: string }; Returns: string }
       get_my_calendar_surveys: { Args: { checked_from: string; checked_until: string }; Returns: Json }
       get_my_pending_surveys: { Args: never; Returns: Json }
       get_my_survey_response: { Args: { checked_survey_id: string }; Returns: Json }

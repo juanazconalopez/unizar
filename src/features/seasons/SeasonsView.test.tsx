@@ -79,7 +79,7 @@ describe('SeasonsView', () => {
     await user.click(screen.getByRole('button', { name: 'Exportar jugadoras activas XML' }))
     expect(fileMocks.downloadText).toHaveBeenCalledWith(
       'jugadoras-activas-Temporada 2026.xml',
-      expect.stringContaining(`email="ana@example.com" telefono="+34 600 000 000" edad="20" fecha-nacimiento="${birthDate}"`),
+      expect.stringContaining(`email="ana@example.com" telefono="600 00 00 00" edad="20" fecha-nacimiento="${birthDate}"`),
       'application/xml',
     )
   })

@@ -5,7 +5,9 @@ import { Modal } from '../../components/ui/Modal'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { areDisplayNamesSimilar } from '../../lib/displayNames'
+import { isValidInternationalPhone } from '../../lib/phone'
 import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
+import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
@@ -66,7 +68,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     const normalizedName = displayName.trim().replace(/\s+/g, ' ')
     const normalizedPhone = phone.trim()
     if (normalizedName.length < 3 || normalizedName.length > 80 || !/^\S+\s+\S+/.test(normalizedName)) return setFormError('Escribe el nombre y al menos un apellido (entre 3 y 80 caracteres).')
-    if (normalizedPhone && (normalizedPhone.length < 6 || normalizedPhone.length > 30)) return setFormError('Escribe un teléfono válido (entre 6 y 30 caracteres).')
+    if (!isValidInternationalPhone(normalizedPhone)) return setFormError('Escribe un teléfono válido para el país seleccionado.')
     if (birthDate && birthDate > todayIso()) return setFormError('La fecha de nacimiento no puede estar en el futuro.')
     if (!(isPlayer || isCoach || isViewer || isOwner)) return setFormError('Selecciona al menos un rol.')
     if (permissionChanged && !window.confirm(`Se modificarán el estado o los permisos de ${person.display_name}. ¿Guardar estos cambios?`)) return
@@ -148,7 +150,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       <div className="profile-details-fields">
         <label>Nombre y apellidos<input autoFocus maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
         <label>Email de Google<input className="readonly-field" readOnly type="email" value={details?.email ?? ''} /></label>
-        <label>Teléfono<input inputMode="tel" maxLength={30} onChange={(event) => setPhone(event.target.value)} type="tel" value={phone} /></label>
+        <div className="profile-phone-field"><label htmlFor="managed-profile-phone">Teléfono</label><PhoneNumberField id="managed-profile-phone" onChange={setPhone} value={phone} /></div>
         <label>Fecha de nacimiento<input max={todayIso()} onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />{ageOnDate(birthDate, todayIso()) !== null && <small>Edad actual: {ageOnDate(birthDate, todayIso())} años.</small>}</label>
       </div>
       <fieldset className="team-member-permissions"><legend>Estado y roles</legend>
