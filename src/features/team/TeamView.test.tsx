@@ -82,6 +82,7 @@ describe('TeamView', () => {
     ]} />)
     await user.click(screen.getByRole('button', { name: 'Buscar personas' }))
     const search = screen.getByRole('searchbox', { name: 'Buscar por nombre' })
+    expect(screen.queryByRole('button', { name: 'Cerrar búsqueda' })).not.toBeInTheDocument()
     await user.type(search, 'maria')
     expect(screen.getByText('María López')).toBeInTheDocument()
     expect(screen.getByText('María Luisa')).toBeInTheDocument()

@@ -1,5 +1,5 @@
 begin;
-select plan(249);
+select plan(252);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -92,6 +92,9 @@ select ok(to_regclass('public.profile_private_details') is not null, 'private pr
 select has_column('public', 'profile_private_details', 'email', 'private profile details store the Google email');
 select has_column('public', 'profile_private_details', 'phone', 'private profile details store the optional phone');
 select has_function('public', 'normalize_international_phone', array['text'], 'phone values are normalized to their international form');
+select has_function('public', 'is_valid_international_phone', array['text'], 'international phone validation is available to protected profile updates');
+select ok(public.is_valid_international_phone('+34670675022'), 'a valid Spanish E.164 telephone is accepted');
+select ok(not public.is_valid_international_phone('670675022'), 'a telephone without its international prefix is rejected');
 select ok(
   exists (
     select 1 from pg_constraint

@@ -451,9 +451,7 @@ legend { margin-bottom: 8px; color: #455b55; font-size: 12px; font-weight: 700; 
 .team-search-toggle:hover { border-color: #b8c9c1; background: var(--green-soft); }
 .team-search-field { position: relative; width: min(320px,100%); display: flex; align-items: center; }
 .team-search-field > svg { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
-.team-search-field input { min-height: 42px; margin: 0; padding: 9px 40px 9px 39px; }
-.team-search-field button { position: absolute; right: 6px; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 20px; }
-.team-search-field button:hover { color: var(--ink); background: var(--canvas); }
+.team-search-field input { min-height: 42px; margin: 0; padding: 9px 12px 9px 39px; }
 .team-search-empty { padding: 36px 20px; border: 1px dashed #cbd8d2; border-radius: 13px; color: var(--muted); background: #fafcfb; text-align: center; font-size: 12px; }
 .team-heading-actions { position: relative; display: flex; align-items: center; gap: 8px; }
 .team-filter-control { position: relative; flex: 0 0 auto; }

@@ -1,23 +1,20 @@
--- Los teléfonos se conservan en E.164. La validación concreta de cada país se
--- realiza en el cliente con libphonenumber; esta restricción evita que la API
--- reciba formatos locales ambiguos o prefijos incompletos.
-create or replace function public.normalize_international_phone(phone text)
-returns text
+-- Corrige la expresión regular de la migración 056: en PostgreSQL basta una
+-- barra invertida para que el patrón reconozca el signo + de E.164.
+create or replace function public.is_valid_international_phone(phone text)
+returns boolean
 language sql
 immutable
 set search_path = ''
 as $$
-  select nullif(
-    pg_catalog.regexp_replace(pg_catalog.btrim(phone), '[[:space:]().-]', '', 'g'),
-    ''
-  )
+  select phone ~ '^\+[1-9][0-9]{7,14}$'
 $$;
 
-revoke all on function public.normalize_international_phone(text) from public;
+alter table public.profile_private_details
+  drop constraint if exists profile_private_details_phone_international;
 
 alter table public.profile_private_details
   add constraint profile_private_details_phone_international
-  check (phone is null or phone ~ '^\+[1-9][0-9]{7,14}$') not valid;
+  check (phone is null or public.is_valid_international_phone(phone)) not valid;
 
 create or replace function public.update_own_profile(
   new_display_name text,
@@ -45,7 +42,6 @@ begin
 
   normalized_name := public.normalize_display_name(new_display_name);
   normalized_phone := public.normalize_international_phone(new_phone);
-
   if normalized_name is null
     or pg_catalog.char_length(normalized_name) < 3
     or pg_catalog.char_length(normalized_name) > 80
@@ -54,7 +50,7 @@ begin
     raise exception 'Escribe tu nombre y al menos un apellido (entre 3 y 80 caracteres)';
   end if;
   if normalized_phone is not null
-    and normalized_phone !~ '^\+[1-9][0-9]{7,14}$'
+    and not public.is_valid_international_phone(normalized_phone)
   then
     raise exception 'Escribe un teléfono internacional válido';
   end if;
@@ -70,7 +66,6 @@ begin
   end if;
 
   select email into current_email from auth.users where id = (select auth.uid());
-
   update public.profiles
   set display_name = normalized_name,
       avatar_path = case when is_player then new_avatar_path else null end
@@ -139,7 +134,7 @@ begin
     raise exception 'Escribe el nombre y al menos un apellido (entre 3 y 80 caracteres)';
   end if;
   if normalized_phone is not null
-    and normalized_phone !~ '^\+[1-9][0-9]{7,14}$'
+    and not public.is_valid_international_phone(normalized_phone)
   then
     raise exception 'Escribe un teléfono internacional válido';
   end if;
