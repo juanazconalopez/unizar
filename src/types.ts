@@ -22,7 +22,11 @@ export type ProfilePhotoChange = File | null | undefined
 
 export type Season = Tables<'seasons'>
 
-export type SeasonPlayer = Tables<'season_players'>
+export type SeasonPlayer = Omit<Tables<'season_players'>, 'season_team_id'> & { season_team_id?: string }
+
+export type SeasonTeam = Tables<'season_teams'>
+export type SeasonTeamCoach = Tables<'season_team_coaches'>
+export type PlayerAbsence = Tables<'player_absences'>
 
 export type TodayBirthday = {
   player_id: string
@@ -128,10 +132,18 @@ export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color'> & {
   match_count?: number
 }
 
-export type Match = Omit<Tables<'matches'>, 'competition_id'> & {
+export type Match = Omit<Tables<'matches'>, 'competition_id' | 'team_id' | 'internal_fixture_id' | 'duration_minutes' | 'match_report_path' | 'team_score' | 'opponent_score' | 'report_events_reviewed'> & {
   competition_id?: string | null
+  team_id?: string | null
+  internal_fixture_id?: string | null
+  duration_minutes?: number
+  match_report_path?: string | null
+  team_score?: number | null
+  opponent_score?: number | null
+  report_events_reviewed?: boolean
   seasons: { name: string } | null
   season_competitions?: { id: string; name: string; color: string; is_default: boolean } | null
+  season_teams?: { id: string; name: string; is_mixed: boolean; is_default: boolean } | null
 }
 
 export type MatchAvailability = Tables<'match_availability'>
@@ -322,4 +334,6 @@ export type MatchValues = {
   status: MatchStatus
   matchKind: MatchKind
   rugbyFormat: RugbyFormat
+  teamId?: string
+  opponentTeamId?: string
 }

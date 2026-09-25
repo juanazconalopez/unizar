@@ -1,11 +1,7 @@
 import { formatDate } from '../../lib/dates'
 import type { Match } from '../../types'
 
-export function matchTitle(match: Match) {
-  return match.is_home
-    ? `Unizar Fem. vs ${match.opponent}`
-    : `${match.opponent} vs Unizar Fem.`
-}
+export { matchTitle } from '../../lib/matchTitle'
 
 export function matchDateLabel(match: Match) {
   return formatDate(match.match_date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })

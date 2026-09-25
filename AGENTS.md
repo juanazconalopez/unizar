@@ -14,17 +14,17 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 ### Estrategia de uso de Codex y cuota
 
 - Priorizar una configuración económica que mantenga la calidad mediante pruebas y validación, sin cambiar de modelo automáticamente sin indicárselo al usuario.
-- Configuración recomendada para el trabajo habitual del proyecto: `gpt-5.6-luna` con `model_reasoning_effort = "high"` y `model_verbosity = "low"`. Es adecuada para cambios localizados de React, TypeScript, CSS, calendarios, formularios, exportaciones y pruebas.
-- Cambiar puntualmente a `gpt-5.6-terra` con razonamiento `high` cuando la tarea abarque varias áreas, refactorizaciones amplias, permisos, autenticación, RLS o migraciones de Supabase.
-- Reservar `gpt-5.6-sol` para problemas especialmente complejos de arquitectura, seguridad, depuración difícil o decisiones de alto impacto. No usar `xhigh` o Pro como valores predeterminados.
+- Configuración recomendada para el trabajo habitual del proyecto: `gpt-6-sol` con `model_reasoning_effort = "medium"` y `model_verbosity = "low"`. Es el mejor equilibrio para cambios de React, TypeScript, CSS, calendarios, formularios, exportaciones, pruebas y flujos que requieren inspección, implementación y validación.
+- Usar `gpt-6-luna` con razonamiento `high` solo para trabajo claramente acotado y repetible: búsquedas y lecturas de código, cambios mecánicos pequeños, extracción de utilidades y comprobaciones de bajo riesgo. Si el alcance deja de estar claro o afecta a varias capas, volver a `gpt-6-sol`.
+- Reservar `gpt-6-astra` con razonamiento `medium` o `high` para arquitectura, seguridad, RLS, autenticación, migraciones complejas de Supabase, depuración difícil o decisiones de alto impacto. No usar `xhigh`, `max` ni Ultra como valores predeterminados.
 - No activar Fast mode para este proyecto: se prioriza consumir menos cuota aunque algunas tareas tarden más.
 - Mantener las conversaciones acotadas por funcionalidad y enviar solo los archivos, capturas y contexto necesarios. Las conversaciones largas, los resultados de herramientas y los servidores MCP aumentan el contexto y el consumo.
 - Mantener la validación obligatoria (`npm test -- --run`, `npm run lint`, `npm run build` y pruebas E2E cuando proceda); bajar el modelo no debe significar omitir comprobaciones.
 - Para una configuración local orientativa de Codex:
 
   ```toml
-  model = "gpt-5.6-luna"
-  model_reasoning_effort = "high"
+  model = "gpt-6-sol"
+  model_reasoning_effort = "medium"
   model_verbosity = "low"
   approval_policy = "on-request"
   sandbox_mode = "workspace-write"
@@ -209,6 +209,11 @@ Reglas importantes:
 - Las jugadoras consultan y responden los partidos desde Calendario; Dirección mantiene la sección independiente de Partidos.
 - Las alineaciones publicadas tienen restricciones de edición y desbloqueo.
 - Las convocatorias y resúmenes deben respetar la jugadora, el partido, la temporada y el periodo de vinculación.
+- Un partido oficial entre dos equipos del CDU se representa mediante dos fichas vinculadas por `internal_fixture_id`, una por equipo, creadas en una sola RPC. En el calendario se muestra como un solo derbi.
+- Cada entrenador prepara el borrador de su equipo con jugadoras propias o del mixto. Solo el owner autoriza préstamos de otros equipos, resuelve propuestas duplicadas y publica o desbloquea ambas convocatorias de forma conjunta.
+- El escenario del derbi en `demo.local` monta `MatchLineupDialog` e `InternalFixtureReviewDialog`, los mismos componentes usados en producción; no debe inventar un flujo distinto.
+- Desde el día siguiente al partido, el staff con permiso de edición puede subir un acta PDF privada, revisar marcador, duración, cambios y tarjetas antes de guardar y marcar el partido como finalizado. En un derbi, cada ficha revisa los eventos de su propio equipo.
+- Los minutos de partidos oficiales solo cuentan cuando se revisan los eventos del acta. El PDF requiere el permiso `matches.report`; el resultado resumido sigue visible a quienes pueden consultar el partido. Los partidos finalizados permanecen en el calendario de jugadoras y en la vista previa, sin acciones de disponibilidad. `demo.local` ofrece el mismo formulario con guardado en memoria.
 
 ### Encuestas
 

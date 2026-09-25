@@ -11,6 +11,12 @@ export function todayIso() {
   return toIsoDate(new Date())
 }
 
+export function todayInMadridIso() {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+  const value = (kind: string) => parts.find((part) => part.type === kind)?.value ?? ''
+  return `${value('year')}-${value('month')}-${value('day')}`
+}
+
 export function ageOnDate(birthDate: string | null | undefined, date: string) {
   if (!birthDate || !isValidIsoDate(birthDate) || !isValidIsoDate(date) || birthDate > date) return null
   const [birthYear, birthMonth, birthDay] = birthDate.split('-').map(Number)

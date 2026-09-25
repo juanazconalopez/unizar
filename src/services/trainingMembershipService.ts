@@ -4,20 +4,10 @@ import type { Profile, Season, SeasonPlayer } from '../types'
 import { invalidateBirthdayCache } from './birthdayService'
 
 export async function setSeasonMembership(season: Season, player: Profile, active: boolean, existing?: SeasonPlayer) {
+  void player
   if (active) {
     if (existing) return
-    const today = todayIso()
-    const activeFrom = today < season.start_date ? season.start_date : today > season.end_date ? season.end_date : today
-    const activeUntil = today > season.end_date ? season.end_date : null
-    const { error } = await supabase.from('season_players').insert({
-      season_id: season.id,
-      player_id: player.id,
-      active_from: activeFrom,
-      active_until: activeUntil,
-    })
-    if (error) throw error
-    invalidateBirthdayCache()
-    return
+    throw new Error('Las jugadoras se incorporan automáticamente a la temporada y se organizan desde Equipos.')
   }
   if (existing) {
     const today = todayIso()

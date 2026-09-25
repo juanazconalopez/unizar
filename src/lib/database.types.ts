@@ -560,6 +560,12 @@ export type Database = {
           },
         ]
       }
+      match_events: {
+        Row: { id: string; match_id: string; event_minute: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id: string | null; created_by: string; created_at: string }
+        Insert: { id?: string; match_id: string; event_minute: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id?: string | null; created_by: string; created_at?: string }
+        Update: { id?: string; match_id?: string; event_minute?: number; event_type?: Database["public"]["Enums"]["match_event_type"]; player_id?: string; replacement_player_id?: string | null; created_by?: string; created_at?: string }
+        Relationships: []
+      }
       matches: {
         Row: {
           callup_time: string | null
@@ -568,16 +574,23 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          internal_fixture_id: string | null
           is_home: boolean
           kickoff_time: string | null
           lineup_published: boolean
           match_date: string
           match_kind: Database["public"]["Enums"]["match_kind"]
+          duration_minutes: number
+          match_report_path: string | null
+          team_score: number | null
+          opponent_score: number | null
+          report_events_reviewed: boolean
           notes: string | null
           opponent: string
           rugby_format: Database["public"]["Enums"]["rugby_format"]
           season_id: string
           status: Database["public"]["Enums"]["match_status"]
+          team_id: string | null
           updated_at: string
           venue: string | null
         }
@@ -588,16 +601,23 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          internal_fixture_id?: string | null
           is_home?: boolean
           kickoff_time?: string | null
           lineup_published?: boolean
           match_date: string
           match_kind?: Database["public"]["Enums"]["match_kind"]
+          duration_minutes?: number
+          match_report_path?: string | null
+          team_score?: number | null
+          opponent_score?: number | null
+          report_events_reviewed?: boolean
           notes?: string | null
           opponent: string
           rugby_format?: Database["public"]["Enums"]["rugby_format"]
           season_id: string
           status?: Database["public"]["Enums"]["match_status"]
+          team_id?: string | null
           updated_at?: string
           venue?: string | null
         }
@@ -608,16 +628,23 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          internal_fixture_id?: string | null
           is_home?: boolean
           kickoff_time?: string | null
           lineup_published?: boolean
           match_date?: string
           match_kind?: Database["public"]["Enums"]["match_kind"]
+          duration_minutes?: number
+          match_report_path?: string | null
+          team_score?: number | null
+          opponent_score?: number | null
+          report_events_reviewed?: boolean
           notes?: string | null
           opponent?: string
           rugby_format?: Database["public"]["Enums"]["rugby_format"]
           season_id?: string
           status?: Database["public"]["Enums"]["match_status"]
+          team_id?: string | null
           updated_at?: string
           venue?: string | null
         }
@@ -642,6 +669,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "seasons"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_team_season_fkey"
+            columns: ["team_id", "season_id"]
+            isOneToOne: false
+            referencedRelation: "season_teams"
+            referencedColumns: ["id", "season_id"]
           },
         ]
       }
@@ -834,6 +868,7 @@ export type Database = {
           id: string
           player_id: string
           season_id: string
+          season_team_id: string
         }
         Insert: {
           active_from: string
@@ -842,6 +877,7 @@ export type Database = {
           id?: string
           player_id: string
           season_id: string
+          season_team_id: string
         }
         Update: {
           active_from?: string
@@ -850,6 +886,7 @@ export type Database = {
           id?: string
           player_id?: string
           season_id?: string
+          season_team_id?: string
         }
         Relationships: [
           {
@@ -866,6 +903,31 @@ export type Database = {
             referencedRelation: "seasons"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "season_players_team_season_fkey"
+            columns: ["season_team_id", "season_id"]
+            isOneToOne: false
+            referencedRelation: "season_teams"
+            referencedColumns: ["id", "season_id"]
+          },
+        ]
+      }
+      season_team_coaches: {
+        Row: { season_team_id: string; coach_id: string; created_at: string }
+        Insert: { season_team_id: string; coach_id: string; created_at?: string }
+        Update: { season_team_id?: string; coach_id?: string; created_at?: string }
+        Relationships: [
+          { foreignKeyName: "season_team_coaches_season_team_id_fkey"; columns: ["season_team_id"]; isOneToOne: false; referencedRelation: "season_teams"; referencedColumns: ["id"] },
+          { foreignKeyName: "season_team_coaches_coach_id_fkey"; columns: ["coach_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      season_teams: {
+        Row: { id: string; season_id: string; name: string; is_mixed: boolean; is_default: boolean; is_active: boolean; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; season_id: string; name: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; season_id?: string; name?: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by?: string; created_at?: string; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "season_teams_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
+          { foreignKeyName: "season_teams_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
         ]
       }
       season_holidays: {
@@ -882,6 +944,18 @@ export type Database = {
           { foreignKeyName: "season_competitions_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "season_competitions_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
         ]
+      }
+      player_absences: {
+        Row: { id: string; player_id: string; starts_on: string; ends_on: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; player_id: string; starts_on: string; ends_on?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; player_id?: string; starts_on?: string; ends_on?: string | null; created_by?: string; created_at?: string; updated_at?: string }
+        Relationships: []
+      }
+      player_absence_private_notes: {
+        Row: { absence_id: string; note: string; updated_at: string; updated_by: string }
+        Insert: { absence_id: string; note: string; updated_at?: string; updated_by: string }
+        Update: { absence_id?: string; note?: string; updated_at?: string; updated_by?: string }
+        Relationships: []
       }
       seasons: {
         Row: {
@@ -1327,8 +1401,33 @@ export type Database = {
         Args: { checked_color: string; checked_name: string; checked_season_id: string }
         Returns: string
       }
+      create_season_team: {
+        Args: { checked_is_mixed: boolean; checked_name: string; checked_season_id: string }
+        Returns: string
+      }
+      update_season_team: {
+        Args: { checked_is_active: boolean; checked_is_mixed: boolean; checked_name: string; checked_team_id: string }
+        Returns: undefined
+      }
+      delete_season_team: { Args: { checked_team_id: string }; Returns: undefined }
+      assign_season_player_team: {
+        Args: { checked_player_id: string; checked_season_id: string; checked_team_id: string }
+        Returns: undefined
+      }
+      set_season_team_coach: {
+        Args: { checked_assigned: boolean; checked_coach_id: string; checked_team_id: string }
+        Returns: undefined
+      }
+      current_user_can_manage_season_team: { Args: { checked_team_id: string }; Returns: boolean }
+      current_user_can_view_season_team: { Args: { checked_team_id: string }; Returns: boolean }
+      save_player_absence: { Args: { checked_absence_id: string | null; checked_ends_on: string | null; checked_player_id: string; checked_private_note: string | null; checked_starts_on: string }; Returns: string }
+      delete_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
+      save_match_events: { Args: { checked_events: Json; checked_match_id: string }; Returns: undefined }
+      save_match_report: { Args: { checked_match_id: string; checked_path: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json; checked_events_reviewed: boolean }; Returns: undefined }
+      player_has_absence_on: { Args: { checked_date: string; checked_player_id: string }; Returns: boolean }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
+      get_season_player_minutes: { Args: { checked_season_id: string }; Returns: { player_id: string; played_minutes: number }[] }
       is_valid_international_phone: { Args: { phone: string }; Returns: boolean }
       normalize_international_phone: { Args: { phone: string }; Returns: string }
       get_my_calendar_surveys: { Args: { checked_from: string; checked_until: string }; Returns: Json }
@@ -1478,6 +1577,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_internal_match: { Args: { checked_values: Json; checked_home_team_id: string; checked_away_team_id: string }; Returns: string }
+      update_internal_match: { Args: { checked_match_id: string; checked_values: Json }; Returns: undefined }
+      delete_internal_match: { Args: { checked_match_id: string }; Returns: undefined }
+      finalize_internal_match: { Args: { checked_match_id: string }; Returns: undefined }
       save_match_lineup: {
         Args: {
           checked_match_id: string
@@ -1578,6 +1681,7 @@ export type Database = {
     Enums: {
       availability_status: "available" | "doubt" | "unavailable"
       lineup_role: "starter" | "substitute"
+      match_event_type: "substitution" | "yellow_card" | "red_card"
       match_kind: "official" | "friendly"
       match_status: "draft" | "published" | "cancelled" | "completed"
       rugby_format: "xv" | "sevens"
@@ -1712,6 +1816,7 @@ export const Constants = {
     Enums: {
       availability_status: ["available", "doubt", "unavailable"],
       lineup_role: ["starter", "substitute"],
+      match_event_type: ["substitution", "yellow_card", "red_card"],
       match_kind: ["official", "friendly"],
       match_status: ["draft", "published", "cancelled", "completed"],
       rugby_format: ["xv", "sevens"],

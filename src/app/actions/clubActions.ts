@@ -11,6 +11,11 @@ import { resetRolePermissions, saveRolePermissions } from '../../services/permis
 import type { ConfigurableRole, PermissionKey } from '../../lib/permissions'
 import { createSeasonCompetition, deleteSeasonCompetition, setDefaultSeasonCompetition, updateSeasonCompetition } from '../../services/seasonCompetitionsService'
 import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
+import { assignSeasonPlayerTeam, createSeasonTeam, deleteSeasonTeam, setSeasonTeamCoach, updateSeasonTeam } from '../../services/seasonTeamsService'
+import type { SeasonTeam } from '../../types'
+import type { SeasonTeamValues } from '../../services/seasonTeamsService'
+import { deletePlayerAbsence, savePlayerAbsence } from '../../services/playerAbsencesService'
+import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
   return {
@@ -55,6 +60,48 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       const deletedMatches = await deleteSeasonCompetition(competition.id)
       context.notify(`Competición eliminada${deletedMatches ? ` junto con ${deletedMatches} ${deletedMatches === 1 ? 'partido' : 'partidos'}` : ''}.`)
+      await context.reloadData()
+    },
+    createSeasonTeam: async (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => {
+      context.requireConnection()
+      await createSeasonTeam(season.id, values)
+      context.notify('Equipo creado.')
+      await context.reloadData()
+    },
+    updateSeasonTeam: async (team: SeasonTeam, values: SeasonTeamValues) => {
+      context.requireConnection()
+      await updateSeasonTeam(team, values)
+      context.notify('Equipo actualizado.')
+      await context.reloadData()
+    },
+    deleteSeasonTeam: async (team: SeasonTeam) => {
+      context.requireConnection()
+      await deleteSeasonTeam(team.id)
+      context.notify('Equipo eliminado.')
+      await context.reloadData()
+    },
+    assignSeasonPlayerTeam: async (season: Season, player: Profile, teamId: string) => {
+      context.requireConnection()
+      await assignSeasonPlayerTeam(season.id, player.id, teamId)
+      context.notify(`${player.display_name} ha cambiado de equipo.`)
+      await context.reloadData()
+    },
+    setSeasonTeamCoach: async (team: SeasonTeam, coach: Profile, assigned: boolean) => {
+      context.requireConnection()
+      await setSeasonTeamCoach(team.id, coach.id, assigned)
+      context.notify(`${coach.display_name} ${assigned ? 'gestionará' : 'ya no gestionará'} ${team.name}.`)
+      await context.reloadData()
+    },
+    savePlayerAbsence: async (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => {
+      context.requireConnection()
+      await savePlayerAbsence(player.id, values, absenceId ?? null)
+      context.notify('Baja guardada.')
+      await context.reloadData()
+    },
+    deletePlayerAbsence: async (absenceId: string) => {
+      context.requireConnection()
+      await deletePlayerAbsence(absenceId)
+      context.notify('Baja eliminada.')
       await context.reloadData()
     },
     updateProfile: async (profile: Profile) => {

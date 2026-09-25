@@ -6,18 +6,20 @@ import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { areDisplayNamesSimilar } from '../../lib/displayNames'
 import { isValidInternationalPhone } from '../../lib/phone'
-import type { ManagedProfileValues, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
+import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
+import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
   possibleMatches: Profile[]
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
+  absences?: PlayerAbsence[]
   onClose: () => void
   onPreviewPlayer?: (player: Profile) => void
   onUpdate: (profile: Profile) => Promise<void>
@@ -25,6 +27,8 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
+  onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
+  onDeleteAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [displayName, setDisplayName] = useState(person.display_name)
@@ -39,6 +43,9 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const [selectedProvisionalIds, setSelectedProvisionalIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+  const [absenceStart, setAbsenceStart] = useState(todayIso())
+  const [absenceEnd, setAbsenceEnd] = useState('')
+  const [absenceNote, setAbsenceNote] = useState('')
   const age = ageOnDate(details?.birth_date, todayIso())
   const titleId = 'team-member-dialog-title'
   const approved = person.is_approved && !person.is_archived
@@ -140,6 +147,15 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     }
   }
 
+  async function saveAbsence() {
+    if (!onSaveAbsence) return
+    setSaving(true); setFormError('')
+    try {
+      await onSaveAbsence(person, { startsOn: absenceStart, endsOn: absenceEnd, privateNote: absenceNote })
+      setAbsenceEnd(''); setAbsenceNote('')
+    } catch (error) { setFormError(errorText(error)) } finally { setSaving(false) }
+  }
+
   return <Modal className="team-member-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={editing ? submit : undefined}>
     <div className="task-detail-heading">
       <div><span className="eyebrow">DATOS DE PERFIL</span><h2 id={titleId}>{person.display_name}</h2></div>
@@ -181,6 +197,12 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>)}</span></Detail>
         <Detail label="Perfil"><small className={`profile-completion-state ${details?.email && details.phone && details.birth_date ? 'complete' : 'incomplete'}`}>{details?.email && details.phone && details.birth_date ? 'Datos completos' : 'Faltan datos'}</small></Detail>
       </div>
+      {person.is_player && onSaveAbsence && <section className="provisional-link-panel">
+        <div className="provisional-link-heading"><span className="eyebrow">BAJAS</span><strong>Disponibilidad deportiva</strong><p>Durante una baja no podrá apuntarse, ser convocada ni contar en asistencia deportiva. Las tareas siguen siendo opcionales.</p></div>
+        {absences.filter((absence) => absence.player_id === person.id).map((absence) => <div className="absence-row" key={absence.id}><span>{formatDate(absence.starts_on, { day: 'numeric', month: 'short', year: 'numeric' })} — {absence.ends_on ? formatDate(absence.ends_on, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha prevista'}</span>{onDeleteAbsence && <button className="text-button danger" disabled={saving} onClick={() => void onDeleteAbsence(absence.id).catch((error) => setFormError(errorText(error)))} type="button">Eliminar</button>}</div>)}
+        <div className="profile-details-fields"><label>Inicio<input onChange={(event) => setAbsenceStart(event.target.value)} type="date" value={absenceStart} /></label><label>Fin previsto<input min={absenceStart} onChange={(event) => setAbsenceEnd(event.target.value)} type="date" value={absenceEnd} /></label><label className="full-field">Nota privada opcional<textarea maxLength={1000} onChange={(event) => setAbsenceNote(event.target.value)} placeholder="Solo visible para owner" rows={2} value={absenceNote} /></label></div>
+        <button className="secondary-button compact" disabled={saving} onClick={() => void saveAbsence()} type="button">Registrar baja</button>
+      </section>}
       {onLinkProvisionalPlayers && !person.is_archived && (person.is_player || !person.is_approved) && provisionalCandidates.length > 0 && <section className={`provisional-link-panel${provisionalCandidates.some((guest) => areDisplayNamesSimilar(guest.display_name, person.display_name)) ? ' has-suggestion' : ''}`}>
         <div className="provisional-link-heading"><span className="eyebrow">ASISTENCIAS PENDIENTES</span><strong>Vincular historiales de invitadas</strong><p>Selecciona manualmente todas las identidades que correspondan. Las sugerencias no se vinculan automáticamente.</p></div>
         <fieldset className="provisional-link-options"><legend>Invitadas</legend>

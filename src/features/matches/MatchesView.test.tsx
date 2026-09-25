@@ -89,6 +89,24 @@ describe('MatchesView', () => {
     expect(screen.queryByRole('button', { name: 'Preparar convocatoria' })).not.toBeInTheDocument()
   })
 
+  test('groups an internal fixture and opens both proposals for the owner', async () => {
+    const user = userEvent.setup()
+    const home = match({ id: 'home', internal_fixture_id: 'fixture-1', team_id: 'team-a', opponent: 'Unizar B', season_teams: { id: 'team-a', name: 'Unizar A', is_mixed: false, is_default: true } })
+    const away = match({ id: 'away', internal_fixture_id: 'fixture-1', team_id: 'team-b', opponent: 'Unizar A', is_home: false, season_teams: { id: 'team-b', name: 'Unizar B', is_mixed: false, is_default: false } })
+    const onFinalizeInternal = vi.fn().mockResolvedValue(undefined)
+    render(<MatchesView {...common} canManage canUnlockLineup isOwner isPlayer={false} matches={[home, away]} userId="owner-1" onFinalizeInternal={onFinalizeInternal} onUnlockLineup={vi.fn()} onSaveAvailability={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
+    const detailButtons = screen.getAllByRole('button', { name: 'Ver detalle de Unizar A vs Unizar B' })
+    expect(detailButtons).toHaveLength(1)
+    await user.click(detailButtons[0])
+    await user.click(screen.getByRole('button', { name: 'Revisar las dos convocatorias' }))
+    expect(screen.getByRole('button', { name: 'Editar convocatoria de Unizar A' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar convocatoria de Unizar B' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Publicar ambas convocatorias' }))
+    await user.click(screen.getByRole('button', { name: 'Publicar ambas convocatorias' }))
+    expect(onFinalizeInternal).toHaveBeenCalledWith(home)
+  })
+
   test('offers the explicit unlock flow to owners and coaches', async () => {
     const user = userEvent.setup()
     const onUnlockLineup = vi.fn().mockResolvedValue(undefined)

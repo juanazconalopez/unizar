@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
@@ -95,7 +95,29 @@ describe('MatchLineupDialog', () => {
     expect(await screen.findByText('La convocatoria contiene una jugadora que ya no está disponible')).toBeInTheDocument()
   })
 
-  test('shows player identity above a position selector containing only free slots', async () => {
+  test('explains that the owner must save a lineup containing a borrowed player', async () => {
+    const user = userEvent.setup()
+    const borrowed = makeProfile({ id: 'borrowed', display_name: 'Beatriz López' })
+    const entry = { match_id: 'match-1', player_id: borrowed.id, role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }
+    render(<MatchLineupDialog
+      availability={[{ match_id: 'match-1', player_id: borrowed.id, status: 'available', comment: null, updated_at: new Date().toISOString() }]}
+      canBorrowFromOtherTeams={false}
+      entries={[entry]}
+      match={match({ team_id: 'team-a' })}
+      memberships={[makeMembership({ player_id: borrowed.id, season_team_id: 'team-b' })]}
+      profiles={[borrowed]}
+      seasonTeams={[{ id: 'team-b', season_id: 'season-1', name: 'Unizar B', is_mixed: false, is_default: false, is_active: true, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]}
+      onClose={vi.fn()}
+      onSave={vi.fn()}
+    />)
+
+    expect(screen.getByText(/El owner debe guardar los cambios mientras permanezca asignada/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Guardar alineación' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Quitar a Beatriz López' }))
+    expect(screen.getByRole('button', { name: 'Guardar alineación' })).toBeEnabled()
+  })
+
+  test('offers only free dorsals and requires removing an occupant before assigning its place', async () => {
     const user = userEvent.setup()
     const ana = makeProfile({ id: 'player-1', display_name: 'Ana Martín' })
     const bea = makeProfile({ id: 'player-2', display_name: 'Beatriz López' })
@@ -123,11 +145,23 @@ describe('MatchLineupDialog', () => {
     expect(screen.getByRole('button', { name: 'Quitar a Ana Martín' })).toHaveClass('lineup-remove-button')
 
     await user.selectOptions(anaSelector, '3')
-    const beaSelector = screen.getByRole('combobox', { name: 'Posición de Beatriz López' })
-    expect(within(beaSelector).getByRole('option', { name: '1' })).toBeInTheDocument()
-    expect(within(beaSelector).queryByRole('option', { name: '3' })).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Posición de Ana Martín' })).toHaveValue('3')
+    expect(screen.getByRole('combobox', { name: 'Posición de Beatriz López' })).toHaveValue('2')
+    expect(within(screen.getByRole('combobox', { name: 'Posición de Beatriz López' })).getByRole('option', { name: '1' })).toBeInTheDocument()
+
+    const occupiedSlot = screen.getByRole('combobox', { name: 'Posición de Beatriz López' }).closest('.lineup-slot')
+    expect(occupiedSlot).not.toBeNull()
+    fireEvent.drop(occupiedSlot!, { dataTransfer: { getData: () => ana.id } })
+    expect(screen.getByRole('combobox', { name: 'Posición de Ana Martín' })).toHaveValue('3')
+    expect(screen.getByRole('combobox', { name: 'Posición de Beatriz López' })).toHaveValue('2')
+
+    await user.click(screen.getByRole('button', { name: 'Quitar a Beatriz López' }))
+    const freeSelector = screen.getByRole('combobox', { name: 'Posición de Ana Martín' })
+    expect(within(freeSelector).getByRole('option', { name: '2' })).toBeInTheDocument()
+    await user.selectOptions(freeSelector, '2')
+    expect(screen.getByRole('combobox', { name: 'Posición de Ana Martín' })).toHaveValue('2')
 
     await user.click(screen.getByRole('button', { name: 'Quitar a Ana Martín' }))
-    expect(within(screen.getByRole('combobox', { name: 'Posición de Beatriz López' })).getByRole('option', { name: '3' })).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Posición de Ana Martín' })).not.toBeInTheDocument()
   })
 })

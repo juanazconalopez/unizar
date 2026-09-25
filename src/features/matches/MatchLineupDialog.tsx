@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { Fragment, useEffect, useId, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Icon } from '../../components/Icon'
 import { Avatar } from '../../components/ui/Avatar'
@@ -7,17 +7,24 @@ import { errorText } from '../../lib/errors'
 import { copyText, downloadText } from '../../lib/fileExport'
 import { lineupPlainText, lineupXml } from '../../lib/matchExports'
 import { activePlayers, membershipCoversDate } from '../../lib/selectors'
-import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer } from '../../types'
+import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, SeasonTeam } from '../../types'
 import { matchLogistics, matchTitle } from './matchPresentation'
+import { orderedLineupCandidates } from './lineupCandidates'
+import { fetchSeasonPlayerMinutes } from '../../services/matchesService'
 
-export function MatchLineupDialog({ availability, canExport = true, canPublish = true, entries, match, memberships, profiles, onClose, onSave, onUnlock }: {
+export function MatchLineupDialog({ availability, canExport = true, canPublish = true, canBorrowFromOtherTeams = true, demo = false, demoMinutes, entries, match, memberships, profiles, seasonTeams = [], reservedPlayerIds = [], onClose, onSave, onUnlock }: {
   availability: MatchAvailability[]
   canExport?: boolean
   canPublish?: boolean
+  canBorrowFromOtherTeams?: boolean
+  demo?: boolean
+  demoMinutes?: Map<string, number>
   entries: MatchLineup[]
   match: Match
   memberships: SeasonPlayer[]
   profiles: Profile[]
+  seasonTeams?: SeasonTeam[]
+  reservedPlayerIds?: string[]
   onClose: () => void
   onSave?: (entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
   onUnlock?: () => Promise<void>
@@ -42,12 +49,30 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
   const [confirmMissing, setConfirmMissing] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirmUnlock, setConfirmUnlock] = useState(false)
+  const [minutesByPlayer, setMinutesByPlayer] = useState<Map<string, number>>(demoMinutes ?? new Map())
   const selectedIds = new Set(Object.values(slots))
-  const selectable = eligible.filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id))
+  const reservedIds = new Set(reservedPlayerIds)
+  const selectable = orderedLineupCandidates(eligible, memberships, seasonTeams, match.season_id, match.team_id)
+    .filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id) && !reservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2))
+  const containsBorrowedPlayer = !canBorrowFromOtherTeams && Object.values(slots).some((playerId) => {
+    const membership = memberships.find((item) => item.season_id === match.season_id && item.player_id === playerId && membershipCoversDate(item, match.match_date))
+    return membership && membership.season_team_id !== match.team_id && !seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed)
+  })
+
+  useEffect(() => {
+    if (demo) return
+    let active = true
+    void fetchSeasonPlayerMinutes(match.season_id).then((minutes) => { if (active) setMinutesByPlayer(minutes) }).catch(() => undefined)
+    return () => { active = false }
+  }, [demo, match.season_id])
 
   function assign(playerId: string, slot: number) {
     setSlots((current) => {
-      const next = Object.fromEntries(Object.entries(current).filter(([, selectedId]) => selectedId !== playerId)) as Record<number, string>
+      const sourceKey = Object.keys(current).find((key) => current[Number(key)] === playerId)
+      const source = sourceKey ? Number(sourceKey) : null
+      if (source === slot || current[slot]) return current
+      const next = { ...current }
+      if (source !== null) delete next[source]
       next[slot] = playerId
       return next
     })
@@ -100,23 +125,22 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{matchLogistics(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
     {editable ? <div className="lineup-board">
-      <section className="available-player-pool"><h3>Disponibles</h3><p>Arrastra una jugadora a un dorsal o pulsa Añadir.</p><div>{selectable.map((player) => <article draggable key={player.id} onDragStart={(event) => event.dataTransfer.setData('text/player-id', player.id)}><Avatar name={player.display_name} /><strong>{player.display_name}</strong><button className="secondary-button compact" onClick={() => { const empty = Array.from({ length: limit }, (_, index) => index + 1).find((slot) => !slots[slot]); if (empty) assign(player.id, empty) }} type="button">Añadir</button></article>)}{!selectable.length && <span className="lineup-empty">No quedan jugadoras disponibles sin asignar.</span>}</div></section>
-      <section className="numbered-lineup"><h3>Alineación</h3><div className="lineup-section-label">Titulares</div>{Array.from({ length: limit }, (_, index) => index + 1).map((slot) => {
+      <section className="available-player-pool"><h3>Disponibles</h3><p>{canBorrowFromOtherTeams ? 'Equipo del partido, mixto y después el resto de equipos.' : 'Equipo del partido y mixto. El owner gestiona los préstamos.'}</p><div>{selectable.map((player, index) => <Fragment key={player.id}>{index === 0 || selectable[index - 1].teamName !== player.teamName ? <h4 className={`lineup-team-group priority-${player.priority}`}>{player.teamName}{player.priority === 0 ? ' · Prioridad' : player.priority === 1 ? ' · Mixto' : ''}</h4> : null}<article draggable onDragStart={(event) => event.dataTransfer.setData('text/player-id', player.id)}><Avatar name={player.display_name} /><span><strong>{player.display_name}</strong><small>{minutesByPlayer.get(player.id) ?? 0} min esta temporada</small></span><button className="secondary-button compact" onClick={() => { const empty = Array.from({ length: limit }, (_, index) => index + 1).find((slot) => !slots[slot]); if (empty) assign(player.id, empty) }} type="button">Añadir</button></article></Fragment>)}{!selectable.length && <span className="lineup-empty">No quedan jugadoras disponibles sin asignar.</span>}</div></section>
+      <section className="numbered-lineup"><h3>Alineación</h3><p className="lineup-reorder-help">Arrastra cada jugadora a un dorsal libre. Para cambiarlo después, elige otro dorsal libre; si está ocupado, quita primero a su jugadora.</p><div className="lineup-section-label">Titulares</div>{Array.from({ length: limit }, (_, index) => index + 1).map((slot) => {
         const playerId = slots[slot]
         const player = eligible.find((item) => item.id === playerId) ?? profiles.find((item) => item.id === playerId)
-        const availableSlots = Array.from({ length: limit }, (_, option) => option + 1)
-          .filter((option) => option === slot || !slots[option])
-        return <div className={`lineup-slot ${player ? 'filled' : ''}`} key={slot} onDragOver={(event) => event.preventDefault()} onDrop={(event) => drop(event, slot)}>
+        const availableSlots = Array.from({ length: limit }, (_, option) => option + 1).filter((option) => option === slot || !slots[option])
+        return <div className={`lineup-slot ${player ? 'filled' : ''}`} key={slot} onDragOver={(event) => { if (!slots[slot]) event.preventDefault() }} onDrop={(event) => drop(event, slot)}>
           {slot === starters + 1 && <span className="lineup-section-label substitutes">Suplentes</span>}
           <b>{slot}</b>{player ? <>
-            <div className="lineup-player-identity"><Avatar name={player.display_name} /><strong>{player.display_name}</strong></div>
+            <div className="lineup-player-identity" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/player-id', player.id) }}><Avatar name={player.display_name} /><strong>{player.display_name}</strong></div>
             <button aria-label={`Quitar a ${player.display_name}`} className="icon-button lineup-remove-button" onClick={() => setSlots((current) => { const next = { ...current }; delete next[slot]; return next })} type="button">×</button>
             <label className="lineup-position-field"><span>Posición / dorsal</span><select aria-label={`Posición de ${player.display_name}`} onChange={(event) => assign(player.id, Number(event.target.value))} value={slot}>{availableSlots.map((option) => <option key={option} value={option}>{option}</option>)}</select></label>
           </> : <span>Suelta aquí</span>}
         </div>
       })}</section>
     </div> : <><PublishedLineup entries={entries} profiles={profiles} starters={starters} />{(locked && onUnlock) || canExport ? <div className="lineup-export-actions">{locked && onUnlock && <button className="danger-button" onClick={() => setConfirmUnlock(true)} type="button">Desbloquear para editar</button>}{canExport && <><button className="secondary-button" onClick={() => void copyLineup()} type="button"><Icon name="copy" size={17} />{copied ? 'Convocatoria copiada' : 'Copiar convocatoria'}</button><button className="primary-button" onClick={() => downloadText(`convocatoria-${match.match_date}-${match.opponent}.xml`, lineupXml(match, entries, profiles), 'application/xml')} type="button"><Icon name="download" size={17} />Descargar XML</button></>}</div> : null}{error && <p className="form-error">{error}</p>}</>}
-    {editable && <>{canPublish && <label className="publish-lineup"><input checked={published} disabled={locked} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{locked ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>}{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
+    {editable && <>{containsBorrowedPlayer && <p className="form-hint">Esta convocatoria incluye una jugadora prestada de otro equipo. El owner debe guardar los cambios mientras permanezca asignada.</p>}{canPublish && <label className="publish-lineup"><input checked={published} disabled={locked} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{locked ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>}{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving || containsBorrowedPlayer} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
     {confirmMissing && <MissingStartersDialog missing={Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])} onCancel={() => setConfirmMissing(false)} onConfirm={() => { setConfirmMissing(false); void save(true) }} />}
     {confirmUnlock && <UnlockLineupDialog onCancel={() => setConfirmUnlock(false)} onConfirm={() => void unlock()} />}
   </Modal>

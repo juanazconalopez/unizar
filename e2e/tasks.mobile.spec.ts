@@ -256,7 +256,7 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await page.getByRole('searchbox', { name: 'Buscar por nombre' }).fill('claudia')
   await expect(page.getByText('Claudia Pérez')).toBeVisible()
   await expect(page.getByText('Marta Sánchez')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Cerrar búsqueda' }).click()
+  await page.getByRole('searchbox', { name: 'Buscar por nombre' }).press('Escape')
 
   await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Claudia Pérez' })

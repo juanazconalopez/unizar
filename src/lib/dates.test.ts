@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { addDays, ageOnDate, mondayFor, monthEnd, monthStart, offsetMonth, seasonState, toIsoDate, todayIso } from './dates'
+import { addDays, ageOnDate, mondayFor, monthEnd, monthStart, offsetMonth, seasonState, toIsoDate, todayInMadridIso, todayIso } from './dates'
 
 afterEach(() => vi.useRealTimers())
 
@@ -27,6 +27,12 @@ describe('date helpers', () => {
     expect(ageOnDate('2000-09-01', '2026-08-31')).toBe(25)
     expect(ageOnDate('2030-01-01', '2026-08-31')).toBeNull()
     expect(ageOnDate('fecha inválida', '2026-08-31')).toBeNull()
+  })
+
+  test('uses the Madrid day for post-match actions at midnight', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-23T22:30:00Z'))
+    expect(todayInMadridIso()).toBe('2026-09-24')
   })
 
   test('uses the current day to classify seasons', () => {

@@ -12,36 +12,46 @@ vi.mock('../../lib/fileExport', async (importOriginal) => ({
 }))
 
 describe('SeasonsView', () => {
-  test('manages only eligible participants', async () => {
+  test('replaces manual memberships with team management', async () => {
     const user = userEvent.setup()
     const season = makeSeason()
     const active = makeProfile()
-    const available = makeProfile({ id: 'player-2', display_name: 'María López' })
-    const inactive = makeProfile({ id: 'inactive', display_name: 'Elena García', is_active: false })
-    const archived = makeProfile({ id: 'archived', display_name: 'Archivada', is_archived: true })
-    const onToggleMembership = vi.fn().mockResolvedValue(undefined)
+    const defaultTeam = { id: 'team-1', season_id: season.id, name: 'Unizar Femenino', is_default: true, is_mixed: false, is_active: true, created_by: 'owner-1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     render(
       <SeasonsView
         seasons={[season]}
-        profiles={[active, available, inactive, archived]}
+        profiles={[active]}
         memberships={[makeMembership()]}
+        teams={[defaultTeam]}
         onCreate={vi.fn()}
         onDelete={vi.fn()}
         onUpdate={vi.fn()}
-        onToggleMembership={onToggleMembership}
+        onCreateTeam={vi.fn()}
+        onUpdateTeam={vi.fn()}
+        onDeleteTeam={vi.fn()}
+        onAssignPlayerTeam={vi.fn()}
+        onAssignTeamCoach={vi.fn()}
       />,
     )
 
     expect(screen.getByRole('button', { name: 'Exportar jugadoras activas XML' })).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'Gestionar participantes' }))
-    const card = screen.getByText('Temporada 2026').closest('article')!
-    expect(within(card).getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
-    expect(within(card).getByRole('checkbox', { name: /Elena García/ })).toBeDisabled()
-    expect(within(card).queryByText('Archivada')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    expect(screen.getByRole('heading', { name: 'Equipos' })).toBeInTheDocument()
+    expect(screen.getAllByText('Unizar Femenino')).not.toHaveLength(0)
+  })
 
-    await user.click(within(card).getByRole('checkbox', { name: /María López/ }))
-    expect(onToggleMembership).toHaveBeenCalledWith(season, available, true)
+  test('only offers team assignment to players linked to the selected season', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const member = makeProfile({ id: 'member', display_name: 'Ana Martín' })
+    const unlinked = makeProfile({ id: 'unlinked', display_name: 'Beatriz López' })
+    const team = { id: 'team-1', season_id: season.id, name: 'Unizar A', is_default: true, is_mixed: false, is_active: true, created_by: 'owner-1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    render(<SeasonsView seasons={[season]} profiles={[member, unlinked]} memberships={[makeMembership({ player_id: member.id, season_team_id: team.id })]} teams={[team]} onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()} onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    expect(screen.getByRole('combobox', { name: 'Equipo de Ana Martín' })).toHaveValue(team.id)
+    expect(screen.queryByRole('combobox', { name: 'Equipo de Beatriz López' })).not.toBeInTheDocument()
   })
 
   test('shows the player export only inside the active season card', () => {

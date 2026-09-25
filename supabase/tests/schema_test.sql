@@ -1,5 +1,5 @@
 begin;
-select plan(252);
+select plan(315);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -823,6 +823,98 @@ select ok(
 );
 select ok(has_function_privilege('authenticated', 'public.set_season_holidays(uuid,date[])', 'EXECUTE'), 'authenticated owners can call the protected holiday update');
 select ok(not has_function_privilege('anon', 'public.set_season_holidays(uuid,date[])', 'EXECUTE'), 'anonymous users cannot update holidays');
+
+select has_table('public', 'season_teams', 'season teams are persisted');
+select has_table('public', 'season_team_coaches', 'team coach assignments are persisted');
+select ok((select relrowsecurity from pg_class where oid = 'public.season_teams'::regclass), 'season teams use RLS');
+select col_is_fk('public', 'season_players', 'season_team_id', 'season player assignments reference a season team');
+select col_is_fk('public', 'matches', 'team_id', 'official matches can reference their team');
+select ok(exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'season_teams_one_mixed_idx'), 'a season can have at most one mixed team');
+select ok(exists (select 1 from pg_trigger where tgname = 'seasons_create_default_team' and not tgisinternal), 'new seasons create their default team');
+select ok(exists (select 1 from pg_trigger where tgrelid = 'public.matches'::regclass and tgname = 'enforce_configurable_permission' and tgenabled = 'O'), 'match permission trigger remains active after the team backfill');
+select has_function('public', 'create_season_team', array['uuid', 'text', 'boolean'], 'owners can create season teams through a protected function');
+select has_function('public', 'assign_season_player_team', array['uuid', 'uuid', 'uuid'], 'owners can reassign a season player');
+select has_function('public', 'set_season_team_coach', array['uuid', 'uuid', 'boolean'], 'owners can scope coaches to teams');
+select ok(has_function_privilege('authenticated', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'authenticated owner sessions can invoke player team assignment');
+select ok(not has_function_privilege('anon', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'anonymous users cannot invoke player team assignment');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%other_match.match_date = checked_date%', 'lineup saving prevents duplicate same-day reservations');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%for update%', 'lineup reservation validation locks the day atomically');
+select like(pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure), '%team.is_default%', 'newly approved players join the default season team');
+
+select has_table('public', 'player_absences', 'player absences are persisted');
+select has_table('public', 'match_events', 'official match events are persisted');
+select ok((select relrowsecurity from pg_class where oid = 'public.player_absences'::regclass), 'player absences use RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.player_absence_private_notes'::regclass), 'medical notes use separate RLS');
+select has_function('public', 'save_player_absence', array['uuid', 'uuid', 'date', 'date', 'text'], 'owners can save absences atomically');
+select has_function('public', 'save_match_events', array['uuid', 'jsonb'], 'staff can save structured match events');
+select has_function('public', 'get_season_player_minutes', array['uuid'], 'season playing minutes are calculated from events');
+select ok(has_function_privilege('authenticated', 'public.get_season_player_minutes(uuid)', 'EXECUTE'), 'authenticated users can read protected minutes');
+select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%player_has_absence_on%', 'an active absence blocks match eligibility');
+select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%yellow_card%', 'yellow cards remove their ten-minute interval from calculated minutes');
+
+select has_column('public', 'matches', 'internal_fixture_id', 'linked internal fixtures are stored on matches');
+select ok(exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'matches_internal_fixture_team_idx'), 'a team has one side of each internal fixture');
+select has_function('public', 'create_internal_match', array['jsonb', 'uuid', 'uuid'], 'owner can create both sides atomically');
+select has_function('public', 'update_internal_match', array['uuid', 'jsonb'], 'internal fixture details update together');
+select has_function('public', 'delete_internal_match', array['uuid'], 'both sides can be deleted together');
+select has_function('public', 'finalize_internal_match', array['uuid'], 'owner can publish both lineups together');
+select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure), '%having count(*) > 1%', 'publication rejects players in both lineups');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%other_match.internal_fixture_id is distinct from fixture_id%', 'paired drafts may overlap until final review');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%Solo el owner puede incorporar jugadoras de otro equipo%', 'coach cannot borrow players from another team');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_lineup' and policyname = 'Scoped staff and selected players can read lineups'), 'draft lineups are scoped to the assigned team');
+
+select like(pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure), '%public.current_user_is_owner() or membership.season_team_id%', 'owner can confirm a borrowed player while coaches remain team scoped');
+select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure), '%public.player_has_absence_on%', 'publication rejects a player with a new absence');
+select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%mixed.is_mixed%', 'mixed team players can respond before an internal fixture is assigned');
+
+select like(pg_get_functiondef('public.current_user_can_view_season_team(uuid)'::regprocedure),
+  '%current_user_has_permission(''matches.view'')%', 'team visibility requires the configurable match permission');
+select like(pg_get_functiondef('public.current_user_can_view_season_team(uuid)'::regprocedure),
+  '%coach.is_active and not coach.is_archived%', 'mixed team access rejects inactive coaches');
+select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure),
+  '%membership.season_team_id = match.team_id%', 'players see matches assigned to their season team');
+select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure),
+  '%public.match_availability availability%', 'borrowed players can see the match after owner confirmation');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'matches'
+  and policyname = 'Scoped staff and players can read matches' and qual like '%matches.view%'),
+  'match reads respect the configurable view permission');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'player_absences'
+  and policyname = 'Players and owners can read absences')
+  and not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'player_absences'
+  and policyname = 'Players and scoped staff can read absences'),
+  'absence dates are limited to the player and owner');
+select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure),
+  '%current_user_can_view_season_team(match.team_id)%', 'minutes are scoped to the coach team');
+
+select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure),
+  '%other_match.internal_fixture_id is distinct from fixture_id%',
+  'final review rejects same-day reservations outside the internal fixture');
+
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean)'::regprocedure),
+  '%other_match set opponent = trim(checked_name)%',
+  'renaming a team updates the rival name on its paired fixture');
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean)'::regprocedure),
+  '%Un equipo que participa en un derbi no puede convertirse en mixto%',
+  'a team already in a derby cannot become mixed');
+
+select like(pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure),
+  '%greatest(today_in_madrid, season.start_date)%',
+  'new players join future seasons from their start date');
+select like(pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure),
+  '%Europe/Madrid%', 'automatic season assignment uses the team timezone');
+
+select has_column('public', 'matches', 'team_score', 'match report stores team score');
+select has_column('public', 'matches', 'opponent_score', 'match report stores opponent score');
+select has_column('public', 'matches', 'report_events_reviewed', 'match report review state is stored');
+select has_function('public', 'save_match_report', array['uuid', 'text', 'integer', 'integer', 'integer', 'jsonb', 'boolean'], 'match report is saved atomically');
+select ok(has_function_privilege('authenticated', 'public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)', 'EXECUTE'), 'authenticated manager can call protected report RPC');
+select ok(not has_function_privilege('anon', 'public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)', 'EXECUTE'), 'anonymous user cannot save reports');
+select ok(not has_function_privilege('authenticated', 'public.save_match_events(uuid,jsonb)', 'EXECUTE'), 'events can only be saved through a reviewed report');
+select like(pg_get_functiondef('public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)'::regprocedure), '%current_user_can_edit_match%', 'report RPC checks match scope');
+select like(pg_get_functiondef('public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)'::regprocedure), '%Europe/Madrid%', 'report RPC checks match date in team timezone');
+select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%report_events_reviewed%', 'unreviewed reports cannot contribute playing minutes');
+select ok(exists (select 1 from storage.buckets where id = 'match-reports' and not public), 'match reports use private storage');
+select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Match viewers can read reports' and qual like '%matches.report%'), 'report PDFs require the report permission');
 
 select * from finish();
 rollback;

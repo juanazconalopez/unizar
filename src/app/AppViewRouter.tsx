@@ -144,9 +144,11 @@ export function AppViewRouter({
         matches={data.matches}
         memberships={data.memberships}
         profiles={data.profiles}
+        isOwner={profile.is_owner}
         results={data.results}
         seasons={data.seasons}
         seasonCompetitions={data.seasonCompetitions}
+        seasonTeams={data.seasonTeams}
         tasks={data.tasks}
         onAnnouncementStatusChange={actions.announcements.changeStatus}
         onCreateTask={actions.tasks.create}
@@ -165,10 +167,12 @@ export function AppViewRouter({
         onReorderTasks={actions.tasks.reorder}
         onSaveAnnouncement={actions.announcements.save}
         onSaveLineup={actions.matches.saveLineup}
+        onSaveReport={actions.matches.saveReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
         onTaskStatusChange={actions.tasks.changeStatus}
         onUnlockLineup={actions.matches.unlockLineup}
+        onFinalizeInternal={actions.matches.finalizeInternal}
         onUpdateTask={actions.tasks.update}
       />}
       {view === 'calendar' && !can(PERMISSIONS.calendar.manage) && can(PERMISSIONS.calendar.personal) && <PlayerCalendarView
@@ -226,12 +230,14 @@ export function AppViewRouter({
         canViewReport={can(PERMISSIONS.matches.report)}
         focusedDate={navigation.date}
         isPlayer={isPlayer(profile) && can(PERMISSIONS.matches.ownAvailability)}
+        isOwner={profile.is_owner}
         lineups={data.matchLineups}
         matches={data.matches}
         memberships={data.memberships}
         profiles={data.profiles}
         seasons={data.seasons}
         seasonCompetitions={data.seasonCompetitions}
+        seasonTeams={data.seasonTeams}
         userId={userId}
         onDelete={actions.matches.delete}
         onLoadCallupReport={fetchSeasonCallupReport}
@@ -239,9 +245,11 @@ export function AppViewRouter({
         onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
         onSaveAvailability={actions.matches.saveAvailability}
         onSaveLineup={actions.matches.saveLineup}
+        onSaveReport={actions.matches.saveReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
         onUnlockLineup={actions.matches.unlockLineup}
+        onFinalizeInternal={actions.matches.finalizeInternal}
       />}
       {view === 'competition' && <CompetitionView
         errorMessage={competition.errorMessage}
@@ -265,19 +273,28 @@ export function AppViewRouter({
         profiles={data.profiles}
         provisionalAttendance={data.provisionalAttendance}
         provisionalPlayers={data.provisionalPlayers}
+        playerAbsences={data.playerAbsences}
         seasons={data.seasons}
         seasonCompetitions={data.seasonCompetitions}
+        seasonTeams={data.seasonTeams}
+        seasonTeamCoaches={data.seasonTeamCoaches}
         section={navigation.settingsSection}
         librarySettings={data.librarySettings}
         permissionDefinitions={data.permissionConfiguration.definitions}
         rolePermissions={data.permissionConfiguration.grants}
         onCreateSeason={actions.club.createSeason}
         onCreateSeasonCompetition={actions.club.createSeasonCompetition}
+        onCreateSeasonTeam={actions.club.createSeasonTeam}
         onDeleteSeason={actions.club.deleteSeason}
         onDeleteSeasonCompetition={actions.club.deleteSeasonCompetition}
+        onDeleteSeasonTeam={actions.club.deleteSeasonTeam}
         onArchiveProfile={actions.club.archiveProfile}
+        onSavePlayerAbsence={actions.club.savePlayerAbsence}
+        onDeletePlayerAbsence={actions.club.deletePlayerAbsence}
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
+        onAssignSeasonPlayerTeam={actions.club.assignSeasonPlayerTeam}
+        onAssignSeasonTeamCoach={actions.club.setSeasonTeamCoach}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
         onUpdateProfileDetails={actions.club.updateManagedProfile}
@@ -288,6 +305,7 @@ export function AppViewRouter({
         onSetDefaultSeasonCompetition={actions.club.setDefaultSeasonCompetition}
         onResetRolePermissions={actions.club.resetRolePermissions}
         onUpdateSeasonCompetition={actions.club.updateSeasonCompetition}
+        onUpdateSeasonTeam={actions.club.updateSeasonTeam}
       />}
       {view === 'settings' && !hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SectionError message="Solo el owner puede acceder a los ajustes." onRetry={() => navigate('home')} />}
       {surveyResultId && <SurveyCalendarResultsDialog onClose={() => setSurveyResultId(undefined)} onLoad={fetchSurveyCalendarResults} surveyId={surveyResultId} />}

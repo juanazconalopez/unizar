@@ -27,3 +27,30 @@ describe('MatchDetailDialog', () => {
     expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
   })
 })
+
+describe('match report action', () => {
+  test('appears only after the match date for staff who can edit', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-24T12:00:00Z'))
+    try {
+      const { rerender } = render(<MatchDetailDialog canEditMatch canManageLineup canViewAvailability isPlayer={false} lineup={[]} match={match} profiles={[]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onSaveReport={vi.fn()} onViewAvailability={vi.fn()} />)
+      expect(screen.getByRole('button', { name: 'Subir acta' })).toBeInTheDocument()
+      rerender(<MatchDetailDialog canEditMatch={false} canManageLineup canViewAvailability isPlayer={false} lineup={[]} match={match} profiles={[]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onSaveReport={vi.fn()} onViewAvailability={vi.fn()} />)
+      expect(screen.queryByRole('button', { name: 'Subir acta' })).not.toBeInTheDocument()
+      rerender(<MatchDetailDialog canEditMatch canManageLineup canViewAvailability isPlayer={false} lineup={[]} match={{ ...match, match_date: '2026-09-24' }} profiles={[]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onSaveReport={vi.fn()} onViewAvailability={vi.fn()} />)
+      expect(screen.queryByRole('button', { name: 'Subir acta' })).not.toBeInTheDocument()
+    } finally { vi.useRealTimers() }
+  })
+})
+
+describe('match report privacy', () => {
+  test('shows the score while restricting the PDF action to report viewers', () => {
+    const reportMatch = { ...match, match_report_path: `${match.id}/acta.pdf`, team_score: 46, opponent_score: 7, report_events_reviewed: true }
+    const props = { canEditMatch: false, canManageLineup: false, canViewAvailability: false, isPlayer: false, lineup: [], match: reportMatch, profiles: [], onClose: vi.fn(), onEdit: vi.fn(), onManageLineup: vi.fn(), onViewAvailability: vi.fn() }
+    const { rerender } = render(<MatchDetailDialog {...props} />)
+    expect(screen.getByText(/46 - 7 · Eventos revisados/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver PDF del acta' })).not.toBeInTheDocument()
+    rerender(<MatchDetailDialog {...props} canViewReportPdf />)
+    expect(screen.getByRole('button', { name: 'Ver PDF del acta' })).toBeInTheDocument()
+  })
+})

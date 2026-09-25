@@ -1,4 +1,5 @@
-import { createMatch, deleteMatch, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from '../../services/matchesService'
+import { saveMatchReport, type SavedReportEvent } from '../../services/matchReportService'
+import { createMatch, deleteInternalMatch, deleteMatch, finalizeInternalMatch, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateInternalMatch, updateMatch } from '../../services/matchesService'
 import type { AvailabilityStatus, Match, MatchLineup, MatchValues } from '../../types'
 import type { ActionContext } from './actionContext'
 
@@ -7,7 +8,8 @@ export function createMatchActions(context: ActionContext) {
     save: async (match: Match | undefined, values: MatchValues) => {
       context.requireConnection()
       if (!context.userId) return
-      if (match) await updateMatch(match.id, values)
+      if (match?.internal_fixture_id) await updateInternalMatch(match.id, values)
+      else if (match) await updateMatch(match.id, values)
       else await createMatch(values, context.userId)
       context.invalidateMatchMonths(match?.match_date ?? values.matchDate, values.matchDate)
       context.notify(match ? 'Partido actualizado.' : 'Partido creado.')
@@ -15,7 +17,8 @@ export function createMatchActions(context: ActionContext) {
     },
     delete: async (match: Match) => {
       context.requireConnection()
-      await deleteMatch(match.id)
+      if (match.internal_fixture_id) await deleteInternalMatch(match.id)
+      else await deleteMatch(match.id)
       context.invalidateMatchMonths(match.match_date)
       context.notify('Partido eliminado.')
       await context.reloadData()
@@ -40,6 +43,20 @@ export function createMatchActions(context: ActionContext) {
       await saveMatchLineup(match, entries, published)
       context.invalidateMatchMonths(match.match_date)
       context.notify(published ? 'Convocatoria publicada.' : 'Convocatoria guardada.')
+      await context.reloadData()
+    },
+    saveReport: async (match: Match, file: File, scores: { team: number; opponent: number }, duration: number, events: SavedReportEvent[], reviewed: boolean) => {
+      context.requireConnection()
+      await saveMatchReport(match, file, scores, duration, events, reviewed)
+      context.invalidateMatchMonths(match.match_date)
+      context.notify('Acta guardada.')
+      await context.reloadData()
+    },
+    finalizeInternal: async (match: Match) => {
+      context.requireConnection()
+      await finalizeInternalMatch(match.id)
+      context.invalidateMatchMonths(match.match_date)
+      context.notify('Las dos convocatorias están publicadas.')
       await context.reloadData()
     },
     unlockLineup: async (match: Match) => {

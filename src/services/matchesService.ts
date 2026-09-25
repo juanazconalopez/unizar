@@ -16,16 +16,41 @@ function matchPayload(values: MatchValues) {
     status: values.status,
     match_kind: values.matchKind,
     rugby_format: values.rugbyFormat,
+    team_id: values.teamId || null,
   }
 }
 
 export async function createMatch(values: MatchValues, userId: string) {
+  if (values.opponentTeamId) {
+    const { error } = await supabase.rpc('create_internal_match', {
+      checked_values: matchPayload(values),
+      checked_home_team_id: values.teamId ?? '',
+      checked_away_team_id: values.opponentTeamId,
+    })
+    if (error) throw error
+    return
+  }
   const { error } = await supabase.from('matches').insert({ ...matchPayload(values), created_by: userId })
   if (error) throw error
 }
 
 export async function updateMatch(matchId: string, values: MatchValues) {
   const { error } = await supabase.from('matches').update(matchPayload(values)).eq('id', matchId)
+  if (error) throw error
+}
+
+export async function updateInternalMatch(matchId: string, values: MatchValues) {
+  const { error } = await supabase.rpc('update_internal_match', { checked_match_id: matchId, checked_values: matchPayload(values) })
+  if (error) throw error
+}
+
+export async function deleteInternalMatch(matchId: string) {
+  const { error } = await supabase.rpc('delete_internal_match', { checked_match_id: matchId })
+  if (error) throw error
+}
+
+export async function finalizeInternalMatch(matchId: string) {
+  const { error } = await supabase.rpc('finalize_internal_match', { checked_match_id: matchId })
   if (error) throw error
 }
 
@@ -87,4 +112,10 @@ export async function fetchPlayerSeasonSummary(seasonId: string, playerId: strin
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen personal no tiene un formato válido.')
   return data as unknown as PlayerSeasonSummary
+}
+
+export async function fetchSeasonPlayerMinutes(seasonId: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('get_season_player_minutes', { checked_season_id: seasonId })
+  if (error) throw error
+  return new Map((data ?? []).map((row) => [row.player_id, row.played_minutes]))
 }

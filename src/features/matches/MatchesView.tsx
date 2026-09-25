@@ -1,3 +1,4 @@
+import type { SavedReportEvent } from '../../services/matchReportService'
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -15,6 +16,7 @@ import type {
   Profile,
   Season,
   SeasonCompetition,
+  SeasonTeam,
   SeasonPlayer,
   SeasonCallupReport,
 } from '../../types'
@@ -24,22 +26,27 @@ import { MatchCard } from './MatchCard'
 import { MatchDetailDialog } from './MatchDetailDialog'
 import { MatchForm } from './MatchForm'
 import { MatchLineupDialog } from './MatchLineupDialog'
+import { InternalFixtureReviewDialog } from './InternalFixtureReviewDialog'
+import { visibleFixtureMatches } from './internalFixtures'
 import { MatchListView } from './MatchListView'
 import { SeasonCallupReportView } from './SeasonCallupReportView'
 
 type MatchesViewProps = {
   availability: MatchAvailability[]
+  demo?: boolean
   canEditPlayerAvailability?: boolean
   canManage: boolean
   canUnlockLineup?: boolean
   canViewAvailability: boolean
   isPlayer: boolean
+  isOwner?: boolean
   lineups: MatchLineup[]
   matches: Match[]
   memberships: SeasonPlayer[]
   profiles: Profile[]
   seasons: Season[]
   seasonCompetitions?: SeasonCompetition[]
+  seasonTeams?: SeasonTeam[]
   userId: string
   focusedDate?: string
   canViewReport?: boolean
@@ -54,24 +61,29 @@ type MatchesViewProps = {
     published: boolean,
   ) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
+  onSaveReport?: (match: Match, file: File, scores: { team: number; opponent: number }, duration: number, events: SavedReportEvent[], reviewed: boolean) => Promise<void>
   onUnlockLineup?: (match: Match) => Promise<void>
+  onFinalizeInternal?: (match: Match) => Promise<void>
   onLoadCallupReport?: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary?: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
 }
 
 export function MatchesView({
+  demo = false,
   availability,
   canEditPlayerAvailability = false,
   canManage,
   canUnlockLineup = false,
   canViewAvailability,
   isPlayer,
+  isOwner = false,
   lineups,
   matches,
   memberships,
   profiles,
   seasons,
   seasonCompetitions = [],
+  seasonTeams = [],
   userId,
   focusedDate,
   canViewReport = false,
@@ -82,7 +94,9 @@ export function MatchesView({
   onSavePlayerAvailability,
   onSaveLineup,
   onSaveMatch,
+  onSaveReport,
   onUnlockLineup,
+  onFinalizeInternal,
   onLoadCallupReport,
   onLoadPlayerSeasonSummary,
 }: MatchesViewProps) {
@@ -93,12 +107,13 @@ export function MatchesView({
   const [month, setMonth] = useState(`${(focusedDate ?? today).slice(0, 7)}-01`)
   const [formMatch, setFormMatch] = useState<Match | null | undefined>(undefined)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
+  const [reviewFixtureId, setReviewFixtureId] = useState<string | null>(null)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
   const currentWeekRef = useRef<HTMLElement>(null)
-  const visibleMatches = canManage ? matches : matches.filter((match) => match.status !== 'draft')
+  const visibleMatches = visibleFixtureMatches(canManage ? matches : matches.filter((match) => match.status !== 'draft'))
   const selectedWeek = mondayFor(selectedDate)
   const selectedMatches = orderedMatches(
     visibleMatches.filter((match) => mondayFor(match.match_date) === selectedWeek),
@@ -212,6 +227,9 @@ export function MatchesView({
       {!reportOpen && formMatch !== undefined && (
         <MatchForm
           competitions={seasonCompetitions}
+          teams={seasonTeams}
+          canManageInternal={isOwner}
+          pairedMatch={matches.find((item) => item.id !== formMatch?.id && item.internal_fixture_id && item.internal_fixture_id === formMatch?.internal_fixture_id)}
           initialDate={managementView === 'calendar' ? selectedDate : today}
           match={formMatch ?? undefined}
           seasons={seasons}
@@ -235,12 +253,17 @@ export function MatchesView({
         <MatchLineupDialog
           availability={availability.filter((item) => item.match_id === lineupMatch.match.id)}
           canExport={canManage || canViewReport}
+          canPublish={!lineupMatch.match.internal_fixture_id}
+          canBorrowFromOtherTeams={isOwner}
+          demo={demo}
           entries={lineups.filter((entry) => entry.match_id === lineupMatch.match.id)}
           match={lineupMatch.match}
           memberships={memberships}
           profiles={profiles}
+          seasonTeams={seasonTeams}
+          reservedPlayerIds={lineups.filter((entry) => entry.match_id !== lineupMatch.match.id && matches.some((item) => item.id === entry.match_id && item.match_date === lineupMatch.match.match_date && (!lineupMatch.match.internal_fixture_id || item.internal_fixture_id !== lineupMatch.match.internal_fixture_id))).map((entry) => entry.player_id)}
           onClose={() => setLineupMatch(null)}
-          onUnlock={lineupMatch.editable && canUnlockLineup && onUnlockLineup ? async () => {
+          onUnlock={lineupMatch.editable && canUnlockLineup && onUnlockLineup && (!lineupMatch.match.internal_fixture_id || isOwner) ? async () => {
             await onUnlockLineup(lineupMatch.match)
             await refreshMatchMonth(lineupMatch.match.match_date)
           } : undefined}
@@ -253,9 +276,10 @@ export function MatchesView({
       )}
 
       {detailMatch && <MatchDetailDialog
-        canEditMatch={canManage}
+        canEditMatch={canManage && (!detailMatch.internal_fixture_id || isOwner)}
         canManageLineup={canManage}
         canViewAvailability={canViewAvailability}
+        canViewReportPdf={canViewReport}
         isPlayer={isPlayer}
         lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
         match={detailMatch}
@@ -264,12 +288,20 @@ export function MatchesView({
         onClose={() => setDetailMatch(null)}
         onEdit={() => { setDetailMatch(null); setFormMatch(detailMatch) }}
         onManageLineup={() => { setDetailMatch(null); setLineupMatch({ match: detailMatch, editable: true }) }}
+        onReviewInternal={isOwner && detailMatch.internal_fixture_id ? () => { setReviewFixtureId(detailMatch.internal_fixture_id ?? null); setDetailMatch(null) } : undefined}
         onSaveAvailability={async (...args) => {
           await onSaveAvailability(...args)
           await refreshMatchMonth(detailMatch.match_date)
         }}
+        onSaveReport={onSaveReport ? async (...args) => { await onSaveReport(...args); setDetailMatch(null); await refreshMatchMonth(detailMatch.match_date) } : undefined}
         onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
       />}
+
+      {reviewFixtureId && isOwner && onFinalizeInternal && onUnlockLineup && (() => {
+        const fixtureMatches = matches.filter((item) => item.internal_fixture_id === reviewFixtureId).sort((a, b) => Number(b.is_home) - Number(a.is_home))
+        if (fixtureMatches.length !== 2) return null
+        return <InternalFixtureReviewDialog matches={[fixtureMatches[0], fixtureMatches[1]]} lineups={lineups} profiles={profiles} onClose={() => setReviewFixtureId(null)} onEdit={(match) => { setReviewFixtureId(null); setLineupMatch({ match, editable: true }) }} onSave={onSaveLineup} onFinalize={onFinalizeInternal} onUnlock={onUnlockLineup} />
+      })()}
 
       {availabilityMatch && (
         <MatchAvailabilityDialog
@@ -279,6 +311,7 @@ export function MatchesView({
             membership.player_id === profile.id
             && membership.season_id === availabilityMatch.season_id
             && membershipCoversDate(membership, availabilityMatch.match_date)
+            && (isOwner || membership.season_team_id === availabilityMatch.team_id || seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed))
           )))}
           match={availabilityMatch}
           profiles={profiles}

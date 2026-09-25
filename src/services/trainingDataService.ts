@@ -3,7 +3,7 @@ import { canManageSport, canViewTeamData, hasPermission, PERMISSIONS } from '../
 import { supabase } from '../lib/supabase'
 import type {
   AttendanceRecord, CalendarBirthday, Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer,
-  Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday,
+  PlayerAbsence, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, TaskResult, TeamAnnouncement, TodayBirthday,
   TrainingSession, TrainingTask, ViewName, LibraryItem, LibrarySettings,
 } from '../types'
 import { fetchActiveSeasonBirthdays, fetchPlayerCalendarBirthdays, fetchTodayBirthdays } from './birthdayService'
@@ -13,6 +13,7 @@ import { fetchMyPermissions, fetchPermissionConfiguration } from './permissionsS
 import type { PermissionConfiguration } from './permissionsService'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchSeasonCompetitions } from './seasonCompetitionsService'
+import { fetchSeasonTeamCoaches, fetchSeasonTeams } from './seasonTeamsService'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -25,6 +26,9 @@ export type TrainingData = {
   profilePrivateDetails: ProfilePrivateDetails[]
   seasons: Season[]
   seasonCompetitions: SeasonCompetition[]
+  seasonTeams: SeasonTeam[]
+  seasonTeamCoaches: SeasonTeamCoach[]
+  playerAbsences: PlayerAbsence[]
   memberships: SeasonPlayer[]
   profiles: Profile[]
   tasks: TrainingTask[]
@@ -55,7 +59,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (ownDetailsResponse.error) throw ownDetailsResponse.error
   const profile = profileResponse.data
   const emptyData: TrainingData = {
-    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], seasonCompetitions: [], memberships: [], profiles: [],
+    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: [], seasons: [], seasonCompetitions: [], seasonTeams: [], seasonTeamCoaches: [], playerAbsences: [], memberships: [], profiles: [],
     tasks: [], results: [], trainingSessions: [], attendance: [], provisionalPlayers: [], provisionalAttendance: [], matches: [], matchAvailability: [], matchLineups: [],
     announcements: [], todayBirthdays: [], seasonBirthdays: [], calendarBirthdays: [], libraryItems: [], librarySettings: null,
     permissionKeys: [], permissionConfiguration: { definitions: [], grants: [] },
@@ -73,13 +77,14 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const requirements = dataRequirementsFor(scope, canViewTeam, canViewProvisionalPlayers)
   const currentWeek = mondayFor(new Date())
   const emptyResponse = Promise.resolve({ data: [], error: null })
-  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings, permissionConfiguration] = await Promise.all([
+  const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, absencesResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings, permissionConfiguration] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
     requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
     requirements.profiles
       ? supabase.from('profiles').select('id, display_name, avatar_path, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').order('display_name')
       : emptyResponse,
     scope === 'settings' ? supabase.from('profile_private_details').select('profile_id, email, phone, birth_date').order('profile_id') : emptyResponse,
+    scope === 'settings' ? supabase.from('player_absences').select('*').order('starts_on', { ascending: false }) : emptyResponse,
     requirements.provisionalPlayers ? fetchUnlinkedProvisionalPlayers() : Promise.resolve([]),
     scope === 'settings' ? fetchAllProvisionalAttendance() : Promise.resolve([]),
     scope === 'library' ? fetchLibraryItems() : Promise.resolve([] as LibraryItem[]),
@@ -90,6 +95,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   if (membershipsResponse.error) throw membershipsResponse.error
   if (profilesResponse.error) throw profilesResponse.error
   if (privateDetailsResponse.error) throw privateDetailsResponse.error
+  if (absencesResponse.error) throw absencesResponse.error
 
   const seasons = seasonsResponse.data ?? []
   const needsCompetitionCatalog = scope === 'settings'
@@ -99,6 +105,12 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     ))
   const seasonCompetitions = needsCompetitionCatalog
     ? await fetchSeasonCompetitions(seasons.map((season) => season.id))
+    : []
+  const seasonTeams = requirements.seasons
+    ? await fetchSeasonTeams(seasons.map((season) => season.id))
+    : []
+  const seasonTeamCoaches = scope === 'settings'
+    ? await fetchSeasonTeamCoaches(seasonTeams.map((team) => team.id))
     : []
   let taskData = emptyTaskWindow
   let attendanceData = emptyAttendanceWindow
@@ -154,7 +166,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   }
 
   return {
-    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: privateDetailsResponse.data ?? [], seasons, seasonCompetitions,
+    profile, ownProfileDetails: ownDetailsResponse.data, profilePrivateDetails: privateDetailsResponse.data ?? [], playerAbsences: absencesResponse.data ?? [], seasons, seasonCompetitions, seasonTeams, seasonTeamCoaches,
     memberships: membershipsResponse.data ?? [], profiles: profilesResponse.data ?? [], tasks: taskData.tasks,
     results: taskData.results, trainingSessions: attendanceData.trainingSessions, attendance: attendanceData.attendance,
     provisionalPlayers, provisionalAttendance: scope === 'settings' ? settingsProvisionalAttendance : attendanceData.provisionalAttendance,

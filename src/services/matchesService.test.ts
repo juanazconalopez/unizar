@@ -15,7 +15,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: { from: mocks.from, rpc: mocks.rpc },
 }))
 
-import { createMatch, deleteMatch, fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateMatch } from './matchesService'
+import { createMatch, deleteInternalMatch, deleteMatch, finalizeInternalMatch, fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateInternalMatch, updateMatch } from './matchesService'
 
 const values: MatchValues = {
   seasonId: 'season-1',
@@ -31,6 +31,7 @@ const values: MatchValues = {
   status: 'published',
   matchKind: 'official',
   rugbyFormat: 'xv',
+  teamId: 'team-1',
 }
 
 describe('matchesService', () => {
@@ -55,12 +56,27 @@ describe('matchesService', () => {
     expect(mocks.insert).toHaveBeenCalledWith({
       season_id: 'season-1', competition_id: 'competition-1', opponent: 'Fénix CR', match_date: '2026-09-12',
       kickoff_time: null, venue: null, callup_time: null, callup_venue: null, is_home: true, notes: 'Partido de liga',
-      status: 'published', match_kind: 'official', rugby_format: 'xv', created_by: 'owner-1',
+      status: 'published', match_kind: 'official', rugby_format: 'xv', team_id: 'team-1', created_by: 'owner-1',
     })
 
     await updateMatch('match-1', values)
     expect(mocks.update).toHaveBeenCalledWith(expect.not.objectContaining({ created_by: expect.anything() }))
     expect(mocks.eq).toHaveBeenCalledWith('id', 'match-1')
+  })
+
+  test('creates an internal fixture and manages both sides through protected functions', async () => {
+    await createMatch({ ...values, opponentTeamId: 'team-2' }, 'owner-1')
+    expect(mocks.insert).not.toHaveBeenCalled()
+    expect(mocks.rpc).toHaveBeenCalledWith('create_internal_match', {
+      checked_home_team_id: 'team-1', checked_away_team_id: 'team-2',
+      checked_values: expect.objectContaining({ season_id: 'season-1', team_id: 'team-1', match_kind: 'official' }),
+    })
+    await updateInternalMatch('match-1', values)
+    expect(mocks.rpc).toHaveBeenCalledWith('update_internal_match', { checked_match_id: 'match-1', checked_values: expect.any(Object) })
+    await finalizeInternalMatch('match-1')
+    expect(mocks.rpc).toHaveBeenCalledWith('finalize_internal_match', { checked_match_id: 'match-1' })
+    await deleteInternalMatch('match-1')
+    expect(mocks.rpc).toHaveBeenCalledWith('delete_internal_match', { checked_match_id: 'match-1' })
   })
 
   test('persists availability and lineup through their database contracts', async () => {

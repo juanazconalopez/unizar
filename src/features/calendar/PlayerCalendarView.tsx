@@ -97,7 +97,7 @@ export function PlayerCalendarView({
   const holidays = useSeasonHolidayDates(memberships.map((membership) => membership.season_id), providedHolidays)
   const visibleTasks = tasks.filter((task) => task.status === 'published' && canUserCompleteTask(task, memberships, userId))
   const visibleAnnouncements = announcements.filter((announcement) => announcement.status === 'published')
-  const visibleMatches = matches.filter((match) => match.status === 'published')
+  const visibleMatches = matches.filter((match) => match.status === 'published' || match.status === 'completed')
   const selectedWeek = mondayFor(selectedDate)
   const selectedTasks = visibleTasks.filter((task) => task.week_start === selectedWeek).sort(compareTaskOrder)
   const selectedAnnouncements = visibleAnnouncements.filter((announcement) => announcement.announcement_date === selectedDate)

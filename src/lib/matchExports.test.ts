@@ -32,6 +32,12 @@ describe('match exports', () => {
     expect(text).toContain('1. Inés & Ana\n2. Luisa')
   })
 
+  test('names the CDU team in a derby export', () => {
+    const derby = { ...match, opponent: 'Unizar B', season_teams: { id: 'team-a', name: 'Unizar A', is_mixed: false, is_default: false } }
+    expect(lineupPlainText(derby, entries, profiles)).toContain('Unizar A vs Unizar B')
+    expect(lineupXml(derby, entries, profiles)).toContain('equipo="Unizar A" rival="Unizar B"')
+  })
+
   test('exports report totals, percentages and tabular clipboard text', () => {
     expect(callupReportXml(report)).toContain('<totales oficiales="5" amistosos="3" entrenamientos="34" />')
     expect(callupReportXml(report)).toContain('nombre="Inés &amp; Ana"')
