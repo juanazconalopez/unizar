@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { RichContent } from '../../components/RichContent'
 import { Modal } from '../../components/ui/Modal'
-import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
+import { contentImageIds } from '../../lib/contentImageTokens'
 import { formatDate } from '../../lib/dates'
 import type { ReactNode } from 'react'
 import type { TeamAnnouncement } from '../../types'
@@ -14,7 +14,6 @@ export function AnnouncementCard({ announcement, actions, initialOpen = false }:
 }) {
   const titleId = useId()
   const [open, setOpen] = useState(initialOpen)
-  const descriptionText = stripContentImageTokens(announcement.description)
   const imageCount = contentImageIds(announcement.description).length
   return (
     <article className={`announcement-card${actions ? '' : ' announcement-card-readonly'}`}>
@@ -23,7 +22,7 @@ export function AnnouncementCard({ announcement, actions, initialOpen = false }:
       <div className="announcement-card-main">
         <span className="eyebrow">AVISO · {formatDate(announcement.announcement_date, { weekday: 'long', day: 'numeric', month: 'short' })}</span>
         <h3>{announcement.title}</h3>
-        {descriptionText && <p>{descriptionText}</p>}
+        {announcement.description?.trim() && <div className="announcement-card-description"><RichContent renderImages={false} text={announcement.description} /></div>}
         {imageCount > 0 && <span className="content-image-count">📎 {imageCount} {imageCount === 1 ? 'imagen' : 'imágenes'}</span>}
       </div>
       {actions && <div className="announcement-card-side">

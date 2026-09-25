@@ -26,11 +26,10 @@ describe('ContentImageTextarea', () => {
 
   it('intercepta una imagen pegada y añade una referencia interna', async () => {
     render(<ControlledTextarea />)
-    const textarea = screen.getByRole('textbox', { name: 'Descripción' }) as HTMLTextAreaElement
+    const editor = screen.getByRole('textbox', { name: 'Descripción' }) as HTMLDivElement
     const file = new File(['image'], 'captura.png', { type: 'image/png' })
-    textarea.setSelectionRange('Indicaciones'.length, 'Indicaciones'.length)
 
-    fireEvent.paste(textarea, {
+    fireEvent.paste(editor, {
       clipboardData: {
         items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }],
       },
@@ -38,7 +37,7 @@ describe('ContentImageTextarea', () => {
 
     await waitFor(() => {
       expect(mocks.stage).toHaveBeenCalledWith(file)
-      expect(textarea).toHaveValue(`Indicaciones\n[[imagen:${imageId}]]`)
+      expect(editor).toHaveTextContent(`[[imagen:${imageId}]]`)
     })
     expect(screen.getByText(`Vista ${imageId}`)).toBeInTheDocument()
     expect(screen.getByText('Imagen preparada. Se subirá al guardar.')).toBeInTheDocument()
@@ -46,21 +45,22 @@ describe('ContentImageTextarea', () => {
 
   it('quita la referencia y descarta la imagen local pendiente', async () => {
     render(<ControlledTextarea />)
-    const textarea = screen.getByRole('textbox', { name: 'Descripción' })
+    const editor = screen.getByRole('textbox', { name: 'Descripción' })
     const file = new File(['image'], 'captura.png', { type: 'image/png' })
-    fireEvent.paste(textarea, { clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] } })
+    fireEvent.paste(editor, { clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] } })
     await screen.findByRole('button', { name: 'Quitar imagen 1' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Quitar imagen 1' }))
 
-    expect(textarea).toHaveValue('Indicaciones')
+    expect(editor).toHaveTextContent('Indicaciones')
     expect(mocks.discard).toHaveBeenCalledWith(imageId)
   })
 
   it('permite pegar imágenes sin mostrar el selector de archivos', () => {
     render(<ContentImageTextarea label="Objetivos" onChange={vi.fn()} showFilePicker={false} value="" />)
 
-    expect(screen.getByText('Puedes pegar una imagen desde el portapapeles.')).toBeInTheDocument()
+    expect(screen.getByText(/Formato rápido: negrita/)).toBeInTheDocument()
     expect(screen.queryByText('Añadir imagen')).not.toBeInTheDocument()
   })
+
 })

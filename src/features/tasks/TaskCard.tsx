@@ -1,13 +1,13 @@
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
-import { LinkedText, RichContent } from '../../components/RichContent'
+import { RichContent } from '../../components/RichContent'
 import { FatigueIcon } from '../../components/ui/FatigueIcon'
 import { Modal } from '../../components/ui/Modal'
 import { FATIGUE_LEVELS } from '../../constants/training'
 import { addDays, formatDate, formatWeek, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
-import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
+import { contentImageIds } from '../../lib/contentImageTokens'
 import type { ResultValues, TaskResult, TrainingTask } from '../../types'
 
 export function TaskCard({ task, result, onSave, managerActions, managementSummary, hideWeek = false }: {
@@ -24,7 +24,6 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const resultFatigue = FATIGUE_LEVELS.find((item) => item.value === result?.fatigue_level)
-  const descriptionText = stripContentImageTokens(task.description)
   const descriptionImageCount = contentImageIds(task.description).length
   const defaultPerformedOn = result?.performed_on
     ?? (todayIso() >= task.week_start && todayIso() <= addDays(task.week_start, 6) ? todayIso() : task.week_start)
@@ -66,7 +65,7 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
           <span>{task.training_type || 'Entrenamiento'}</span><span>·</span><span>{task.seasons?.name}</span>
         </div>
         <h3>{task.title}</h3>
-        {descriptionText && <p className="task-card-description"><LinkedText text={descriptionText} /></p>}
+        {task.description?.trim() && <div className="task-card-description"><RichContent renderImages={false} text={task.description} /></div>}
         {descriptionImageCount > 0 && <span className="content-image-count">📎 {descriptionImageCount} {descriptionImageCount === 1 ? 'imagen' : 'imágenes'}</span>}
         {managementSummary}
         {(!hideWeek || result) && <div className="task-footer">

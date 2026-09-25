@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
+import { RichContent } from '../../components/RichContent'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { formatDate, todayIso } from '../../lib/dates'
-import { contentImageIds, stripContentImageTokens } from '../../lib/contentImageTokens'
+import { contentImageIds } from '../../lib/contentImageTokens'
 import { errorText } from '../../lib/errors'
 import {
   deleteTrainingPlan,
@@ -258,7 +259,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
                 <div className="training-plan-main">
                   <div className="training-plan-title-row"><span className={`training-plan-status ${plan.status}`}>{trainingPlanStatusLabel(plan.status)}</span><small>{plan.seasons?.name}</small></div>
                   <h2>{plan.title}</h2>
-                  <p>{stripContentImageTokens(plan.objectives) || 'Sin objetivos generales indicados.'}</p>
+                  <div className="training-plan-description"><RichContent fallback="Sin objetivos generales indicados." renderImages={false} text={plan.objectives} /></div>
                   <div className="training-plan-meta">
                     <span><Icon name="tasks" size={14} />{plan.training_exercises.length} ejercicios</span>
                     <span><Icon name="clock" size={14} />{duration} min</span>

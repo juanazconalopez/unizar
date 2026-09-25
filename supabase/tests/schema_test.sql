@@ -1,5 +1,5 @@
 begin;
-select plan(315);
+select plan(317);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -858,10 +858,14 @@ select has_function('public', 'create_internal_match', array['jsonb', 'uuid', 'u
 select has_function('public', 'update_internal_match', array['uuid', 'jsonb'], 'internal fixture details update together');
 select has_function('public', 'delete_internal_match', array['uuid'], 'both sides can be deleted together');
 select has_function('public', 'finalize_internal_match', array['uuid'], 'owner can publish both lineups together');
+select has_function('public', 'current_user_can_read_published_lineup_profile', array['uuid'], 'published lineup profile access helper exists');
 select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure), '%having count(*) > 1%', 'publication rejects players in both lineups');
 select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%other_match.internal_fixture_id is distinct from fixture_id%', 'paired drafts may overlap until final review');
 select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%Solo el owner puede incorporar jugadoras de otro equipo%', 'coach cannot borrow players from another team');
 select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_lineup' and policyname = 'Scoped staff and selected players can read lineups'), 'draft lineups are scoped to the assigned team');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'profiles'
+  and policyname = 'Players can read published lineup profiles' and qual like '%current_user_can_read_published_lineup_profile%'),
+  'published lineup profiles use a helper to avoid RLS recursion');
 
 select like(pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure), '%public.current_user_is_owner() or membership.season_team_id%', 'owner can confirm a borrowed player while coaches remain team scoped');
 select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure), '%public.player_has_absence_on%', 'publication rejects a player with a new absence');
