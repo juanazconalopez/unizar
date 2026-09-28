@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { addDays, formatDate, todayIso } from '../../lib/dates'
@@ -164,7 +164,7 @@ describe('training plan reading view', () => {
     await user.click(screen.getAllByRole('button', { name: 'Editar entrenamiento' })[0])
     expect(screen.getByText('EDITAR ENTRENAMIENTO')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Pretemporada divertida')).toBeInTheDocument()
-    expect(screen.getByLabelText('Material')).toHaveValue('Preparar conos.')
+    expect(screen.getByRole('textbox', { name: 'Material' })).toHaveTextContent('Preparar conos.')
     const expectedDate = formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'short' })
     expect(screen.getByText(expectedDate.charAt(0).toUpperCase() + expectedDate.slice(1))).toHaveAttribute('dateTime', plan.session_date)
     expect(screen.getAllByText('Añadir imagen')).toHaveLength(1)
@@ -212,7 +212,7 @@ describe('training plan reading view', () => {
     expect(screen.getByText('Hay un borrador sin guardar')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Recuperar borrador' }))
-    expect(screen.getByLabelText('Descripción')).toHaveValue('Descripción que no quiero perder.')
+    expect(screen.getByRole('textbox', { name: 'Descripción' })).toHaveTextContent('Descripción que no quiero perder.')
 
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({
@@ -240,7 +240,7 @@ describe('training plan reading view', () => {
     expect(await screen.findByLabelText('Vista previa de Circuito rápido')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Añadir al entrenamiento' }))
     expect(screen.getByDisplayValue('Circuito rápido')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Correr entre puertas.')).toBeInTheDocument()
+    expect(within(screen.getByDisplayValue('Circuito rápido').closest('.training-exercise-card')!).getByRole('textbox', { name: 'Descripción' })).toHaveTextContent('Correr entre puertas.')
   })
 
   test('manages predefined exercises from the library', async () => {

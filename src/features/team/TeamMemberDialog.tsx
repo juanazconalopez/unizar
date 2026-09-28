@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/ui/Modal'
@@ -6,13 +6,17 @@ import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { areDisplayNamesSimilar } from '../../lib/displayNames'
 import { isValidInternationalPhone } from '../../lib/phone'
-import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
+import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
 import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
+import { PlayerAbsenceDialog } from './PlayerAbsenceDialog'
+import { ProvisionalAttendanceLinkDialog } from './ProvisionalAttendanceLinkDialog'
+import { ProvisionalAttendanceOptions } from './ProvisionalAttendanceOptions'
+import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
@@ -20,6 +24,8 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   absences?: PlayerAbsence[]
+  activeSeason?: Season
+  activeTeams?: SeasonTeam[]
   onClose: () => void
   onPreviewPlayer?: (player: Profile) => void
   onUpdate: (profile: Profile) => Promise<void>
@@ -27,10 +33,14 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
+  onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
   onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeleteAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
+  const [activeDialog, setActiveDialog] = useState<'profile' | 'absence' | 'attendance'>('profile')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const [displayName, setDisplayName] = useState(person.display_name)
   const [phone, setPhone] = useState(details?.phone ?? '')
   const [birthDate, setBirthDate] = useState(details?.birth_date ?? '')
@@ -41,14 +51,15 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const [isOwner, setIsOwner] = useState(person.is_owner)
   const [photoChange, setPhotoChange] = useState<ProfilePhotoChange>(undefined)
   const [selectedProvisionalIds, setSelectedProvisionalIds] = useState<string[]>([])
+  const [selectedTeamId, setSelectedTeamId] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
-  const [absenceStart, setAbsenceStart] = useState(todayIso())
-  const [absenceEnd, setAbsenceEnd] = useState('')
-  const [absenceNote, setAbsenceNote] = useState('')
-  const age = ageOnDate(details?.birth_date, todayIso())
+  const today = todayIso()
+  const age = ageOnDate(details?.birth_date, today)
   const titleId = 'team-member-dialog-title'
   const approved = person.is_approved && !person.is_archived
+  const personAbsences = absences.filter((absence) => absence.player_id === person.id).sort((first, second) => second.starts_on.localeCompare(first.starts_on))
+  const currentAbsence = getCurrentPlayerAbsence(absences, person.id, today)
   const permissionChanged = isActive !== person.is_active || isPlayer !== person.is_player || isCoach !== person.is_coach || isViewer !== person.is_viewer || isOwner !== person.is_owner
   const provisionalCandidates = provisionalPlayers.filter((guest) => (
     provisionalAttendance.some((record) => record.provisional_player_id === guest.id)
@@ -57,16 +68,29 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     const secondMatch = areDisplayNamesSimilar(second.display_name, person.display_name) ? 0 : 1
     return firstMatch - secondMatch || first.display_name.localeCompare(second.display_name, 'es')
   })
+  const canLinkAttendance = Boolean(onLinkProvisionalPlayers && approved && person.is_player && provisionalCandidates.length > 0)
+  const canSelectAttendanceOnApproval = Boolean(onLinkProvisionalPlayers && !person.is_approved && !person.is_archived && provisionalCandidates.length > 0)
+  const defaultTeam = activeTeams.find((team) => team.is_default) ?? activeTeams[0]
+  const approvalTeamId = selectedTeamId || defaultTeam?.id || ''
+  const showTeamSelector = Boolean(activeSeason && onAssignPlayerTeam && activeTeams.length > 1)
   const selectedProvisionals = provisionalCandidates.filter((guest) => selectedProvisionalIds.includes(guest.id))
   const selectedProvisionalDates = provisionalAttendance
     .filter((record) => selectedProvisionalIds.includes(record.provisional_player_id))
     .flatMap((record) => record.training_sessions?.session_date ? [record.training_sessions.session_date] : [])
     .sort()
 
-  function toggleProvisionalSelection(provisionalPlayerId: string) {
-    setSelectedProvisionalIds((current) => current.includes(provisionalPlayerId)
-      ? current.filter((id) => id !== provisionalPlayerId)
-      : [...current, provisionalPlayerId])
+  useEffect(() => {
+    if (!menuOpen) return
+    function closeOnOutsideClick(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsideClick)
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
+  }, [menuOpen])
+
+  function openDialog(dialog: 'absence' | 'attendance') {
+    setMenuOpen(false)
+    setActiveDialog(dialog)
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -100,6 +124,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     setFormError('')
     try {
       await onUpdate({ ...person, is_approved: true, is_active: true, is_player: true })
+      if (showTeamSelector && activeSeason && onAssignPlayerTeam && approvalTeamId !== defaultTeam?.id) await onAssignPlayerTeam(activeSeason, person, approvalTeamId)
       if (selectedCount > 0 && onLinkProvisionalPlayers) await onLinkProvisionalPlayers(selectedProvisionals, person)
       onClose()
     } catch (error) {
@@ -131,35 +156,25 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     }
   }
 
-  async function linkAttendance() {
-    if (selectedProvisionals.length === 0 || !onLinkProvisionalPlayers) return
-    const total = selectedProvisionalDates.length
-    const selectedCount = selectedProvisionals.length
-    if (!window.confirm(`¿Vincular ${selectedCount} ${selectedCount === 1 ? 'invitada' : 'invitadas'} (${total} ${total === 1 ? 'asistencia' : 'asistencias'}) con ${person.display_name}?`)) return
-    setSaving(true)
-    setFormError('')
-    try {
-      await onLinkProvisionalPlayers(selectedProvisionals, person)
-      onClose()
-    } catch (error) {
-      setFormError(errorText(error))
-      setSaving(false)
-    }
-  }
+  if (activeDialog === 'absence' && onSaveAbsence) return <PlayerAbsenceDialog absences={personAbsences} onClose={() => setActiveDialog('profile')} onDelete={onDeleteAbsence} onSave={onSaveAbsence} person={person} />
 
-  async function saveAbsence() {
-    if (!onSaveAbsence) return
-    setSaving(true); setFormError('')
-    try {
-      await onSaveAbsence(person, { startsOn: absenceStart, endsOn: absenceEnd, privateNote: absenceNote })
-      setAbsenceEnd(''); setAbsenceNote('')
-    } catch (error) { setFormError(errorText(error)) } finally { setSaving(false) }
-  }
+  if (activeDialog === 'attendance' && canLinkAttendance) return <ProvisionalAttendanceLinkDialog attendance={provisionalAttendance} candidates={provisionalCandidates} onClose={() => setActiveDialog('profile')} onLink={onLinkProvisionalPlayers} onLinked={onClose} onSelectionChange={setSelectedProvisionalIds} person={person} selectedIds={selectedProvisionalIds} />
 
   return <Modal className="team-member-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={editing ? submit : undefined}>
     <div className="task-detail-heading">
-      <div><span className="eyebrow">DATOS DE PERFIL</span><h2 id={titleId}>{person.display_name}</h2></div>
-      <div className="team-member-heading-actions">{approved && person.is_player && <button aria-label={`Vista previa de ${person.display_name} como jugadora`} className="icon-button" onClick={() => onPreviewPlayer?.(person)} title="Vista previa como jugadora" type="button"><Icon name="arrow" size={17} /></button>}{approved && onSave && !editing && <button aria-label={`Editar datos de ${person.display_name}`} className="icon-button" onClick={() => setEditing(true)} title={`Editar datos de ${person.display_name}`} type="button"><Icon name="edit" size={17} /></button>}<button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
+      <div><span className="eyebrow">DATOS DE PERFIL</span><h2 id={titleId}>{person.display_name}</h2>{currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}</div>
+      <div className="team-member-heading-actions" ref={menuRef} onKeyDown={(event) => {
+        if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); setMenuOpen(false) }
+      }}>
+        <button aria-controls="team-member-actions" aria-expanded={menuOpen} aria-label={`Acciones de ${person.display_name}`} aria-haspopup="true" className="icon-button" onClick={() => setMenuOpen((open) => !open)} type="button"><Icon name="more" size={20} /></button>
+        {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
+          {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
+          {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
+          {canLinkAttendance && <button onClick={() => openDialog('attendance')} type="button">Vincular asistencias</button>}
+          {approved && person.is_active && person.is_player && onPreviewPlayer && <button onClick={() => { setMenuOpen(false); onPreviewPlayer(person) }} type="button">Vista previa de jugadora</button>}
+          <button onClick={onClose} type="button">Cerrar</button>
+        </div>}
+      </div>
     </div>
     {editing ? <>
       {isPlayer && <ProfilePhotoField avatarPath={person.avatar_path} editable name={displayName || person.display_name} onChange={setPhotoChange} onLoadPhoto={onLoadPhoto} photoChange={photoChange} />}
@@ -197,27 +212,23 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>)}</span></Detail>
         <Detail label="Perfil"><small className={`profile-completion-state ${details?.email && details.phone && details.birth_date ? 'complete' : 'incomplete'}`}>{details?.email && details.phone && details.birth_date ? 'Datos completos' : 'Faltan datos'}</small></Detail>
       </div>
-      {person.is_player && onSaveAbsence && <section className="provisional-link-panel">
-        <div className="provisional-link-heading"><span className="eyebrow">BAJAS</span><strong>Disponibilidad deportiva</strong><p>Durante una baja no podrá apuntarse, ser convocada ni contar en asistencia deportiva. Las tareas siguen siendo opcionales.</p></div>
-        {absences.filter((absence) => absence.player_id === person.id).map((absence) => <div className="absence-row" key={absence.id}><span>{formatDate(absence.starts_on, { day: 'numeric', month: 'short', year: 'numeric' })} — {absence.ends_on ? formatDate(absence.ends_on, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Sin fecha prevista'}</span>{onDeleteAbsence && <button className="text-button danger" disabled={saving} onClick={() => void onDeleteAbsence(absence.id).catch((error) => setFormError(errorText(error)))} type="button">Eliminar</button>}</div>)}
-        <div className="profile-details-fields"><label>Inicio<input onChange={(event) => setAbsenceStart(event.target.value)} type="date" value={absenceStart} /></label><label>Fin previsto<input min={absenceStart} onChange={(event) => setAbsenceEnd(event.target.value)} type="date" value={absenceEnd} /></label><label className="full-field">Nota privada opcional<textarea maxLength={1000} onChange={(event) => setAbsenceNote(event.target.value)} placeholder="Solo visible para owner" rows={2} value={absenceNote} /></label></div>
-        <button className="secondary-button compact" disabled={saving} onClick={() => void saveAbsence()} type="button">Registrar baja</button>
-      </section>}
-      {onLinkProvisionalPlayers && !person.is_archived && (person.is_player || !person.is_approved) && provisionalCandidates.length > 0 && <section className={`provisional-link-panel${provisionalCandidates.some((guest) => areDisplayNamesSimilar(guest.display_name, person.display_name)) ? ' has-suggestion' : ''}`}>
-        <div className="provisional-link-heading"><span className="eyebrow">ASISTENCIAS PENDIENTES</span><strong>Vincular historiales de invitadas</strong><p>Selecciona manualmente todas las identidades que correspondan. Las sugerencias no se vinculan automáticamente.</p></div>
-        <fieldset className="provisional-link-options"><legend>Invitadas</legend>
-          {provisionalCandidates.map((guest) => {
-            const count = provisionalAttendance.filter((record) => record.provisional_player_id === guest.id).length
-            const suggested = areDisplayNamesSimilar(guest.display_name, person.display_name)
-            return <label key={guest.id}><input checked={selectedProvisionalIds.includes(guest.id)} onChange={() => toggleProvisionalSelection(guest.id)} type="checkbox" /><span>{guest.display_name}</span><small>{count} {count === 1 ? 'asistencia' : 'asistencias'}{suggested ? ' · sugerida' : ''}</small></label>
-          })}
-        </fieldset>
-        {selectedProvisionals.length > 0 && <small className="provisional-link-history">{selectedProvisionalDates.length
-          ? `Historial desde ${formatDate(selectedProvisionalDates[0], { day: 'numeric', month: 'short', year: 'numeric' })}${selectedProvisionalDates.length > 1 ? ` hasta ${formatDate(selectedProvisionalDates.at(-1)!, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}.`
-          : 'Las invitadas seleccionadas no tienen asistencias pendientes.'}</small>}
-        {person.is_player && <button className="secondary-button compact" disabled={saving || selectedProvisionals.length === 0 || selectedProvisionalDates.length === 0} onClick={() => void linkAttendance()} type="button">Vincular asistencias</button>}
+      {personAbsences.length > 0 && <section aria-label="Bajas deportivas" className="team-member-absence-history">
+        <h3>Bajas deportivas</h3>
+        {personAbsences.map((absence) => <div className="team-member-absence-item" key={absence.id}>
+          <span>{formatDate(absence.starts_on, { day: 'numeric', month: 'long', year: 'numeric' })} — {absence.ends_on ? formatDate(absence.ends_on, { day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha prevista'}</span>
+          <small className={absence === currentAbsence ? 'current' : ''}>{absence === currentAbsence ? 'Vigente' : absence.starts_on > today ? 'Programada' : 'Finalizada'}</small>
+        </div>)}
       </section>}
       {possibleMatches.length > 0 && <div className="duplicate-profile-warning" role="status"><Icon name="warning" size={18} /><div><strong>Posible cuenta duplicada</strong><p>El nombre se parece a {possibleMatches.map((match) => match.display_name).join(', ')}. Revisa la coincidencia antes de autorizar.</p></div></div>}
+      {canSelectAttendanceOnApproval && <section aria-label="Vincular asistencias al autorizar" className="approval-link-panel">
+        <span className="eyebrow">ASISTENCIAS PENDIENTES</span>
+        <h3>Vincular historiales de invitadas</h3>
+        <p>Selecciona las invitadas que correspondan. Sus asistencias se vincularán al aprobar a la jugadora.</p>
+        <ProvisionalAttendanceOptions attendance={provisionalAttendance} candidates={provisionalCandidates} onSelectionChange={setSelectedProvisionalIds} person={person} selectedIds={selectedProvisionalIds} />
+      </section>}
+      {!person.is_approved && !person.is_archived && showTeamSelector && <label className="approval-team-select">Equipo de la temporada
+        <select onChange={(event) => setSelectedTeamId(event.target.value)} value={approvalTeamId}>{activeTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+      </label>}
       {!person.is_approved && !person.is_archived && <div className="approval-actions"><span>Se habilitará como jugadora activa</span><button className="primary-button" disabled={saving} onClick={() => void approve()} type="button">{saving ? 'Aprobando…' : 'Aprobar como jugadora'}</button></div>}
       {person.is_archived && <div className="approval-actions"><span>Volverá como miembro aprobado, inicialmente inactivo.</span><button className="secondary-button" disabled={saving} onClick={() => void restore()} type="button">{saving ? 'Restaurando…' : 'Restaurar acceso'}</button></div>}
       {formError && <p className="form-error" role="alert">{formError}</p>}

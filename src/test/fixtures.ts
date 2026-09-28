@@ -2,11 +2,13 @@ import type {
   AttendanceRecord,
   Profile,
   ProfilePrivateDetails,
+  PlayerAbsence,
   ProvisionalAttendanceRecord,
   ProvisionalPlayer,
   Season,
   SeasonCompetition,
   SeasonPlayer,
+  SeasonTeam,
   TaskResult,
   TeamAnnouncement,
   TrainingSession,
@@ -42,6 +44,19 @@ export function makeProfilePrivateDetails(overrides: Partial<ProfilePrivateDetai
   }
 }
 
+export function makePlayerAbsence(overrides: Partial<PlayerAbsence> = {}): PlayerAbsence {
+  return {
+    id: 'absence-1',
+    player_id: 'player-1',
+    starts_on: '2026-09-20',
+    ends_on: null,
+    created_by: 'owner-1',
+    created_at: createdAt,
+    updated_at: createdAt,
+    ...overrides,
+  }
+}
+
 export function makeSeason(overrides: Partial<Season> = {}): Season {
   return {
     id: 'season-1',
@@ -63,6 +78,21 @@ export function makeSeasonCompetition(overrides: Partial<SeasonCompetition> = {}
     color: 'purple',
     is_default: true,
     match_count: 1,
+    created_by: 'owner-1',
+    created_at: createdAt,
+    updated_at: createdAt,
+    ...overrides,
+  }
+}
+
+export function makeSeasonTeam(overrides: Partial<SeasonTeam> = {}): SeasonTeam {
+  return {
+    id: 'team-default',
+    season_id: 'season-1',
+    name: 'Unizar Femenino',
+    is_mixed: false,
+    is_default: true,
+    is_active: true,
     created_by: 'owner-1',
     created_at: createdAt,
     updated_at: createdAt,

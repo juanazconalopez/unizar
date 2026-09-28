@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { todayIso } from '../../lib/dates'
-import { makeMembership, makeProfile, makeProfilePrivateDetails, makeSeason } from '../../test/fixtures'
+import { makeMembership, makeProfile, makeProfilePrivateDetails, makeSeason, makeSeasonTeam } from '../../test/fixtures'
 import { SeasonsView } from './SeasonsView'
 
 const fileMocks = vi.hoisted(() => ({ downloadText: vi.fn() }))
@@ -50,8 +50,58 @@ describe('SeasonsView', () => {
     render(<SeasonsView seasons={[season]} profiles={[member, unlinked]} memberships={[makeMembership({ player_id: member.id, season_team_id: team.id })]} teams={[team]} onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()} onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
-    expect(screen.getByRole('combobox', { name: 'Equipo de Ana Martín' })).toHaveValue(team.id)
-    expect(screen.queryByRole('combobox', { name: 'Equipo de Beatriz López' })).not.toBeInTheDocument()
+    const roster = screen.getByRole('region', { name: 'Unizar A, 1 jugadora' })
+    expect(within(roster).getByText('Ana Martín')).toBeInTheDocument()
+    expect(screen.queryByText('Beatriz López')).not.toBeInTheDocument()
+    expect(within(roster).getByRole('button', { name: 'Mover a Ana Martín a otro equipo' })).toBeDisabled()
+  })
+
+  test('groups players by team, filters by name and offers active destinations', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const firstTeam = makeSeasonTeam({ id: 'team-1', name: 'Unizar A' })
+    const secondTeam = makeSeasonTeam({ id: 'team-2', name: 'Unizar B', is_default: false })
+    const inactiveTeam = makeSeasonTeam({ id: 'team-3', name: 'Equipo antiguo', is_default: false, is_active: false })
+    const ana = makeProfile({ id: 'ana', display_name: 'Ana Martín' })
+    const bea = makeProfile({ id: 'bea', display_name: 'Beatriz López' })
+    const onAssignPlayerTeam = vi.fn().mockResolvedValue(undefined)
+    render(<SeasonsView seasons={[season]} profiles={[ana, bea]} memberships={[
+      makeMembership({ player_id: ana.id, season_team_id: firstTeam.id }),
+      makeMembership({ id: 'membership-2', player_id: bea.id, season_team_id: secondTeam.id }),
+    ]} teams={[firstTeam, secondTeam, inactiveTeam]} onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()} onDeleteTeam={vi.fn()} onAssignPlayerTeam={onAssignPlayerTeam} onAssignTeamCoach={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    expect(within(screen.getByRole('region', { name: 'Unizar A, 1 jugadora' })).getByText('Ana Martín')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Unizar B, 1 jugadora' })).getByText('Beatriz López')).toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar jugadora' }), 'beatriz')
+    expect(screen.queryByRole('region', { name: 'Unizar A, 1 jugadora' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Unizar B, 1 jugadora' })).toBeInTheDocument()
+    await user.clear(screen.getByRole('searchbox', { name: 'Buscar jugadora' }))
+    await user.click(screen.getByRole('button', { name: 'Mover a Ana Martín a otro equipo' }))
+    expect(screen.getByText('Equipo actual: Unizar A')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Equipo antiguo/ })).not.toBeInTheDocument()
+    await user.click(within(screen.getByRole('group', { name: 'Equipo de destino' })).getByRole('button', { name: /Unizar B/ }))
+    await waitFor(() => expect(onAssignPlayerTeam).toHaveBeenCalledWith(season, ana, secondTeam.id))
+  })
+
+  test('keeps the player in the original team when a move fails', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const firstTeam = makeSeasonTeam({ id: 'team-1', name: 'Unizar A' })
+    const secondTeam = makeSeasonTeam({ id: 'team-2', name: 'Unizar B', is_default: false })
+    const player = makeProfile()
+    const onAssignPlayerTeam = vi.fn().mockRejectedValue(new Error('No se ha podido guardar el cambio.'))
+    render(<SeasonsView seasons={[season]} profiles={[player]} memberships={[makeMembership({ season_team_id: firstTeam.id })]}
+      teams={[firstTeam, secondTeam]} onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()}
+      onUpdateTeam={vi.fn()} onDeleteTeam={vi.fn()} onAssignPlayerTeam={onAssignPlayerTeam} onAssignTeamCoach={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    await user.click(screen.getByRole('button', { name: 'Mover a Ana Martín a otro equipo' }))
+    await user.click(within(screen.getByRole('group', { name: 'Equipo de destino' })).getByRole('button', { name: /Unizar B/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se ha podido guardar el cambio.')
+    expect(screen.getByText('Equipo actual: Unizar A')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Volver a equipos' }))
+    expect(within(screen.getByRole('region', { name: 'Unizar A, 1 jugadora' })).getByText('Ana Martín')).toBeInTheDocument()
   })
 
   test('shows the player export only inside the active season card', () => {

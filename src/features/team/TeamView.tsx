@@ -6,10 +6,11 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { urlForNavigation } from '../../lib/navigation'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
-import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer } from '../../types'
+import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
 import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { profileRoleClass, profileRoles } from './profileRoles'
 import { TeamMemberDialog } from './TeamMemberDialog'
+import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
 
 type TeamStatusFilter = 'all' | 'active' | 'inactive' | 'pending' | 'archived'
 type TeamRoleFilter = 'player' | 'coach' | 'viewer' | 'owner'
@@ -36,7 +37,7 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], seasons = [], seasonTeams = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   profiles: Profile[]
@@ -44,12 +45,15 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   playerAbsences?: PlayerAbsence[]
+  seasons?: Season[]
+  seasonTeams?: SeasonTeam[]
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
+  onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
   onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeleteAbsence?: (absenceId: string) => Promise<void>
 }) {
@@ -60,6 +64,9 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   const [roleFilters, setRoleFilters] = useState<TeamRoleFilter[]>([])
   const [selectedPerson, setSelectedPerson] = useState<Profile | null>(null)
   const normalizedSearch = normalizeDisplayName(search)
+  const today = todayIso()
+  const activeSeason = seasons.find((season) => season.start_date <= today && season.end_date >= today)
+  const activeTeams = seasonTeams.filter((team) => team.season_id === activeSeason?.id && team.is_active)
   const allPending = profiles.filter((profile) => !profile.is_approved && !profile.is_archived)
   const allApproved = profiles.filter((profile) => profile.is_approved && !profile.is_archived)
   const allArchived = profiles.filter((profile) => profile.is_archived)
@@ -120,19 +127,19 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   return <div className={embedded ? 'settings-section' : 'page'}>
     {embedded ? <div className={`settings-section-heading${hideEmbeddedTitle ? ' compact' : ''}`}><div>{!hideEmbeddedTitle && <><span className="eyebrow">ADMINISTRACIÓN</span><h2>Equipo</h2></>}<p>{teamSummary}</p></div>{headerActions}</div> : <PageHeader action={headerActions} eyebrow="ADMINISTRACIÓN" subtitle={teamSummary} title="Equipo" />}
     {hasSearchOrFilters && <p aria-live="polite" className="team-filter-results">{filterResultCount} {filterResultCount === 1 ? 'resultado' : 'resultados'}</p>}
-    {pending.length > 0 && <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">{pending.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} warning={profiles.some((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name))} />)}</PeopleSection>}
-    {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Personas del equipo">{approved.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</PeopleSection>}
+    {pending.length > 0 && <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">{pending.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} warning={profiles.some((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name))} />)}</PeopleSection>}
+    {approved.length > 0 && <PeopleSection eyebrow="MIEMBROS" title="Personas del equipo">{approved.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</PeopleSection>}
     {archived.length > 0 && <section className="archived-users">
       {hasActiveFilters && <div className="section-heading"><div><span className="eyebrow">HISTÓRICO</span><h2>Usuarios desautorizados</h2></div></div>}
       {!normalizedSearch && !hasActiveFilters && <button className="text-button" onClick={() => setShowArchived((value) => !value)} type="button">{showArchived ? 'Ocultar' : 'Ver'} usuarios desautorizados ({archived.length})</button>}
-      {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
+      {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog absences={playerAbsences} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog absences={playerAbsences} activeSeason={activeSeason} activeTeams={activeTeams} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onAssignPlayerTeam={onAssignPlayerTeam} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
   </div>
 }
 
-function PersonCard({ person, details, warning = false, onOpen }: { person: Profile; details?: ProfilePrivateDetails; warning?: boolean; onOpen: () => void }) {
+function PersonCard({ person, details, currentAbsence, warning = false, onOpen }: { person: Profile; details?: ProfilePrivateDetails; currentAbsence?: PlayerAbsence; warning?: boolean; onOpen: () => void }) {
   const complete = Boolean(details?.email && details.phone && details.birth_date)
   const age = ageOnDate(details?.birth_date, todayIso())
   const roles = profileRoles(person)
@@ -141,6 +148,7 @@ function PersonCard({ person, details, warning = false, onOpen }: { person: Prof
     <span className="person-identity"><Avatar name={person.display_name} /><span><strong>{person.display_name}</strong><small>Desde {formatDate(person.created_at.slice(0, 10), { month: 'long', year: 'numeric' })}</small></span></span>
     {!compact && <span className="person-summary-contact"><span><b>Email</b>{details?.email || 'Sin email'}</span><span><b>Teléfono</b>{details?.phone || 'Sin teléfono'}</span><span><b>Edad</b>{age === null ? 'Sin edad' : `${age} años`}</span></span>}
     <span className="person-summary-state">
+      {currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}
       <span className={`member-active-state ${person.is_active ? 'active' : 'inactive'}`}><Icon name={person.is_active ? 'check' : 'close'} size={14} />{person.is_active ? 'Activa' : 'Inactiva'}</span>
       <span className="person-role-list">{roles.length ? roles.map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>) : <small>Sin rol</small>}</span>
       {!compact && <small className={`profile-completion-state ${complete ? 'complete' : 'incomplete'}`}>{complete ? 'Datos completos' : 'Faltan datos'}</small>}

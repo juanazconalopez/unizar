@@ -220,7 +220,7 @@ describe('TasksView', () => {
     await user.click(screen.getByRole('button', { name: 'Nueva tarea en esta semana' }))
     const dialog = screen.getByRole('dialog', { name: 'Crear tarea' })
     expect(within(dialog).getByLabelText('Fecha de la semana')).toHaveValue(selectedDate)
-    expect(within(dialog).getByLabelText('Descripción')).toHaveAttribute('rows', '7')
+    expect(within(dialog).getByRole('textbox', { name: 'Descripción' })).toHaveAttribute('contenteditable', 'true')
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: 'Crear tarea' })).not.toBeInTheDocument()
@@ -299,7 +299,7 @@ describe('TasksView', () => {
     await user.click(screen.getByRole('button', { name: 'Editar tarea' }))
     const form = screen.getByRole('heading', { name: 'Editar tarea' }).closest('form')!
     expect(within(form).getByLabelText('Título')).toHaveValue('Título original')
-    expect(within(form).getByLabelText('Descripción')).toHaveValue('Descripción original')
+    expect(within(form).getByRole('textbox', { name: 'Descripción' })).toHaveTextContent('Descripción original')
     expect(within(form).getByLabelText('Tipo')).toHaveValue('Físico')
     expect(within(form).queryByLabelText('Fecha de la semana')).not.toBeInTheDocument()
 

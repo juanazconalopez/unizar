@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer } from '../../test/fixtures'
+import { makePlayerAbsence, makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSeasonTeam } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
 afterEach(() => {
@@ -38,13 +38,91 @@ describe('TeamView', () => {
     expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
   })
 
+  test('shows player actions in order and opens a separate sports absence dialog', async () => {
+    const user = userEvent.setup()
+    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()}
+      profiles={[makeProfile()]} provisionalAttendance={[makeProvisionalAttendance()]}
+      provisionalPlayers={[makeProvisionalPlayer()]} onLinkProvisionalPlayers={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    let dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(within(dialog).queryByText('Disponibilidad deportiva')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('Vincular historiales de invitadas')).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
+    const menu = dialog.querySelector<HTMLElement>('.team-member-actions-menu')!
+    expect(within(menu).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      'Editar datos', 'Baja deportiva', 'Vincular asistencias', 'Vista previa de jugadora', 'Cerrar',
+    ])
+    await user.click(within(menu).getByRole('button', { name: 'Baja deportiva' }))
+    const absenceDialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
+    expect(dialog).not.toBeInTheDocument()
+    expect(within(absenceDialog).getByText(/Durante una baja/)).toBeInTheDocument()
+    await user.click(within(absenceDialog).getByRole('button', { name: 'Volver a datos de perfil' }))
+    dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(dialog).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.keyboard('{Escape}')
+    expect(dialog.querySelector('.team-member-actions-menu')).toBeNull()
+    expect(dialog).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(within(dialog.querySelector<HTMLElement>('.team-member-actions-menu')!).getByRole('button', { name: 'Cerrar' }))
+    expect(dialog).not.toBeInTheDocument()
+  })
+
+  test('marks only a current sporting absence in the list and shows its dates in the profile', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const active = makePlayerAbsence({ ends_on: '2026-09-27' })
+    const upcoming = makePlayerAbsence({ id: 'absence-2', player_id: 'player-2', starts_on: '2026-09-28' })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()}
+      profiles={[makeProfile(), makeProfile({ id: 'player-2', display_name: 'Laura Pérez' })]}
+      playerAbsences={[active, upcoming]} />)
+
+    const activeCard = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
+    expect(within(activeCard).getByRole('img', { name: 'Baja deportiva' }).querySelector('svg')).toBeInTheDocument()
+    expect(activeCard).not.toHaveTextContent('Baja deportiva:')
+    expect(activeCard).not.toHaveTextContent('20 sept 2026')
+    expect(within(screen.getByRole('button', { name: 'Ver datos de Laura Pérez' })).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()
+
+    await user.click(activeCard)
+    const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(within(dialog).getByRole('img', { name: 'Baja deportiva' })).toBeInTheDocument()
+    const history = within(dialog).getByRole('region', { name: 'Bajas deportivas' })
+    expect(history).toHaveTextContent('20 de septiembre de 2026 — 27 de septiembre de 2026')
+    expect(history).toHaveTextContent('Vigente')
+  })
+
+  test('registers a sporting absence in its own dialog and returns to the profile', async () => {
+    const user = userEvent.setup()
+    const onSaveAbsence = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} onSaveAbsence={onSaveAbsence} profiles={[makeProfile()]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Baja deportiva' }))
+    const dialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
+    fireEvent.change(within(dialog).getByLabelText('Inicio'), { target: { value: '2026-09-27' } })
+    fireEvent.change(within(dialog).getByLabelText('Fin previsto'), { target: { value: '2026-10-02' } })
+    await user.type(within(dialog).getByLabelText('Nota privada opcional'), 'Lesión de tobillo')
+    await user.click(within(dialog).getByRole('button', { name: 'Registrar baja' }))
+
+    await waitFor(() => expect(onSaveAbsence).toHaveBeenCalledWith(makeProfile(), {
+      startsOn: '2026-09-27', endsOn: '2026-10-02', privateNote: 'Lesión de tobillo',
+    }))
+    expect(screen.getByRole('dialog', { name: 'Ana Martín' })).toBeInTheDocument()
+  })
+
   test('opens an active player preview in a separate read-only tab', async () => {
     const user = userEvent.setup()
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} />)
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
-    await user.click(screen.getByRole('button', { name: 'Vista previa de Ana Martín como jugadora' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Vista previa de jugadora' }))
 
     expect(open).toHaveBeenCalledWith(expect.stringContaining('view=player-preview&player=player-1'), '_blank', 'noopener')
   })
@@ -57,7 +135,8 @@ describe('TeamView', () => {
     render(<TeamView currentUserId="owner-1" onSave={onSave} onUpdate={vi.fn()} profiles={[profile]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
-    await user.click(screen.getByRole('button', { name: 'Editar datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Editar datos' }))
     const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
     expect(within(dialog).getByText('Fotografía de perfil')).toBeInTheDocument()
     const name = within(dialog).getByLabelText('Nombre y apellidos')
@@ -158,7 +237,8 @@ describe('TeamView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de María López' }))
     expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Editar datos de María López' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de María López' }))
+    await user.click(screen.getByRole('button', { name: 'Editar datos' }))
     await user.click(screen.getByRole('button', { name: 'Desautorizar' }))
     expect(onArchive).toHaveBeenCalledWith(member)
 
@@ -189,38 +269,67 @@ describe('TeamView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Invitada Pérez' }))
     const dialog = screen.getByRole('dialog', { name: 'Laura Invitada Pérez' })
-    await user.click(within(dialog).getByRole('checkbox', { name: /Laura Invitada/ }))
-    await user.click(within(dialog).getByRole('checkbox', { name: /Laura Paredes/ }))
-    expect(within(dialog).getByText(/Historial desde/)).toHaveTextContent('5 ago 2026')
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Laura Invitada Pérez' }))
     await user.click(within(dialog).getByRole('button', { name: 'Vincular asistencias' }))
+    const linkDialog = screen.getByRole('dialog', { name: 'Vincular asistencias de Laura Invitada Pérez' })
+    expect(dialog).not.toBeInTheDocument()
+    await user.click(within(linkDialog).getByRole('checkbox', { name: /Laura Invitada/ }))
+    await user.click(within(linkDialog).getByRole('checkbox', { name: /Laura Paredes/ }))
+    expect(within(linkDialog).getByText(/Historial desde/)).toHaveTextContent('5 ago 2026')
+    await user.click(within(linkDialog).getByRole('button', { name: 'Vincular asistencias' }))
 
     expect(window.confirm).toHaveBeenCalledWith('¿Vincular 2 invitadas (2 asistencias) con Laura Invitada Pérez?')
     expect(onLink).toHaveBeenCalledWith([guest, guestWithSurname], profile)
   })
 
-  test('links selected provisional histories while approving a new player', async () => {
-    const user = userEvent.setup()
+  test('selects invited histories and a season team while approving a new player', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const pending = makeProfile({ id: 'pending', display_name: 'Laura Nueva', is_approved: false, is_active: false })
     const guest = makeProvisionalPlayer()
+    const season = makeSeason()
+    const defaultTeam = makeSeasonTeam()
+    const otherTeam = makeSeasonTeam({ id: 'team-2', name: 'Equipo de desarrollo', is_default: false })
     const onUpdate = vi.fn().mockResolvedValue(undefined)
     const onLink = vi.fn().mockResolvedValue(undefined)
+    const onAssign = vi.fn().mockResolvedValue(undefined)
     render(<TeamView
       currentUserId="owner-1"
       profiles={[pending]}
+      seasons={[season]}
+      seasonTeams={[defaultTeam, otherTeam]}
       provisionalAttendance={[makeProvisionalAttendance()]}
       provisionalPlayers={[guest]}
+      onAssignPlayerTeam={onAssign}
       onLinkProvisionalPlayers={onLink}
       onUpdate={onUpdate}
     />)
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Nueva' }))
     const dialog = screen.getByRole('dialog', { name: 'Laura Nueva' })
+    expect(within(dialog).getByRole('region', { name: 'Vincular asistencias al autorizar' })).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Laura Nueva' }))
+    expect(within(dialog).queryByRole('button', { name: 'Vincular asistencias' })).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('checkbox', { name: /Laura Invitada/ }))
+    await user.selectOptions(within(dialog).getByLabelText('Equipo de la temporada'), otherTeam.id)
     await user.click(within(dialog).getByRole('button', { name: 'Aprobar como jugadora' }))
 
     expect(window.confirm).toHaveBeenCalledWith('¿Aprobar como jugadora a Laura Nueva y vincular 1 invitada (1 asistencia)?')
     expect(onUpdate).toHaveBeenCalledWith({ ...pending, is_approved: true, is_active: true, is_player: true })
+    await waitFor(() => expect(onAssign).toHaveBeenCalledWith(season, pending, otherTeam.id))
     expect(onLink).toHaveBeenCalledWith([guest], pending)
+    expect(onUpdate.mock.invocationCallOrder[0]).toBeLessThan(onAssign.mock.invocationCallOrder[0])
+    expect(onAssign.mock.invocationCallOrder[0]).toBeLessThan(onLink.mock.invocationCallOrder[0])
+  })
+
+  test('hides the team selector when the active season has only one team', async () => {
+    const user = userEvent.setup()
+    const pending = makeProfile({ id: 'pending', is_approved: false, is_active: false })
+    render(<TeamView currentUserId="owner-1" onAssignPlayerTeam={vi.fn()} onUpdate={vi.fn().mockResolvedValue(undefined)}
+      profiles={[pending]} seasons={[makeSeason()]} seasonTeams={[makeSeasonTeam()]} />)
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    expect(screen.queryByLabelText('Equipo de la temporada')).not.toBeInTheDocument()
   })
 })

@@ -26,6 +26,8 @@ export type IconName =
   | 'edit'
   | 'close'
   | 'folder'
+  | 'more'
+  | 'medicalCross'
 
 const paths: Record<IconName, ReactNode> = {
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></>,
@@ -53,6 +55,8 @@ const paths: Record<IconName, ReactNode> = {
   edit: <><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></>,
   close: <path d="m6 6 12 12M18 6 6 18"/>,
   folder: <><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-11Z"/><path d="M3 9h18"/></>,
+  more: <><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/></>,
+  medicalCross: <><circle cx="12" cy="12" r="10.5" fill="white" stroke="#303936" strokeWidth="1"/><path d="M9.8 4.8h4.4v5h5v4.4h-5v5H9.8v-5h-5V9.8h5z" fill="#e00000" stroke="none"/></>,
 }
 
 export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {

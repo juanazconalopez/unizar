@@ -5780,6 +5780,293 @@ button.survey-closure-card:focus-visible {
   margin-top: 8px;
 }
 
+.season-teams-dialog {
+  width: min(1200px, 100%);
+}
+
+.season-team-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.season-team-toolbar>label {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--muted);
+}
+
+.season-team-toolbar input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.season-team-toolbar>label:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.season-team-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.season-team-roster-grid:where(:not(:has(> :nth-child(3)))) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.season-team-roster-grid:where(:has(> :only-child)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.season-team-roster-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfcfb;
+}
+
+.season-team-roster-card.inactive {
+  background: #f7f8f7;
+}
+
+.season-team-roster-card.unassigned {
+  border-color: #dbc9a0;
+  background: #fffbf3;
+}
+
+.season-team-roster-heading,
+.season-team-coaches {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.season-team-roster-heading h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+}
+
+.season-team-roster-heading h3 span {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 10px;
+  text-align: center;
+}
+
+.season-team-roster-heading small,
+.season-team-coaches span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.season-team-roster-heading button,
+.season-team-coaches button {
+  flex: 0 0 auto;
+  padding: 3px;
+  font-size: 11px;
+}
+
+.season-team-player-list {
+  min-height: 36px;
+  margin: 13px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-team-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.season-team-player>span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.season-team-player strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.season-team-player button {
+  flex: 0 0 auto;
+}
+
+.season-team-empty {
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.season-team-coaches {
+  align-items: center;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+
+.season-team-coaches>div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.season-team-coaches strong {
+  font-size: 11px;
+}
+
+.season-team-subview-heading {
+  margin: 0 0 16px;
+}
+
+.season-team-subview-heading h3 {
+  margin: 5px 0;
+  font-size: 18px;
+}
+
+.season-team-subview-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.season-team-destinations,
+.season-team-coach-options {
+  display: grid;
+  gap: 8px;
+}
+
+.season-team-destination {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fbfcfb;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.season-team-destination:hover,
+.season-team-destination:focus-visible {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.season-team-destination span {
+  display: grid;
+  gap: 2px;
+}
+
+.season-team-destination small {
+  color: var(--muted);
+}
+
+.season-team-coach-options label {
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.season-team-coach-options input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--green);
+}
+
+.season-team-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.season-team-fields>label:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.season-team-fields>.check-field {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.season-team-fields>.check-field input {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--green);
+}
+
+@media (max-width: 900px) {
+  .season-team-roster-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .season-team-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .season-team-toolbar>label,
+  .season-team-toolbar>button {
+    width: 100%;
+  }
+
+  .season-team-roster-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .season-competitions-dialog {
   width: min(780px, 100%);
 }
@@ -7402,9 +7689,43 @@ button.survey-closure-card:focus-visible {
 }
 
 .team-member-heading-actions {
+  position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 7px;
+}
+
+.team-member-actions-menu {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 7px);
+  right: 0;
+  width: max-content;
+  min-width: 190px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(12, 39, 32, .16);
+}
+
+.team-member-actions-menu button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.team-member-actions-menu button:hover,
+.team-member-actions-menu button:focus-visible {
+  background: var(--green-soft);
 }
 
 .team-member-profile-summary {
@@ -7481,38 +7802,130 @@ button.survey-closure-card:focus-visible {
   font-weight: 500;
 }
 
-.provisional-link-panel {
+.team-action-dialog {
+  width: min(560px, 100%);
+}
+
+.team-action-intro {
+  margin: 15px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.team-action-fields {
+  margin-top: 18px;
+}
+
+.team-action-history {
+  margin: 16px 0;
+  display: grid;
+  gap: 8px;
+}
+
+.absence-row {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.team-member-absence-history {
   margin: 16px 0;
   padding: 14px;
-  border: 1px solid #c7dce0;
-  border-radius: 11px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 12px;
-  background: #f3f9fa;
+  border: 1px solid #ebc7bf;
+  border-radius: 10px;
+  background: #fff9f7;
 }
 
-.provisional-link-panel.has-suggestion {
-  border-color: #d8c681;
-  background: #fffaf0;
-}
-
-.provisional-link-heading {
-  min-width: 0;
-}
-
-.provisional-link-heading>strong {
-  margin-top: 3px;
-  display: block;
+.team-member-absence-history h3 {
+  margin: 0 0 9px;
   font-size: 12px;
 }
 
-.provisional-link-panel p {
-  margin: 3px 0 0;
+.team-member-absence-item {
+  padding: 7px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+}
+
+.team-member-absence-item + .team-member-absence-item {
+  border-top: 1px solid #ebc7bf;
+}
+
+.team-member-absence-item small {
+  flex: 0 0 auto;
   color: var(--muted);
-  font-size: 9px;
-  line-height: 1.45;
+  font-size: 10px;
+}
+
+.team-member-absence-item small.current {
+  color: #a53636;
+  font-weight: 800;
+}
+
+.player-absence-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+}
+
+.approval-link-panel {
+  margin: 18px 0 12px;
+  padding: 14px;
+  border: 1px solid #c7dce0;
+  border-radius: 10px;
+  background: #f3f9fa;
+}
+
+.approval-link-panel h3 {
+  margin: 5px 0 3px;
+  font-size: 13px;
+}
+
+.approval-link-panel p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.approval-link-panel .provisional-link-options {
+  max-height: 150px;
+  background: white;
+}
+
+.approval-link-panel .provisional-link-history {
+  margin-top: 8px;
+}
+
+.approval-team-select {
+  display: grid;
+  gap: 6px;
+  margin: 14px 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.approval-team-select select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
 }
 
 .provisional-link-options {
@@ -7525,6 +7938,13 @@ button.survey-closure-card:focus-visible {
   display: grid;
   gap: 5px;
   overflow-y: auto;
+}
+
+.provisional-link-options.team-action-options {
+  width: 100%;
+  min-width: 0;
+  max-height: 220px;
+  margin: 18px 0 10px;
 }
 
 .provisional-link-options legend {
@@ -7566,14 +7986,9 @@ button.survey-closure-card:focus-visible {
 }
 
 .provisional-link-history {
-  grid-column: 1;
+  display: block;
   color: var(--green);
-  font-size: 9px;
-}
-
-.provisional-link-panel>button {
-  grid-column: 2;
-  grid-row: 1 / span 2;
+  font-size: 10px;
 }
 
 .team-member-permissions {
@@ -11108,24 +11523,13 @@ button.survey-closure-card:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .provisional-link-panel {
-    grid-template-columns: 1fr;
-    align-items: stretch;
+  .team-member-absence-item {
+    flex-direction: column;
+    gap: 3px;
   }
 
-  .provisional-link-options,
-  .provisional-link-history,
-  .provisional-link-panel>button {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .provisional-link-options {
-    min-width: 0;
-  }
-
-  .provisional-link-panel>button {
-    width: 100%;
+  .absence-row {
+    align-items: flex-start;
   }
 
   .team-member-permissions {

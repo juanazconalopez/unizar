@@ -18,6 +18,72 @@ test('desktop keeps the sidebar and content layout usable', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Encuestas', exact: true })).toBeVisible()
 })
 
+test('desktop shows up to three season rosters per row', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Temporadas' }).click()
+  await page.locator('.season-card').first().getByRole('button', { name: 'Gestionar equipos' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Equipos' })
+  const cards = dialog.locator('.season-team-roster-card')
+  const firstTwo = await cards.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()))
+  expect(firstTwo).toHaveLength(2)
+  expect(firstTwo[1].x).toBeGreaterThan(firstTwo[0].right - 1)
+  expect(Math.abs(firstTwo[1].y - firstTwo[0].y)).toBeLessThan(2)
+
+  async function addTeam(name: string) {
+    await dialog.getByRole('button', { name: 'Nuevo equipo' }).click()
+    await dialog.getByLabel('Nombre').fill(name)
+    await dialog.getByRole('button', { name: 'Guardar equipo' }).click()
+    await expect(dialog.getByRole('region', { name: `${name}, 0 jugadoras` })).toBeVisible()
+  }
+
+  await addTeam('Unizar C')
+  const firstThree = await cards.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()))
+  expect(firstThree).toHaveLength(3)
+  expect(firstThree[2].x).toBeGreaterThan(firstThree[1].right - 1)
+  expect(Math.abs(firstThree[2].y - firstThree[0].y)).toBeLessThan(2)
+
+  await addTeam('Unizar D')
+  const firstFour = await cards.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()))
+  expect(firstFour).toHaveLength(4)
+  expect(Math.abs(firstFour[3].x - firstFour[0].x)).toBeLessThan(2)
+  expect(firstFour[3].y).toBeGreaterThan(firstFour[0].bottom - 1)
+
+  await dialog.getByRole('button', { name: 'Editar equipo Unizar C' }).click()
+  for (const name of ['Grupo mixto', 'Equipo activo']) {
+    const checkbox = dialog.getByRole('checkbox', { name })
+    const checkboxBox = await checkbox.boundingBox()
+    const labelBox = await checkbox.locator('..').boundingBox()
+    expect(checkboxBox).not.toBeNull()
+    expect(labelBox).not.toBeNull()
+    expect(checkboxBox!.width).toBeLessThanOrEqual(20)
+    expect(labelBox!.width).toBeLessThan(150)
+    expect(checkboxBox!.x - labelBox!.x).toBeLessThan(2)
+  }
+})
+
+test('desktop player profile keeps its actions menu inside the dialog', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
+  await dialog.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
+  const menu = dialog.locator('.team-member-actions-menu')
+  await expect(menu.getByRole('button', { name: 'Editar datos' })).toBeVisible()
+  const dialogBox = await dialog.boundingBox()
+  const menuBox = await menu.boundingBox()
+  expect(menuBox).not.toBeNull()
+  expect(dialogBox).not.toBeNull()
+  expect(menuBox!.x).toBeGreaterThanOrEqual(dialogBox!.x)
+  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width)
+  await menu.getByRole('button', { name: 'Editar datos' }).click()
+  await expect(dialog.getByText('Fotografía de perfil')).toBeVisible()
+  await expect(dialog.locator('.team-member-profile-summary')).toHaveCount(0)
+})
+
 test('desktop training editor scrolls only its form and keeps the session summary fixed', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Gestión' }).click()
