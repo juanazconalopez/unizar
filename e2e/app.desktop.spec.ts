@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
 test('desktop keeps the sidebar and content layout usable', async ({ page }) => {
@@ -63,6 +64,101 @@ test('desktop shows up to three season rosters per row', async ({ page }) => {
   }
 })
 
+test('published match detail embeds the graphic and keeps availability and copy actions', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Ver detalle de Unizar Fem. vs Ingenieros Industriales' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Unizar Fem. vs Ingenieros Industriales' })
+  const graphic = dialog.getByRole('img', { name: 'Imagen de la convocatoria' })
+  await expect(graphic).toBeVisible()
+  const embeddedWidth = (await graphic.boundingBox())?.width ?? 0
+  await expect(graphic).toContainText('Unizar Fem. vs Ingenieros Industriales')
+  await expect(graphic).not.toContainText('CONVOCATORIA · XV')
+  await expect(dialog.getByRole('button', { name: 'Ver disponibilidades' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Copiar convocatoria' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Titulares' })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Ver lista' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Titulares' })).toBeVisible()
+  const startersHeight = (await dialog.getByRole('heading', { name: 'Titulares' }).locator('..').boundingBox())?.height ?? 0
+  const substitutesHeight = (await dialog.getByRole('heading', { name: 'Suplentes' }).locator('..').boundingBox())?.height ?? 0
+  expect(substitutesHeight).toBeLessThan(startersHeight - 20)
+  await expect(graphic).toBeHidden()
+  await expect(dialog.getByRole('button', { name: 'Copiar convocatoria' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Ver imagen' }).click()
+  await expect(graphic).toBeVisible()
+  await expect(dialog.locator('.match-lineup-view-panel[data-view="image"]')).toHaveCSS('animation-name', 'match-lineup-view-enter')
+  await expect(dialog.getByRole('button', { name: 'Ampliar imagen', exact: true })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Ampliar imagen de la convocatoria' }).click()
+  const zoomDialog = page.getByRole('dialog', { name: 'Vista gráfica' })
+  const expandedWidth = (await zoomDialog.getByRole('img', { name: 'Imagen de la convocatoria' }).boundingBox())?.width ?? 0
+  expect(expandedWidth).toBeGreaterThan(embeddedWidth * 1.5)
+  await zoomDialog.getByRole('button', { name: 'Aumentar zoom' }).click()
+  await expect(zoomDialog.getByRole('button', { name: 'Restablecer zoom' })).toHaveText('150 %')
+})
+
+test('owner previews and downloads a graphic lineup in the local demo', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Ver ejemplo gráfico XV' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Vista gráfica' })
+  const graphic = dialog.getByRole('img', { name: 'Imagen de la convocatoria' })
+  await expect(graphic).toBeVisible()
+  await expect(graphic.locator('image')).toHaveCount(6)
+  await expect(graphic).toContainText('ENTRENADORES')
+  await expect(graphic).toContainText('Andrea López')
+  await expect(graphic).toContainText('Lucía Martín')
+  const numbers = await graphic.evaluate((element) => {
+    const labels = [...element.querySelectorAll('text')]
+    return Object.fromEntries(['11', '14', '15'].map((number) => {
+      const label = labels.find((item) => item.textContent === number)
+      const box = label?.getBoundingClientRect()
+      return [number, box ? { x: box.x, y: box.y } : null]
+    }))
+  })
+  expect(numbers['11']?.x).toBeLessThan(numbers['15']?.x ?? 0)
+  expect(numbers['14']?.x).toBeGreaterThan(numbers['15']?.x ?? 0)
+  expect(numbers['15']?.y).toBeGreaterThan(numbers['11']?.y ?? 0)
+  await dialog.getByRole('button', { name: 'Aumentar zoom' }).click()
+  const downloadButton = dialog.getByRole('button', { name: 'Descargar PNG' })
+  await expect(downloadButton).toBeEnabled()
+  const downloadPromise = page.waitForEvent('download')
+  await downloadButton.click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/^convocatoria-.*\.png$/)
+  const png = await readFile(await download.path())
+  expect(png.readUInt32BE(16)).toBe(1080)
+})
+
+test('the 7s graphic follows the diagonal formation on the same field', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Ver ejemplo gráfico 7s' }).click()
+
+  const graphic = page.getByRole('dialog', { name: 'Vista gráfica' }).getByRole('img', { name: 'Imagen de la convocatoria' })
+  const points = await graphic.evaluate((element) => Object.fromEntries(Array.from({ length: 7 }, (_, index) => {
+    const number = String(index + 1)
+    const label = [...element.querySelectorAll('text')].find((item) => item.textContent === number)
+    const box = label?.getBoundingClientRect()
+    return [number, box ? { x: box.x, y: box.y } : null]
+  })))
+  expect(points['1']).not.toBeNull()
+  expect(points['3']?.y).toBe(points['1']?.y)
+  expect(points['1']?.x).toBeLessThan(points['2']?.x ?? 0)
+  expect(points['2']?.x).toBeLessThan(points['3']?.x ?? 0)
+  expect(points['2']?.y).toBeGreaterThan(points['1']?.y ?? 0)
+  for (const number of [4, 5, 6, 7]) {
+    expect(points[String(number)]?.x).toBeGreaterThan(points[String(number - 1)]?.x ?? 0)
+    expect(points[String(number)]?.y).toBeGreaterThan(points[String(number - 1)]?.y ?? 0)
+  }
+  await expect(graphic).toContainText('SUPLENTES')
+})
+
 test('desktop player profile keeps its actions menu inside the dialog', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
@@ -73,6 +169,7 @@ test('desktop player profile keeps its actions menu inside the dialog', async ({
   await dialog.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
   const menu = dialog.locator('.team-member-actions-menu')
   await expect(menu.getByRole('button', { name: 'Editar datos' })).toBeVisible()
+  await expect(menu.getByRole('button', { name: 'Cambiar foto' })).toBeVisible()
   const dialogBox = await dialog.boundingBox()
   const menuBox = await menu.boundingBox()
   expect(menuBox).not.toBeNull()
@@ -80,8 +177,50 @@ test('desktop player profile keeps its actions menu inside the dialog', async ({
   expect(menuBox!.x).toBeGreaterThanOrEqual(dialogBox!.x)
   expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(dialogBox!.x + dialogBox!.width)
   await menu.getByRole('button', { name: 'Editar datos' }).click()
-  await expect(dialog.getByText('Fotografía de perfil')).toBeVisible()
+  await expect(dialog.getByLabel('Seleccionar fotografía')).toHaveCount(0)
   await expect(dialog.locator('.team-member-profile-summary')).toHaveCount(0)
+})
+
+test('owner uploads a player photo from profile actions in the local demo', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+  const profileDialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
+  await profileDialog.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
+  await profileDialog.getByRole('button', { name: 'Cambiar foto' }).click()
+
+  const photoDialog = page.getByRole('dialog', { name: 'Foto de Claudia Pérez' })
+  await expect(photoDialog.getByRole('button', { name: 'Guardar foto' })).toBeDisabled()
+  await photoDialog.getByLabel('Seleccionar fotografía').setInputFiles({
+    name: 'claudia.png', mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/RZkAAAAASUVORK5CYII=', 'base64'),
+  })
+  await expect(photoDialog.getByRole('button', { name: 'Guardar foto' })).toBeEnabled()
+  await photoDialog.getByRole('button', { name: 'Guardar foto' }).click()
+  await expect(photoDialog).toHaveCount(0)
+  await expect(page.getByText('Foto de Claudia Pérez actualizada en la demo.')).toBeVisible()
+})
+
+test('the player sees the photo uploaded by the owner in profile data', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByRole('button', { name: 'Ver datos de Marta Sánchez' }).click()
+  const profile = page.getByRole('dialog', { name: 'Marta Sánchez' })
+  await profile.getByRole('button', { name: 'Acciones de Marta Sánchez' }).click()
+  await profile.getByRole('button', { name: 'Subir foto' }).click()
+  const photo = page.getByRole('dialog', { name: 'Foto de Marta Sánchez' })
+  await photo.getByLabel('Seleccionar fotografía').setInputFiles({
+    name: 'marta.png', mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/RZkAAAAASUVORK5CYII=', 'base64'),
+  })
+  await photo.getByRole('button', { name: 'Guardar foto' }).click()
+  await page.getByLabel('Ver como').selectOption('player')
+  await page.getByRole('button', { name: 'Editar mis datos' }).click()
+  const ownProfile = page.getByRole('dialog', { name: 'Datos de perfil' })
+  await expect(ownProfile.getByAltText('Fotografía de Marta Sánchez')).toBeVisible()
+  await expect(ownProfile.getByLabel('Seleccionar fotografía')).toHaveCount(0)
 })
 
 test('desktop training editor scrolls only its form and keeps the session summary fixed', async ({ page }) => {
@@ -127,7 +266,7 @@ test('desktop calendar presents daily groups in the agreed order', async ({ page
   await page.getByRole('button', { name: 'Añadir' }).click()
   await page.getByRole('menuitem', { name: 'Nuevo partido' }).click()
   const matchDialog = page.getByRole('dialog', { name: 'Nuevo partido' })
-  await matchDialog.getByLabel('Rival').fill('Rival de prueba E2E')
+  await matchDialog.getByLabel('Rival', { exact: true }).fill('Rival de prueba E2E')
   await matchDialog.getByRole('button', { name: 'Guardar partido' }).click()
 
   const headings = await page.locator('.selected-planning-week .task-week-heading h2').allTextContents()

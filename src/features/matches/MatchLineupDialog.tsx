@@ -7,18 +7,22 @@ import { errorText } from '../../lib/errors'
 import { copyText, downloadText } from '../../lib/fileExport'
 import { lineupPlainText, lineupXml } from '../../lib/matchExports'
 import { activePlayers, membershipCoversDate } from '../../lib/selectors'
-import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, SeasonTeam } from '../../types'
+import type { Match, MatchAvailability, MatchLineup, Profile, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
 import { matchLogistics, matchTitle } from './matchPresentation'
 import { orderedLineupCandidates } from './lineupCandidates'
 import { fetchSeasonPlayerMinutes } from '../../services/matchesService'
+import { LineupGraphicDialog } from './LineupGraphicDialog'
 
-export function MatchLineupDialog({ availability, canExport = true, canPublish = true, canBorrowFromOtherTeams = true, demo = false, demoMinutes, entries, match, memberships, profiles, seasonTeams = [], reservedPlayerIds = [], onClose, onSave, onUnlock }: {
+export function MatchLineupDialog({ availability, canExport = true, canGraphicExport = false, canPublish = true, canBorrowFromOtherTeams = true, demo = false, demoCoaches, demoMinutes, onLoadGraphicPhoto, entries, match, memberships, profiles, seasonTeams = [], reservedPlayerIds = [], onClose, onSave, onUnlock }: {
   availability: MatchAvailability[]
   canExport?: boolean
+  canGraphicExport?: boolean
   canPublish?: boolean
   canBorrowFromOtherTeams?: boolean
   demo?: boolean
+  demoCoaches?: SeasonTeamCoach[]
   demoMinutes?: Map<string, number>
+  onLoadGraphicPhoto?: (path: string) => Promise<string>
   entries: MatchLineup[]
   match: Match
   memberships: SeasonPlayer[]
@@ -48,6 +52,7 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
   const [error, setError] = useState('')
   const [confirmMissing, setConfirmMissing] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [graphicOpen, setGraphicOpen] = useState(false)
   const [confirmUnlock, setConfirmUnlock] = useState(false)
   const [minutesByPlayer, setMinutesByPlayer] = useState<Map<string, number>>(demoMinutes ?? new Map())
   const selectedIds = new Set(Object.values(slots))
@@ -122,6 +127,8 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
     }
   }
 
+  if (graphicOpen) return <LineupGraphicDialog demo={demo} demoCoaches={demoCoaches} entries={entries} match={match} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
+
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{matchLogistics(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
     {editable ? <div className="lineup-board">
@@ -139,7 +146,7 @@ export function MatchLineupDialog({ availability, canExport = true, canPublish =
           </> : <span>Suelta aquí</span>}
         </div>
       })}</section>
-    </div> : <><PublishedLineup entries={entries} profiles={profiles} starters={starters} />{(locked && onUnlock) || canExport ? <div className="lineup-export-actions">{locked && onUnlock && <button className="danger-button" onClick={() => setConfirmUnlock(true)} type="button">Desbloquear para editar</button>}{canExport && <><button className="secondary-button" onClick={() => void copyLineup()} type="button"><Icon name="copy" size={17} />{copied ? 'Convocatoria copiada' : 'Copiar convocatoria'}</button><button className="primary-button" onClick={() => downloadText(`convocatoria-${match.match_date}-${match.opponent}.xml`, lineupXml(match, entries, profiles), 'application/xml')} type="button"><Icon name="download" size={17} />Descargar XML</button></>}</div> : null}{error && <p className="form-error">{error}</p>}</>}
+    </div> : <><PublishedLineup entries={entries} profiles={profiles} starters={starters} />{(locked && onUnlock) || canExport || (canGraphicExport && locked) ? <div className="lineup-export-actions">{locked && onUnlock && <button className="danger-button" onClick={() => setConfirmUnlock(true)} type="button">Desbloquear para editar</button>}{canGraphicExport && locked && <button className="secondary-button" onClick={() => setGraphicOpen(true)} type="button">Vista gráfica</button>}{canExport && <><button className="secondary-button" onClick={() => void copyLineup()} type="button"><Icon name="copy" size={17} />{copied ? 'Convocatoria copiada' : 'Copiar convocatoria'}</button><button className="primary-button" onClick={() => downloadText(`convocatoria-${match.match_date}-${match.opponent}.xml`, lineupXml(match, entries, profiles), 'application/xml')} type="button"><Icon name="download" size={17} />Descargar XML</button></>}</div> : null}{error && <p className="form-error">{error}</p>}</>}
     {editable && <>{containsBorrowedPlayer && <p className="form-hint">Esta convocatoria incluye una jugadora prestada de otro equipo. El owner debe guardar los cambios mientras permanezca asignada.</p>}{canPublish && <label className="publish-lineup"><input checked={published} disabled={locked} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{locked ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>}{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving || containsBorrowedPlayer} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
     {confirmMissing && <MissingStartersDialog missing={Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])} onCancel={() => setConfirmMissing(false)} onConfirm={() => { setConfirmMissing(false); void save(true) }} />}
     {confirmUnlock && <UnlockLineupDialog onCancel={() => setConfirmUnlock(false)} onConfirm={() => void unlock()} />}

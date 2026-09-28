@@ -18,6 +18,7 @@ export type IconName =
   | 'copy'
   | 'warning'
   | 'refresh'
+  | 'swap'
   | 'bell'
   | 'search'
   | 'filter'
@@ -47,6 +48,7 @@ const paths: Record<IconName, ReactNode> = {
   copy: <><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></>,
   warning: <><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5m0 3h.01"/></>,
   refresh: <><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></>,
+  swap: <><path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4-4m-4 4 4 4"/></>,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
   search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
   filter: <path d="M4 5h16l-6.5 7.2V19l-5 2v-8.8L4 5Z"/>,

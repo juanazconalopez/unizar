@@ -21,6 +21,12 @@ export async function fetchSeasonTeamCoaches(teamIds: string[]): Promise<SeasonT
   return data ?? []
 }
 
+export async function fetchPublishedMatchCoachNames(matchId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_published_match_coaches', { checked_match_id: matchId })
+  if (error) throw error
+  return (data ?? []).map((coach) => coach.display_name)
+}
+
 export async function createSeasonTeam(seasonId: string, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) {
   const { error } = await supabase.rpc('create_season_team', {
     checked_season_id: seasonId,

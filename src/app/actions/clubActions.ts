@@ -1,5 +1,5 @@
 import { activeMembershipFor } from '../../lib/selectors'
-import { archiveManagedProfile, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { archiveManagedProfile, updateManagedPlayerPhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
@@ -114,9 +114,9 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
         context.reportError(error)
       }
     },
-    updateOwnProfileDetails: async (profile: Profile, values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) => {
+    updateOwnProfileDetails: async (profile: Profile, values: ProfileDetailsValues) => {
       context.requireConnection()
-      await updateOwnProfileDetails(profile, values, photoChange)
+      await updateOwnProfileDetails(profile, values)
       context.notify('Datos de perfil actualizados.')
       await context.reloadData()
     },
@@ -124,6 +124,12 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       await updateManagedProfile(profile, values, photoChange)
       context.notify(`Datos de ${values.displayName} actualizados.`)
+      await context.reloadData()
+    },
+    updateManagedPlayerPhoto: async (profile: Profile, photoChange: File | null) => {
+      context.requireConnection()
+      await updateManagedPlayerPhoto(profile, photoChange)
+      context.notify(`Foto de ${profile.display_name} actualizada.`)
       await context.reloadData()
     },
     archiveProfile: async (profile: Profile) => {

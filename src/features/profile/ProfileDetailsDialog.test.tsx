@@ -124,16 +124,20 @@ describe('ProfileDetailsDialog', () => {
     expect(screen.getByText('Edad actual: 25 años.')).toBeInTheDocument()
   })
 
-  test('keeps a selected player photo pending until all profile data is saved', async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn().mockResolvedValue(undefined)
-    render(<ProfileDetailsDialog canEditPhoto currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onSave={onSave} />)
-    const file = new File(['photo'], 'ana.png', { type: 'image/png' })
+  test('shows initials when the player has no photo', () => {
+    render(<ProfileDetailsDialog currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onSave={vi.fn()} />)
+    const photo = screen.getByText('Foto de perfil').closest('.profile-details-photo')
+    expect(photo).toHaveTextContent('AM')
+    expect(photo?.querySelector('img')).toBeNull()
+    expect(screen.queryByLabelText('Seleccionar fotografía')).not.toBeInTheDocument()
+  })
 
-    await user.upload(screen.getByLabelText('Seleccionar fotografía'), file)
-    expect(await screen.findByAltText('Fotografía de Ana Martín')).toHaveAttribute('src', expect.stringContaining('data:image/png;base64,'))
-    await user.click(screen.getByRole('button', { name: 'Guardar datos' }))
+  test('shows an existing player photo without allowing personal uploads', async () => {
+    const onLoadPhoto = vi.fn().mockResolvedValue('data:image/jpeg;base64,AAAA')
+    render(<ProfileDetailsDialog avatarPath="player-1/photo.jpg" currentName="Ana Martín" email="ana@example.com" onClose={vi.fn()} onLoadPhoto={onLoadPhoto} onSave={vi.fn()} />)
 
-    expect(onSave).toHaveBeenCalledWith({ displayName: 'Ana Martín', phone: '', birthDate: '' }, file)
+    expect(await screen.findByAltText('Fotografía de Ana Martín')).toHaveAttribute('src', 'data:image/jpeg;base64,AAAA')
+    expect(screen.queryByLabelText('Seleccionar fotografía')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Eliminar foto' })).not.toBeInTheDocument()
   })
 })

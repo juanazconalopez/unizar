@@ -11,12 +11,13 @@ import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
 import { PlayerAbsenceDialog } from './PlayerAbsenceDialog'
+import { TeamMemberPhotoDialog } from './TeamMemberPhotoDialog'
 import { ProvisionalAttendanceLinkDialog } from './ProvisionalAttendanceLinkDialog'
 import { ProvisionalAttendanceOptions } from './ProvisionalAttendanceOptions'
 import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
@@ -30,6 +31,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onPreviewPlayer?: (player: Profile) => void
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
+  onSavePhoto?: (profile: Profile, change: File | null) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
@@ -38,7 +40,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onDeleteAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
-  const [activeDialog, setActiveDialog] = useState<'profile' | 'absence' | 'attendance'>('profile')
+  const [activeDialog, setActiveDialog] = useState<'profile' | 'photo' | 'absence' | 'attendance'>('profile')
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [displayName, setDisplayName] = useState(person.display_name)
@@ -49,7 +51,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const [isCoach, setIsCoach] = useState(person.is_coach)
   const [isViewer, setIsViewer] = useState(person.is_viewer)
   const [isOwner, setIsOwner] = useState(person.is_owner)
-  const [photoChange, setPhotoChange] = useState<ProfilePhotoChange>(undefined)
   const [selectedProvisionalIds, setSelectedProvisionalIds] = useState<string[]>([])
   const [selectedTeamId, setSelectedTeamId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -88,7 +89,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
   }, [menuOpen])
 
-  function openDialog(dialog: 'absence' | 'attendance') {
+  function openDialog(dialog: 'photo' | 'absence' | 'attendance') {
     setMenuOpen(false)
     setActiveDialog(dialog)
   }
@@ -107,8 +108,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     setFormError('')
     try {
       const values: ManagedProfileValues = { displayName: normalizedName, phone: normalizedPhone, birthDate, isActive, isPlayer, isCoach, isViewer, isOwner }
-      if (photoChange === undefined) await onSave(person, values)
-      else await onSave(person, values, photoChange)
+      await onSave(person, values)
       onClose()
     } catch (error) {
       setFormError(errorText(error))
@@ -156,6 +156,8 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     }
   }
 
+  if (activeDialog === 'photo' && onSavePhoto) return <TeamMemberPhotoDialog onClose={() => setActiveDialog('profile')} onLoadPhoto={onLoadPhoto} onSave={onSavePhoto} onSaved={onClose} person={person} />
+
   if (activeDialog === 'absence' && onSaveAbsence) return <PlayerAbsenceDialog absences={personAbsences} onClose={() => setActiveDialog('profile')} onDelete={onDeleteAbsence} onSave={onSaveAbsence} person={person} />
 
   if (activeDialog === 'attendance' && canLinkAttendance) return <ProvisionalAttendanceLinkDialog attendance={provisionalAttendance} candidates={provisionalCandidates} onClose={() => setActiveDialog('profile')} onLink={onLinkProvisionalPlayers} onLinked={onClose} onSelectionChange={setSelectedProvisionalIds} person={person} selectedIds={selectedProvisionalIds} />
@@ -169,6 +171,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <button aria-controls="team-member-actions" aria-expanded={menuOpen} aria-label={`Acciones de ${person.display_name}`} aria-haspopup="true" className="icon-button" onClick={() => setMenuOpen((open) => !open)} type="button"><Icon name="more" size={20} /></button>
         {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
           {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
+          {approved && person.is_player && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">{person.avatar_path ? 'Cambiar foto' : 'Subir foto'}</button>}
           {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
           {canLinkAttendance && <button onClick={() => openDialog('attendance')} type="button">Vincular asistencias</button>}
           {approved && person.is_active && person.is_player && onPreviewPlayer && <button onClick={() => { setMenuOpen(false); onPreviewPlayer(person) }} type="button">Vista previa de jugadora</button>}
@@ -177,7 +180,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       </div>
     </div>
     {editing ? <>
-      {isPlayer && <ProfilePhotoField avatarPath={person.avatar_path} editable name={displayName || person.display_name} onChange={setPhotoChange} onLoadPhoto={onLoadPhoto} photoChange={photoChange} />}
       <div className="profile-details-fields">
         <label>Nombre y apellidos<input autoFocus maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
         <label>Email de Google<input className="readonly-field" readOnly type="email" value={details?.email ?? ''} /></label>

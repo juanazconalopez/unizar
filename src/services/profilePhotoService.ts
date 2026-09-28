@@ -14,6 +14,17 @@ export async function loadProfilePhotoUrl(path: string) {
   return data.signedUrl
 }
 
+export async function loadProfilePhotoDataUrl(path: string) {
+  const { data, error } = await supabase.storage.from(BUCKET).download(path)
+  if (error) throw error
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => typeof reader.result === 'string' ? resolve(reader.result) : reject(new Error('No se ha podido leer la fotografía.'))
+    reader.onerror = () => reject(new Error('No se ha podido leer la fotografía.'))
+    reader.readAsDataURL(data)
+  })
+}
+
 export async function uploadProfilePhoto(profileId: string, file: File) {
   const photo = await prepareProfilePhoto(file)
   const uniquePart = typeof crypto.randomUUID === 'function'

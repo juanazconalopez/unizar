@@ -40,7 +40,7 @@ describe('TeamView', () => {
 
   test('shows player actions in order and opens a separate sports absence dialog', async () => {
     const user = userEvent.setup()
-    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()}
+    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()}
       profiles={[makeProfile()]} provisionalAttendance={[makeProvisionalAttendance()]}
       provisionalPlayers={[makeProvisionalPlayer()]} onLinkProvisionalPlayers={vi.fn()} />)
 
@@ -52,7 +52,7 @@ describe('TeamView', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
     const menu = dialog.querySelector<HTMLElement>('.team-member-actions-menu')!
     expect(within(menu).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'Editar datos', 'Baja deportiva', 'Vincular asistencias', 'Vista previa de jugadora', 'Cerrar',
+      'Editar datos', 'Subir foto', 'Baja deportiva', 'Vincular asistencias', 'Vista previa de jugadora', 'Cerrar',
     ])
     await user.click(within(menu).getByRole('button', { name: 'Baja deportiva' }))
     const absenceDialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
@@ -69,6 +69,25 @@ describe('TeamView', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
     await user.click(within(dialog.querySelector<HTMLElement>('.team-member-actions-menu')!).getByRole('button', { name: 'Cerrar' }))
     expect(dialog).not.toBeInTheDocument()
+  })
+
+  test('lets the owner save a player photo from a separate profile action', async () => {
+    const user = userEvent.setup()
+    const profile = makeProfile()
+    const onSavePhoto = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={onSavePhoto} onUpdate={vi.fn()} profiles={[profile]} />)
+
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Subir foto' }))
+    const dialog = screen.getByRole('dialog', { name: 'Foto de Ana Martín' })
+    const file = new File(['photo'], 'ana.png', { type: 'image/png' })
+    await user.upload(within(dialog).getByLabelText('Seleccionar fotografía'), file)
+    expect(await within(dialog).findByAltText('Fotografía de Ana Martín')).toHaveAttribute('src', expect.stringContaining('data:image/png;base64,'))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar foto' }))
+
+    expect(onSavePhoto).toHaveBeenCalledWith(profile, file)
+    expect(screen.queryByRole('dialog', { name: 'Foto de Ana Martín' })).not.toBeInTheDocument()
   })
 
   test('marks only a current sporting absence in the list and shows its dates in the profile', async () => {
@@ -138,7 +157,7 @@ describe('TeamView', () => {
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Editar datos' }))
     const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
-    expect(within(dialog).getByText('Fotografía de perfil')).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText('Seleccionar fotografía')).not.toBeInTheDocument()
     const name = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(name)
     await user.type(name, 'Ana Martín López')

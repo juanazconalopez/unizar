@@ -10,6 +10,7 @@ import { compareMatches } from '../../lib/seasonCompetitions'
 import type {
   AvailabilityStatus,
   CalendarBirthday,
+  SeasonTeamCoach,
   Match,
   MatchAvailability,
   MatchLineup,
@@ -39,6 +40,8 @@ const SURVEY_MONTH_CACHE_MS = 60_000
 export function PlayerCalendarView({
   announcements,
   availability,
+  demo = false,
+  demoCoaches,
   birthdays,
   holidays: providedHolidays,
   focusedAnnouncementId,
@@ -63,6 +66,8 @@ export function PlayerCalendarView({
 }: {
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
+  demo?: boolean
+  demoCoaches?: SeasonTeamCoach[]
   birthdays: CalendarBirthday[]
   holidays?: string[]
   focusedAnnouncementId?: string
@@ -230,6 +235,8 @@ export function PlayerCalendarView({
       canEditMatch={false}
       canManageLineup={false}
       canViewAvailability={false}
+      demo={demo}
+      demoCoaches={demoCoaches}
       isPlayer
       lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
       match={detailMatch}

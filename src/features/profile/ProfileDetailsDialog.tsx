@@ -4,36 +4,33 @@ import { Modal } from '../../components/ui/Modal'
 import { ageOnDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { isValidInternationalPhone } from '../../lib/phone'
-import type { ProfileDetailsValues, ProfilePhotoChange } from '../../types'
+import type { ProfileDetailsValues } from '../../types'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from './ProfilePhotoField'
 
-export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', avatarPath = null, canEditPhoto = false, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
+export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', avatarPath = null, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
   currentName: string
   email: string
   currentPhone?: string
   currentBirthDate?: string
   avatarPath?: string | null
-  canEditPhoto?: boolean
   eyebrow?: string
   highlightMissing?: boolean
   helpText?: string
   title?: string
   onClose: () => void
   onLoadPhoto?: (path: string) => Promise<string>
-  onSave: (values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) => Promise<void>
+  onSave: (values: ProfileDetailsValues) => Promise<void>
 }) {
   const [displayName, setDisplayName] = useState(currentName)
   const [phone, setPhone] = useState(currentPhone)
   const [birthDate, setBirthDate] = useState(currentBirthDate)
-  const [photoChange, setPhotoChange] = useState<ProfilePhotoChange>(undefined)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const titleId = 'profile-details-dialog-title'
   const changed = displayName.trim() !== currentName.trim()
     || phone.trim() !== currentPhone.trim()
     || birthDate !== currentBirthDate
-    || photoChange !== undefined
   const age = ageOnDate(birthDate, todayIso())
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -57,8 +54,7 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
     setFormError('')
     try {
       const values = { displayName: normalizedName, phone: normalizedPhone, birthDate }
-      if (photoChange === undefined) await onSave(values)
-      else await onSave(values, photoChange)
+      await onSave(values)
       onClose()
     } catch (error) {
       setFormError(errorText(error))
@@ -73,7 +69,10 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
         <button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button>
       </div>
       <p className="profile-details-help">{helpText ?? 'El email pertenece a tu cuenta de Google. El teléfono y la fecha de nacimiento solo se utilizan para la gestión del equipo.'}</p>
-      {canEditPhoto && <ProfilePhotoField avatarPath={avatarPath} editable name={displayName || currentName} onChange={setPhotoChange} onLoadPhoto={onLoadPhoto} photoChange={photoChange} />}
+      <figure className="profile-details-photo">
+        <ProfilePhotoField avatarPath={avatarPath} name={displayName || currentName} onLoadPhoto={onLoadPhoto} />
+        <figcaption>Foto de perfil</figcaption>
+      </figure>
       <div className="profile-details-fields">
         <label>Nombre y apellidos
           <input

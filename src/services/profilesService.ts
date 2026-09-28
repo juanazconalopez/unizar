@@ -18,16 +18,14 @@ export async function updateProfilePermissions(profile: Profile) {
   invalidateBirthdayCache()
 }
 
-export async function updateOwnProfileDetails(profile: Profile, values: ProfileDetailsValues, photoChange?: ProfilePhotoChange) {
-  await saveWithPhoto(profile, photoChange, async (avatarPath) => {
-    const { error } = await supabase.rpc('update_own_profile', {
-      new_display_name: values.displayName,
-      new_phone: values.phone,
-      new_birth_date: values.birthDate || null,
-      new_avatar_path: avatarPath,
-    })
-    if (error) throw error
+export async function updateOwnProfileDetails(profile: Profile, values: ProfileDetailsValues) {
+  const { error } = await supabase.rpc('update_own_profile', {
+    new_display_name: values.displayName,
+    new_phone: values.phone,
+    new_birth_date: values.birthDate || null,
+    new_avatar_path: profile.avatar_path,
   })
+  if (error) throw error
   invalidateBirthdayCache()
 }
 
@@ -49,6 +47,16 @@ export async function updateManagedProfile(profile: Profile, values: ManagedProf
     if (error) throw error
   })
   invalidateBirthdayCache()
+}
+
+export async function updateManagedPlayerPhoto(profile: Profile, photoChange: File | null) {
+  await saveWithPhoto(profile, photoChange, async (avatarPath) => {
+    const { error } = await supabase.rpc('set_managed_player_photo', {
+      checked_profile_id: profile.id,
+      new_avatar_path: avatarPath,
+    })
+    if (error) throw error
+  })
 }
 
 export async function archiveManagedProfile(profileId: string) {

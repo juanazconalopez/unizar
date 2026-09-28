@@ -7,16 +7,21 @@ import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
 import { copyText } from '../../lib/fileExport'
 import { lineupPlainText } from '../../lib/matchExports'
-import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup, Profile } from '../../types'
+import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup, Profile, SeasonTeamCoach } from '../../types'
 import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 import { PublishedLineup } from './MatchLineupDialog'
+import { LineupGraphic, LineupGraphicDialog } from './LineupGraphicDialog'
 import { matchDateLabel, matchTitle } from './matchPresentation'
 
 export function MatchDetailDialog({
   canEditMatch,
   canManageLineup,
+  canGraphicExport = false,
   canViewAvailability,
   canViewReportPdf = false,
+  demo = false,
+  demoCoaches,
+  onLoadGraphicPhoto,
   isPlayer,
   lineup,
   match,
@@ -32,8 +37,12 @@ export function MatchDetailDialog({
 }: {
   canEditMatch: boolean
   canManageLineup: boolean
+  canGraphicExport?: boolean
   canViewAvailability: boolean
   canViewReportPdf?: boolean
+  demo?: boolean
+  demoCoaches?: SeasonTeamCoach[]
+  onLoadGraphicPhoto?: (path: string) => Promise<string>
   isPlayer: boolean
   lineup: MatchLineup[]
   match: Match
@@ -51,6 +60,8 @@ export function MatchDetailDialog({
   const [copied, setCopied] = useState(false)
   const [copyError, setCopyError] = useState('')
   const [reportOpen, setReportOpen] = useState(false)
+  const [graphicOpen, setGraphicOpen] = useState(false)
+  const [lineupView, setLineupView] = useState<'image' | 'list'>('image')
   const [reportError, setReportError] = useState('')
   const starters = match.rugby_format === 'sevens' ? 7 : 15
   const hasPublishedLineup = match.lineup_published
@@ -77,6 +88,7 @@ export function MatchDetailDialog({
   }
 
   if (reportOpen && onSaveReport) return <MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={() => setReportOpen(false)} onSave={(file, scores, duration, events, reviewed) => onSaveReport(match, file, scores, duration, events, reviewed)} />
+  if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={lineup} match={match} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading">
@@ -105,8 +117,20 @@ export function MatchDetailDialog({
     {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
 
     <section className="match-detail-callup">
-      <div className="match-detail-section-heading"><div><span className="eyebrow">CONVOCATORIA</span><h3>{hasPublishedLineup ? 'Convocatoria publicada' : 'Próximamente'}</h3></div><div className="match-detail-section-actions">{canViewAvailability && <button className="secondary-button compact" onClick={onViewAvailability} type="button">Ver disponibilidades</button>}{hasPublishedLineup && <button aria-label={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} className="icon-button match-copy-button" onClick={() => void copyLineup()} title={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} type="button"><Icon name={copied ? 'check' : 'copy'} size={16} /></button>}</div></div>
-      {hasPublishedLineup ? lineup.length ? <PublishedLineup entries={lineup} profiles={profiles} starters={starters} /> : <p className="match-callup-pending">La convocatoria se ha publicado sin jugadoras asignadas.</p> : <p className="match-callup-pending">{isPlayer ? 'Tu disponibilidad ayuda a preparar la convocatoria. En cuanto esté lista podrás revisarla aquí.' : 'Prepara la convocatoria cuando dispongas de las respuestas del equipo.'}</p>}
+      <div className="match-detail-section-heading">
+        <div><span className="eyebrow">CONVOCATORIA</span><h3>{hasPublishedLineup ? 'Convocatoria publicada' : canManageLineup && lineup.length ? 'Borrador de convocatoria' : 'Próximamente'}</h3></div>
+        <div className="match-detail-section-actions">
+          {canViewAvailability && <button className="secondary-button compact match-detail-availability-button" onClick={onViewAvailability} type="button">Ver disponibilidades</button>}
+          {hasPublishedLineup && <button className="secondary-button compact match-lineup-view-toggle" onClick={() => setLineupView((view) => view === 'image' ? 'list' : 'image')} type="button"><Icon name="swap" size={16} />{lineupView === 'image' ? 'Ver lista' : 'Ver imagen'}</button>}
+          {hasPublishedLineup && <button aria-label={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} className="icon-button match-copy-button" onClick={() => void copyLineup()} title={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} type="button"><Icon name={copied ? 'check' : 'copy'} size={16} /></button>}
+        </div>
+      </div>
+      {hasPublishedLineup ? <>
+        <div className="match-lineup-view-panel" data-view="image" hidden={lineupView !== 'image'}>
+          <LineupGraphic canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} embedded entries={lineup} match={match} onClose={() => setGraphicOpen(false)} onOpen={() => setGraphicOpen(true)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
+        </div>
+        {lineupView === 'list' && <div className="match-lineup-view-panel" data-view="list"><PublishedLineup entries={lineup} profiles={profiles} starters={starters} /></div>}
+      </> : canManageLineup && lineup.length ? <PublishedLineup entries={lineup} profiles={profiles} starters={starters} /> : <p className="match-callup-pending">{isPlayer ? 'Tu disponibilidad ayuda a preparar la convocatoria. En cuanto esté lista podrás revisarla aquí.' : 'Prepara la convocatoria cuando dispongas de las respuestas del equipo.'}</p>}
       {copyError && <p className="form-error">{copyError}</p>}
       {canManageLineup && <div className="match-detail-actions"><button className="primary-button" onClick={onManageLineup} type="button">{match.lineup_published ? 'Gestionar convocatoria' : 'Preparar convocatoria'}</button>{onReviewInternal && <button className="secondary-button" onClick={onReviewInternal} type="button">Revisar las dos convocatorias</button>}</div>}
     </section>

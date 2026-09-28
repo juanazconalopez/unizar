@@ -49,6 +49,17 @@ describe('MatchLineupDialog', () => {
     expect(screen.queryByRole('button', { name: 'Guardar alineación' })).not.toBeInTheDocument()
   })
 
+  test('opens the owner graphic from a published lineup and keeps text copy available', async () => {
+    const user = userEvent.setup()
+    const entry = { match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, position: null, slot_number: 1, sort_order: 1, updated_at: new Date().toISOString() }
+    render(<MatchLineupDialog availability={[]} canGraphicExport demo entries={[entry]} match={match({ lineup_published: true })}
+      memberships={[makeMembership()]} profiles={[makeProfile()]} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Vista gráfica' }))
+    expect(screen.getByRole('dialog', { name: 'Vista gráfica' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }))
+    expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
+  })
+
   test('requires confirmation before a coach unlocks and edits a published lineup', async () => {
     const user = userEvent.setup()
     const onUnlock = vi.fn().mockResolvedValue(undefined)

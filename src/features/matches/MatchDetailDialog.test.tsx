@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { makeProfile } from '../../test/fixtures'
 import type { Match, MatchLineup } from '../../types'
@@ -17,6 +18,67 @@ describe('MatchDetailDialog', () => {
     expect(screen.getByText('10:30')).toBeInTheDocument()
     expect(screen.getByText('Lugar de convocatoria')).toBeInTheDocument()
     expect(screen.getByText('Hora de inicio')).toBeInTheDocument()
+    expect(screen.getByText(/Tu disponibilidad ayuda a preparar la convocatoria/)).toBeInTheDocument()
+  })
+
+  test('shows the graphic in a published callup while keeping availability and text copy', async () => {
+    const user = userEvent.setup()
+    const entries: MatchLineup[] = [{ match_id: match.id, player_id: 'player-1', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]
+    const onViewAvailability = vi.fn()
+    render(<MatchDetailDialog canEditMatch={false} canManageLineup={false} canViewAvailability isPlayer={false} lineup={entries} match={{ ...match, lineup_published: true }} profiles={[makeProfile()]} demo onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onViewAvailability={onViewAvailability} />)
+
+    const graphic = screen.getByRole('img', { name: 'Imagen de la convocatoria' })
+    expect(graphic).toBeInTheDocument()
+    expect(graphic.textContent).toContain('Quebrantahuesos Rugby vs Unizar Fem.')
+    expect(graphic.textContent).not.toContain('CONVOCATORIA · XV')
+    expect(graphic.textContent).not.toContain('septiembre')
+    expect(screen.queryByText('Titulares')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ver lista' }))
+    expect(screen.getByRole('heading', { name: 'Titulares' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Imagen de la convocatoria' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ver imagen' }))
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ver disponibilidades' }))
+    expect(onViewAvailability).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('button', { name: 'Ampliar imagen' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ampliar imagen de la convocatoria' }))
+    expect(screen.getByRole('dialog', { name: 'Vista gráfica' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Aumentar zoom' }))
+    expect(screen.getByRole('button', { name: 'Restablecer zoom' })).toHaveTextContent('150 %')
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveStyle({ width: '150%' })
+  })
+
+  test('loads private player photos in the graphic only for the owner', async () => {
+    const profile = { ...makeProfile(), avatar_path: 'player-1/photo.jpg' }
+    const entries: MatchLineup[] = [{ match_id: match.id, player_id: profile.id, role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]
+    const onLoadGraphicPhoto = vi.fn().mockResolvedValue('data:image/png;base64,AAAA')
+    const props = { canEditMatch: false, canManageLineup: false, canViewAvailability: false, isPlayer: false, lineup: entries,
+      match: { ...match, lineup_published: true }, profiles: [profile], demo: true, onLoadGraphicPhoto,
+      onClose: vi.fn(), onEdit: vi.fn(), onManageLineup: vi.fn(), onViewAvailability: vi.fn() }
+    const { rerender } = render(<MatchDetailDialog {...props} />)
+    expect(onLoadGraphicPhoto).not.toHaveBeenCalled()
+    rerender(<MatchDetailDialog {...props} canGraphicExport />)
+    await waitFor(() => expect(onLoadGraphicPhoto).toHaveBeenCalledWith('player-1/photo.jpg'))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Ver lista' }))
+    await user.click(screen.getByRole('button', { name: 'Ver imagen' }))
+    expect(onLoadGraphicPhoto).toHaveBeenCalledOnce()
+  })
+
+  test('keeps a draft as a list for staff and private from players', () => {
+    const entries: MatchLineup[] = [{ match_id: match.id, player_id: 'player-1', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]
+    const props = { canEditMatch: false, canManageLineup: true, canViewAvailability: false, isPlayer: false, lineup: entries,
+      match, profiles: [makeProfile()], onClose: vi.fn(), onEdit: vi.fn(), onManageLineup: vi.fn(), onViewAvailability: vi.fn() }
+    const { rerender } = render(<MatchDetailDialog {...props} />)
+    expect(screen.getByText('Borrador de convocatoria')).toBeInTheDocument()
+    expect(screen.getByText('Titulares')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Imagen de la convocatoria' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver imagen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver lista' })).not.toBeInTheDocument()
+    rerender(<MatchDetailDialog {...props} canManageLineup={false} isPlayer />)
+    expect(screen.queryByText('Titulares')).not.toBeInTheDocument()
     expect(screen.getByText(/Tu disponibilidad ayuda a preparar la convocatoria/)).toBeInTheDocument()
   })
 

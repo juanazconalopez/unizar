@@ -69,6 +69,47 @@ test('owner saves a holiday and sees it in the calendar', async ({ page }) => {
   await expect(page.getByText('Sin entrenamiento de campo programado')).toBeVisible()
 })
 
+test('published match graphic fits inside the mobile detail', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Vista de lista' }).click()
+  await page.getByRole('button', { name: 'Ver detalle de Unizar Fem. vs Ingenieros Industriales' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Unizar Fem. vs Ingenieros Industriales' })
+  await expect(dialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Ver lista' }).click()
+  await expect(dialog.getByRole('heading', { name: 'Titulares' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Ver imagen' }).click()
+  await expect(dialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toBeVisible()
+  const widths = await dialog.evaluate((element) => ({ content: element.scrollWidth, visible: element.clientWidth }))
+  expect(widths.content).toBeLessThanOrEqual(widths.visible + 1)
+  await dialog.getByRole('button', { name: 'Ampliar imagen de la convocatoria' }).click()
+  const zoomDialog = page.getByRole('dialog', { name: 'Vista gráfica' })
+  const preview = zoomDialog.locator('.lineup-graphic-preview')
+  const box = await preview.boundingBox()
+  expect(box).not.toBeNull()
+  const centerX = box!.x + box!.width / 2
+  const centerY = box!.y + 90
+  const client = await page.context().newCDPSession(page)
+  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centerX - 40, y: centerY, id: 1 }, { x: centerX + 40, y: centerY, id: 2 }] })
+  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: centerX - 80, y: centerY, id: 1 }, { x: centerX + 80, y: centerY, id: 2 }] })
+  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await expect(zoomDialog.getByRole('button', { name: 'Restablecer zoom' })).toHaveText('200 %')
+  await expect(zoomDialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveCSS('width', `${Math.round(box!.width * 2)}px`)
+})
+
+test('owner can inspect the graphic lineup on mobile without horizontal overflow', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Ver ejemplo gráfico XV' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Vista gráfica' })
+  await expect(dialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Descargar PNG' })).toBeEnabled()
+  const widths = await dialog.evaluate((element) => ({ content: element.scrollWidth, visible: element.clientWidth }))
+  expect(widths.content).toBeLessThanOrEqual(widths.visible + 1)
+})
+
 test('owner manages season teams and assignments in the local demo', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
@@ -145,7 +186,7 @@ test('owner creates a season competition and uses it as the default match compet
   await page.getByRole('menuitem', { name: 'Nuevo partido' }).click()
   const matchDialog = page.getByRole('dialog', { name: 'Nuevo partido' })
   await expect(matchDialog.getByLabel('Competición').locator('option:checked')).toContainText('Copa Catalana · Predeterminada')
-  await matchDialog.getByLabel('Rival').fill('Rival multiliga E2E')
+  await matchDialog.getByLabel('Rival', { exact: true }).fill('Rival multiliga E2E')
   await matchDialog.getByLabel('Estado').selectOption('published')
   await matchDialog.getByRole('button', { name: 'Guardar partido' }).click()
 

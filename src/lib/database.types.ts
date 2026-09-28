@@ -1507,6 +1507,10 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["lineup_role"] | null
       }
+      get_published_match_coaches: {
+        Args: { checked_match_id: string }
+        Returns: { display_name: string }[]
+      }
       get_season_callup_report: {
         Args: { checked_season_id: string }
         Returns: Json
@@ -1643,6 +1647,10 @@ export type Database = {
           new_display_name: string
           new_phone: string
         }
+        Returns: undefined
+      }
+      set_managed_player_photo: {
+        Args: { checked_profile_id: string; new_avatar_path: string | null }
         Returns: undefined
       }
       update_managed_profile: {

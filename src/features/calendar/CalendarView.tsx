@@ -20,6 +20,7 @@ import type {
   Season,
   SeasonCompetition,
   SeasonTeam,
+  SeasonTeamCoach,
   SeasonCallupReport,
   SeasonBirthday,
   SeasonPlayer,
@@ -69,6 +70,9 @@ type CalendarViewProps = {
   seasons: Season[]
   seasonCompetitions?: SeasonCompetition[]
   seasonTeams?: SeasonTeam[]
+  demo?: boolean
+  demoCoaches?: SeasonTeamCoach[]
+  onLoadGraphicPhoto?: (path: string) => Promise<string>
   tasks: TrainingTask[]
   focusedDate?: string
   focusedAnnouncementId?: string
@@ -353,6 +357,10 @@ export function CalendarView(props: CalendarViewProps) {
     {lineupMatch && <MatchLineupDialog
       availability={props.availability.filter((item) => item.match_id === lineupMatch.match.id)}
       canExport
+      canGraphicExport={props.isOwner}
+      demo={props.demo}
+      demoCoaches={props.demoCoaches}
+      onLoadGraphicPhoto={props.onLoadGraphicPhoto}
       canPublish={access.lineupPublish && !lineupMatch.match.internal_fixture_id}
       canBorrowFromOtherTeams={props.isOwner}
       entries={props.lineups.filter((entry) => entry.match_id === lineupMatch.match.id)}
@@ -368,6 +376,10 @@ export function CalendarView(props: CalendarViewProps) {
     {detailMatch && <MatchDetailDialog
       canEditMatch={access.matchEdit && (!detailMatch.internal_fixture_id || Boolean(props.isOwner))}
       canManageLineup={access.lineupEdit}
+      canGraphicExport={props.isOwner}
+      demo={props.demo}
+      demoCoaches={props.demoCoaches}
+      onLoadGraphicPhoto={props.onLoadGraphicPhoto}
       canViewAvailability
       canViewReportPdf={access.report}
       isPlayer={false}

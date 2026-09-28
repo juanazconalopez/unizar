@@ -116,7 +116,7 @@ test('player fatigue options remain horizontal on mobile', async ({ page }) => {
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
 })
 
-test('player opens her profile data and sees the private photo control', async ({ page }) => {
+test('player opens her profile data without photo upload controls', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('player')
   await page.getByRole('button', { name: 'Abrir menú de usuario' }).click()
@@ -124,8 +124,11 @@ test('player opens her profile data and sees the private photo control', async (
 
   const dialog = page.getByRole('dialog', { name: 'Datos de perfil' })
   await expect(dialog.getByLabel('Email de Google')).toHaveValue('player@demo.local')
-  await expect(dialog.getByText('Fotografía de perfil')).toBeVisible()
-  await expect(dialog.getByLabel('Seleccionar fotografía')).toBeAttached()
+  await expect(dialog.locator('.profile-details-photo')).toContainText('MS')
+  const phoneWidth = (await dialog.getByLabel('Teléfono').boundingBox())?.width ?? 0
+  expect(phoneWidth).toBeGreaterThan(280)
+  await expect(dialog.getByLabel('Seleccionar fotografía')).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Eliminar foto' })).toHaveCount(0)
   await expect(dialog.getByRole('button', { name: 'Guardar datos' })).toBeDisabled()
 })
 
@@ -279,8 +282,9 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await expect(profileDialog.locator('.team-member-profile-summary')).toContainText('25 años')
   await expect(profileDialog.locator('.team-member-profile-summary')).not.toContainText('claudia@demo.local')
   await profileDialog.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
+  await expect(profileDialog.getByRole('button', { name: 'Cambiar foto' })).toBeVisible()
   await profileDialog.getByRole('button', { name: 'Editar datos' }).click()
-  await expect(profileDialog.getByText('Fotografía de perfil')).toBeVisible()
+  await expect(profileDialog.getByLabel('Seleccionar fotografía')).toHaveCount(0)
   await expect(profileDialog.getByLabel('Email de Google')).toHaveValue('claudia@demo.local')
   await expect(profileDialog.getByLabel('Email de Google')).toHaveAttribute('readonly', '')
   await profileDialog.getByLabel('Nombre y apellidos').fill('Claudia Pérez García')

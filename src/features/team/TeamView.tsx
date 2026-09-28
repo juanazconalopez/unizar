@@ -37,7 +37,7 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], seasons = [], seasonTeams = [], currentUserId, onUpdate, onSave, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], seasons = [], seasonTeams = [], currentUserId, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   profiles: Profile[]
@@ -50,6 +50,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
+  onSavePhoto?: (profile: Profile, change: File | null) => Promise<void>
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
@@ -135,7 +136,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog absences={playerAbsences} activeSeason={activeSeason} activeTeams={activeTeams} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onAssignPlayerTeam={onAssignPlayerTeam} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog absences={playerAbsences} activeSeason={activeSeason} activeTeams={activeTeams} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onAssignPlayerTeam={onAssignPlayerTeam} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSavePhoto={onSavePhoto} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
   </div>
 }
 

@@ -17,6 +17,7 @@ import type {
   Season,
   SeasonCompetition,
   SeasonTeam,
+  SeasonTeamCoach,
   SeasonPlayer,
   SeasonCallupReport,
 } from '../../types'
@@ -47,6 +48,8 @@ type MatchesViewProps = {
   seasons: Season[]
   seasonCompetitions?: SeasonCompetition[]
   seasonTeams?: SeasonTeam[]
+  demoCoaches?: SeasonTeamCoach[]
+  onLoadGraphicPhoto?: (path: string) => Promise<string>
   userId: string
   focusedDate?: string
   canViewReport?: boolean
@@ -84,6 +87,8 @@ export function MatchesView({
   seasons,
   seasonCompetitions = [],
   seasonTeams = [],
+  demoCoaches,
+  onLoadGraphicPhoto,
   userId,
   focusedDate,
   canViewReport = false,
@@ -253,6 +258,9 @@ export function MatchesView({
         <MatchLineupDialog
           availability={availability.filter((item) => item.match_id === lineupMatch.match.id)}
           canExport={canManage || canViewReport}
+          canGraphicExport={isOwner}
+          demoCoaches={demoCoaches}
+          onLoadGraphicPhoto={onLoadGraphicPhoto}
           canPublish={!lineupMatch.match.internal_fixture_id}
           canBorrowFromOtherTeams={isOwner}
           demo={demo}
@@ -277,6 +285,10 @@ export function MatchesView({
 
       {detailMatch && <MatchDetailDialog
         canEditMatch={canManage && (!detailMatch.internal_fixture_id || isOwner)}
+        canGraphicExport={isOwner}
+        demo={demo}
+        demoCoaches={demoCoaches}
+        onLoadGraphicPhoto={onLoadGraphicPhoto}
         canManageLineup={canManage}
         canViewAvailability={canViewAvailability}
         canViewReportPdf={canViewReport}

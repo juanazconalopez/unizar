@@ -2789,6 +2789,7 @@ legend {
   margin-top: 20px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 18px;
 }
 
@@ -7462,6 +7463,45 @@ button.survey-closure-card:focus-visible {
   line-height: 1.55;
 }
 
+.profile-details-photo {
+  margin: 0 0 18px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.profile-details-photo .profile-photo-field {
+  margin: 0;
+}
+
+.profile-details-photo .profile-photo-preview {
+  width: 88px;
+  height: 88px;
+  border-width: 3px;
+}
+
+.profile-details-photo figcaption {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.profile-details-photo .profile-photo-preview .avatar {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  font-size: 25px;
+}
+
+
+.profile-details-dialog .profile-details-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-details-dialog .phone-number-field {
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+}
+
 .profile-details-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7701,8 +7741,8 @@ button.survey-closure-card:focus-visible {
   z-index: 2;
   top: calc(100% + 7px);
   right: 0;
-  width: max-content;
-  min-width: 190px;
+  width: 230px;
+  max-width: calc(100vw - 48px);
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -11365,15 +11405,16 @@ button.survey-closure-card:focus-visible {
 
   .match-detail-section-actions {
     width: 100%;
-    justify-content: stretch;
+    justify-content: flex-start;
   }
 
   .match-detail-section-actions button {
-    flex: 1;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
-  .match-detail-section-actions .icon-button {
-    flex: 0 0 auto;
+  .match-detail-section-actions .match-detail-availability-button {
+    flex: 1 1 100%;
   }
 
   .availability-response {
@@ -11516,6 +11557,10 @@ button.survey-closure-card:focus-visible {
   }
 
   .phone-number-field {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-details-dialog .phone-number-field {
     grid-template-columns: 1fr;
   }
 
@@ -12928,5 +12973,96 @@ button.survey-closure-card:focus-visible {
 
   .match-report-event select {
     flex-basis: 100%;
+  }
+}
+.lineup-graphic-dialog {
+  width: min(1500px, 100%);
+  max-height: calc(100vh - 32px);
+}
+
+.lineup-graphic-help {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.lineup-graphic-preview {
+  width: min(100%, 610px);
+  margin: 0 auto;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #073f36;
+  box-shadow: 0 8px 28px rgba(5, 47, 42, .17);
+}
+
+.lineup-graphic-preview svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.lineup-graphic-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
+}
+
+.lineup-graphic-open:focus-visible {
+  outline: 3px solid var(--green);
+  outline-offset: 3px;
+}
+
+.lineup-graphic-dialog .lineup-graphic-preview {
+  width: 100%;
+  max-width: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
+.lineup-graphic-zoom-controls {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lineup-graphic-zoom-controls button {
+  min-width: 42px;
+  padding-inline: 10px;
+}
+
+.lineup-graphic-embedded {
+  margin-top: 16px;
+}
+
+.lineup-graphic-embedded .lineup-graphic-preview {
+  width: 100%;
+  max-width: 610px;
+  box-shadow: none;
+}
+
+.match-lineup-view-toggle .icon {
+  flex: none;
+}
+
+.match-lineup-view-panel[hidden] {
+  display: none;
+}
+
+.match-lineup-view-panel:not([hidden]) {
+  animation: match-lineup-view-enter 240ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+@keyframes match-lineup-view-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-lineup-view-panel:not([hidden]) {
+    animation: none;
   }
 }
