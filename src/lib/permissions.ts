@@ -100,6 +100,10 @@ export function hasPermission(profile: Profile, permission: PermissionKey, loade
 
 export function isPlayer(profile: Profile) { return profile.is_player }
 
+export function canBeSeasonTeamCoach(profile: Profile) {
+  return isEnabledProfile(profile) && (profile.is_coach || profile.is_owner)
+}
+
 export function canAccessTasks(profile: Profile, loadedKeys?: readonly string[]) {
   return hasPermission(profile, PERMISSIONS.tasks.own, loadedKeys) || hasPermission(profile, PERMISSIONS.tasks.team, loadedKeys)
 }

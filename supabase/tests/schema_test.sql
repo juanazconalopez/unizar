@@ -1,5 +1,5 @@
 begin;
-select plan(317);
+select plan(320);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -835,6 +835,9 @@ select ok(exists (select 1 from pg_trigger where tgrelid = 'public.matches'::reg
 select has_function('public', 'create_season_team', array['uuid', 'text', 'boolean'], 'owners can create season teams through a protected function');
 select has_function('public', 'assign_season_player_team', array['uuid', 'uuid', 'uuid'], 'owners can reassign a season player');
 select has_function('public', 'set_season_team_coach', array['uuid', 'uuid', 'boolean'], 'owners can scope coaches to teams');
+select like(pg_get_functiondef('public.set_season_team_coach(uuid,uuid,boolean)'::regprocedure), '%current_user_has_permission(''seasons.teams'')%', 'only authorized owners can assign team coaches');
+select like(pg_get_functiondef('public.set_season_team_coach(uuid,uuid,boolean)'::regprocedure), '%(is_coach or is_owner)%is_approved and is_active and not is_archived%', 'active approved owners can be selected as team coaches');
+select ok(not has_function_privilege('anon', 'public.set_season_team_coach(uuid,uuid,boolean)', 'EXECUTE'), 'anonymous users cannot assign team coaches');
 select ok(has_function_privilege('authenticated', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'authenticated owner sessions can invoke player team assignment');
 select ok(not has_function_privilege('anon', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'anonymous users cannot invoke player team assignment');
 select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%other_match.match_date = checked_date%', 'lineup saving prevents duplicate same-day reservations');

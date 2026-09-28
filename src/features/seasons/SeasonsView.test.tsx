@@ -41,6 +41,27 @@ describe('SeasonsView', () => {
     expect(screen.getAllByText('Unizar Femenino')).not.toHaveLength(0)
   })
 
+  test('offers active owners alongside coaches for team assignment', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const team = makeSeasonTeam()
+    const owner = makeProfile({ id: 'owner-1', display_name: 'Lucía Martín', is_player: false, is_owner: true })
+    const coach = makeProfile({ id: 'coach-1', display_name: 'Andrea López', is_player: false, is_coach: true })
+    const viewer = makeProfile({ id: 'viewer-1', display_name: 'Carlos Dirección', is_player: false, is_viewer: true })
+    const onAssignTeamCoach = vi.fn().mockResolvedValue(undefined)
+    render(<SeasonsView seasons={[season]} profiles={[owner, coach, viewer]} memberships={[]} teams={[team]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={onAssignTeamCoach} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    await user.click(screen.getByRole('button', { name: `Editar entrenadores de ${team.name}` }))
+    expect(screen.getByRole('checkbox', { name: 'Andrea López' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Lucía Martín' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Carlos Dirección' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Lucía Martín' }))
+    await waitFor(() => expect(onAssignTeamCoach).toHaveBeenCalledWith(team, owner, true))
+  })
+
   test('only offers team assignment to players linked to the selected season', async () => {
     const user = userEvent.setup()
     const season = makeSeason()

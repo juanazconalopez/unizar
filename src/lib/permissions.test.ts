@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canConfigureClub, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
+import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
   test('gives the owner every permission', () => {
@@ -37,6 +37,15 @@ describe('role permissions', () => {
     expect(isPlayer(playerViewer)).toBe(true)
     expect(canViewTeamData(playerViewer)).toBe(true)
     expect(canAccessTasks(playerViewer)).toBe(true)
+  })
+
+  test('lets active owners and coaches be assigned to season teams', () => {
+    expect(canBeSeasonTeamCoach(makeProfile({ is_owner: true, is_player: false }))).toBe(true)
+    expect(canBeSeasonTeamCoach(makeProfile({ is_coach: true, is_player: false }))).toBe(true)
+    expect(canBeSeasonTeamCoach(makeProfile({ is_viewer: true, is_player: false }))).toBe(false)
+    expect(canBeSeasonTeamCoach(makeProfile({ is_owner: true, is_active: false }))).toBe(false)
+    expect(canBeSeasonTeamCoach(makeProfile({ is_owner: true, is_approved: false }))).toBe(false)
+    expect(canBeSeasonTeamCoach(makeProfile({ is_owner: true, is_archived: true }))).toBe(false)
   })
 
   test('uses loaded role permissions as the effective source without losing owner access', () => {

@@ -6,7 +6,7 @@ import { Icon } from '../../components/Icon'
 import { displayNameContains } from '../../lib/displayNames'
 import { errorText } from '../../lib/errors'
 import { activeMembershipFor } from '../../lib/selectors'
-import { isPlayer } from '../../lib/permissions'
+import { canBeSeasonTeamCoach, isPlayer } from '../../lib/permissions'
 import type { Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
 import type { SeasonTeamValues } from '../../services/seasonTeamsService'
 
@@ -38,7 +38,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived && isPlayer(profile) && activeMembershipFor(memberships, season.id, profile.id))
     .sort((first, second) => first.display_name.localeCompare(second.display_name, 'es'))
   const activeCoaches = profiles
-    .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived && profile.is_coach)
+    .filter(canBeSeasonTeamCoach)
     .sort((first, second) => first.display_name.localeCompare(second.display_name, 'es'))
   const memberTeam = (playerId: string) => activeMembershipFor(memberships, season.id, playerId)?.season_team_id ?? ''
   const playersForTeam = (teamId: string) => activePlayers.filter((player) => memberTeam(player.id) === teamId)

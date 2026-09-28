@@ -103,8 +103,10 @@ test('owner manages season teams and assignments in the local demo', async ({ pa
 
   await dialog.getByRole('button', { name: 'Editar entrenadores de Unizar Mixto' }).click()
   await dialog.getByRole('checkbox', { name: 'Andrea López' }).check()
+  await dialog.getByRole('checkbox', { name: 'Lucía Martín' }).check()
   await dialog.getByRole('button', { name: 'Volver a equipos' }).click()
   await expect(dialog.getByRole('region', { name: 'Unizar Mixto, 1 jugadora' })).toContainText('Andrea López')
+  await expect(dialog.getByRole('region', { name: 'Unizar Mixto, 1 jugadora' })).toContainText('Lucía Martín')
 
   await dialog.getByRole('button', { name: 'Editar equipo Unizar Mixto' }).click()
   await dialog.getByLabel('Nombre').fill('Unizar Mixto A')
