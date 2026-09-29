@@ -144,7 +144,6 @@ describe('Dashboard', () => {
     expect(screen.getByText('“Potencia” es la tarea con menor participación: 1/3 respuestas.')).toBeInTheDocument()
     const speedSummary = screen.getByRole('heading', { name: 'Velocidad' }).closest('.task-card')!.querySelector<HTMLElement>('.task-results-summary')!
     const powerSummary = screen.getByRole('heading', { name: 'Potencia' }).closest('.task-card')!.querySelector<HTMLElement>('.task-results-summary')!
-    expect(speedSummary).toHaveClass('responses-first')
     expect(within(speedSummary).getByText('2/3').tagName).toBe('STRONG')
     expect(within(speedSummary).getByText('67%')).toBeInTheDocument()
     expect(within(speedSummary).getByText('Fatiga media 3.0/5')).toBeInTheDocument()
@@ -169,7 +168,7 @@ describe('Dashboard', () => {
 
     expect(screen.getByRole('heading', { name: 'Entrenamientos del equipo' })).toBeInTheDocument()
     expect(screen.getByText('Jugadoras activas').closest('article')).toHaveTextContent('0/1')
-    const resultSummary = document.querySelector<HTMLElement>('.task-results-summary.responses-first')!
+    const resultSummary = document.querySelector<HTMLElement>('.task-results-summary')!
     expect(within(resultSummary).getByText('0/1').tagName).toBe('STRONG')
     expect(within(resultSummary).getByText('0%')).toBeInTheDocument()
     expect(within(resultSummary).queryByText(/Fatiga media/)).not.toBeInTheDocument()

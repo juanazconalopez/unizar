@@ -7,12 +7,11 @@ import { formatDate } from '../../lib/dates'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
 
-export function TaskResultsSummary({ task, results, profiles, eligibleCount, prioritizeResponses = false }: {
+export function TaskResultsSummary({ task, results, profiles, eligibleCount }: {
   task: TrainingTask
   results: TaskResult[]
   profiles: Profile[]
   eligibleCount?: number
-  prioritizeResponses?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
@@ -28,28 +27,17 @@ export function TaskResultsSummary({ task, results, profiles, eligibleCount, pri
 
   return (
     <>
-      <div className={`task-results-summary${average === null ? ' empty' : ''}${prioritizeResponses ? ' responses-first' : ''}`}>
-        {prioritizeResponses && eligibleCount !== undefined ? (
-          <span>
-            Respuestas <strong>{playerResults.length}/{eligibleCount}</strong>
-            <small>
-              <span>{eligibleCount ? Math.round((playerResults.length / eligibleCount) * 100) : 0}%</span>
-              {average !== null && <><span aria-hidden="true">·</span><FatigueIcon level={Math.round(average)} size={15} /><span>Fatiga media {average.toFixed(1)}/5</span></>}
-            </small>
-          </span>
-        ) : average === null ? (
-          <span>{eligibleCount === undefined ? 'Sin resultados' : `0/${eligibleCount} respuestas · 0%`}</span>
-        ) : (
-          <span>
-            <FatigueIcon level={Math.round(average)} size={19} />
-            Fatiga media <strong>{average.toFixed(1)}/5</strong>
-            <small>
-              {eligibleCount === undefined
-                ? `${playerResults.length} ${playerResults.length === 1 ? 'respuesta' : 'respuestas'}`
-                : `${playerResults.length}/${eligibleCount} respuestas · ${eligibleCount ? Math.round((playerResults.length / eligibleCount) * 100) : 0}%`}
-            </small>
-          </span>
-        )}
+      <div className={`task-results-summary${average === null ? ' empty' : ''}`}>
+        <span>
+          Respuestas <strong>{eligibleCount === undefined ? playerResults.length : `${playerResults.length}/${eligibleCount}`}</strong>
+          {(eligibleCount !== undefined || average !== null) && <small>
+            {eligibleCount !== undefined && <span>{eligibleCount ? Math.round((playerResults.length / eligibleCount) * 100) : 0}%</span>}
+            {average !== null && <>
+              {eligibleCount !== undefined && <span aria-hidden="true">·</span>}
+              <FatigueIcon level={Math.round(average)} size={15} /><span>Fatiga media {average.toFixed(1)}/5</span>
+            </>}
+          </small>}
+        </span>
         {playerResults.length > 0 && (
           <button className="secondary-button compact" onClick={() => setOpen(true)} type="button">Ver resultados</button>
         )}

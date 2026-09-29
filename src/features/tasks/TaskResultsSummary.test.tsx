@@ -30,8 +30,9 @@ describe('TaskResultsSummary', () => {
       />,
     )
 
-    expect(screen.getByText('3.0/5')).toBeInTheDocument()
-    expect(screen.getByText('3 respuestas')).toBeInTheDocument()
+    const summary = document.querySelector<HTMLElement>('.task-results-summary')!
+    expect(within(summary).getByText('3').tagName).toBe('STRONG')
+    expect(within(summary).getByText('Fatiga media 3.0/5')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver resultados' }))
 
     const dialog = screen.getByRole('dialog', { name: task.title })
@@ -47,13 +48,12 @@ describe('TaskResultsSummary', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  test('prioritizes response count only when requested by the dashboard', () => {
+  test('shows an eligible response ratio when supplied by the dashboard', () => {
     const task = makeTask()
-    const { container } = render(<TaskResultsSummary eligibleCount={5} prioritizeResponses profiles={[makeProfile()]} results={[
+    const { container } = render(<TaskResultsSummary eligibleCount={5} profiles={[makeProfile()]} results={[
       makeResult({ fatigue_level: 2 }),
     ]} task={task} />)
     const summary = container.querySelector<HTMLElement>('.task-results-summary')!
-    expect(summary).toHaveClass('responses-first')
     expect(within(summary).getByText('1/5').tagName).toBe('STRONG')
     expect(within(summary).getByText('20%')).toBeInTheDocument()
     expect(within(summary).getByText('Fatiga media 2.0/5')).toBeInTheDocument()
@@ -62,7 +62,8 @@ describe('TaskResultsSummary', () => {
 
   test('shows an unobtrusive empty state when nobody has responded', () => {
     render(<TaskResultsSummary profiles={[]} results={[]} task={makeTask()} />)
-    expect(screen.getByText('Sin resultados')).toBeInTheDocument()
+    expect(screen.getByText('Respuestas')).toBeInTheDocument()
+    expect(screen.getByText('0').tagName).toBe('STRONG')
     expect(screen.queryByRole('button', { name: 'Ver resultados' })).not.toBeInTheDocument()
   })
 })

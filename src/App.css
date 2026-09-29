@@ -1136,6 +1136,7 @@ button:disabled {
 .task-results-summary>span {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   color: #52665f;
   font-size: 11px;
@@ -1148,22 +1149,15 @@ button:disabled {
 }
 
 .task-results-summary>span small {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   padding-left: 7px;
   border-left: 1px solid #d4dfda;
   color: var(--muted);
   font-size: 10px;
   font-weight: 600;
-}
-
-.task-results-summary.responses-first > span {
-  flex-wrap: wrap;
-}
-
-.task-results-summary.responses-first > span small {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
 .task-results-summary.empty {

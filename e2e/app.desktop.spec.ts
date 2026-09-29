@@ -21,7 +21,7 @@ test('desktop keeps the sidebar and content layout usable', async ({ page }) => 
 
 test('owner home emphasizes response counts ahead of fatigue', async ({ page }) => {
   await page.goto('/')
-  const summary = page.locator('.task-results-summary.responses-first').first()
+  const summary = page.locator('.task-results-summary').first()
   await expect(summary).toBeVisible()
   const count = summary.locator(':scope > span > strong')
   const secondary = summary.locator(':scope > span > small')
@@ -32,6 +32,21 @@ test('owner home emphasizes response counts ahead of fatigue', async ({ page }) 
     secondary: Number.parseFloat(getComputedStyle(element.querySelector('small')!).fontSize),
   }))
   expect(sizes.count).toBeGreaterThan(sizes.secondary)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const box = await summary.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+})
+
+test('calendar task cards show responses before fatigue', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Calendario' }).click()
+  const summary = page.locator('.selected-week-tasks .task-results-summary').filter({ hasText: 'Fatiga media' }).first()
+  await expect(summary).toBeVisible()
+  await expect(summary.locator(':scope > span > strong')).toHaveText(/^[0-9]+$/)
+  await expect(summary.locator(':scope > span > small')).toContainText('Fatiga media')
+  await expect(summary.locator(':scope > span > small')).not.toContainText('respuestas')
 
   await page.setViewportSize({ width: 390, height: 844 })
   const box = await summary.boundingBox()
