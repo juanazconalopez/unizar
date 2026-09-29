@@ -8241,6 +8241,51 @@ button.survey-closure-card:focus-visible {
   text-align: center;
 }
 
+.profile-photo-edit-current { margin: -5px 0 18px; }
+
+.profile-photo-crop {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  margin: 0 0 18px;
+}
+
+.profile-photo-crop > strong { font-size: 13px; }
+.profile-photo-crop > p { margin: 0; color: var(--muted); font-size: 11px; text-align: center; }
+
+.profile-photo-crop-stage {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #dce8e3;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.profile-photo-crop-stage:active { cursor: grabbing; }
+.profile-photo-crop-stage:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+.profile-photo-crop-stage img { position: absolute; display: block; max-width: none; pointer-events: none; }
+.profile-photo-crop-guide {
+  position: absolute;
+  inset: 0;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 40px rgba(0, 31, 24, .4), inset 0 0 0 1px rgba(0, 31, 24, .35);
+  pointer-events: none;
+}
+.profile-photo-crop-zoom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(260px, 100%);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.profile-photo-crop-zoom input { flex: 1; accent-color: var(--green); }
+
 .danger-text {
   color: #984e42;
 }

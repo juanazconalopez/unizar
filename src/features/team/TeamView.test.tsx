@@ -4,6 +4,18 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { makePlayerAbsence, makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSeasonTeam } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
+vi.mock('../profile/profilePhotoCrop', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../profile/profilePhotoCrop')>()
+  return { ...actual, exportPhotoCrop: vi.fn(async () => new File(['cropped'], 'foto-perfil.jpg', { type: 'image/jpeg' })) }
+})
+
+async function prepareCrop(dialog: HTMLElement) {
+  const image = await within(dialog).findByAltText('Vista previa del encuadre')
+  Object.defineProperties(image, { naturalWidth: { value: 800 }, naturalHeight: { value: 1200 } })
+  fireEvent.load(image)
+  await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Guardar foto' })).toBeEnabled())
+}
+
 afterEach(() => {
   vi.useRealTimers()
   vi.restoreAllMocks()
@@ -87,9 +99,11 @@ describe('TeamView', () => {
     const file = new File(['photo'], 'ana.png', { type: 'image/png' })
     await user.upload(within(dialog).getByLabelText('Seleccionar fotografía'), file)
     expect(await within(dialog).findByAltText('Fotografía de Ana Martín')).toHaveAttribute('src', expect.stringContaining('data:image/png;base64,'))
+    await prepareCrop(dialog)
+    expect(within(dialog).getByLabelText('Zoom de la fotografía')).toHaveValue('1.5')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar foto' }))
 
-    expect(onSavePhoto).toHaveBeenCalledWith(profile, file)
+    expect(onSavePhoto).toHaveBeenCalledWith(profile, expect.objectContaining({ name: 'foto-perfil.jpg', type: 'image/jpeg' }))
     expect(screen.queryByRole('dialog', { name: 'Foto de Ana Martín' })).not.toBeInTheDocument()
   })
 
@@ -112,8 +126,9 @@ describe('TeamView', () => {
     const photoDialog = screen.getByRole('dialog', { name: `Foto de ${name}` })
     const file = new File(['photo'], 'perfil.png', { type: 'image/png' })
     await user.upload(within(photoDialog).getByLabelText('Seleccionar fotografía'), file)
+    await prepareCrop(photoDialog)
     await user.click(within(photoDialog).getByRole('button', { name: 'Guardar foto' }))
-    expect(onSavePhoto).toHaveBeenCalledWith(profile, file)
+    expect(onSavePhoto).toHaveBeenCalledWith(profile, expect.objectContaining({ name: 'foto-perfil.jpg', type: 'image/jpeg' }))
   })
 
   test('does not offer a photo action for an inactive member', async () => {

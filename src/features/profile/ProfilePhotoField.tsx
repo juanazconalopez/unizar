@@ -50,7 +50,7 @@ export function ProfilePhotoField({ name, avatarPath, photoChange, editable = fa
     </div>
     {editable && <div className="profile-photo-copy">
       <strong>Fotografía de perfil</strong>
-      <span>Se recortará y comprimirá antes de guardarse.</span>
+      <span>Podrás ajustar el encuadre antes de guardar. La foto se comprimirá automáticamente.</span>
       {onChange && <div className="profile-photo-actions">
         <label className="secondary-button compact">{imageUrl ? 'Cambiar foto' : 'Añadir foto'}
           <input accept="image/*" aria-label="Seleccionar fotografía" onChange={(event) => {

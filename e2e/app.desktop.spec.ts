@@ -194,14 +194,82 @@ test('owner uploads a player photo from profile actions in the local demo', asyn
 
   const photoDialog = page.getByRole('dialog', { name: 'Foto de Claudia Pérez' })
   await expect(photoDialog.getByRole('button', { name: 'Guardar foto' })).toBeDisabled()
+  await photoDialog.getByRole('button', { name: 'Ajustar foto actual' }).click()
+  await expect(photoDialog.getByLabel('Mover fotografía para encuadrarla')).toBeVisible()
   await photoDialog.getByLabel('Seleccionar fotografía').setInputFiles({
     name: 'claudia.png', mimeType: 'image/png',
     buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/RZkAAAAASUVORK5CYII=', 'base64'),
   })
+  await expect(photoDialog.getByLabel('Mover fotografía para encuadrarla')).toBeVisible()
+  await expect(photoDialog.getByLabel('Zoom de la fotografía')).toBeEnabled()
   await expect(photoDialog.getByRole('button', { name: 'Guardar foto' })).toBeEnabled()
   await photoDialog.getByRole('button', { name: 'Guardar foto' }).click()
   await expect(photoDialog).toHaveCount(0)
   await expect(page.getByText('Foto de Claudia Pérez actualizada en la demo.')).toBeVisible()
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+  await expect(page.getByRole('dialog', { name: 'Claudia Pérez' }).getByAltText('Fotografía de Claudia Pérez')).toHaveAttribute('src', /^data:image\/jpeg;base64,/)
+})
+
+test('owner can readjust a stored photo without selecting a file again', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+  const profile = page.getByRole('dialog', { name: 'Claudia Pérez' })
+  await profile.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
+  await profile.getByRole('button', { name: 'Cambiar foto' }).click()
+  const photo = page.getByRole('dialog', { name: 'Foto de Claudia Pérez' })
+  await photo.getByRole('button', { name: 'Ajustar foto actual' }).click()
+  const zoom = photo.getByLabel('Zoom de la fotografía')
+  await expect(zoom).toBeEnabled()
+  await zoom.focus()
+  await zoom.press('ArrowRight')
+  await photo.getByRole('button', { name: 'Guardar foto' }).click()
+  await expect(photo).toHaveCount(0)
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+  await expect(page.getByRole('dialog', { name: 'Claudia Pérez' }).getByAltText('Fotografía de Claudia Pérez')).toHaveAttribute('src', /^data:image\/jpeg;base64,/)
+})
+
+test('owner can move and zoom a portrait before saving it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
+  await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
+  const profile = page.getByRole('dialog', { name: 'Claudia Pérez' })
+  await profile.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
+  await profile.getByRole('button', { name: 'Cambiar foto' }).click()
+  const photo = page.getByRole('dialog', { name: 'Foto de Claudia Pérez' })
+  const portrait = await page.evaluate(() => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 400
+    canvas.height = 800
+    const context = canvas.getContext('2d')!
+    context.fillStyle = '#f7f3ef'
+    context.fillRect(0, 0, 400, 800)
+    context.fillStyle = '#185d4f'
+    context.fillRect(80, 80, 240, 240)
+    return canvas.toDataURL('image/png').split(',')[1]
+  })
+  await photo.getByLabel('Seleccionar fotografía').setInputFiles({ name: 'retrato.png', mimeType: 'image/png', buffer: Buffer.from(portrait, 'base64') })
+  const zoom = photo.getByLabel('Zoom de la fotografía')
+  await expect(zoom).toHaveValue('1.5')
+  const stage = photo.getByLabel('Mover fotografía para encuadrarla')
+  const image = stage.getByAltText('Vista previa del encuadre')
+  const before = await image.getAttribute('style')
+  const box = await stage.boundingBox()
+  if (!box) throw new Error('No se ha podido medir el encuadre.')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 35)
+  await page.mouse.up()
+  await expect(image).not.toHaveAttribute('style', before ?? '')
+  await zoom.focus()
+  await zoom.press('ArrowRight')
+  await expect(zoom).toHaveValue('1.55')
+  await photo.getByRole('button', { name: 'Guardar foto' }).click()
+  await expect(photo).toHaveCount(0)
 })
 
 test('owner uploads photos for coach, Dirección and owner in the local demo', async ({ page }) => {
