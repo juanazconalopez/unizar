@@ -47,6 +47,19 @@ describe('TaskResultsSummary', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  test('prioritizes response count only when requested by the dashboard', () => {
+    const task = makeTask()
+    const { container } = render(<TaskResultsSummary eligibleCount={5} prioritizeResponses profiles={[makeProfile()]} results={[
+      makeResult({ fatigue_level: 2 }),
+    ]} task={task} />)
+    const summary = container.querySelector<HTMLElement>('.task-results-summary')!
+    expect(summary).toHaveClass('responses-first')
+    expect(within(summary).getByText('1/5').tagName).toBe('STRONG')
+    expect(within(summary).getByText('20%')).toBeInTheDocument()
+    expect(within(summary).getByText('Fatiga media 2.0/5')).toBeInTheDocument()
+    expect(summary.textContent?.indexOf('Respuestas')).toBeLessThan(summary.textContent!.indexOf('Fatiga media'))
+  })
+
   test('shows an unobtrusive empty state when nobody has responded', () => {
     render(<TaskResultsSummary profiles={[]} results={[]} task={makeTask()} />)
     expect(screen.getByText('Sin resultados')).toBeInTheDocument()

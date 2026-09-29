@@ -1155,6 +1155,17 @@ button:disabled {
   font-weight: 600;
 }
 
+.task-results-summary.responses-first > span {
+  flex-wrap: wrap;
+}
+
+.task-results-summary.responses-first > span small {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
 .task-results-summary.empty {
   min-height: 40px;
   color: var(--muted);

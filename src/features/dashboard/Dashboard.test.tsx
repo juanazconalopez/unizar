@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, mondayFor, todayIso } from '../../lib/dates'
@@ -142,8 +142,14 @@ describe('Dashboard', () => {
     expect(screen.getByText('Progreso del equipo').closest('article')).toHaveTextContent('3/650%')
     expect(screen.getByText('1 jugadora todavía no ha comenzado')).toBeInTheDocument()
     expect(screen.getByText('“Potencia” es la tarea con menor participación: 1/3 respuestas.')).toBeInTheDocument()
-    expect(screen.getByText('2/3 respuestas · 67%')).toBeInTheDocument()
-    expect(screen.getByText('1/3 respuestas · 33%')).toBeInTheDocument()
+    const speedSummary = screen.getByRole('heading', { name: 'Velocidad' }).closest('.task-card')!.querySelector<HTMLElement>('.task-results-summary')!
+    const powerSummary = screen.getByRole('heading', { name: 'Potencia' }).closest('.task-card')!.querySelector<HTMLElement>('.task-results-summary')!
+    expect(speedSummary).toHaveClass('responses-first')
+    expect(within(speedSummary).getByText('2/3').tagName).toBe('STRONG')
+    expect(within(speedSummary).getByText('67%')).toBeInTheDocument()
+    expect(within(speedSummary).getByText('Fatiga media 3.0/5')).toBeInTheDocument()
+    expect(within(powerSummary).getByText('1/3').tagName).toBe('STRONG')
+    expect(within(powerSummary).getByText('33%')).toBeInTheDocument()
     expect(screen.queryByText('Borrador oculto')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Completar' })).not.toBeInTheDocument()
   })
@@ -163,7 +169,10 @@ describe('Dashboard', () => {
 
     expect(screen.getByRole('heading', { name: 'Entrenamientos del equipo' })).toBeInTheDocument()
     expect(screen.getByText('Jugadoras activas').closest('article')).toHaveTextContent('0/1')
-    expect(screen.getByText('0/1 respuestas · 0%')).toBeInTheDocument()
+    const resultSummary = document.querySelector<HTMLElement>('.task-results-summary.responses-first')!
+    expect(within(resultSummary).getByText('0/1').tagName).toBe('STRONG')
+    expect(within(resultSummary).getByText('0%')).toBeInTheDocument()
+    expect(within(resultSummary).queryByText(/Fatiga media/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Completar' })).not.toBeInTheDocument()
   })
 

@@ -182,6 +182,7 @@ export function Dashboard({ profile, profiles = [], memberships, tasks, announce
                 key={task.id}
                 managementSummary={isTeamDashboard ? <TaskResultsSummary
                   eligibleCount={eligiblePlayerIdsByTask.get(task.id)?.size ?? 0}
+                  prioritizeResponses
                   profiles={profiles}
                   results={validTeamResults}
                   task={task}

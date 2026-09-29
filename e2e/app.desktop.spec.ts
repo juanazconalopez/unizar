@@ -19,6 +19,26 @@ test('desktop keeps the sidebar and content layout usable', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Encuestas', exact: true })).toBeVisible()
 })
 
+test('owner home emphasizes response counts ahead of fatigue', async ({ page }) => {
+  await page.goto('/')
+  const summary = page.locator('.task-results-summary.responses-first').first()
+  await expect(summary).toBeVisible()
+  const count = summary.locator(':scope > span > strong')
+  const secondary = summary.locator(':scope > span > small')
+  await expect(count).toHaveText(/^[0-9]+\/[0-9]+$/)
+  await expect(secondary).toContainText('Fatiga media')
+  const sizes = await summary.evaluate((element) => ({
+    count: Number.parseFloat(getComputedStyle(element.querySelector('strong')!).fontSize),
+    secondary: Number.parseFloat(getComputedStyle(element.querySelector('small')!).fontSize),
+  }))
+  expect(sizes.count).toBeGreaterThan(sizes.secondary)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const box = await summary.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+})
+
 test('desktop shows up to three season rosters per row', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()

@@ -7,11 +7,12 @@ import { formatDate } from '../../lib/dates'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, TaskResult, TrainingTask } from '../../types'
 
-export function TaskResultsSummary({ task, results, profiles, eligibleCount }: {
+export function TaskResultsSummary({ task, results, profiles, eligibleCount, prioritizeResponses = false }: {
   task: TrainingTask
   results: TaskResult[]
   profiles: Profile[]
   eligibleCount?: number
+  prioritizeResponses?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]))
@@ -27,8 +28,16 @@ export function TaskResultsSummary({ task, results, profiles, eligibleCount }: {
 
   return (
     <>
-      <div className={`task-results-summary${average === null ? ' empty' : ''}`}>
-        {average === null ? (
+      <div className={`task-results-summary${average === null ? ' empty' : ''}${prioritizeResponses ? ' responses-first' : ''}`}>
+        {prioritizeResponses && eligibleCount !== undefined ? (
+          <span>
+            Respuestas <strong>{playerResults.length}/{eligibleCount}</strong>
+            <small>
+              <span>{eligibleCount ? Math.round((playerResults.length / eligibleCount) * 100) : 0}%</span>
+              {average !== null && <><span aria-hidden="true">·</span><FatigueIcon level={Math.round(average)} size={15} /><span>Fatiga media {average.toFixed(1)}/5</span></>}
+            </small>
+          </span>
+        ) : average === null ? (
           <span>{eligibleCount === undefined ? 'Sin resultados' : `0/${eligibleCount} respuestas · 0%`}</span>
         ) : (
           <span>
