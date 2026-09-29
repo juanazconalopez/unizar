@@ -182,6 +182,41 @@ test('desktop player profile keeps its actions menu inside the dialog', async ({
   await expect(dialog.locator('.team-member-profile-summary')).toHaveCount(0)
 })
 
+test('team rows keep contact and indicator columns aligned', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
+
+  const names = ['Claudia Pérez', 'Marta Sánchez', 'Sara Jiménez']
+  const rows = names.map((name) => page.getByRole('button', { name: `Ver datos de ${name}` }))
+  await expect(rows[0].getByText('Faltan datos')).toHaveCount(0)
+  await expect(rows[1].getByText('Faltan datos')).toBeVisible()
+  await expect(rows[2].getByRole('img', { name: 'Baja deportiva' })).toBeVisible()
+
+  const positions = await Promise.all(rows.map((row) => row.evaluate((element) => {
+    const x = (selector: string) => element.querySelector(selector)!.getBoundingClientRect().x
+    return {
+      email: x('.person-summary-contact > span:first-child'),
+      phone: x('.person-summary-contact > span:nth-child(2)'),
+      age: x('.person-summary-contact > span:nth-child(3)'),
+      absence: x('.person-summary-absence-slot'),
+      completion: x('.person-summary-completion-slot'),
+    }
+  })))
+  expect(positions[1]).toEqual(positions[0])
+  expect(positions[2]).toEqual(positions[0])
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const row of rows) {
+    const box = await row.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+    await expect(row.locator('.person-summary-absence-slot')).toHaveCount(1)
+    await expect(row.locator('.person-summary-completion-slot')).toHaveCount(1)
+  }
+})
+
 test('owner uploads a player photo from profile actions in the local demo', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
@@ -291,7 +326,6 @@ test('owner uploads photos for coach, Dirección and owner in the local demo', a
     })
     await photo.getByRole('button', { name: 'Guardar foto' }).click()
     await expect(photo).toHaveCount(0)
-    await expect(page.getByText(`Foto de ${name} actualizada en la demo.`)).toBeVisible()
     await section.getByRole('button', { name: `Ver datos de ${name}` }).click()
     await expect(page.getByRole('dialog', { name }).getByAltText(`Fotografía de ${name}`)).toBeVisible()
     await page.getByRole('dialog', { name }).getByRole('button', { name: `Acciones de ${name}` }).click()

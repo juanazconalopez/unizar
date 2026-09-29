@@ -156,16 +156,15 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
 function PersonCard({ person, details, currentAbsence, warning = false, onOpen }: { person: Profile; details?: ProfilePrivateDetails; currentAbsence?: PlayerAbsence; warning?: boolean; onOpen: () => void }) {
   const missingData = !details?.email || !details.phone || !details.birth_date || (person.is_player && !person.avatar_path)
   const age = ageOnDate(details?.birth_date, todayIso())
-  const hasState = Boolean(currentAbsence || missingData || warning)
   const compact = person.is_archived || (person.is_approved && !person.is_active)
-  return <button aria-label={`Ver datos de ${person.display_name}`} className={`person-row person-summary-card${person.is_archived ? ' archived-person' : ''}${compact ? ' inactive-person' : ''}${person.is_owner ? ' owner-person' : ''}${hasState ? ' has-state' : ''}`} onClick={onOpen} type="button">
+  return <button aria-label={`Ver datos de ${person.display_name}`} className={`person-row person-summary-card${person.is_archived ? ' archived-person' : ''}${compact ? ' inactive-person' : ''}${person.is_owner ? ' owner-person' : ''}`} onClick={onOpen} type="button">
     <span className="person-identity"><Avatar name={person.display_name} /><span><strong>{person.display_name}</strong><small>Desde {formatDate(person.created_at.slice(0, 10), { month: 'long', year: 'numeric' })}</small></span></span>
     {!compact && <span className="person-summary-contact"><span><b>Email</b>{details?.email || 'Sin email'}</span><span><b>Teléfono</b>{details?.phone || 'Sin teléfono'}</span><span><b>Edad</b>{age === null ? 'Sin edad' : `${age} años`}</span></span>}
-    {hasState && <span className="person-summary-state">
-      {currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}
-      {missingData && <small className="profile-completion-state incomplete">Faltan datos</small>}
+    <span className="person-summary-state">
+      <span className="person-summary-absence-slot">{currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}</span>
+      <span className="person-summary-completion-slot">{missingData && <small className="profile-completion-state incomplete">Faltan datos</small>}</span>
       {warning && <small className="person-duplicate-compact"><Icon name="warning" size={13} />Posible duplicado</small>}
-    </span>}
+    </span>
     <Icon name="arrow" size={17} />
   </button>
 }

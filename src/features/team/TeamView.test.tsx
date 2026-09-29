@@ -36,6 +36,8 @@ describe('TeamView', () => {
     expect(card).not.toHaveTextContent('Activa')
     expect(card).not.toHaveTextContent('Jugadora')
     expect(card).not.toHaveTextContent('Faltan datos')
+    expect(card.querySelector('.person-summary-absence-slot')).toBeEmptyDOMElement()
+    expect(card.querySelector('.person-summary-completion-slot')).toBeEmptyDOMElement()
     expect(within(card).queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
 
@@ -154,6 +156,7 @@ describe('TeamView', () => {
 
     const activeCard = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
     expect(within(activeCard).getByRole('img', { name: 'Baja deportiva' }).querySelector('svg')).toBeInTheDocument()
+    expect(activeCard.querySelector('.person-summary-absence-slot')).toContainElement(within(activeCard).getByRole('img', { name: 'Baja deportiva' }))
     expect(activeCard).not.toHaveTextContent('Baja deportiva:')
     expect(activeCard).not.toHaveTextContent('20 sept 2026')
     expect(within(screen.getByRole('button', { name: 'Ver datos de Laura Pérez' })).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()

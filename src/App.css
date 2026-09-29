@@ -7718,13 +7718,35 @@ button.survey-closure-card:focus-visible {
 }
 
 .person-summary-state {
-  min-width: 0;
-  flex: 0 1 auto;
+  width: 122px;
+  flex: 0 0 122px;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+}
+
+.person-summary-absence-slot {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.person-summary-completion-slot {
+  min-height: 20px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
+}
+
+.person-summary-completion-slot .profile-completion-state {
+  white-space: nowrap;
+}
+
+.person-summary-state .person-duplicate-compact {
+  grid-column: 1 / -1;
+  justify-self: end;
 }
 
 .member-active-state {
@@ -11278,23 +11300,31 @@ button.survey-closure-card:focus-visible {
 
   .person-summary-card {
     display: grid;
+    grid-template-areas: 'identity arrow' 'contact contact' 'state state';
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .person-summary-card .person-identity,
-  .person-summary-contact,
+  .person-summary-card.inactive-person {
+    grid-template-areas: 'identity arrow' 'state state';
+  }
+
+  .person-summary-card .person-identity {
+    grid-area: identity;
+  }
+
+  .person-summary-contact {
+    grid-area: contact;
+  }
+
   .person-summary-state {
+    grid-area: state;
     width: 100%;
     min-width: 0;
   }
 
-  .person-summary-contact,
-  .person-summary-state {
-    grid-column: 1 / -1;
-  }
-
-  .person-summary-state {
-    justify-content: flex-start;
+  .person-summary-card > .icon {
+    grid-area: arrow;
+    justify-self: end;
   }
 
   .approval-request.has-possible-match {
@@ -11601,22 +11631,14 @@ button.survey-closure-card:focus-visible {
   .person-summary-card {
     position: relative;
     padding: 14px;
-    grid-template-areas: 'identity arrow' 'contact contact';
+    grid-template-areas: 'identity arrow' 'contact contact' 'state state';
     grid-template-columns: minmax(0, 1fr) auto;
     row-gap: 12px;
     column-gap: 10px;
     box-shadow: 0 4px 12px rgba(31, 63, 54, .035);
   }
 
-  .person-summary-card.has-state {
-    grid-template-areas: 'identity arrow' 'contact contact' 'state state';
-  }
-
   .person-summary-card.inactive-person {
-    grid-template-areas: 'identity arrow';
-  }
-
-  .person-summary-card.inactive-person.has-state {
     grid-template-areas: 'identity arrow' 'state state';
   }
 
