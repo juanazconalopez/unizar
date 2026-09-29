@@ -1,5 +1,5 @@
 import { activeMembershipFor } from '../../lib/selectors'
-import { archiveManagedProfile, updateManagedPlayerPhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { archiveManagedProfile, updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
@@ -126,9 +126,9 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.notify(`Datos de ${values.displayName} actualizados.`)
       await context.reloadData()
     },
-    updateManagedPlayerPhoto: async (profile: Profile, photoChange: File | null) => {
+    updateManagedProfilePhoto: async (profile: Profile, photoChange: File | null) => {
       context.requireConnection()
-      await updateManagedPlayerPhoto(profile, photoChange)
+      await updateManagedProfilePhoto(profile, photoChange)
       context.notify(`Foto de ${profile.display_name} actualizada.`)
       await context.reloadData()
     },

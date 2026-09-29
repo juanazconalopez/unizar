@@ -245,6 +245,7 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await page.getByRole('menuitem', { name: 'Equipo' }).click()
   await expect(page.getByRole('heading', { name: 'Ajustes - Equipo', exact: true })).toBeVisible()
   await expect(page.getByText('Posible duplicado')).toBeVisible()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
   const saraCard = page.getByRole('button', { name: 'Ver datos de Sara Jiménez' })
   await expect(saraCard.getByRole('img', { name: 'Baja deportiva' })).toBeVisible()
   await expect(saraCard).not.toContainText('Baja deportiva:')
@@ -260,7 +261,7 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await saraProfile.getByRole('button', { name: 'Acciones de Sara Jiménez' }).click()
   await saraProfile.getByRole('button', { name: 'Cerrar' }).click()
   const martaCard = page.getByRole('button', { name: 'Ver datos de Marta Sánchez' })
-  await expect(martaCard).toContainText('Activa')
+  await expect(martaCard).not.toContainText('Activa')
   await expect(martaCard.getByRole('checkbox')).toHaveCount(0)
   const emailBox = await martaCard.locator('.person-summary-contact > span').nth(0).boundingBox()
   const phoneBox = await martaCard.locator('.person-summary-contact > span').nth(1).boundingBox()
@@ -274,6 +275,9 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await expect(page.getByText('Claudia Pérez')).toBeVisible()
   await expect(page.getByText('Marta Sánchez')).toHaveCount(0)
   await page.getByRole('searchbox', { name: 'Buscar por nombre' }).press('Escape')
+  if (!(await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).isVisible())) {
+    await page.getByText('Jugadoras activas', { exact: true }).click()
+  }
 
   await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
@@ -329,10 +333,30 @@ test('selecting attendance keeps the mobile header and navigation fixed', async 
   expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
 })
 
+test('owner uploads and sees a coach photo on mobile', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.locator('.team-member-group').filter({ has: page.locator('summary', { hasText: 'Entrenadores' }) }).locator('summary').click()
+  await page.getByRole('button', { name: 'Ver datos de Andrea López' }).click()
+  const profile = page.getByRole('dialog', { name: 'Andrea López' })
+  await profile.getByRole('button', { name: 'Acciones de Andrea López' }).click()
+  await profile.getByRole('button', { name: 'Subir foto' }).click()
+  const photo = page.getByRole('dialog', { name: 'Foto de Andrea López' })
+  await photo.getByLabel('Seleccionar fotografía').setInputFiles({
+    name: 'andrea.png', mimeType: 'image/png',
+    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/RZkAAAAASUVORK5CYII=', 'base64'),
+  })
+  await photo.getByRole('button', { name: 'Guardar foto' }).click()
+  await page.getByRole('button', { name: 'Ver datos de Andrea López' }).click()
+  await expect(page.getByRole('dialog', { name: 'Andrea López' }).getByAltText('Fotografía de Andrea López')).toBeVisible()
+})
+
 test('owner registers a sporting absence and sees its red indicator on mobile', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
   const card = page.getByRole('button', { name: 'Ver datos de Claudia Pérez' })
   await expect(card.getByRole('img', { name: 'Baja deportiva' })).toHaveCount(0)
   await card.click()

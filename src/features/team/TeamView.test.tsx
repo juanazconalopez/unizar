@@ -14,15 +14,16 @@ describe('TeamView', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-08-31T12:00:00'))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile({ avatar_path: 'players/ana.webp' })]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     const card = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
     expect(card).toHaveTextContent('ana@example.com')
     expect(card).toHaveTextContent('+34 600 000 000')
     expect(card).toHaveTextContent('28 años')
-    expect(card).toHaveTextContent('Activa')
-    expect(card).toHaveTextContent('Jugadora')
-    expect(card).toHaveTextContent('Datos completos')
+    expect(card).not.toHaveTextContent('Activa')
+    expect(card).not.toHaveTextContent('Jugadora')
+    expect(card).not.toHaveTextContent('Faltan datos')
     expect(within(card).queryByRole('checkbox')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
 
@@ -43,6 +44,7 @@ describe('TeamView', () => {
     render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()}
       profiles={[makeProfile()]} provisionalAttendance={[makeProvisionalAttendance()]}
       provisionalPlayers={[makeProvisionalPlayer()]} onLinkProvisionalPlayers={vi.fn()} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     let dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
@@ -76,6 +78,7 @@ describe('TeamView', () => {
     const profile = makeProfile()
     const onSavePhoto = vi.fn().mockResolvedValue(undefined)
     render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={onSavePhoto} onUpdate={vi.fn()} profiles={[profile]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
@@ -90,6 +93,39 @@ describe('TeamView', () => {
     expect(screen.queryByRole('dialog', { name: 'Foto de Ana Martín' })).not.toBeInTheDocument()
   })
 
+  test.each([
+    { group: 'Entrenadores', role: { is_player: false, is_coach: true }, name: 'Andrea Entrenadora' },
+    { group: 'Dirección', role: { is_player: false, is_viewer: true }, name: 'Carlos Dirección' },
+    { group: 'Owners', role: { is_player: false, is_owner: true }, name: 'Lucía Owner' },
+  ])('lets the owner upload a photo for an active member of $group', async ({ group, role, name }) => {
+    const user = userEvent.setup()
+    const profile = makeProfile({ ...role, display_name: name })
+    const onSavePhoto = vi.fn().mockResolvedValue(undefined)
+    render(<TeamView currentUserId="owner-1" onSavePhoto={onSavePhoto} onUpdate={vi.fn()} profiles={[profile]} />)
+
+    await user.click(within(document.querySelector<HTMLElement>('.team-member-groups')!).getByText(group))
+    await user.click(screen.getByRole('button', { name: `Ver datos de ${name}` }))
+    const dialog = screen.getByRole('dialog', { name })
+    expect(dialog.querySelector('.team-member-profile-summary')).not.toBeNull()
+    await user.click(within(dialog).getByRole('button', { name: `Acciones de ${name}` }))
+    await user.click(within(dialog).getByRole('button', { name: 'Subir foto' }))
+    const photoDialog = screen.getByRole('dialog', { name: `Foto de ${name}` })
+    const file = new File(['photo'], 'perfil.png', { type: 'image/png' })
+    await user.upload(within(photoDialog).getByLabelText('Seleccionar fotografía'), file)
+    await user.click(within(photoDialog).getByRole('button', { name: 'Guardar foto' }))
+    expect(onSavePhoto).toHaveBeenCalledWith(profile, file)
+  })
+
+  test('does not offer a photo action for an inactive member', async () => {
+    const user = userEvent.setup()
+    const profile = makeProfile({ display_name: 'Andrea Inactiva', is_player: false, is_coach: true, is_active: false })
+    render(<TeamView currentUserId="owner-1" onSavePhoto={vi.fn()} onUpdate={vi.fn()} profiles={[profile]} />)
+    await user.click(screen.getByText('Entrenadores'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Andrea Inactiva' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Andrea Inactiva' }))
+    expect(screen.queryByRole('button', { name: 'Subir foto' })).not.toBeInTheDocument()
+  })
+
   test('marks only a current sporting absence in the list and shows its dates in the profile', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
@@ -99,6 +135,7 @@ describe('TeamView', () => {
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()}
       profiles={[makeProfile(), makeProfile({ id: 'player-2', display_name: 'Laura Pérez' })]}
       playerAbsences={[active, upcoming]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     const activeCard = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
     expect(within(activeCard).getByRole('img', { name: 'Baja deportiva' }).querySelector('svg')).toBeInTheDocument()
@@ -118,6 +155,7 @@ describe('TeamView', () => {
     const user = userEvent.setup()
     const onSaveAbsence = vi.fn().mockResolvedValue(undefined)
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} onSaveAbsence={onSaveAbsence} profiles={[makeProfile()]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
@@ -138,6 +176,7 @@ describe('TeamView', () => {
     const user = userEvent.setup()
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
@@ -152,6 +191,7 @@ describe('TeamView', () => {
     const profile = makeProfile()
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(<TeamView currentUserId="owner-1" onSave={onSave} onUpdate={vi.fn()} profiles={[profile]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
@@ -200,10 +240,11 @@ describe('TeamView', () => {
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[active, inactive, coach]} profilePrivateDetails={[
       makeProfilePrivateDetails({ profile_id: 'inactive', email: 'paula@example.com' }),
     ]} />)
+    await user.click(screen.getByText('Jugadoras inactivas'))
 
     const inactiveCard = screen.getByRole('button', { name: 'Ver datos de Paula Inactiva' })
-    expect(inactiveCard).toHaveTextContent('Inactiva')
-    expect(inactiveCard).toHaveTextContent('Jugadora')
+    expect(inactiveCard).not.toHaveTextContent('Jugadora')
+    expect(inactiveCard).toHaveTextContent('Faltan datos')
     expect(inactiveCard).not.toHaveTextContent('paula@example.com')
     expect(screen.getByText('3 aprobados · 0 pendientes · 2 activas · 1 inactivas')).toBeInTheDocument()
     expect(screen.getByText('2 jugadoras · 1 entrenador · 0 dirección')).toBeInTheDocument()
@@ -217,18 +258,53 @@ describe('TeamView', () => {
     expect(screen.getByText('0 resultados')).toBeInTheDocument()
   })
 
-  test('uses a distinct colour label for each team role', () => {
+  test('groups cumulative roles without repeating status and role pills in each row', async () => {
+    const user = userEvent.setup()
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[
       makeProfile({ id: 'player', display_name: 'Paula Jugadora' }),
       makeProfile({ id: 'coach', display_name: 'Clara Entrenador', is_player: false, is_coach: true }),
       makeProfile({ id: 'viewer', display_name: 'Diana Dirección', is_player: false, is_viewer: true }),
-      makeProfile({ id: 'owner', display_name: 'Olga Owner', is_player: false, is_owner: true }),
+      makeProfile({ id: 'owner', display_name: 'Olga Owner', is_player: true, is_owner: true }),
     ]} />)
 
-    expect(within(screen.getByRole('button', { name: 'Ver datos de Paula Jugadora' })).getByText('Jugadora')).toHaveClass('jugadora-role')
-    expect(within(screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })).getByText('Entrenador')).toHaveClass('entrenador-role')
-    expect(within(screen.getByRole('button', { name: 'Ver datos de Diana Dirección' })).getByText('Dirección')).toHaveClass('direccion-role')
-    expect(within(screen.getByRole('button', { name: 'Ver datos de Olga Owner' })).getByText('Owner')).toHaveClass('owner-role')
+    for (const [title, count] of [['Jugadoras activas', '2'], ['Jugadoras inactivas', '0'], ['Entrenadores', '1'], ['Dirección', '1'], ['Owners', '1']]) {
+      expect(within(document.querySelector<HTMLElement>('.team-member-groups')!).getByText(title).closest('summary')).toHaveTextContent(count)
+    }
+    const activeGroup = screen.getByText('Jugadoras activas').closest('details')!
+    expect(activeGroup).not.toHaveAttribute('open')
+    await user.click(screen.getByText('Jugadoras activas'))
+    expect(activeGroup).toHaveAttribute('open')
+    const player = screen.getByRole('button', { name: 'Ver datos de Paula Jugadora' })
+    expect(player).not.toHaveTextContent('Activa')
+    expect(player).not.toHaveTextContent('Datos completos')
+    expect(within(player).queryByText('Jugadora', { exact: true })).not.toBeInTheDocument()
+    expect(within(activeGroup).getByRole('button', { name: 'Ver datos de Olga Owner' })).toBeInTheDocument()
+    const ownersGroup = screen.getByText('Owners').closest('details')!
+    await user.click(screen.getByText('Owners'))
+    expect(ownersGroup).toHaveAttribute('open')
+    expect(within(ownersGroup).getByRole('button', { name: 'Ver datos de Olga Owner' })).toBeInTheDocument()
+    await user.click(screen.getByText('Jugadoras activas'))
+    expect(activeGroup).not.toHaveAttribute('open')
+    await user.click(screen.getByText('Entrenadores'))
+    expect(screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })).toBeInTheDocument()
+    await user.click(within(document.querySelector<HTMLElement>('.team-member-groups')!).getByText('Dirección'))
+    expect(screen.getByRole('button', { name: 'Ver datos de Diana Dirección' })).toBeInTheDocument()
+  })
+
+  test('counts a missing player photo as incomplete but does not require staff photos', async () => {
+    const user = userEvent.setup()
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[
+      makeProfile(),
+      makeProfile({ id: 'coach', display_name: 'Clara Entrenador', is_player: false, is_coach: true }),
+    ]} profilePrivateDetails={[
+      makeProfilePrivateDetails(),
+      makeProfilePrivateDetails({ profile_id: 'coach' }),
+    ]} />)
+
+    await user.click(screen.getByText('Jugadoras activas'))
+    expect(screen.getByRole('button', { name: 'Ver datos de Ana Martín' })).toHaveTextContent('Faltan datos')
+    await user.click(screen.getByText('Entrenadores'))
+    expect(screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })).not.toHaveTextContent('Faltan datos')
   })
 
   test('moves duplicate review and approval into the pending profile detail', async () => {
@@ -253,6 +329,7 @@ describe('TeamView', () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined)
     const onArchive = vi.fn().mockResolvedValue(undefined)
     render(<TeamView currentUserId="owner-1" onArchive={onArchive} onSave={vi.fn()} onUpdate={onUpdate} profiles={[member, archived]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de María López' }))
     expect(screen.queryByRole('button', { name: 'Desautorizar' })).not.toBeInTheDocument()
@@ -285,6 +362,7 @@ describe('TeamView', () => {
       onLinkProvisionalPlayers={onLink}
       onUpdate={vi.fn()}
     />)
+    await user.click(screen.getByText('Jugadoras activas'))
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Laura Invitada Pérez' }))
     const dialog = screen.getByRole('dialog', { name: 'Laura Invitada Pérez' })

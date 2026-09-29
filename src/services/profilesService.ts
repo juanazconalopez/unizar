@@ -30,8 +30,7 @@ export async function updateOwnProfileDetails(profile: Profile, values: ProfileD
 }
 
 export async function updateManagedProfile(profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) {
-  const effectivePhotoChange = values.isPlayer ? photoChange : profile.avatar_path ? null : undefined
-  await saveWithPhoto(profile, effectivePhotoChange, async (avatarPath) => {
+  await saveWithPhoto(profile, photoChange, async (avatarPath) => {
     const { error } = await supabase.rpc('update_managed_profile', {
       checked_profile_id: profile.id,
       new_display_name: values.displayName,
@@ -42,14 +41,14 @@ export async function updateManagedProfile(profile: Profile, values: ManagedProf
       new_is_coach: values.isCoach,
       new_is_viewer: values.isViewer,
       new_is_owner: values.isOwner,
-      new_avatar_path: values.isPlayer ? avatarPath : null,
+      new_avatar_path: avatarPath,
     })
     if (error) throw error
   })
   invalidateBirthdayCache()
 }
 
-export async function updateManagedPlayerPhoto(profile: Profile, photoChange: File | null) {
+export async function updateManagedProfilePhoto(profile: Profile, photoChange: File | null) {
   await saveWithPhoto(profile, photoChange, async (avatarPath) => {
     const { error } = await supabase.rpc('set_managed_player_photo', {
       checked_profile_id: profile.id,

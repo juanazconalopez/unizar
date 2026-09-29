@@ -171,7 +171,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <button aria-controls="team-member-actions" aria-expanded={menuOpen} aria-label={`Acciones de ${person.display_name}`} aria-haspopup="true" className="icon-button" onClick={() => setMenuOpen((open) => !open)} type="button"><Icon name="more" size={20} /></button>
         {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
           {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
-          {approved && person.is_player && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">{person.avatar_path ? 'Cambiar foto' : 'Subir foto'}</button>}
+          {approved && person.is_active && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">{person.avatar_path ? 'Cambiar foto' : 'Subir foto'}</button>}
           {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
           {canLinkAttendance && <button onClick={() => openDialog('attendance')} type="button">Vincular asistencias</button>}
           {approved && person.is_active && person.is_player && onPreviewPlayer && <button onClick={() => { setMenuOpen(false); onPreviewPlayer(person) }} type="button">Vista previa de jugadora</button>}
@@ -197,7 +197,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => setEditing(false)} type="button">Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button></div>
       {onArchive && <div className="team-member-danger"><div><strong>Desautorizar persona</strong><p>Perderá el acceso y desaparecerá de los listados activos. Sus datos históricos se conservarán.</p></div><button className="danger-button" disabled={saving || person.id === currentUserId} onClick={() => void archive()} type="button">Desautorizar</button></div>}
     </> : <>
-      {person.is_player && <div className="team-member-profile-summary">
+      {approved && <div className="team-member-profile-summary">
         <ProfilePhotoField avatarPath={person.avatar_path} name={person.display_name} onLoadPhoto={onLoadPhoto} />
         <div className="team-member-highlight-details">
           <Detail label="Teléfono">{details?.phone ? <a href={`tel:${details.phone}`}>{details.phone}</a> : <em>Sin teléfono</em>}</Detail>
@@ -206,8 +206,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       </div>}
       <div className="team-member-detail-grid">
         <Detail label="Email">{details?.email ? <a href={`mailto:${details.email}`}>{details.email}</a> : <em>Sin email</em>}</Detail>
-        {!person.is_player && <Detail label="Teléfono">{details?.phone ? <a href={`tel:${details.phone}`}>{details.phone}</a> : <em>Sin teléfono</em>}</Detail>}
-        {!person.is_player && <Detail label="Edad">{age === null ? <em>Sin edad</em> : `${age} años`}</Detail>}
         <Detail label="Fecha de nacimiento">{details?.birth_date ? formatDate(details.birth_date, { day: 'numeric', month: 'long', year: 'numeric' }) : <em>Sin fecha</em>}</Detail>
         <Detail label="En el equipo desde">{formatDate(person.created_at.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' })}</Detail>
         <Detail label="Estado"><span className={`member-active-state ${person.is_active ? 'active' : 'inactive'}`}><Icon name={person.is_active ? 'check' : 'close'} size={14} />{person.is_active ? 'Activa' : 'Inactiva'}</span></Detail>

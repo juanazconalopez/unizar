@@ -5,7 +5,7 @@ vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc } }))
 vi.mock('./profilePhotoService', () => ({ uploadProfilePhoto: mocks.upload, deleteProfilePhoto: mocks.remove }))
 
 import { makeProfile } from '../test/fixtures'
-import { updateManagedPlayerPhoto, updateManagedProfile, updateOwnProfileDetails } from './profilesService'
+import { updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails } from './profilesService'
 
 describe('profile persistence', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -33,7 +33,7 @@ describe('profile persistence', () => {
     mocks.remove.mockResolvedValue(undefined)
     const profile = makeProfile({ id: 'player-2', avatar_path: 'player-2/old-photo.jpg' })
     const file = new File(['photo'], 'photo.png', { type: 'image/png' })
-    await updateManagedPlayerPhoto(profile, file)
+    await updateManagedProfilePhoto(profile, file)
     expect(mocks.rpc).toHaveBeenCalledWith('set_managed_player_photo', {
       checked_profile_id: 'player-2', new_avatar_path: 'player-2/new-photo.jpg',
     })
@@ -46,7 +46,7 @@ describe('profile persistence', () => {
     mocks.remove.mockResolvedValue(undefined)
     const profile = makeProfile({ id: 'player-2', avatar_path: 'player-2/old-photo.jpg' })
     const file = new File(['photo'], 'photo.png', { type: 'image/png' })
-    await expect(updateManagedPlayerPhoto(profile, file)).rejects.toThrow('Sin permisos')
+    await expect(updateManagedProfilePhoto(profile, file)).rejects.toThrow('Sin permisos')
     expect(mocks.remove).toHaveBeenCalledWith('player-2/new-photo.jpg')
     expect(mocks.remove).not.toHaveBeenCalledWith('player-2/old-photo.jpg')
   })
@@ -71,6 +71,29 @@ describe('profile persistence', () => {
       new_avatar_path: null,
     })
     expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty('email')
+  })
+
+  test('preserves a photo when a person stops being a player', async () => {
+    mocks.rpc.mockResolvedValue({ data: undefined, error: null })
+    const profile = makeProfile({ id: 'coach-1', avatar_path: 'coach-1/current.jpg' })
+    await updateManagedProfile(profile, {
+      displayName: 'Andrea López', phone: '', birthDate: '', isActive: true,
+      isPlayer: false, isCoach: true, isViewer: false, isOwner: false,
+    })
+    expect(mocks.rpc).toHaveBeenCalledWith('update_managed_profile', expect.objectContaining({ new_avatar_path: 'coach-1/current.jpg' }))
+    expect(mocks.remove).not.toHaveBeenCalled()
+  })
+
+  test('saves a non-player photo through the owner-only RPC', async () => {
+    mocks.rpc.mockResolvedValue({ data: undefined, error: null })
+    mocks.upload.mockResolvedValue('coach-1/new-photo.jpg')
+    const profile = makeProfile({ id: 'coach-1', is_player: false, is_coach: true })
+    const file = new File(['photo'], 'perfil.png', { type: 'image/png' })
+    await updateManagedProfilePhoto(profile, file)
+    expect(mocks.upload).toHaveBeenCalledWith('coach-1', file)
+    expect(mocks.rpc).toHaveBeenCalledWith('set_managed_player_photo', {
+      checked_profile_id: 'coach-1', new_avatar_path: 'coach-1/new-photo.jpg',
+    })
   })
 
   test('uploads a replacement before saving and removes the obsolete player photo afterwards', async () => {

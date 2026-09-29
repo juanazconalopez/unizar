@@ -298,7 +298,7 @@ export function AppViewRouter({
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}
         onUpdateProfileDetails={actions.club.updateManagedProfile}
-        onUpdatePlayerPhoto={actions.club.updateManagedPlayerPhoto}
+        onUpdateProfilePhoto={actions.club.updateManagedProfilePhoto}
         onUpdateSeason={actions.club.updateSeason}
         onSaveLibraryFolder={actions.library.saveFolder}
         onSyncLibrary={actions.library.sync}

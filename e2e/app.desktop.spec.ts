@@ -163,6 +163,7 @@ test('desktop player profile keeps its actions menu inside the dialog', async ({
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
   await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
@@ -185,6 +186,7 @@ test('owner uploads a player photo from profile actions in the local demo', asyn
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
   await page.getByRole('button', { name: 'Ver datos de Claudia Pérez' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Claudia Pérez' })
   await profileDialog.getByRole('button', { name: 'Acciones de Claudia Pérez' }).click()
@@ -202,10 +204,38 @@ test('owner uploads a player photo from profile actions in the local demo', asyn
   await expect(page.getByText('Foto de Claudia Pérez actualizada en la demo.')).toBeVisible()
 })
 
+test('owner uploads photos for coach, Dirección and owner in the local demo', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByRole('menuitem', { name: 'Equipo' }).click()
+
+  for (const [group, name] of [['Entrenadores', 'Andrea López'], ['Dirección', 'Carlos Dirección'], ['Owners', 'Lucía Martín']]) {
+    const section = page.locator('.team-member-group').filter({ has: page.locator('summary', { hasText: group }) })
+    await section.locator('summary').click()
+    await section.getByRole('button', { name: `Ver datos de ${name}` }).click()
+    const profile = page.getByRole('dialog', { name })
+    await profile.getByRole('button', { name: `Acciones de ${name}` }).click()
+    await profile.getByRole('button', { name: 'Subir foto' }).click()
+    const photo = page.getByRole('dialog', { name: `Foto de ${name}` })
+    await photo.getByLabel('Seleccionar fotografía').setInputFiles({
+      name: 'perfil.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/RZkAAAAASUVORK5CYII=', 'base64'),
+    })
+    await photo.getByRole('button', { name: 'Guardar foto' }).click()
+    await expect(photo).toHaveCount(0)
+    await expect(page.getByText(`Foto de ${name} actualizada en la demo.`)).toBeVisible()
+    await section.getByRole('button', { name: `Ver datos de ${name}` }).click()
+    await expect(page.getByRole('dialog', { name }).getByAltText(`Fotografía de ${name}`)).toBeVisible()
+    await page.getByRole('dialog', { name }).getByRole('button', { name: `Acciones de ${name}` }).click()
+    await page.getByRole('dialog', { name }).getByRole('button', { name: 'Cerrar' }).click()
+  }
+})
+
 test('the player sees the photo uploaded by the owner in profile data', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await page.getByRole('menuitem', { name: 'Equipo' }).click()
+  await page.getByText('Jugadoras activas', { exact: true }).click()
   await page.getByRole('button', { name: 'Ver datos de Marta Sánchez' }).click()
   const profile = page.getByRole('dialog', { name: 'Marta Sánchez' })
   await profile.getByRole('button', { name: 'Acciones de Marta Sánchez' }).click()

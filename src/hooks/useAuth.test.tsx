@@ -1,5 +1,8 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+
+const photoCache = vi.hoisted(() => ({ setUser: vi.fn(), clear: vi.fn() }))
+vi.mock('../services/profilePhotoService', () => ({ setProfilePhotoCacheUser: photoCache.setUser, clearProfilePhotoCache: photoCache.clear }))
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -25,7 +28,19 @@ import { useAuth } from './useAuth'
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    photoCache.clear.mockResolvedValue(undefined)
     mocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: mocks.unsubscribe } } })
+  })
+
+  test('clears private photo bytes when the user signs out', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'owner-1' } } }, error: null })
+    const { result } = renderHook(() => useAuth())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(photoCache.setUser).toHaveBeenCalledWith('owner-1')
+
+    act(() => mocks.onAuthStateChange.mock.calls[0][0]('SIGNED_OUT', null))
+    expect(photoCache.clear).toHaveBeenCalled()
+    expect(result.current.session).toBeNull()
   })
 
   test('finishes loading and exposes a network failure from session recovery', async () => {

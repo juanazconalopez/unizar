@@ -7560,6 +7560,78 @@ button.survey-closure-card:focus-visible {
   margin-top: 22px;
 }
 
+/* Grupos del listado de Equipo */
+.team-member-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.team-member-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+
+.team-member-group > summary {
+  min-height: 58px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.team-member-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.team-member-group > summary:hover {
+  background: #f7fbf9;
+}
+
+.team-member-group > summary:focus-visible {
+  outline: 3px solid rgba(30, 111, 92, .22);
+  outline-offset: -3px;
+}
+
+.team-member-group > summary small {
+  min-width: 25px;
+  padding: 3px 7px;
+  border-radius: 20px;
+  color: var(--green);
+  background: #eaf3ef;
+  text-align: center;
+  font-size: 11px;
+}
+
+.team-member-group > summary > .icon {
+  margin-left: auto;
+  color: #8da099;
+  transform: rotate(90deg);
+  transition: transform .2s ease;
+}
+
+.team-member-group[open] > summary > .icon {
+  transform: rotate(-90deg);
+}
+
+.team-member-group > .people-list {
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.team-member-group-empty {
+  margin: 0;
+  padding: 16px 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .person-summary-card {
   width: 100%;
   border: 0;
@@ -7646,8 +7718,8 @@ button.survey-closure-card:focus-visible {
 }
 
 .person-summary-state {
-  min-width: 180px;
-  flex: 0 1 250px;
+  min-width: 0;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -11477,17 +11549,29 @@ button.survey-closure-card:focus-visible {
     border-radius: 12px;
   }
 
+  .team-member-group > .people-list {
+    padding: 10px;
+  }
+
   .person-summary-card {
     position: relative;
     padding: 14px;
-    grid-template-areas: 'identity arrow' 'contact contact' 'state state';
+    grid-template-areas: 'identity arrow' 'contact contact';
     grid-template-columns: minmax(0, 1fr) auto;
     row-gap: 12px;
     column-gap: 10px;
     box-shadow: 0 4px 12px rgba(31, 63, 54, .035);
   }
 
+  .person-summary-card.has-state {
+    grid-template-areas: 'identity arrow' 'contact contact' 'state state';
+  }
+
   .person-summary-card.inactive-person {
+    grid-template-areas: 'identity arrow';
+  }
+
+  .person-summary-card.inactive-person.has-state {
     grid-template-areas: 'identity arrow' 'state state';
   }
 

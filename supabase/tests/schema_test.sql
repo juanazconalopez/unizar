@@ -1,5 +1,5 @@
 begin;
-select plan(336);
+select plan(341);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -574,33 +574,51 @@ select ok(
   'the private player photo bucket limits size and format'
 );
 select ok(
-  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners and players can read private player photos'),
-  'only owners and the player can read a private player photo'
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners and users can read private profile photos'),
+  'only owners and the profile holder can read a private photo'
 );
 select ok(
-  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners can upload private player photos'),
-  'only owners can upload private player photos'
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners can upload private profile photos'),
+  'only owners can upload private profile photos'
 );
 select ok(
-  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners can delete private player photos'),
-  'only owners can remove obsolete player photos'
+  exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Owners can delete private profile photos'),
+  'only owners can remove obsolete profile photos'
 );
 select ok(
   exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
-    and policyname = 'Owners can upload private player photos'
+    and policyname = 'Owners can upload private profile photos'
     and with_check like '%current_user_can_view_private_profile_details%'),
   'photo uploads check active owner status'
 );
 select ok(
   exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
-    and policyname = 'Owners can delete private player photos'
+    and policyname = 'Owners can delete private profile photos'
     and qual like '%current_user_can_view_private_profile_details%'),
   'photo deletion checks active owner status'
 );
 select ok(
   not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects'
     and policyname in ('Owners and players can upload private player photos', 'Owners and players can delete private player photos')),
-  'old player photo write policies were removed'
+  'old shared photo write policies were removed'
+);
+select unlike(
+  (select qual from pg_policies where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'Owners and users can read private profile photos'),
+  '%target.is_player%',
+  'private profile photo reads do not depend on the player role'
+);
+select like(
+  (select with_check from pg_policies where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'Owners can upload private profile photos'),
+  '%target.is_active%',
+  'photo uploads require an active target profile'
+);
+select unlike(
+  (select with_check from pg_policies where schemaname = 'storage' and tablename = 'objects'
+    and policyname = 'Owners can upload private profile photos'),
+  '%target.is_player%',
+  'photo uploads do not require the target to be a player'
 );
 select has_function('public', 'update_own_profile', array['text', 'text', 'date', 'text'], 'players can update their own details');
 select like(pg_get_functiondef('public.update_own_profile(text,text,date,text)'::regprocedure), '%new_avatar_path is distinct from%', 'own profile RPC rejects photo changes');
@@ -608,8 +626,10 @@ select has_function('public', 'set_managed_player_photo', array['uuid', 'text'],
 select ok(has_function_privilege('authenticated', 'public.set_managed_player_photo(uuid,text)', 'EXECUTE'), 'authenticated owner can call photo RPC');
 select ok(not has_function_privilege('anon', 'public.set_managed_player_photo(uuid,text)', 'EXECUTE'), 'anonymous users cannot call photo RPC');
 select like(pg_get_functiondef('public.set_managed_player_photo(uuid,text)'::regprocedure), '%current_user_can_view_private_profile_details%', 'photo RPC checks active owner');
-select like(pg_get_functiondef('public.set_managed_player_photo(uuid,text)'::regprocedure), '%and is_player and is_approved and not is_archived%', 'photo RPC only updates approved players');
+select like(pg_get_functiondef('public.set_managed_player_photo(uuid,text)'::regprocedure), '%and is_approved and is_active and not is_archived%', 'photo RPC only updates approved active profiles');
+select unlike(pg_get_functiondef('public.set_managed_player_photo(uuid,text)'::regprocedure), '%and is_player%', 'photo RPC accepts every active profile role');
 select has_function('public', 'update_managed_profile', array['uuid', 'text', 'text', 'date', 'boolean', 'boolean', 'boolean', 'boolean', 'boolean', 'text'], 'owners update details and permissions atomically');
+select like(pg_get_functiondef('public.update_managed_profile(uuid,text,text,date,boolean,boolean,boolean,boolean,boolean,text)'::regprocedure), '%avatar_path = new_avatar_path%', 'role changes preserve profile photos');
 select has_function('public', 'archive_profile_as_owner', array['uuid'], 'owners archive profiles through a protected function');
 select ok(to_regclass('public.library_settings') is not null, 'library settings are persisted');
 select ok(to_regclass('public.library_items') is not null, 'library metadata items are persisted');
