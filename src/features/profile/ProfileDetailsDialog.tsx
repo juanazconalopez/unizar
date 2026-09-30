@@ -82,6 +82,7 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
             name="displayName"
             onChange={(event) => setDisplayName(event.target.value)}
             required
+            spellCheck
             value={displayName}
           />
         </label>

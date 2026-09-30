@@ -62,7 +62,7 @@ export function PlayerAbsenceDialog({ person, absences, onClose, onSave, onDelet
     <div className="profile-details-fields team-action-fields">
       <label>Inicio<input onChange={(event) => setStartsOn(event.target.value)} required type="date" value={startsOn} /></label>
       <label>Fin previsto<input min={startsOn} onChange={(event) => setEndsOn(event.target.value)} type="date" value={endsOn} /></label>
-      <label className="full-field">Nota privada opcional<textarea maxLength={1000} onChange={(event) => setPrivateNote(event.target.value)} placeholder="Solo visible para owner" rows={2} value={privateNote} /></label>
+      <label className="full-field">Nota privada opcional<textarea maxLength={1000} onChange={(event) => setPrivateNote(event.target.value)} placeholder="Solo visible para owner" rows={2} spellCheck value={privateNote} /></label>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={onClose} type="button">Volver a datos de perfil</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Registrar baja'}</button></div>

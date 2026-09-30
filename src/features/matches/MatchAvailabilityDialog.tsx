@@ -78,7 +78,7 @@ function CoachAvailabilityDialog({ initial, match, player, onClose, onSave }: {
   return <Modal className="availability-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={submit}>
     <div className="task-detail-heading"><div><span className="eyebrow">ACTUALIZAR DISPONIBILIDAD</span><h2 id={titleId}>{player?.display_name ?? 'Jugadora'}</h2><p>Partido contra {match.opponent}</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
     <label>Respuesta<select autoFocus onChange={(event) => setStatus(event.target.value as AvailabilityStatus)} value={status}><option value="available">Disponible</option><option value="doubt">En duda</option><option value="unavailable">No disponible</option></select></label>
-    <label>Comentario opcional<textarea maxLength={500} onChange={(event) => setComment(event.target.value)} placeholder="Por ejemplo: baja comunicada por teléfono…" rows={5} value={comment} /></label>
+    <label>Comentario opcional<textarea maxLength={500} onChange={(event) => setComment(event.target.value)} placeholder="Por ejemplo: baja comunicada por teléfono…" rows={5} spellCheck value={comment} /></label>
     <small>Este cambio quedará registrado como realizado por un entrenador.</small>
     {error && <p className="form-error">{error}</p>}
     <div className="form-actions"><button className="secondary-button" onClick={onClose} type="button">Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar disponibilidad'}</button></div>

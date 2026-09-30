@@ -79,7 +79,7 @@ export function TaskForm({ seasons, initialDate = todayIso(), task, template, ca
           <button aria-label="Cerrar" className="icon-button" disabled={busy} onClick={requestCancel} type="button">×</button>
         </div>
         <div className="form-grid">
-          <label>Título<input autoFocus defaultValue={source?.title} name="title" required placeholder="Ej. Rodaje suave" /></label>
+          <label>Título<input autoFocus defaultValue={source?.title} name="title" required placeholder="Ej. Rodaje suave" spellCheck /></label>
           <SeasonContextField creation={!task} season={selectedSeason} />
           {!task && <label>Fecha de la semana<input aria-label="Fecha de la semana" defaultValue={initialDate} name="date" required type="date" /><small>Se guardará el lunes de esa semana.</small></label>}
           <label>Tipo<select defaultValue={source?.training_type ?? TRAINING_TYPES[0]} name="trainingType">{trainingTypes.map((type) => <option key={type}>{type}</option>)}</select></label>

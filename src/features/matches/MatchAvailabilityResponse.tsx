@@ -55,7 +55,7 @@ function RejectAvailabilityDialog({ initial, match, onClose, onSave }: {
   return <Modal className="availability-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={submit}>
     <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD</span><h2 id={titleId}>{matchTitle(match)}</h2></div><button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
     <label>Respuesta<select autoFocus onChange={(event) => setStatus(event.target.value as Exclude<AvailabilityStatus, 'available'>)} value={status}><option value="doubt">Estoy en duda</option><option value="unavailable">No asistiré</option></select></label>
-    <label>Comentario opcional<textarea onChange={(event) => setComment(event.target.value)} placeholder="Lesión, incompatibilidad de horario…" rows={5} value={comment} /></label>
+    <label>Comentario opcional<textarea onChange={(event) => setComment(event.target.value)} placeholder="Lesión, incompatibilidad de horario…" rows={5} spellCheck value={comment} /></label>
     {error && <p className="form-error">{error}</p>}
     <div className="form-actions"><button className="secondary-button" onClick={onClose} type="button">Cancelar</button><button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar respuesta'}</button></div>
   </Modal>

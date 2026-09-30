@@ -47,7 +47,7 @@ export function GuestPlayerDialog({ players, unavailableIds, onAdd, onClose }: {
       </select>
     </label>}
     {!existingId && <label>Nombre y apellidos
-      <input autoComplete="off" autoFocus maxLength={80} onChange={(event) => { setDisplayName(event.target.value); setError('') }} placeholder="Ej. María López Pérez" value={displayName} />
+      <input autoComplete="off" autoFocus maxLength={80} onChange={(event) => { setDisplayName(event.target.value); setError('') }} placeholder="Ej. María López Pérez" spellCheck value={displayName} />
     </label>}
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="form-actions">

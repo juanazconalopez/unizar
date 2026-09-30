@@ -133,6 +133,7 @@ test('player opens her profile data without photo upload controls', async ({ pag
 })
 
 test('match availability and lineup flows work on mobile', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-29T12:00:00+02:00') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
   await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
@@ -200,6 +201,7 @@ test('player sees her seasonal progress from home', async ({ page }) => {
 })
 
 test('coach manages sports areas without access to settings', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-29T12:00:00+02:00') })
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('coach')
   await expect(page.getByRole('button', { name: 'Asistencia' })).toBeVisible()

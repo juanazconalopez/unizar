@@ -181,7 +181,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     </div>
     {editing ? <>
       <div className="profile-details-fields">
-        <label>Nombre y apellidos<input autoFocus maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required value={displayName} /></label>
+        <label>Nombre y apellidos<input autoFocus maxLength={80} onChange={(event) => setDisplayName(event.target.value)} required spellCheck value={displayName} /></label>
         <label>Email de Google<input className="readonly-field" readOnly type="email" value={details?.email ?? ''} /></label>
         <div className="profile-phone-field"><label htmlFor="managed-profile-phone">Teléfono</label><PhoneNumberField id="managed-profile-phone" onChange={setPhone} value={phone} /></div>
         <label>Fecha de nacimiento<input max={todayIso()} onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />{ageOnDate(birthDate, todayIso()) !== null && <small>Edad actual: {ageOnDate(birthDate, todayIso())} años.</small>}</label>

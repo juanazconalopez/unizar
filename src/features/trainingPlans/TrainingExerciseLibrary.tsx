@@ -20,7 +20,7 @@ export function TrainingExerciseLibrary({ presets, loading, error, onBack, onCre
   return <div className="page training-library-page">
     <button className="text-button training-detail-back" onClick={onBack} type="button">← Volver a entrenamientos</button>
     <PageHeader action={onCreate && <button className="primary-button" onClick={onCreate} type="button"><Icon name="plus" size={17} />Crear ejercicio</button>} eyebrow="RECURSOS DEL CUERPO TÉCNICO" subtitle="Crea, revisa y reutiliza ejercicios con sus pizarras tácticas." title="Biblioteca de ejercicios" />
-    <div className="training-library-toolbar"><label><Icon name="search" size={17} /><input aria-label="Buscar ejercicio" onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o descripción…" type="search" value={search} /></label><span>{filtered.length} {filtered.length === 1 ? 'ejercicio' : 'ejercicios'}</span></div>
+    <div className="training-library-toolbar"><label><Icon name="search" size={17} /><input aria-label="Buscar ejercicio" onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o descripción…" spellCheck type="search" value={search} /></label><span>{filtered.length} {filtered.length === 1 ? 'ejercicio' : 'ejercicios'}</span></div>
     {error ? <div className="training-load-error"><p>{error}</p><button className="secondary-button compact" onClick={onReload} type="button">Reintentar</button></div>
       : loading ? <div className="training-loading">Cargando biblioteca…</div>
         : filtered.length ? <div className="training-library-grid">{filtered.map((preset) => {

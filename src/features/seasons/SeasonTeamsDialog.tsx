@@ -121,7 +121,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     <div className="panel-form-heading"><div><span className="eyebrow">{season.name}</span><h2 id="season-teams-title">Equipos</h2><p>Consulta la plantilla y mueve jugadoras entre equipos.</p></div><button aria-label="Cerrar equipos" className="icon-button" disabled={saving} onClick={onClose} type="button">×</button></div>
     {panel.kind === 'list' && <>
       <div className="season-team-toolbar">
-        <label><Icon name="search" size={17} /><input aria-label="Buscar jugadora" onChange={(event) => setSearch(event.target.value)} placeholder="Buscar jugadora…" type="search" value={search} /></label>
+        <label><Icon name="search" size={17} /><input aria-label="Buscar jugadora" onChange={(event) => setSearch(event.target.value)} placeholder="Buscar jugadora…" spellCheck type="search" value={search} /></label>
         <button className="primary-button" disabled={saving} onClick={() => showPanel({ kind: 'team', team: null })} type="button"><Icon name="plus" size={17} />Nuevo equipo</button>
       </div>
       <div className="season-team-roster-grid">
@@ -161,7 +161,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     </>}
     {panel.kind === 'team' && <>
       <div className="season-team-subview-heading"><span className="eyebrow">{panel.team ? 'EDITAR EQUIPO' : 'NUEVO EQUIPO'}</span><h3>{panel.team?.name ?? 'Datos del equipo'}</h3></div>
-      <div className="season-team-fields"><label>Nombre<input autoFocus defaultValue={panel.team?.name ?? ''} maxLength={80} name="name" required /></label><label className="check-field"><input defaultChecked={panel.team?.is_mixed ?? false} name="isMixed" type="checkbox" />Grupo mixto</label>{panel.team && <label className="check-field"><input defaultChecked={panel.team.is_active} name="isActive" type="checkbox" />Equipo activo</label>}</div>
+      <div className="season-team-fields"><label>Nombre<input autoFocus defaultValue={panel.team?.name ?? ''} maxLength={80} name="name" required spellCheck /></label><label className="check-field"><input defaultChecked={panel.team?.is_mixed ?? false} name="isMixed" type="checkbox" />Grupo mixto</label>{panel.team && <label className="check-field"><input defaultChecked={panel.team.is_active} name="isActive" type="checkbox" />Equipo activo</label>}</div>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => showPanel({ kind: 'list' })} type="button">Volver a equipos</button>{panel.team && !panel.team.is_default && <button className="danger-button" disabled={saving} onClick={() => void deleteTeam(panel.team!)} type="button">Eliminar equipo</button>}<button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar equipo'}</button></div>
     </>}

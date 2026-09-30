@@ -102,7 +102,7 @@ export function SeasonAttendanceReport({ season, onLoad }: {
       <div className="season-attendance-toolbar">
         <label>
           Buscar jugadora por nombre
-          <span><Icon name="search" size={16} /><input autoFocus onChange={(event) => setSearch(event.target.value)} placeholder="Nombre de la jugadora…" type="search" value={search} /></span>
+          <span><Icon name="search" size={16} /><input autoFocus onChange={(event) => setSearch(event.target.value)} placeholder="Nombre de la jugadora…" spellCheck type="search" value={search} /></span>
         </label>
         <div><strong>{players.length} de {report.players.length} jugadoras</strong><button className="secondary-button compact" disabled={!players.length} onClick={exportXml} type="button"><Icon name="download" size={16} />Asistencia XML</button></div>
       </div>

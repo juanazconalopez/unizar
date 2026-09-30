@@ -37,7 +37,7 @@ export function TrainingPresetEditor({ preset, onBack, onSave, onDelete }: {
     <div className="training-editor-heading"><div><span className="eyebrow">{preset ? 'EDITAR EJERCICIO PREDEFINIDO' : 'NUEVO EJERCICIO PREDEFINIDO'}</span><h1>{preset?.title || 'Crear ejercicio'}</h1></div><div className="training-duration"><strong>{values.durationMinutes}</strong><span>minutos<br />de ejercicio</span></div></div>
     <form onSubmit={submit}>
       <section className="training-editor-section"><div className="training-section-heading"><span>1</span><div><h2>Datos del ejercicio</h2><p>Define una versión reutilizable para futuros entrenamientos.</p></div></div><div className="training-exercise-fields training-preset-fields">
-        <label>Título<input autoFocus onChange={(event) => setValues((current) => ({ ...current, title: event.target.value }))} required value={values.title} /></label>
+        <label>Título<input autoFocus onChange={(event) => setValues((current) => ({ ...current, title: event.target.value }))} required spellCheck value={values.title} /></label>
         <label>Duración (min)<input max="240" min="1" onChange={(event) => setValues((current) => ({ ...current, durationMinutes: Number(event.target.value) }))} required type="number" value={values.durationMinutes} /></label>
         <ContentImageTextarea className="full-field" label="Descripción" onChange={(description) => setValues((current) => ({ ...current, description }))} placeholder="Explica la organización y el desarrollo del ejercicio…" rows={5} value={values.description} />
       </div></section>

@@ -64,7 +64,7 @@ export function AnnouncementForm({ announcement, initialDate, seasons, canPublis
         <button aria-label="Cerrar" className="icon-button" disabled={busy} onClick={close} type="button">×</button>
       </div>
       <div className="form-grid">
-        <label>Título<input autoFocus defaultValue={announcement?.title} name="title" placeholder="Ej. Cambio de horario" required /></label>
+        <label>Título<input autoFocus defaultValue={announcement?.title} name="title" placeholder="Ej. Cambio de horario" required spellCheck /></label>
         <SeasonContextField creation={!announcement} season={selectedSeason} />
         <label>Fecha<input defaultValue={announcement?.announcement_date ?? initialDate} name="date" required type="date" /></label>
         <label>Estado<select disabled={!canPublish} defaultValue={announcement?.status ?? (canPublish ? 'published' : 'draft')} name="status">{(canPublish || announcement?.status === 'published') && <option value="published">Publicado</option>}<option value="draft">Borrador</option>{announcement && (canPublish || announcement.status === 'cancelled') && <option value="cancelled">Anulado</option>}</select></label>

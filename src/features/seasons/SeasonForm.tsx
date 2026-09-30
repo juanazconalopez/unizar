@@ -51,7 +51,7 @@ export function SeasonForm({ season, onCancel, onDelete, onSubmit }: {
         <button aria-label="Cerrar" className="icon-button" onClick={onCancel} type="button">×</button>
       </div>
       <div className="form-grid">
-        <label className="full-field">Nombre<input defaultValue={season?.name} name="name" placeholder="Ej. Temporada 2026–2027" required /></label>
+        <label className="full-field">Nombre<input defaultValue={season?.name} name="name" placeholder="Ej. Temporada 2026–2027" required spellCheck /></label>
         <label>Fecha de inicio<input defaultValue={season?.start_date} name="startDate" required type="date" /></label>
         <label>Fecha de finalización<input defaultValue={season?.end_date} name="endDate" required type="date" /></label>
         <p className="season-state-help full-field">El estado se calcula automáticamente con estas fechas: próxima, activa o finalizada.</p>

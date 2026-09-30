@@ -115,7 +115,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       if (event.key !== 'Escape') return
       setSearch('')
       setSearchOpen(false)
-    }} placeholder="Buscar por nombre…" type="search" value={search} />
+    }} placeholder="Buscar por nombre…" spellCheck type="search" value={search} />
   </div> : <button aria-label="Buscar personas" className="icon-button team-search-toggle" onClick={() => setSearchOpen(true)} title="Buscar personas" type="button"><Icon name="search" size={19} /></button>
   const filterControl = <details className="team-filter-control">
     <summary aria-label="Filtrar personas"><Icon name="filter" size={17} /><span>Filtrar</span>{filterCount > 0 && <small>{filterCount}</small>}</summary>

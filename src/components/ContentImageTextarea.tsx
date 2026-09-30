@@ -156,6 +156,7 @@ export function ContentImageTextarea({ label, value, onChange, className = '', m
       onPaste={paste}
       ref={editorRef}
       role="textbox"
+      spellCheck={textareaProps.spellCheck ?? true}
       suppressContentEditableWarning
     />
     {textareaProps.name && <input name={textareaProps.name} type="hidden" value={value} />}

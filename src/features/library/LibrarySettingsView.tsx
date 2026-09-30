@@ -54,7 +54,7 @@ export function LibrarySettingsView({ hideEmbeddedTitle = false, settings = null
       <div className="library-settings-card">
         <label>
           Carpeta compartida
-          <input aria-label="Carpeta compartida" onChange={(event) => setFolderUrl(event.target.value)} placeholder="Pega el enlace de la carpeta raíz" readOnly={!editing} value={folderUrl} />
+          <input aria-label="Carpeta compartida" onChange={(event) => setFolderUrl(event.target.value)} placeholder="Pega el enlace de la carpeta raíz" readOnly={!editing} spellCheck={false} value={folderUrl} />
         </label>
         <div className="library-folder-actions">
           {editing ? <>

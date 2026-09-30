@@ -25,7 +25,7 @@ export function SurveyResponseForm({ questions, answers = [], onSubmit, submitLa
       const selectedOptionIds = new Set(initialAnswer?.optionIds ?? [])
       return <fieldset className="survey-response-question" key={question.id}>
       <legend><span className="survey-question-number">{index + 1}</span><span>{question.prompt}{question.required && <span aria-label="Obligatoria"> *</span>}</span></legend>
-      {question.type === 'long' && <textarea defaultValue={initialAnswer?.text ?? ''} name={`text-${question.id}`} rows={5} placeholder="Escribe tu respuesta…" />}
+      {question.type === 'long' && <textarea defaultValue={initialAnswer?.text ?? ''} name={`text-${question.id}`} rows={5} placeholder="Escribe tu respuesta…" spellCheck />}
       {question.type !== 'long' && <div className="survey-options">{question.options.map((option) => <label className={`survey-option ${question.type}`} key={option.id}><input defaultChecked={selectedOptionIds.has(option.id)} name={`option-${question.id}`} type={question.type === 'single' ? 'radio' : 'checkbox'} value={option.id} /><span>{option.label}</span></label>)}</div>}
     </fieldset>
     })}

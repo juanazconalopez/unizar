@@ -81,7 +81,7 @@ export function TaskCard({ task, result, onSave, managerActions, managementSumma
           <form className="result-form" onSubmit={submit}>
             <label>
               Resultado del entrenamiento
-              <textarea defaultValue={result?.result_text} name="resultText" required rows={3} placeholder="Cuéntanos cómo ha ido…" />
+              <textarea defaultValue={result?.result_text} name="resultText" required rows={3} placeholder="Cuéntanos cómo ha ido…" spellCheck />
             </label>
             <label>
               Fecha de realización

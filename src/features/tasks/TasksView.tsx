@@ -289,7 +289,7 @@ export function TasksView({ canManage, seasons, memberships, profiles = [], task
       {managementView === 'list' && (
         <label className="task-search">
           <span>Buscar tareas</span>
-          <span><Icon name="search" size={17} /><input onChange={(event) => setSearch(event.target.value)} placeholder="Título, descripción o tipo…" type="search" value={search} /></span>
+          <span><Icon name="search" size={17} /><input onChange={(event) => setSearch(event.target.value)} placeholder="Título, descripción o tipo…" spellCheck type="search" value={search} /></span>
         </label>
       )}
       {!canManage && managementView === 'list' && (

@@ -85,7 +85,7 @@ export function SeasonCompetitionsDialog({ competitions, season, onClose, onCrea
       {seasonCompetitions.length >= COMPETITION_PALETTE.length && <p className="form-hint">Ya se están utilizando todos los colores disponibles en esta temporada.</p>}
     </> : <>
       <div className="form-grid">
-        <label className="full-field">Nombre<input autoFocus defaultValue={editing?.name ?? ''} maxLength={80} name="name" placeholder="Ej. Copa Aragón" required /></label>
+        <label className="full-field">Nombre<input autoFocus defaultValue={editing?.name ?? ''} maxLength={80} name="name" placeholder="Ej. Copa Aragón" required spellCheck /></label>
         <fieldset className="competition-color-field full-field"><legend>Color</legend><div className="competition-color-palette">
           {COMPETITION_PALETTE.map((color) => {
             const unavailable = seasonCompetitions.some((item) => item.color === color.key && item.id !== editing?.id)

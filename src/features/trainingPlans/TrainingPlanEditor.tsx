@@ -192,7 +192,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
         <section className="training-editor-section training-basics">
           <div className="training-section-heading"><span>1</span><div><h2>Datos de la sesión</h2><p>Define cuándo se realiza y qué se quiere trabajar.</p></div></div>
           <div className="form-grid">
-            <label>Título<input autoFocus onChange={(event) => update('title', event.target.value)} placeholder="Ej. Defensa organizada y salida" required value={values.title} /></label>
+            <label>Título<input autoFocus onChange={(event) => update('title', event.target.value)} placeholder="Ej. Defensa organizada y salida" required spellCheck value={values.title} /></label>
             <label>Fecha<input onChange={(event) => changeDate(event.target.value)} required type="date" value={values.sessionDate} /></label>
             <label>Temporada<select onChange={(event) => update('seasonId', event.target.value)} value={values.seasonId}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
             <label>Estado<select disabled={!canPublish} onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option>{(canPublish || values.status === 'published') && <option value="published">Preparado</option>}{plan && (canPublish || values.status === 'cancelled') && <option value="cancelled">Cancelado</option>}</select></label>
@@ -217,7 +217,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
                   </div>
                 </header>
                 <div className="training-exercise-fields">
-                  <label>Título<input onChange={(event) => updateExercise(index, { title: event.target.value })} required value={exercise.title} /></label>
+                  <label>Título<input onChange={(event) => updateExercise(index, { title: event.target.value })} required spellCheck value={exercise.title} /></label>
                   <label>Duración (min)<input max="240" min="1" onChange={(event) => updateExercise(index, { durationMinutes: Number(event.target.value) })} required type="number" value={exercise.durationMinutes} /></label>
                   <ContentImageTextarea className="full-field" label="Descripción" onChange={(value) => updateExercise(index, { description: value })} placeholder="Explica la organización y el desarrollo del ejercicio…" rows={3} value={exercise.description} />
                 </div>
