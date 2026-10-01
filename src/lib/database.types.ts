@@ -946,9 +946,9 @@ export type Database = {
         ]
       }
       player_absences: {
-        Row: { id: string; player_id: string; starts_on: string; ends_on: string | null; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; player_id: string; starts_on: string; ends_on?: string | null; created_by: string; created_at?: string; updated_at?: string }
-        Update: { id?: string; player_id?: string; starts_on?: string; ends_on?: string | null; created_by?: string; created_at?: string; updated_at?: string }
+        Row: { id: string; player_id: string; starts_on: string; ends_on: string | null; discharged_on: string | null; created_by: string; created_at: string; updated_at: string }
+        Insert: { id?: string; player_id: string; starts_on: string; ends_on?: string | null; discharged_on?: string | null; created_by: string; created_at?: string; updated_at?: string }
+        Update: { id?: string; player_id?: string; starts_on?: string; ends_on?: string | null; discharged_on?: string | null; created_by?: string; created_at?: string; updated_at?: string }
         Relationships: []
       }
       player_absence_private_notes: {
@@ -1422,6 +1422,7 @@ export type Database = {
       current_user_can_view_season_team: { Args: { checked_team_id: string }; Returns: boolean }
       save_player_absence: { Args: { checked_absence_id: string | null; checked_ends_on: string | null; checked_player_id: string; checked_private_note: string | null; checked_starts_on: string }; Returns: string }
       delete_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
+      discharge_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
       save_match_events: { Args: { checked_events: Json; checked_match_id: string }; Returns: undefined }
       save_match_report: { Args: { checked_match_id: string; checked_path: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json; checked_events_reviewed: boolean }; Returns: undefined }
       player_has_absence_on: { Args: { checked_date: string; checked_player_id: string }; Returns: boolean }

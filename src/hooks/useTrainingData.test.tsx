@@ -31,6 +31,7 @@ const trainingData = {
   seasonTeams: [],
   seasonTeamCoaches: [],
   playerAbsences: [],
+  playerAbsencePrivateNotes: [],
   memberships: [],
   profiles: [],
   tasks: [],

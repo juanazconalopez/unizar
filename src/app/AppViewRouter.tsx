@@ -274,6 +274,7 @@ export function AppViewRouter({
         provisionalAttendance={data.provisionalAttendance}
         provisionalPlayers={data.provisionalPlayers}
         playerAbsences={data.playerAbsences}
+        playerAbsencePrivateNotes={data.playerAbsencePrivateNotes}
         seasons={data.seasons}
         seasonCompetitions={data.seasonCompetitions}
         seasonTeams={data.seasonTeams}
@@ -291,6 +292,7 @@ export function AppViewRouter({
         onArchiveProfile={actions.club.archiveProfile}
         onSavePlayerAbsence={actions.club.savePlayerAbsence}
         onDeletePlayerAbsence={actions.club.deletePlayerAbsence}
+        onDischargePlayerAbsence={actions.club.dischargePlayerAbsence}
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
         onAssignSeasonPlayerTeam={actions.club.assignSeasonPlayerTeam}

@@ -17,3 +17,8 @@ export async function deletePlayerAbsence(absenceId: string) {
   const { error } = await supabase.rpc('delete_player_absence', { checked_absence_id: absenceId })
   if (error) throw error
 }
+
+export async function dischargePlayerAbsence(absenceId: string) {
+  const { error } = await supabase.rpc('discharge_player_absence', { checked_absence_id: absenceId })
+  if (error) throw error
+}

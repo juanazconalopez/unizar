@@ -27,6 +27,7 @@ export type SeasonPlayer = Omit<Tables<'season_players'>, 'season_team_id'> & { 
 export type SeasonTeam = Tables<'season_teams'>
 export type SeasonTeamCoach = Tables<'season_team_coaches'>
 export type PlayerAbsence = Tables<'player_absences'>
+export type PlayerAbsencePrivateNote = Tables<'player_absence_private_notes'>
 
 export type TodayBirthday = {
   player_id: string

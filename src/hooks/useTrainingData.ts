@@ -9,7 +9,7 @@ import type { PermissionKey } from '../lib/permissions'
 import { fetchTrainingData } from '../services/trainingDataService'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { MatchWindowData } from '../services/trainingQueriesService'
-import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, PlayerAbsence, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
+import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
 import { attendanceKey, availabilityKey, lineupKey, mergeTaskWindow, provisionalAttendanceKey, replaceDateRange, replaceRelated, restoreLoadedRanges } from './trainingDataCache'
 
 export const AUTO_REFRESH_INTERVAL_MS = 60 * 1000
@@ -25,6 +25,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [seasonTeams, setSeasonTeams] = useState<SeasonTeam[]>([])
   const [seasonTeamCoaches, setSeasonTeamCoaches] = useState<SeasonTeamCoach[]>([])
   const [playerAbsences, setPlayerAbsences] = useState<PlayerAbsence[]>([])
+  const [playerAbsencePrivateNotes, setPlayerAbsencePrivateNotes] = useState<PlayerAbsencePrivateNote[]>([])
   const [memberships, setMemberships] = useState<SeasonPlayer[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [tasks, setTasks] = useState<TrainingTask[]>([])
@@ -236,6 +237,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
         setSeasonTeams(data.seasonTeams)
         setSeasonTeamCoaches(data.seasonTeamCoaches)
         setPlayerAbsences(data.playerAbsences)
+        setPlayerAbsencePrivateNotes(data.playerAbsencePrivateNotes)
         setTasks(data.tasks)
         setResults(data.results)
         setMemberships(data.memberships)
@@ -314,6 +316,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     seasonTeams,
     seasonTeamCoaches,
     playerAbsences,
+    playerAbsencePrivateNotes,
     memberships,
     profiles,
     tasks,

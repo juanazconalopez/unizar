@@ -1,6 +1,6 @@
 import { PageHeader } from '../../components/ui/PageHeader'
 import { todayIso } from '../../lib/dates'
-import type { LibrarySettings, ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonValues } from '../../types'
+import type { LibrarySettings, ManagedProfileValues, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonValues } from '../../types'
 import { SeasonsView } from '../seasons/SeasonsView'
 import { TeamView } from '../team/TeamView'
 import { LibrarySettingsView } from '../library/LibrarySettingsView'
@@ -12,7 +12,7 @@ import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 
 type SettingsSection = 'team' | 'seasons' | 'library' | 'permissions'
 
-export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], seasons, seasonCompetitions = [], seasonTeams = [], seasonTeamCoaches = [], holidays, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onUpdateProfile, onUpdateProfileDetails, onUpdateProfilePhoto, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onSavePlayerAbsence, onDeletePlayerAbsence, onUpdateSeason, onSaveHolidays, onCreateSeasonCompetition, onDeleteSeasonCompetition, onSetDefaultSeasonCompetition, onUpdateSeasonCompetition, onCreateSeasonTeam, onUpdateSeasonTeam, onDeleteSeasonTeam, onAssignSeasonPlayerTeam, onAssignSeasonTeamCoach, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
+export function SettingsView({ section: requestedSection, currentUserId, memberships, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], playerAbsencePrivateNotes = [], seasons, seasonCompetitions = [], seasonTeams = [], seasonTeamCoaches = [], holidays, librarySettings = null, permissionDefinitions = [], rolePermissions = [], onCreateSeason, onDeleteSeason, onUpdateProfile, onUpdateProfileDetails, onUpdateProfilePhoto, onArchiveProfile, onLoadProfilePhoto, onLinkProvisionalPlayers, onSavePlayerAbsence, onDeletePlayerAbsence, onDischargePlayerAbsence, onUpdateSeason, onSaveHolidays, onCreateSeasonCompetition, onDeleteSeasonCompetition, onSetDefaultSeasonCompetition, onUpdateSeasonCompetition, onCreateSeasonTeam, onUpdateSeasonTeam, onDeleteSeasonTeam, onAssignSeasonPlayerTeam, onAssignSeasonTeamCoach, onSaveLibraryFolder, onSyncLibrary, onSaveRolePermissions, onResetRolePermissions }: {
   section?: SettingsSection
   currentUserId: string
   memberships: SeasonPlayer[]
@@ -21,6 +21,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   playerAbsences?: PlayerAbsence[]
+  playerAbsencePrivateNotes?: PlayerAbsencePrivateNote[]
   seasons: Season[]
   seasonCompetitions?: SeasonCompetition[]
   seasonTeams?: SeasonTeam[]
@@ -37,6 +38,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
   onSavePlayerAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeletePlayerAbsence?: (absenceId: string) => Promise<void>
+  onDischargePlayerAbsence?: (absenceId: string) => Promise<void>
   onUpdateProfile: (profile: Profile) => Promise<void>
   onUpdateProfileDetails?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
   onUpdateProfilePhoto?: (profile: Profile, change: File | null) => Promise<void>
@@ -61,7 +63,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   const sectionTitle = section === 'team' ? 'Equipo' : section === 'seasons' ? 'Temporadas' : section === 'library' ? 'Librería' : 'Permisos'
   return <div className="page settings-page">
     <PageHeader eyebrow="ADMINISTRACIÓN" title={`Ajustes - ${sectionTitle}`} subtitle="Gestiona la estructura y los accesos del club." />
-    {section === 'team' && <TeamView currentUserId={currentUserId} embedded seasons={seasons} seasonTeams={seasonTeams} hideEmbeddedTitle playerAbsences={playerAbsences} profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onAssignPlayerTeam={onAssignSeasonPlayerTeam} onDeleteAbsence={onDeletePlayerAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onSavePhoto={onUpdateProfilePhoto} onSaveAbsence={onSavePlayerAbsence} onUpdate={onUpdateProfile} />}
+    {section === 'team' && <TeamView currentUserId={currentUserId} embedded seasons={seasons} seasonTeams={seasonTeams} hideEmbeddedTitle playerAbsences={playerAbsences} playerAbsencePrivateNotes={playerAbsencePrivateNotes} profiles={profiles} profilePrivateDetails={profilePrivateDetails} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchiveProfile} onAssignPlayerTeam={onAssignSeasonPlayerTeam} onDeleteAbsence={onDeletePlayerAbsence} onDischargeAbsence={onDischargePlayerAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadProfilePhoto} onSave={onUpdateProfileDetails} onSavePhoto={onUpdateProfilePhoto} onSaveAbsence={onSavePlayerAbsence} onUpdate={onUpdateProfile} />}
     {section === 'seasons' && <SeasonsView embedded hideEmbeddedTitle competitions={seasonCompetitions} holidays={holidays} memberships={memberships} profiles={profiles} profilePrivateDetails={profilePrivateDetails} teamCoaches={seasonTeamCoaches} teams={seasonTeams} seasons={seasons} onAssignPlayerTeam={onAssignSeasonPlayerTeam} onAssignTeamCoach={onAssignSeasonTeamCoach} onCreate={onCreateSeason} onCreateCompetition={onCreateSeasonCompetition} onCreateTeam={onCreateSeasonTeam} onDelete={onDeleteSeason} onDeleteCompetition={onDeleteSeasonCompetition} onDeleteTeam={onDeleteSeasonTeam} onSaveHolidays={onSaveHolidays} onSetDefaultCompetition={onSetDefaultSeasonCompetition} onUpdate={onUpdateSeason} onUpdateCompetition={onUpdateSeasonCompetition} onUpdateTeam={onUpdateSeasonTeam} />}
     {section === 'library' && <LibrarySettingsView hideEmbeddedTitle settings={librarySettings} onSaveFolder={onSaveLibraryFolder} onSync={onSyncLibrary} />}
     {section === 'permissions' && onSaveRolePermissions && onResetRolePermissions && <PermissionsSettingsView definitions={permissionDefinitions} grants={rolePermissions} onReset={onResetRolePermissions} onSave={onSaveRolePermissions} />}

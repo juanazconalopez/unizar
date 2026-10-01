@@ -14,7 +14,7 @@ import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsS
 import { assignSeasonPlayerTeam, createSeasonTeam, deleteSeasonTeam, setSeasonTeamCoach, updateSeasonTeam } from '../../services/seasonTeamsService'
 import type { SeasonTeam } from '../../types'
 import type { SeasonTeamValues } from '../../services/seasonTeamsService'
-import { deletePlayerAbsence, savePlayerAbsence } from '../../services/playerAbsencesService'
+import { deletePlayerAbsence, dischargePlayerAbsence, savePlayerAbsence } from '../../services/playerAbsencesService'
 import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
@@ -102,6 +102,12 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       await deletePlayerAbsence(absenceId)
       context.notify('Baja eliminada.')
+      await context.reloadData()
+    },
+    dischargePlayerAbsence: async (absenceId: string) => {
+      context.requireConnection()
+      await dischargePlayerAbsence(absenceId)
+      context.notify('Alta deportiva registrada desde hoy.')
       await context.reloadData()
     },
     updateProfile: async (profile: Profile) => {

@@ -7973,17 +7973,60 @@ button.survey-closure-card:focus-visible {
   font-size: 11px;
 }
 
+.absence-row-details {
+  display: grid;
+  gap: 3px;
+}
+
+.absence-row-details small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.absence-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
 .team-member-absence-history {
+  --absence-border: #eadb9e;
   margin: 16px 0;
   padding: 14px;
-  border: 1px solid #ebc7bf;
+  border: 1px solid var(--absence-border);
   border-radius: 10px;
+  background: #fffdf2;
+}
+
+.team-member-absence-history.is-current {
+  --absence-border: #ebc7bf;
   background: #fff9f7;
 }
 
+.team-member-absence-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
 .team-member-absence-history h3 {
-  margin: 0 0 9px;
+  margin: 0;
   font-size: 12px;
+}
+
+.team-member-profile-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.team-member-profile-title h2 {
+  margin: 0;
 }
 
 .team-member-absence-item {
@@ -7994,8 +8037,50 @@ button.survey-closure-card:focus-visible {
   font-size: 11px;
 }
 
+.team-member-absence-details {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.team-member-absence-dates {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-member-absence-dates > span {
+  min-width: 0;
+}
+
+.team-member-absence-dates > small {
+  margin-left: auto;
+  text-align: right;
+}
+
+.team-member-absence-edit {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.team-member-absence-note {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .team-member-absence-item + .team-member-absence-item {
-  border-top: 1px solid #ebc7bf;
+  border-top: 1px solid var(--absence-border);
 }
 
 .team-member-absence-item small {

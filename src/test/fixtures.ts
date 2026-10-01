@@ -50,6 +50,7 @@ export function makePlayerAbsence(overrides: Partial<PlayerAbsence> = {}): Playe
     player_id: 'player-1',
     starts_on: '2026-09-20',
     ends_on: null,
+    discharged_on: null,
     created_by: 'owner-1',
     created_at: createdAt,
     updated_at: createdAt,

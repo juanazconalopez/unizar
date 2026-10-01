@@ -6,7 +6,7 @@ import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { areDisplayNamesSimilar } from '../../lib/displayNames'
 import { isValidInternationalPhone } from '../../lib/phone'
-import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
+import type { ManagedProfileValues, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
 import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from '../profile/ProfilePhotoField'
@@ -17,7 +17,7 @@ import { ProvisionalAttendanceOptions } from './ProvisionalAttendanceOptions'
 import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], onClose, onPreviewPlayer, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
+export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], absenceNotes = [], onClose, onPreviewPlayer, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
   person: Profile
   details?: ProfilePrivateDetails
   currentUserId: string
@@ -25,6 +25,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   absences?: PlayerAbsence[]
+  absenceNotes?: PlayerAbsencePrivateNote[]
   activeSeason?: Season
   activeTeams?: SeasonTeam[]
   onClose: () => void
@@ -38,9 +39,11 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
   onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeleteAbsence?: (absenceId: string) => Promise<void>
+  onDischargeAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
   const [activeDialog, setActiveDialog] = useState<'profile' | 'photo' | 'absence' | 'attendance'>('profile')
+  const [absenceToEditId, setAbsenceToEditId] = useState<string | undefined>()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const [displayName, setDisplayName] = useState(person.display_name)
@@ -60,6 +63,7 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const titleId = 'team-member-dialog-title'
   const approved = person.is_approved && !person.is_archived
   const personAbsences = absences.filter((absence) => absence.player_id === person.id).sort((first, second) => second.starts_on.localeCompare(first.starts_on))
+  const privateAbsenceNoteById = new Map(absenceNotes.map((note) => [note.absence_id, note.note.trim()]))
   const currentAbsence = getCurrentPlayerAbsence(absences, person.id, today)
   const permissionChanged = isActive !== person.is_active || isPlayer !== person.is_player || isCoach !== person.is_coach || isViewer !== person.is_viewer || isOwner !== person.is_owner
   const provisionalCandidates = provisionalPlayers.filter((guest) => (
@@ -89,9 +93,24 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
   }, [menuOpen])
 
-  function openDialog(dialog: 'photo' | 'absence' | 'attendance') {
+  function openDialog(dialog: 'photo' | 'absence' | 'attendance', absenceId?: string) {
     setMenuOpen(false)
+    setAbsenceToEditId(absenceId)
     setActiveDialog(dialog)
+  }
+
+  async function dischargeCurrentAbsence() {
+    if (!currentAbsence || !onDischargeAbsence || !window.confirm(`¿Forzar el alta deportiva hoy a ${person.display_name}? Podrá volver a estar disponible desde hoy.`)) return
+    setMenuOpen(false)
+    setSaving(true)
+    setFormError('')
+    try {
+      await onDischargeAbsence(currentAbsence.id)
+    } catch (error) {
+      setFormError(errorText(error))
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -158,13 +177,13 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
 
   if (activeDialog === 'photo' && onSavePhoto) return <TeamMemberPhotoDialog onClose={() => setActiveDialog('profile')} onLoadPhoto={onLoadPhoto} onSave={onSavePhoto} onSaved={onClose} person={person} />
 
-  if (activeDialog === 'absence' && onSaveAbsence) return <PlayerAbsenceDialog absences={personAbsences} onClose={() => setActiveDialog('profile')} onDelete={onDeleteAbsence} onSave={onSaveAbsence} person={person} />
+  if (activeDialog === 'absence' && onSaveAbsence) return <PlayerAbsenceDialog absences={personAbsences} editAbsenceId={absenceToEditId} notes={absenceNotes} onClose={() => setActiveDialog('profile')} onDelete={onDeleteAbsence} onDischarge={onDischargeAbsence} onSave={onSaveAbsence} person={person} />
 
   if (activeDialog === 'attendance' && canLinkAttendance) return <ProvisionalAttendanceLinkDialog attendance={provisionalAttendance} candidates={provisionalCandidates} onClose={() => setActiveDialog('profile')} onLink={onLinkProvisionalPlayers} onLinked={onClose} onSelectionChange={setSelectedProvisionalIds} person={person} selectedIds={selectedProvisionalIds} />
 
   return <Modal className="team-member-dialog" disabled={saving} labelledBy={titleId} onClose={onClose} onSubmit={editing ? submit : undefined}>
     <div className="task-detail-heading">
-      <div><span className="eyebrow">DATOS DE PERFIL</span><h2 id={titleId}>{person.display_name}</h2>{currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}</div>
+      <div><span className="eyebrow">DATOS DE PERFIL</span><div className="team-member-profile-title"><h2 id={titleId}>{person.display_name}</h2>{currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}</div></div>
       <div className="team-member-heading-actions" ref={menuRef} onKeyDown={(event) => {
         if (event.key === 'Escape' && menuOpen) { event.stopPropagation(); setMenuOpen(false) }
       }}>
@@ -172,7 +191,9 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
           {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
           {approved && person.is_active && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">{person.avatar_path ? 'Cambiar foto' : 'Subir foto'}</button>}
-          {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
+          {person.is_player && currentAbsence && onDischargeAbsence
+            ? <button onClick={() => void dischargeCurrentAbsence()} type="button">Forzar alta deportiva</button>
+            : person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
           {canLinkAttendance && <button onClick={() => openDialog('attendance')} type="button">Vincular asistencias</button>}
           {approved && person.is_active && person.is_player && onPreviewPlayer && <button onClick={() => { setMenuOpen(false); onPreviewPlayer(person) }} type="button">Vista previa de jugadora</button>}
           <button onClick={onClose} type="button">Cerrar</button>
@@ -212,11 +233,17 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>)}</span></Detail>
         <Detail label="Perfil"><small className={`profile-completion-state ${details?.email && details.phone && details.birth_date ? 'complete' : 'incomplete'}`}>{details?.email && details.phone && details.birth_date ? 'Datos completos' : 'Faltan datos'}</small></Detail>
       </div>
-      {personAbsences.length > 0 && <section aria-label="Bajas deportivas" className="team-member-absence-history">
-        <h3>Bajas deportivas</h3>
+      {personAbsences.length > 0 && <section aria-label="Bajas deportivas" className={`team-member-absence-history ${currentAbsence ? 'is-current' : 'is-inactive'}`}>
+        <div className="team-member-absence-heading"><h3>Bajas deportivas</h3>{currentAbsence && onSaveAbsence && <button aria-label="Editar baja deportiva vigente" className="icon-button team-member-absence-edit" onClick={() => openDialog('absence', currentAbsence.id)} title="Editar baja deportiva" type="button"><Icon name="edit" size={15} /></button>}</div>
         {personAbsences.map((absence) => <div className="team-member-absence-item" key={absence.id}>
-          <span>{formatDate(absence.starts_on, { day: 'numeric', month: 'long', year: 'numeric' })} — {absence.ends_on ? formatDate(absence.ends_on, { day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha prevista'}</span>
-          <small className={absence === currentAbsence ? 'current' : ''}>{absence === currentAbsence ? 'Vigente' : absence.starts_on > today ? 'Programada' : 'Finalizada'}</small>
+          <div className="team-member-absence-details">
+            <div className="team-member-absence-dates"><span>{formatDate(absence.starts_on, { day: 'numeric', month: 'long', year: 'numeric' })} — {absence.ends_on ? formatDate(absence.ends_on, { day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha prevista'}</span>
+              <small className={absence === currentAbsence ? 'current' : ''}>{absence.discharged_on
+                ? 'Alta deportiva: ' + formatDate(absence.discharged_on, { day: 'numeric', month: 'short', year: 'numeric' })
+                : absence === currentAbsence ? 'Vigente' : absence.starts_on > today ? 'Programada' : 'Finalizada'}</small>
+            </div>
+            {privateAbsenceNoteById.get(absence.id) && <p className="team-member-absence-note">{privateAbsenceNoteById.get(absence.id)}</p>}
+          </div>
         </div>)}
       </section>}
       {possibleMatches.length > 0 && <div className="duplicate-profile-warning" role="status"><Icon name="warning" size={18} /><div><strong>Posible cuenta duplicada</strong><p>El nombre se parece a {possibleMatches.map((match) => match.display_name).join(', ')}. Revisa la coincidencia antes de autorizar.</p></div></div>}

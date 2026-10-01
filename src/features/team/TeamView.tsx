@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { urlForNavigation } from '../../lib/navigation'
 import { ageOnDate, formatDate, todayIso } from '../../lib/dates'
 import { areDisplayNamesSimilar, displayNameContains, normalizeDisplayName } from '../../lib/displayNames'
-import type { ManagedProfileValues, PlayerAbsence, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
+import type { ManagedProfileValues, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonTeam } from '../../types'
 import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 import { TeamMemberDialog } from './TeamMemberDialog'
 import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
@@ -36,7 +36,7 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], seasons = [], seasonTeams = [], currentUserId, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], playerAbsencePrivateNotes = [], seasons = [], seasonTeams = [], currentUserId, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   profiles: Profile[]
@@ -44,6 +44,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   provisionalPlayers?: ProvisionalPlayer[]
   provisionalAttendance?: ProvisionalAttendanceRecord[]
   playerAbsences?: PlayerAbsence[]
+  playerAbsencePrivateNotes?: PlayerAbsencePrivateNote[]
   seasons?: Season[]
   seasonTeams?: SeasonTeam[]
   currentUserId: string
@@ -56,6 +57,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
   onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeleteAbsence?: (absenceId: string) => Promise<void>
+  onDischargeAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [showArchived, setShowArchived] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -149,7 +151,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog absences={playerAbsences} activeSeason={activeSeason} activeTeams={activeTeams} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onAssignPlayerTeam={onAssignPlayerTeam} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSavePhoto={onSavePhoto} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog absences={playerAbsences} absenceNotes={playerAbsencePrivateNotes} activeSeason={activeSeason} activeTeams={activeTeams} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onAssignPlayerTeam={onAssignPlayerTeam} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onDischargeAbsence={onDischargeAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSavePhoto={onSavePhoto} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
   </div>
 }
 
