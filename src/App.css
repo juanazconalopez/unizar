@@ -13227,6 +13227,13 @@ button.survey-closure-card:focus-visible {
   width: min(760px, 100%);
 }
 
+.match-report-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
 .match-report-scores {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -13246,12 +13253,48 @@ button.survey-closure-card:focus-visible {
 }
 
 .match-report-event select {
-  min-width: 140px;
-  flex: 1 1 145px;
+  min-width: 160px;
+  max-width: 100%;
+  flex: 1 1 160px;
 }
 
-.match-report-event input {
+.match-report-event input[type="number"] {
   width: 78px;
+}
+
+.match-report-event > label:not(.match-report-no-return) {
+  display: grid;
+  gap: 4px;
+}
+
+.match-report-event-number {
+  flex-basis: 100%;
+  font-weight: 600;
+}
+
+.match-report-no-return {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-weight: 500;
+}
+
+.match-report-minutes dl {
+  margin: 0;
+}
+
+.match-report-minutes dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.match-report-minutes dd {
+  white-space: nowrap;
+  margin: 0;
+  font-weight: 600;
 }
 
 .match-report-review {
@@ -13259,6 +13302,20 @@ button.survey-closure-card:focus-visible {
   gap: 8px;
   align-items: flex-start;
   margin: 16px 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.match-report-review input,
+.match-report-no-return input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  accent-color: var(--green);
 }
 
 .match-report-message {

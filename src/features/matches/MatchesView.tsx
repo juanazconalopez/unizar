@@ -1,4 +1,4 @@
-import type { SavedReportEvent } from '../../services/matchReportService'
+import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -64,7 +64,8 @@ type MatchesViewProps = {
     published: boolean,
   ) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
-  onSaveReport?: (match: Match, file: File, scores: { team: number; opponent: number }, duration: number, events: SavedReportEvent[], reviewed: boolean) => Promise<void>
+  onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onUnlockLineup?: (match: Match) => Promise<void>
   onFinalizeInternal?: (match: Match) => Promise<void>
   onLoadCallupReport?: (seasonId: string) => Promise<SeasonCallupReport>
@@ -100,6 +101,7 @@ export function MatchesView({
   onSaveLineup,
   onSaveMatch,
   onSaveReport,
+  onLoadReportEvents,
   onUnlockLineup,
   onFinalizeInternal,
   onLoadCallupReport,
@@ -292,7 +294,6 @@ export function MatchesView({
         onLoadGraphicPhoto={onLoadGraphicPhoto}
         canManageLineup={canManage}
         canViewAvailability={canViewAvailability}
-        canViewReportPdf={canViewReport}
         isPlayer={isPlayer}
         lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
         pairedLineup={lineups.filter((entry) => entry.match_id === pairedDetailMatch?.id)}
@@ -309,6 +310,7 @@ export function MatchesView({
           await refreshMatchMonth(detailMatch.match_date)
         }}
         onSaveReport={onSaveReport ? async (...args) => { await onSaveReport(...args); setDetailMatch(null); await refreshMatchMonth(detailMatch.match_date) } : undefined}
+        onLoadReportEvents={onLoadReportEvents}
         onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
       />}
 

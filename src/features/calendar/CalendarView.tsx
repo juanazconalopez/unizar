@@ -1,4 +1,4 @@
-import type { SavedReportEvent } from '../../services/matchReportService'
+import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -90,7 +90,8 @@ type CalendarViewProps = {
   onSavePlayerAvailability: (match: Match, playerId: string, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveLineup: (match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
-  onSaveReport?: (match: Match, file: File, scores: { team: number; opponent: number }, duration: number, events: SavedReportEvent[], reviewed: boolean) => Promise<void>
+  onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onUnlockLineup: (match: Match) => Promise<void>
   onFinalizeInternal?: (match: Match) => Promise<void>
   onLoadCallupReport: (seasonId: string) => Promise<SeasonCallupReport>
@@ -382,7 +383,6 @@ export function CalendarView(props: CalendarViewProps) {
       demoCoaches={props.demoCoaches}
       onLoadGraphicPhoto={props.onLoadGraphicPhoto}
       canViewAvailability
-      canViewReportPdf={access.report}
       isPlayer={false}
       lineup={props.lineups.filter((entry) => entry.match_id === detailMatch.id)}
       pairedLineup={props.lineups.filter((entry) => entry.match_id === pairedDetailMatch?.id)}
@@ -394,6 +394,7 @@ export function CalendarView(props: CalendarViewProps) {
       onManageLineup={() => { setDetailMatch(null); setLineupMatch({ match: detailMatch, editable: true }) }}
       onReviewInternal={props.isOwner && detailMatch.internal_fixture_id ? () => { setReviewFixtureId(detailMatch.internal_fixture_id ?? null); setDetailMatch(null) } : undefined}
       onSaveReport={props.onSaveReport ? async (...args) => { await props.onSaveReport?.(...args); setDetailMatch(null); await props.onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`, { force: true }) } : undefined}
+      onLoadReportEvents={props.onLoadReportEvents}
       onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
     />}
     {reviewFixtureId && props.isOwner && props.onFinalizeInternal && (() => {

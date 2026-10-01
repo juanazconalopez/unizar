@@ -418,6 +418,7 @@ test('desktop training editor scrolls only its form and keeps the session summar
 })
 
 test('desktop calendar presents daily groups in the agreed order', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-24T12:00:00+02:00') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
   const calendar = page.getByRole('region', { name: 'Calendario de planificación' })
@@ -441,6 +442,7 @@ test('desktop calendar presents daily groups in the agreed order', async ({ page
 })
 
 test('player opens survey results from calendar and remains there after closing', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-24T12:00:00+02:00') })
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('player')
   await page.getByRole('button', { name: 'Calendario' }).click()

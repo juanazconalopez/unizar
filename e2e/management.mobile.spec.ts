@@ -43,6 +43,7 @@ test('coach cannot create a private survey', async ({ page }) => {
 })
 
 test('owner saves a holiday and sees it in the calendar', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-24T12:00:00+02:00') })
   await page.goto('/')
   await page.getByRole('button', { name: 'Ajustes' }).click()
   await page.getByRole('menuitem', { name: 'Temporadas' }).click()
@@ -145,7 +146,7 @@ test('owner manages season teams and assignments in the local demo', async ({ pa
   await dialog.getByRole('button', { name: 'Editar entrenadores de Unizar Mixto' }).click()
   await dialog.getByRole('checkbox', { name: 'Andrea López' }).check()
   await dialog.getByRole('checkbox', { name: 'Lucía Martín' }).check()
-  await dialog.getByRole('button', { name: 'Volver a equipos' }).click()
+  await dialog.getByRole('button', { name: 'Guardar cambios' }).click()
   await expect(dialog.getByRole('region', { name: 'Unizar Mixto, 1 jugadora' })).toContainText('Andrea López')
   await expect(dialog.getByRole('region', { name: 'Unizar Mixto, 1 jugadora' })).toContainText('Lucía Martín')
 

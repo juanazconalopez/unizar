@@ -1,5 +1,5 @@
 begin;
-select plan(343);
+select plan(363);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -898,7 +898,7 @@ select has_function('public', 'save_match_events', array['uuid', 'jsonb'], 'staf
 select has_function('public', 'get_season_player_minutes', array['uuid'], 'season playing minutes are calculated from events');
 select ok(has_function_privilege('authenticated', 'public.get_season_player_minutes(uuid)', 'EXECUTE'), 'authenticated users can read protected minutes');
 select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%player_has_absence_on%', 'an active absence blocks match eligibility');
-select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%yellow_card%', 'yellow cards remove their ten-minute interval from calculated minutes');
+select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%calculate_match_player_minutes%', 'season minutes use the same interval calculation as report validation');
 
 select has_column('public', 'matches', 'internal_fixture_id', 'linked internal fixtures are stored on matches');
 select ok(exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'matches_internal_fixture_team_idx'), 'a team has one side of each internal fixture');
@@ -958,12 +958,12 @@ select like(pg_get_functiondef('public.assign_active_season_on_player_authorizat
 select has_column('public', 'matches', 'team_score', 'match report stores team score');
 select has_column('public', 'matches', 'opponent_score', 'match report stores opponent score');
 select has_column('public', 'matches', 'report_events_reviewed', 'match report review state is stored');
-select has_function('public', 'save_match_report', array['uuid', 'text', 'integer', 'integer', 'integer', 'jsonb', 'boolean'], 'match report is saved atomically');
-select ok(has_function_privilege('authenticated', 'public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)', 'EXECUTE'), 'authenticated manager can call protected report RPC');
-select ok(not has_function_privilege('anon', 'public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)', 'EXECUTE'), 'anonymous user cannot save reports');
-select ok(not has_function_privilege('authenticated', 'public.save_match_events(uuid,jsonb)', 'EXECUTE'), 'events can only be saved through a reviewed report');
-select like(pg_get_functiondef('public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)'::regprocedure), '%current_user_can_edit_match%', 'report RPC checks match scope');
-select like(pg_get_functiondef('public.save_match_report(uuid,text,integer,integer,integer,jsonb,boolean)'::regprocedure), '%Europe/Madrid%', 'report RPC checks match date in team timezone');
+select has_function('public', 'save_match_report', array['uuid', 'integer', 'integer', 'integer', 'jsonb'], 'match report is saved atomically');
+select ok(has_function_privilege('authenticated', 'public.save_match_report(uuid,integer,integer,integer,jsonb)', 'EXECUTE'), 'authenticated manager can call protected report RPC');
+select ok(not has_function_privilege('anon', 'public.save_match_report(uuid,integer,integer,integer,jsonb)', 'EXECUTE'), 'anonymous user cannot save reports');
+select ok(not has_function_privilege('authenticated', 'public.save_match_events(uuid,jsonb)', 'EXECUTE'), 'events can only be saved through the reviewed result RPC');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%current_user_can_edit_match%', 'report RPC checks match scope');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%Europe/Madrid%', 'report RPC checks match date in team timezone');
 select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%report_events_reviewed%', 'unreviewed reports cannot contribute playing minutes');
 select ok(exists (select 1 from storage.buckets where id = 'match-reports' and not public), 'match reports use private storage');
 select ok(exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Match viewers can read reports' and qual like '%matches.report%'), 'report PDFs require the report permission');
@@ -975,6 +975,28 @@ select like(pg_get_functiondef('public.get_published_match_coaches(uuid)'::regpr
 select like(pg_get_functiondef('public.get_published_match_coaches(uuid)'::regprocedure), '%current_user_has_permission(''matches.view'')%', 'coach name RPC requires match view permission');
 select like(pg_get_functiondef('public.get_published_match_coaches(uuid)'::regprocedure), '%match.lineup_published%', 'coach names are exposed only after lineup publication');
 select like(pg_get_functiondef('public.get_published_match_coaches(uuid)'::regprocedure), '%player_can_access_match%', 'player access to coach names remains match scoped');
+
+
+select has_column('public', 'match_events', 'return_minute', 'yellow cards store their actual return minute');
+select has_column('public', 'match_events', 'sort_order', 'events at the same minute preserve their reviewed order');
+select has_function('public', 'calculate_match_player_minutes', array['uuid', 'jsonb'], 'playing intervals have a shared SQL validator');
+select ok(not has_function_privilege('authenticated', 'public.calculate_match_player_minutes(uuid,jsonb)', 'EXECUTE'), 'clients cannot call the internal minute calculator');
+select ok(not has_function_privilege('anon', 'public.calculate_match_player_minutes(uuid,jsonb)', 'EXECUTE'), 'anonymous users cannot call the minute calculator');
+select like(pg_get_functiondef('public.calculate_match_player_minutes(uuid,jsonb)'::regprocedure), '%sevens%then 2 else 10%', 'yellow suspensions respect rugby format');
+select like(pg_get_functiondef('public.calculate_match_player_minutes(uuid,jsonb)'::regprocedure), '%ordinality%', 'minute calculation preserves event order for reentries');
+select like(pg_get_functiondef('public.calculate_match_player_minutes(uuid,jsonb)'::regprocedure), '%incoming%sent_off%', 'sent-off players cannot enter again');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%SECURITY DEFINER%', 'result saving runs through the protected RPC');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%matches.edit%', 'result saving requires match edit permission');
+select unlike(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%storage.objects%', 'result saving never requires uploading a PDF');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%lineup_published%', 'official minutes require a published lineup');
+select ok(not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Match managers can upload reports'), 'new match report uploads are disabled');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_events' and policyname = 'Match managers can read events' and qual like '%current_user_can_edit_match%'), 'saved event reading is scoped to match managers');
+select ok(not exists (select 1 from pg_constraint where conrelid = 'public.matches'::regclass and conname = 'matches_report_review_check'), 'reviewed results do not require a PDF path');
+select has_trigger('public', 'match_lineup', 'match_lineup_invalidate_result', 'lineup changes require reviewing minutes again');
+select ok(not has_function_privilege('authenticated', 'public.invalidate_match_result_review()', 'EXECUTE'), 'clients cannot directly invalidate reviewed results');
+select like(pg_get_functiondef('public.invalidate_match_result_review()'::regprocedure), '%report_events_reviewed = false%', 'lineup changes keep events but exclude unreviewed minutes');
+select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%membership.active_from%membership.active_until%', 'saving minutes checks membership on the match date');
+select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%membership.active_from%membership.active_until%', 'season minutes respect membership periods');
 
 select * from finish();
 rollback;

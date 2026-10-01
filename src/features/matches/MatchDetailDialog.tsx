@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { todayInMadridIso } from '../../lib/dates'
-import { matchReportUrl, type SavedReportEvent } from '../../services/matchReportService'
+import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { MatchReportDialog } from './MatchReportDialog'
 import { Icon } from '../../components/Icon'
 import { Modal } from '../../components/ui/Modal'
@@ -18,7 +18,6 @@ export function MatchDetailDialog({
   canManageLineup,
   canGraphicExport = false,
   canViewAvailability,
-  canViewReportPdf = false,
   demo = false,
   demoCoaches,
   onLoadGraphicPhoto,
@@ -35,13 +34,13 @@ export function MatchDetailDialog({
   onReviewInternal,
   onSaveAvailability,
   onSaveReport,
+  onLoadReportEvents,
   onViewAvailability,
 }: {
   canEditMatch: boolean
   canManageLineup: boolean
   canGraphicExport?: boolean
   canViewAvailability: boolean
-  canViewReportPdf?: boolean
   demo?: boolean
   demoCoaches?: SeasonTeamCoach[]
   onLoadGraphicPhoto?: (path: string) => Promise<string>
@@ -57,7 +56,8 @@ export function MatchDetailDialog({
   onManageLineup: () => void
   onReviewInternal?: () => void
   onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
-  onSaveReport?: (match: Match, file: File, scores: { team: number; opponent: number }, duration: number, events: SavedReportEvent[], reviewed: boolean) => Promise<void>
+  onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onViewAvailability: () => void
 }) {
   const titleId = useId()
@@ -67,7 +67,6 @@ export function MatchDetailDialog({
   const [graphicOpen, setGraphicOpen] = useState(false)
   const [lineupView, setLineupView] = useState<'image' | 'list'>('image')
   const [selectedPublishedMatchId, setSelectedPublishedMatchId] = useState(match.id)
-  const [reportError, setReportError] = useState('')
   const hasPublishedLineup = match.lineup_published
   const showTeamSelector = Boolean(match.internal_fixture_id && hasPublishedLineup && pairedMatch?.lineup_published && pairedMatch.internal_fixture_id === match.internal_fixture_id)
   const selectedPublishedMatch = showTeamSelector && pairedMatch && selectedPublishedMatchId === pairedMatch.id ? pairedMatch : match
@@ -86,17 +85,7 @@ export function MatchDetailDialog({
     }
   }
 
-  async function openReport() {
-    if (!match.match_report_path) return
-    const tab = window.open('', '_blank')
-    try {
-      const url = match.match_report_path.startsWith('blob:') ? match.match_report_path : await matchReportUrl(match.match_report_path)
-      if (tab) { tab.opener = null; tab.location.replace(url) }
-      else setReportError('El navegador ha bloqueado la pestaña del acta.')
-    } catch (error) { tab?.close(); setReportError(errorText(error)) }
-  }
-
-  if (reportOpen && onSaveReport) return <MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={() => setReportOpen(false)} onSave={(file, scores, duration, events, reviewed) => onSaveReport(match, file, scores, duration, events, reviewed)} />
+  if (reportOpen && onSaveReport) return <MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={() => setReportOpen(false)} onLoadEvents={onLoadReportEvents} onSave={(values) => onSaveReport(match, values)} />
   if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={selectedLineup} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>
@@ -120,8 +109,8 @@ export function MatchDetailDialog({
     </dl>}
     {match.notes && <section className="match-detail-notes"><h3>Información</h3><p>{match.notes}</p></section>}
 
-    {match.match_report_path && <section className="match-detail-notes"><h3>Acta del partido</h3><p>{match.team_score} - {match.opponent_score} · {match.report_events_reviewed ? 'Eventos revisados' : 'Eventos pendientes de revisar'}</p>{canViewReportPdf && <button className="secondary-button compact" onClick={() => void openReport()} type="button">Ver PDF del acta</button>}{reportError && <p className="form-error">{reportError}</p>}</section>}
-    {onSaveReport && canEditMatch && match.match_date < todayInMadridIso() && match.status !== 'draft' && match.status !== 'cancelled' && <div className="match-detail-actions"><button className="secondary-button" onClick={() => setReportOpen(true)} type="button">{match.match_report_path ? 'Sustituir acta' : 'Subir acta'}</button></div>}
+    {match.team_score != null && match.opponent_score != null && <section className="match-detail-notes"><h3>Resultado del partido</h3><p>{match.team_score} - {match.opponent_score}{match.match_kind === 'official' ? ` · ${match.report_events_reviewed ? 'Eventos revisados' : 'Eventos pendientes de revisar'}` : ''}</p></section>}
+    {onSaveReport && canEditMatch && match.match_date <= todayInMadridIso() && match.status !== 'draft' && match.status !== 'cancelled' && <div className="match-detail-actions"><button className="secondary-button" onClick={() => setReportOpen(true)} type="button">{match.team_score != null ? 'Editar resultado y minutos' : 'Registrar resultado y minutos'}</button></div>}
 
     {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
 

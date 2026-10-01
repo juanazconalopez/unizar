@@ -68,7 +68,7 @@ describe('PlayerCalendarView', () => {
 
   test('keeps a completed match and its score visible without availability actions', async () => {
     const common = props()
-    common.matches = [makeMatch({ status: 'completed', match_report_path: 'match-1/report.pdf', team_score: 46, opponent_score: 7, report_events_reviewed: true })]
+    common.matches = [makeMatch({ status: 'completed', team_score: 46, opponent_score: 7, report_events_reviewed: true })]
     const user = userEvent.setup()
     render(<PlayerCalendarView {...common} />)
 

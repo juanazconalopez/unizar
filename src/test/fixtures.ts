@@ -1,5 +1,6 @@
 import type {
   AttendanceRecord,
+  Match,
   Profile,
   ProfilePrivateDetails,
   PlayerAbsence,
@@ -16,6 +17,17 @@ import type {
 } from '../types'
 
 const createdAt = '2026-08-01T10:00:00.000Z'
+
+export function makeMatch(overrides: Partial<Match> = {}): Match {
+  return {
+    id: 'match-1', season_id: 'season-1', competition_id: 'competition-1',
+    opponent: 'Rival Rugby', match_date: '2026-09-20', kickoff_time: '12:00:00',
+    venue: 'Campo del Actur', callup_time: null, callup_venue: null, is_home: true,
+    notes: '', status: 'published', match_kind: 'official', rugby_format: 'xv',
+    lineup_published: true, created_by: 'owner-1', created_at: createdAt, updated_at: createdAt,
+    seasons: { name: 'Temporada 2026' }, ...overrides,
+  }
+}
 
 export function makeProfile(overrides: Partial<Profile> = {}): Profile {
   return {

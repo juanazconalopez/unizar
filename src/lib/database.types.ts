@@ -561,9 +561,9 @@ export type Database = {
         ]
       }
       match_events: {
-        Row: { id: string; match_id: string; event_minute: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id: string | null; created_by: string; created_at: string }
-        Insert: { id?: string; match_id: string; event_minute: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id?: string | null; created_by: string; created_at?: string }
-        Update: { id?: string; match_id?: string; event_minute?: number; event_type?: Database["public"]["Enums"]["match_event_type"]; player_id?: string; replacement_player_id?: string | null; created_by?: string; created_at?: string }
+        Row: { id: string; match_id: string; event_minute: number; return_minute: number | null; sort_order: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id: string | null; created_by: string; created_at: string }
+        Insert: { id?: string; match_id: string; event_minute: number; return_minute?: number | null; sort_order?: number; event_type: Database["public"]["Enums"]["match_event_type"]; player_id: string; replacement_player_id?: string | null; created_by: string; created_at?: string }
+        Update: { id?: string; match_id?: string; event_minute?: number; return_minute?: number | null; sort_order?: number; event_type?: Database["public"]["Enums"]["match_event_type"]; player_id?: string; replacement_player_id?: string | null; created_by?: string; created_at?: string }
         Relationships: []
       }
       matches: {
@@ -1424,10 +1424,11 @@ export type Database = {
       delete_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
       discharge_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
       save_match_events: { Args: { checked_events: Json; checked_match_id: string }; Returns: undefined }
-      save_match_report: { Args: { checked_match_id: string; checked_path: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json; checked_events_reviewed: boolean }; Returns: undefined }
+      save_match_report: { Args: { checked_match_id: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json }; Returns: undefined }
       player_has_absence_on: { Args: { checked_date: string; checked_player_id: string }; Returns: boolean }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }
+      calculate_match_player_minutes: { Args: { checked_match_id: string; checked_events: Json }; Returns: { player_id: string; played_minutes: number }[] }
       get_season_player_minutes: { Args: { checked_season_id: string }; Returns: { player_id: string; played_minutes: number }[] }
       is_valid_international_phone: { Args: { phone: string }; Returns: boolean }
       normalize_international_phone: { Args: { phone: string }; Returns: string }
