@@ -913,9 +913,9 @@ export type Database = {
         ]
       }
       season_team_coaches: {
-        Row: { season_team_id: string; coach_id: string; created_at: string }
-        Insert: { season_team_id: string; coach_id: string; created_at?: string }
-        Update: { season_team_id?: string; coach_id?: string; created_at?: string }
+        Row: { season_team_id: string; coach_id: string; role: string; created_at: string }
+        Insert: { season_team_id: string; coach_id: string; role?: string; created_at?: string }
+        Update: { season_team_id?: string; coach_id?: string; role?: string; created_at?: string }
         Relationships: [
           { foreignKeyName: "season_team_coaches_season_team_id_fkey"; columns: ["season_team_id"]; isOneToOne: false; referencedRelation: "season_teams"; referencedColumns: ["id"] },
           { foreignKeyName: "season_team_coaches_coach_id_fkey"; columns: ["coach_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
@@ -1414,8 +1414,8 @@ export type Database = {
         Args: { checked_player_id: string; checked_season_id: string; checked_team_id: string }
         Returns: undefined
       }
-      set_season_team_coach: {
-        Args: { checked_assigned: boolean; checked_coach_id: string; checked_team_id: string }
+      save_season_team_coaches: {
+        Args: { checked_assignments: Json; checked_team_id: string }
         Returns: undefined
       }
       current_user_can_manage_season_team: { Args: { checked_team_id: string }; Returns: boolean }

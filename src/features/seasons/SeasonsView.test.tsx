@@ -59,7 +59,74 @@ describe('SeasonsView', () => {
     expect(screen.getByRole('checkbox', { name: 'Lucía Martín' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'Carlos Dirección' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Lucía Martín' }))
-    await waitFor(() => expect(onAssignTeamCoach).toHaveBeenCalledWith(team, owner, true))
+    expect(onAssignTeamCoach).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(onAssignTeamCoach).toHaveBeenCalledWith(team, [{ coachId: owner.id, assigned: true, role: 'head_coach' }]))
+  })
+
+  test('defaults to assistant coach when a head coach already exists and prevents a second head coach', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const team = makeSeasonTeam()
+    const headCoach = makeProfile({ id: 'head-coach', display_name: 'Marta Head', is_player: false, is_coach: true })
+    const assistant = makeProfile({ id: 'assistant', display_name: 'Andrea Assistant', is_player: false, is_coach: true })
+    const onAssignTeamCoach = vi.fn().mockResolvedValue(undefined)
+    render(<SeasonsView seasons={[season]} profiles={[headCoach, assistant]} memberships={[]} teams={[team]}
+      teamCoaches={[{ season_team_id: team.id, coach_id: headCoach.id, role: 'head_coach', created_at: '2026-01-01' }]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={onAssignTeamCoach} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    await user.click(screen.getByRole('button', { name: `Editar entrenadores de ${team.name}` }))
+    const assistantRole = screen.getByRole('combobox', { name: 'Rol de Andrea Assistant' })
+    expect(assistantRole).toHaveValue('assistant_coach')
+    expect(within(assistantRole).getByRole('option', { name: 'Entrenador principal' })).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: 'Andrea Assistant' }))
+    expect(onAssignTeamCoach).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(onAssignTeamCoach).toHaveBeenCalledWith(team, [{ coachId: assistant.id, assigned: true, role: 'assistant_coach' }]))
+  })
+
+  test('displays team coaches one per line in role priority order', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const team = makeSeasonTeam()
+    const assistant = makeProfile({ id: 'assistant', display_name: 'Andrea Assistant', is_player: false, is_coach: true })
+    const head = makeProfile({ id: 'head', display_name: 'Lucía Head', is_player: false, is_coach: true })
+    render(<SeasonsView seasons={[season]} profiles={[assistant, head]} memberships={[]} teams={[team]}
+      teamCoaches={[
+        { season_team_id: team.id, coach_id: assistant.id, role: 'assistant_coach', created_at: '2026-01-01' },
+        { season_team_id: team.id, coach_id: head.id, role: 'head_coach', created_at: '2026-01-01' },
+      ]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    const rows = [...document.querySelector('.season-team-coach-list')!.children]
+    expect(rows.map((row) => row.textContent)).toEqual(['Entrenador principal · Lucía Head', 'Entrenador asistente · Andrea Assistant'])
+    expect(rows[0].querySelector('strong')?.textContent).toBe('Entrenador principal')
+    expect(rows[1].querySelector('strong')).toBeNull()
+  })
+
+  test('discards unsaved coach changes when cancelling', async () => {
+    const user = userEvent.setup()
+    const season = makeSeason()
+    const team = makeSeasonTeam()
+    const coach = makeProfile({ id: 'coach', display_name: 'Andrea López', is_player: false, is_coach: true })
+    const onAssignTeamCoach = vi.fn().mockResolvedValue(undefined)
+    render(<SeasonsView seasons={[season]} profiles={[coach]} memberships={[]} teams={[team]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={onAssignTeamCoach} />)
+
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    await user.click(screen.getByRole('button', { name: `Editar entrenadores de ${team.name}` }))
+    await user.click(screen.getByRole('checkbox', { name: coach.display_name }))
+    expect(onAssignTeamCoach).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(onAssignTeamCoach).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: `Editar entrenadores de ${team.name}` }))
+    expect(screen.getByRole('checkbox', { name: coach.display_name })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
   })
 
   test('only offers team assignment to players linked to the selected season', async () => {

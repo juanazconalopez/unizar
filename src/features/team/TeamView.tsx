@@ -94,6 +94,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
     { title: 'Dirección', members: approved.filter((profile) => profile.is_viewer) },
     { title: 'Owners', members: approved.filter((profile) => profile.is_owner) },
   ]
+  const activePlayerAbsenceCount = memberGroups[0].members.filter((profile) => getCurrentPlayerAbsence(playerAbsences, profile.id, today)).length
   const membersWithoutRole = approved.filter((profile) => !profile.is_player && !profile.is_coach && !profile.is_viewer && !profile.is_owner)
   if (membersWithoutRole.length) memberGroups.push({ title: 'Sin rol', members: membersWithoutRole })
   const hasSearchMatches = pending.length + approved.length + archived.length > 0
@@ -141,7 +142,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
     {pending.length > 0 && <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">{pending.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} warning={profiles.some((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name))} />)}</PeopleSection>}
     {approved.length > 0 && <section className="section-block"><div className="section-heading"><div><span className="eyebrow">MIEMBROS</span><h2>Personas del equipo</h2></div></div>
       <div className="team-member-groups">{memberGroups.filter((group) => !hasSearchOrFilters || group.members.length > 0).map((group) => <details className="team-member-group" key={group.title} open={hasSearchOrFilters || undefined}>
-        <summary><span>{group.title}</span><small>{group.members.length}</small><Icon name="arrow" size={16} /></summary>
+        <summary><span>{group.title}</span><small>{group.members.length}</small>{group.title === 'Jugadoras activas' && <small aria-label={`${activePlayerAbsenceCount} jugadoras de baja deportiva`} className="team-member-group-absence-count" title="Jugadoras de baja deportiva"><Icon name="medicalCross" size={14} />{activePlayerAbsenceCount}</small>}<Icon name="arrow" size={16} /></summary>
         <div className="people-list">{group.members.length ? group.members.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />) : <p className="team-member-group-empty">No hay personas en este grupo.</p>}</div>
       </details>)}</div>
     </section>}

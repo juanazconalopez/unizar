@@ -114,6 +114,7 @@ export function MatchesView({
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [reviewFixtureId, setReviewFixtureId] = useState<string | null>(null)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
+  const pairedDetailMatch = detailMatch?.internal_fixture_id ? matches.find((item) => item.id !== detailMatch.id && item.internal_fixture_id === detailMatch.internal_fixture_id) : undefined
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const holidays = useSeasonHolidayDates(seasons.map((season) => season.id), providedHolidays)
@@ -294,6 +295,8 @@ export function MatchesView({
         canViewReportPdf={canViewReport}
         isPlayer={isPlayer}
         lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
+        pairedLineup={lineups.filter((entry) => entry.match_id === pairedDetailMatch?.id)}
+        pairedMatch={pairedDetailMatch}
         match={detailMatch}
         ownAvailability={availability.find((item) => item.match_id === detailMatch.id && item.player_id === userId)}
         profiles={profiles}

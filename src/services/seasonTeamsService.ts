@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabase'
 import type { SeasonTeam, SeasonTeamCoach } from '../types'
+import type { SeasonTeamCoachRole } from '../features/seasons/seasonTeamCoachRoles'
+
+export type SeasonTeamCoachChange = { coachId: string; assigned: boolean; role: SeasonTeamCoachRole }
 
 export type SeasonTeamValues = {
   name: string
@@ -60,11 +63,10 @@ export async function assignSeasonPlayerTeam(seasonId: string, playerId: string,
   if (error) throw error
 }
 
-export async function setSeasonTeamCoach(teamId: string, coachId: string, assigned: boolean) {
-  const { error } = await supabase.rpc('set_season_team_coach', {
+export async function saveSeasonTeamCoaches(teamId: string, changes: SeasonTeamCoachChange[]) {
+  const { error } = await supabase.rpc('save_season_team_coaches', {
     checked_team_id: teamId,
-    checked_coach_id: coachId,
-    checked_assigned: assigned,
+    checked_assignments: changes.map(({ coachId, assigned, role }) => ({ coach_id: coachId, assigned, role })),
   })
   if (error) throw error
 }

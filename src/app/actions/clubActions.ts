@@ -11,7 +11,8 @@ import { resetRolePermissions, saveRolePermissions } from '../../services/permis
 import type { ConfigurableRole, PermissionKey } from '../../lib/permissions'
 import { createSeasonCompetition, deleteSeasonCompetition, setDefaultSeasonCompetition, updateSeasonCompetition } from '../../services/seasonCompetitionsService'
 import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
-import { assignSeasonPlayerTeam, createSeasonTeam, deleteSeasonTeam, setSeasonTeamCoach, updateSeasonTeam } from '../../services/seasonTeamsService'
+import { assignSeasonPlayerTeam, createSeasonTeam, deleteSeasonTeam, saveSeasonTeamCoaches, updateSeasonTeam } from '../../services/seasonTeamsService'
+import type { SeasonTeamCoachChange } from '../../services/seasonTeamsService'
 import type { SeasonTeam } from '../../types'
 import type { SeasonTeamValues } from '../../services/seasonTeamsService'
 import { deletePlayerAbsence, dischargePlayerAbsence, savePlayerAbsence } from '../../services/playerAbsencesService'
@@ -86,10 +87,10 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.notify(`${player.display_name} ha cambiado de equipo.`)
       await context.reloadData()
     },
-    setSeasonTeamCoach: async (team: SeasonTeam, coach: Profile, assigned: boolean) => {
+    setSeasonTeamCoach: async (team: SeasonTeam, changes: SeasonTeamCoachChange[]) => {
       context.requireConnection()
-      await setSeasonTeamCoach(team.id, coach.id, assigned)
-      context.notify(`${coach.display_name} ${assigned ? 'gestionará' : 'ya no gestionará'} ${team.name}.`)
+      await saveSeasonTeamCoaches(team.id, changes)
+      context.notify(`Entrenadores de ${team.name} actualizados.`)
       await context.reloadData()
     },
     savePlayerAbsence: async (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => {

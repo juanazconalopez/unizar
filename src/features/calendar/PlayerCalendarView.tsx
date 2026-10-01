@@ -95,6 +95,7 @@ export function PlayerCalendarView({
   const [selectedDate, setSelectedDate] = useState(initialDate)
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
+  const pairedDetailMatch = detailMatch?.internal_fixture_id ? matches.find((item) => item.id !== detailMatch.id && item.internal_fixture_id === detailMatch.internal_fixture_id) : undefined
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const [responseSurvey, setResponseSurvey] = useState<CalendarSurvey | null>(null)
   const [closedSurvey, setClosedSurvey] = useState<CalendarSurvey | null>(null)
@@ -239,6 +240,8 @@ export function PlayerCalendarView({
       demoCoaches={demoCoaches}
       isPlayer
       lineup={lineups.filter((entry) => entry.match_id === detailMatch.id)}
+      pairedLineup={lineups.filter((entry) => entry.match_id === pairedDetailMatch?.id)}
+      pairedMatch={pairedDetailMatch}
       match={detailMatch}
       ownAvailability={availability.find((item) => item.match_id === detailMatch.id && item.player_id === userId)}
       profiles={profiles}

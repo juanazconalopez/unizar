@@ -1,5 +1,6 @@
 import { PageHeader } from '../../components/ui/PageHeader'
 import { todayIso } from '../../lib/dates'
+import type { SeasonTeamCoachChange } from '../../services/seasonTeamsService'
 import type { LibrarySettings, ManagedProfileValues, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePhotoChange, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonValues } from '../../types'
 import { SeasonsView } from '../seasons/SeasonsView'
 import { TeamView } from '../team/TeamView'
@@ -52,7 +53,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onUpdateSeasonTeam?: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onDeleteSeasonTeam?: (team: SeasonTeam) => Promise<void>
   onAssignSeasonPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
-  onAssignSeasonTeamCoach?: (team: SeasonTeam, coach: Profile, assigned: boolean) => Promise<void>
+  onAssignSeasonTeamCoach?: (team: SeasonTeam, changes: SeasonTeamCoachChange[]) => Promise<void>
   onSaveLibraryFolder?: (folderUrl: string) => Promise<void>
   onSyncLibrary?: () => Promise<void>
   onSaveRolePermissions?: (role: ConfigurableRole, permissions: PermissionKey[]) => Promise<void>

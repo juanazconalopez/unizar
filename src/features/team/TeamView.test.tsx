@@ -74,7 +74,7 @@ describe('TeamView', () => {
     const absenceDialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
     expect(dialog).not.toBeInTheDocument()
     expect(within(absenceDialog).getByText(/Durante una baja/)).toBeInTheDocument()
-    await user.click(within(absenceDialog).getByRole('button', { name: 'Volver a datos de perfil' }))
+    await user.click(within(absenceDialog).getByRole('button', { name: 'Cancelar' }))
     dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
     expect(dialog).toBeInTheDocument()
 
@@ -186,7 +186,7 @@ describe('TeamView', () => {
 
     await waitFor(() => expect(onSaveAbsence).toHaveBeenCalledWith(makeProfile(), {
       startsOn: '2026-09-27', endsOn: '2026-10-02', privateNote: 'Lesión de tobillo',
-    }))
+    }, undefined))
     expect(screen.getByRole('dialog', { name: 'Ana Martín' })).toBeInTheDocument()
   })
 

@@ -25,6 +25,8 @@ export function MatchDetailDialog({
   isPlayer,
   lineup,
   match,
+  pairedLineup,
+  pairedMatch,
   ownAvailability,
   profiles,
   onClose,
@@ -46,6 +48,8 @@ export function MatchDetailDialog({
   isPlayer: boolean
   lineup: MatchLineup[]
   match: Match
+  pairedLineup?: MatchLineup[]
+  pairedMatch?: Match
   ownAvailability?: MatchAvailability
   profiles: Profile[]
   onClose: () => void
@@ -62,14 +66,19 @@ export function MatchDetailDialog({
   const [reportOpen, setReportOpen] = useState(false)
   const [graphicOpen, setGraphicOpen] = useState(false)
   const [lineupView, setLineupView] = useState<'image' | 'list'>('image')
+  const [selectedPublishedMatchId, setSelectedPublishedMatchId] = useState(match.id)
   const [reportError, setReportError] = useState('')
-  const starters = match.rugby_format === 'sevens' ? 7 : 15
   const hasPublishedLineup = match.lineup_published
+  const showTeamSelector = Boolean(match.internal_fixture_id && hasPublishedLineup && pairedMatch?.lineup_published && pairedMatch.internal_fixture_id === match.internal_fixture_id)
+  const selectedPublishedMatch = showTeamSelector && pairedMatch && selectedPublishedMatchId === pairedMatch.id ? pairedMatch : match
+  const selectedLineup = selectedPublishedMatch.id === match.id ? lineup : pairedLineup ?? []
+  const starters = selectedPublishedMatch.rugby_format === 'sevens' ? 7 : 15
+  const publishedTeams = showTeamSelector && pairedMatch ? [match, pairedMatch].sort((first, second) => Number(second.is_home) - Number(first.is_home)) : []
 
   async function copyLineup() {
     try {
       setCopyError('')
-      await copyText(lineupPlainText(match, lineup, profiles))
+      await copyText(lineupPlainText(selectedPublishedMatch, selectedLineup, profiles))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2500)
     } catch (caught) {
@@ -88,7 +97,7 @@ export function MatchDetailDialog({
   }
 
   if (reportOpen && onSaveReport) return <MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={() => setReportOpen(false)} onSave={(file, scores, duration, events, reviewed) => onSaveReport(match, file, scores, duration, events, reviewed)} />
-  if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={lineup} match={match} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
+  if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={selectedLineup} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading">
@@ -126,10 +135,11 @@ export function MatchDetailDialog({
         </div>
       </div>
       {hasPublishedLineup ? <>
+        {showTeamSelector && <div aria-label="Equipo de la convocatoria" className="match-lineup-team-selector" role="group">{publishedTeams.map((team) => <button aria-pressed={selectedPublishedMatch.id === team.id} className="secondary-button compact" key={team.id} onClick={() => { setSelectedPublishedMatchId(team.id); setCopied(false); setCopyError('') }} type="button">{team.season_teams?.name ?? (team.is_home ? 'Equipo local' : 'Equipo visitante')}</button>)}</div>}
         <div className="match-lineup-view-panel" data-view="image" hidden={lineupView !== 'image'}>
-          <LineupGraphic canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} embedded entries={lineup} match={match} onClose={() => setGraphicOpen(false)} onOpen={() => setGraphicOpen(true)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
+          <LineupGraphic canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} embedded entries={selectedLineup} key={selectedPublishedMatch.id} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onOpen={() => setGraphicOpen(true)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
         </div>
-        {lineupView === 'list' && <div className="match-lineup-view-panel" data-view="list"><PublishedLineup entries={lineup} profiles={profiles} starters={starters} /></div>}
+        {lineupView === 'list' && <div className="match-lineup-view-panel" data-view="list"><PublishedLineup entries={selectedLineup} profiles={profiles} starters={starters} /></div>}
       </> : canManageLineup && lineup.length ? <PublishedLineup entries={lineup} profiles={profiles} starters={starters} /> : <p className="match-callup-pending">{isPlayer ? 'Tu disponibilidad ayuda a preparar la convocatoria. En cuanto esté lista podrás revisarla aquí.' : 'Prepara la convocatoria cuando dispongas de las respuestas del equipo.'}</p>}
       {copyError && <p className="form-error">{copyError}</p>}
       {canManageLineup && <div className="match-detail-actions"><button className="primary-button" onClick={onManageLineup} type="button">{match.lineup_published ? 'Gestionar convocatoria' : 'Preparar convocatoria'}</button>{onReviewInternal && <button className="secondary-button" onClick={onReviewInternal} type="button">Revisar las dos convocatorias</button>}</div>}

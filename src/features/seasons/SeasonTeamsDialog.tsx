@@ -8,7 +8,8 @@ import { errorText } from '../../lib/errors'
 import { activeMembershipFor } from '../../lib/selectors'
 import { canBeSeasonTeamCoach, isPlayer } from '../../lib/permissions'
 import type { Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
-import type { SeasonTeamValues } from '../../services/seasonTeamsService'
+import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
+import { seasonTeamCoachRoleLabel, seasonTeamCoachRoles, type SeasonTeamCoachRole } from './seasonTeamCoachRoles'
 
 type Panel =
   | { kind: 'list' }
@@ -27,12 +28,13 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
   onDelete: (team: SeasonTeam) => Promise<void>
   onSave: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onAssignPlayer: (player: Profile, teamId: string) => Promise<void>
-  onAssignCoach: (team: SeasonTeam, coach: Profile, assigned: boolean) => Promise<void>
+  onAssignCoach: (team: SeasonTeam, changes: SeasonTeamCoachChange[]) => Promise<void>
 }) {
   const [panel, setPanel] = useState<Panel>({ kind: 'list' })
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [coachDrafts, setCoachDrafts] = useState<Record<string, { assigned: boolean; role: SeasonTeamCoachRole }>>({})
   const seasonTeams = teams.filter((team) => team.season_id === season.id)
   const activePlayers = profiles
     .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived && isPlayer(profile) && activeMembershipFor(memberships, season.id, profile.id))
@@ -46,10 +48,41 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
   const matchesSearch = (player: Profile) => displayNameContains(player.display_name, search)
   const visibleUnassignedPlayers = unassignedPlayers.filter(matchesSearch)
   const searchHasMatches = activePlayers.some(matchesSearch)
-  const assignedCoaches = (teamId: string) => activeCoaches.filter((coach) => coaches.some((assignment) => assignment.season_team_id === teamId && assignment.coach_id === coach.id))
+  const coachAssignment = (teamId: string, coachId: string) => coaches.find((assignment) => assignment.season_team_id === teamId && assignment.coach_id === coachId)
+  const coachRoleKey = (teamId: string, coachId: string) => `${teamId}:${coachId}`
+  const persistedTeamHasHeadCoach = (teamId: string) => coaches.some((assignment) => assignment.season_team_id === teamId && assignment.role === 'head_coach')
+  const coachDraft = (teamId: string, coachId: string) => {
+    const assignment = coachAssignment(teamId, coachId)
+    return coachDrafts[coachRoleKey(teamId, coachId)] ?? {
+      assigned: Boolean(assignment),
+      role: (assignment?.role as SeasonTeamCoachRole | undefined) ?? (persistedTeamHasHeadCoach(teamId) ? 'assistant_coach' : 'head_coach'),
+    }
+  }
+  const teamHasHeadCoach = (teamId: string) => panel.kind === 'coaches' && panel.team.id === teamId
+    ? activeCoaches.some((coach) => coachDraft(teamId, coach.id).assigned && coachDraft(teamId, coach.id).role === 'head_coach')
+    : persistedTeamHasHeadCoach(teamId)
+  const assignedCoaches = (teamId: string) => activeCoaches.flatMap((coach) => {
+    const assignment = coachAssignment(teamId, coach.id)
+    return assignment ? [{ coach, role: assignment.role }] : []
+  }).sort((first, second) => seasonTeamCoachRoles.findIndex(({ value }) => value === first.role) - seasonTeamCoachRoles.findIndex(({ value }) => value === second.role))
+  const coachChangesForTeam = (teamId: string) => activeCoaches.flatMap((coach) => {
+    const assignment = coachAssignment(teamId, coach.id)
+    const draft = coachDraft(teamId, coach.id)
+    if (Boolean(assignment) === draft.assigned && (!draft.assigned || assignment?.role === draft.role)) return []
+    return [{ coachId: coach.id, assigned: draft.assigned, role: draft.role }]
+  })
 
   function showPanel(nextPanel: Panel) {
     setError('')
+    if (nextPanel.kind === 'coaches') {
+      const hasHeadCoach = persistedTeamHasHeadCoach(nextPanel.team.id)
+      setCoachDrafts(Object.fromEntries(activeCoaches.map((coach) => {
+        const assignment = coachAssignment(nextPanel.team.id, coach.id)
+        const key = coachRoleKey(nextPanel.team.id, coach.id)
+        const role = (assignment?.role as SeasonTeamCoachRole | undefined) ?? (hasHeadCoach ? 'assistant_coach' : 'head_coach')
+        return [key, { assigned: Boolean(assignment), role }]
+      })))
+    }
     setPanel(nextPanel)
   }
 
@@ -98,11 +131,17 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     }
   }
 
-  async function assignCoach(team: SeasonTeam, coach: Profile, assigned: boolean) {
+  async function saveCoachAssignments(team: SeasonTeam) {
+    const changes = coachChangesForTeam(team.id)
+    if (!changes.length) {
+      setPanel({ kind: 'list' })
+      return
+    }
     setSaving(true)
     setError('')
     try {
-      await onAssignCoach(team, coach, assigned)
+      await onAssignCoach(team, changes)
+      setPanel({ kind: 'list' })
     } catch (caught) {
       setError(errorText(caught))
     } finally {
@@ -134,7 +173,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
             <div className="season-team-roster-heading"><div><h3>{team.name} <span>{teamPlayers.length}</span></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
             <ul className="season-team-player-list">{visiblePlayers.map(playerRow)}</ul>
             {!visiblePlayers.length && <p className="season-team-empty">Sin jugadoras en este equipo.</p>}
-            <div className="season-team-coaches"><div><strong>Entrenadores</strong><span>{teamCoaches.length ? teamCoaches.map((coach) => coach.display_name).join(', ') : 'Sin entrenadores asignados'}</span></div><button aria-label={`Editar entrenadores de ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'coaches', team })} type="button">Editar</button></div>
+            <div className="season-team-coaches"><div><strong>Entrenadores</strong>{teamCoaches.length ? <span className="season-team-coach-list">{teamCoaches.map(({ coach, role }) => <span key={coach.id}>{role === 'head_coach' ? <strong className="season-team-head-coach-role">{seasonTeamCoachRoleLabel(role)}</strong> : seasonTeamCoachRoleLabel(role)} · {coach.display_name}</span>)}</span> : <span>Sin entrenadores asignados</span>}</div><button aria-label={`Editar entrenadores de ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'coaches', team })} type="button">Editar</button></div>
           </section>
         })}
         {visibleUnassignedPlayers.length > 0 && <section aria-label={`Sin equipo, ${unassignedPlayers.length} jugadoras`} className="season-team-roster-card unassigned"><div className="season-team-roster-heading"><div><h3>Sin equipo <span>{unassignedPlayers.length}</span></h3><small>Pendientes de asignación</small></div></div><ul className="season-team-player-list">{visibleUnassignedPlayers.map(playerRow)}</ul></section>}
@@ -155,9 +194,29 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     </>}
     {panel.kind === 'coaches' && <>
       <div className="season-team-subview-heading"><span className="eyebrow">ENTRENADORES</span><h3>{panel.team.name}</h3><p>Selecciona los entrenadores que gestionan este equipo.</p></div>
-      <div className="season-team-coach-options">{activeCoaches.map((coach) => <label key={coach.id}><input checked={coaches.some((assignment) => assignment.season_team_id === panel.team.id && assignment.coach_id === coach.id)} disabled={saving} onChange={(event) => void assignCoach(panel.team, coach, event.target.checked)} type="checkbox" /><span>{coach.display_name}</span></label>)}{!activeCoaches.length && <p className="lineup-empty">No hay entrenadores activos.</p>}</div>
+      <div className="season-team-coach-options">{activeCoaches.map((coach) => {
+        const draft = coachDraft(panel.team.id, coach.id)
+        const headCoachAssigned = teamHasHeadCoach(panel.team.id)
+        const key = coachRoleKey(panel.team.id, coach.id)
+        return <div className="season-team-coach-option" key={coach.id}>
+          <label><input checked={draft.assigned} disabled={saving} onChange={(event) => {
+            const assigned = event.target.checked
+            setCoachDrafts((current) => {
+              const anotherHeadCoach = activeCoaches.some((candidate) => candidate.id !== coach.id && current[coachRoleKey(panel.team.id, candidate.id)]?.assigned && current[coachRoleKey(panel.team.id, candidate.id)]?.role === 'head_coach')
+              const role = assigned ? anotherHeadCoach
+                ? draft.role === 'head_coach' ? 'assistant_coach' : draft.role
+                : 'head_coach'
+                : draft.role
+              return { ...current, [key]: { assigned, role } }
+            })
+          }} type="checkbox" /><span>{coach.display_name}</span></label>
+          <select aria-label={`Rol de ${coach.display_name}`} disabled={saving} onChange={(event) => setCoachDrafts((current) => ({ ...current, [key]: { ...draft, role: event.target.value as SeasonTeamCoachRole } }))} value={draft.role}>
+            {seasonTeamCoachRoles.map(({ value, label }) => <option disabled={value === 'head_coach' && headCoachAssigned && !(draft.assigned && draft.role === 'head_coach')} key={value} value={value}>{label}</option>)}
+          </select>
+        </div>
+      })}{!activeCoaches.length && <p className="lineup-empty">No hay entrenadores activos.</p>}</div>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => showPanel({ kind: 'list' })} type="button">Volver a equipos</button></div>
+      <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => setPanel({ kind: 'list' })} type="button">Cancelar</button><button className="primary-button" disabled={saving || !coachChangesForTeam(panel.team.id).length} onClick={() => void saveCoachAssignments(panel.team)} type="button">{saving ? 'Guardando…' : 'Guardar cambios'}</button></div>
     </>}
     {panel.kind === 'team' && <>
       <div className="season-team-subview-heading"><span className="eyebrow">{panel.team ? 'EDITAR EQUIPO' : 'NUEVO EQUIPO'}</span><h3>{panel.team?.name ?? 'Datos del equipo'}</h3></div>

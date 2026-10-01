@@ -122,6 +122,7 @@ export function CalendarView(props: CalendarViewProps) {
   const [reorderingTaskId, setReorderingTaskId] = useState<string | null>(null)
   const [lineupMatch, setLineupMatch] = useState<{ match: Match; editable: boolean } | null>(null)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
+  const pairedDetailMatch = detailMatch?.internal_fixture_id ? props.matches.find((item) => item.id !== detailMatch.id && item.internal_fixture_id === detailMatch.internal_fixture_id) : undefined
   const [reviewFixtureId, setReviewFixtureId] = useState<string | null>(null)
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const [trainingPlans, setTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
@@ -384,6 +385,8 @@ export function CalendarView(props: CalendarViewProps) {
       canViewReportPdf={access.report}
       isPlayer={false}
       lineup={props.lineups.filter((entry) => entry.match_id === detailMatch.id)}
+      pairedLineup={props.lineups.filter((entry) => entry.match_id === pairedDetailMatch?.id)}
+      pairedMatch={pairedDetailMatch}
       match={detailMatch}
       profiles={props.profiles}
       onClose={() => setDetailMatch(null)}

@@ -50,6 +50,42 @@ describe('MatchDetailDialog', () => {
     expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveStyle({ width: '150%' })
   })
 
+  test('shows a team selector only for published internal callups and uses the selected lineup for image, list and copy', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    const home: Match = { ...match, id: 'home', internal_fixture_id: 'derby', team_id: 'team-a', opponent: 'Unizar B', is_home: true, lineup_published: true, season_teams: { id: 'team-a', name: 'Unizar A', is_mixed: false, is_default: true } }
+    const away: Match = { ...match, id: 'away', internal_fixture_id: 'derby', team_id: 'team-b', opponent: 'Unizar A', is_home: false, lineup_published: true, season_teams: { id: 'team-b', name: 'Unizar B', is_mixed: false, is_default: false } }
+    const profiles = [makeProfile({ id: 'player-a', display_name: 'Aitana' }), makeProfile({ id: 'player-b', display_name: 'Beatriz' })]
+    const homeLineup: MatchLineup[] = [{ match_id: home.id, player_id: 'player-a', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: home.updated_at }]
+    const awayLineup: MatchLineup[] = [{ match_id: away.id, player_id: 'player-b', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: away.updated_at }]
+    const props = { canEditMatch: false, canManageLineup: false, canViewAvailability: false, isPlayer: false, lineup: homeLineup, match: home, pairedLineup: awayLineup, pairedMatch: away, profiles, demo: true, onClose: vi.fn(), onEdit: vi.fn(), onManageLineup: vi.fn(), onViewAvailability: vi.fn() }
+    const { rerender } = render(<MatchDetailDialog {...props} />)
+
+    const teams = screen.getByRole('group', { name: 'Equipo de la convocatoria' })
+    expect(teams).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Unizar A' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveTextContent('Aitana')
+    await user.click(screen.getByRole('button', { name: 'Unizar B' }))
+    expect(screen.getByRole('button', { name: 'Unizar B' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveTextContent('Beatriz')
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).not.toHaveTextContent('Aitana')
+    await user.click(screen.getByRole('button', { name: 'Ver lista' }))
+    const list = document.querySelector('.match-lineup-view-panel[data-view="list"]')
+    expect(list).toHaveTextContent('Beatriz')
+    expect(list).not.toHaveTextContent('Aitana')
+    await user.click(screen.getByRole('button', { name: 'Copiar convocatoria' }))
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('1. Beatriz'))
+    await user.click(screen.getByRole('button', { name: 'Unizar A' }))
+    expect(list).toHaveTextContent('Aitana')
+    await user.click(screen.getByRole('button', { name: 'Ver imagen' }))
+    expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveTextContent('Aitana')
+
+    rerender(<MatchDetailDialog {...props} match={{ ...home, lineup_published: false }} pairedMatch={{ ...away, lineup_published: false }} />)
+    expect(screen.queryByRole('group', { name: 'Equipo de la convocatoria' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ver imagen' })).not.toBeInTheDocument()
+  })
+
   test('loads private player photos in the graphic only for the owner', async () => {
     const profile = { ...makeProfile(), avatar_path: 'player-1/photo.jpg' }
     const entries: MatchLineup[] = [{ match_id: match.id, player_id: profile.id, role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]

@@ -5951,8 +5951,19 @@ button.survey-closure-card:focus-visible {
   min-width: 0;
 }
 
-.season-team-coaches strong {
-  font-size: 11px;
+.season-team-coaches>div>strong {
+  color: var(--green);
+  font-size: 12px;
+}
+
+.season-team-coach-list {
+  display: grid;
+  gap: 3px;
+}
+
+.season-team-head-coach-role {
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .season-team-subview-heading {
@@ -6006,11 +6017,19 @@ button.survey-closure-card:focus-visible {
   color: var(--muted);
 }
 
-.season-team-coach-options label {
-  min-height: 42px;
-  padding: 8px 10px;
+.season-team-coach-option {
+  min-height: 54px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.season-team-coach-option label {
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -6018,10 +6037,41 @@ button.survey-closure-card:focus-visible {
   cursor: pointer;
 }
 
-.season-team-coach-options input {
+.season-team-coach-option label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.season-team-coach-option input {
   width: 17px;
   height: 17px;
+  flex: 0 0 auto;
   accent-color: var(--green);
+}
+
+.season-team-coach-option select {
+  width: min(240px, 48%);
+  min-width: 160px;
+  min-height: 36px;
+  padding: 6px 28px 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .season-team-coach-option {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .season-team-coach-option select {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 .season-team-fields {
@@ -7611,6 +7661,14 @@ button.survey-closure-card:focus-visible {
   background: #eaf3ef;
   text-align: center;
   font-size: 11px;
+}
+
+.team-member-group > summary .team-member-group-absence-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #a53636;
+  background: #fff0ed;
 }
 
 .team-member-group > summary > .icon {
@@ -13287,6 +13345,25 @@ button.survey-closure-card:focus-visible {
 
 .match-lineup-view-toggle .icon {
   flex: none;
+}
+
+.match-lineup-team-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+
+.match-lineup-team-selector button {
+  flex: 1 1 150px;
+  min-width: 0;
+}
+
+.match-lineup-team-selector button[aria-pressed="true"] {
+  border-color: #a6cabb;
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 700;
 }
 
 .match-lineup-view-panel[hidden] {

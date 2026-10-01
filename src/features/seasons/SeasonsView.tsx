@@ -13,7 +13,7 @@ import { SeasonHolidayDialog } from './SeasonHolidayDialog'
 import { SeasonCompetitionsDialog } from './SeasonCompetitionsDialog'
 import { fetchSeasonHolidays, saveSeasonHolidays } from '../../services/seasonHolidaysService'
 import { SeasonTeamsDialog } from './SeasonTeamsDialog'
-import type { SeasonTeamValues } from '../../services/seasonTeamsService'
+import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
 
 export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, competitions = [], teams = [], teamCoaches = [], profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onSaveHolidays, onCreateCompetition, onDeleteCompetition, onSetDefaultCompetition, onUpdateCompetition, onCreateTeam, onUpdateTeam, onDeleteTeam, onAssignPlayerTeam, onAssignTeamCoach }: {
   embedded?: boolean
@@ -40,7 +40,7 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
   onUpdateTeam?: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onDeleteTeam?: (team: SeasonTeam) => Promise<void>
   onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
-  onAssignTeamCoach?: (team: SeasonTeam, coach: Profile, assigned: boolean) => Promise<void>
+  onAssignTeamCoach?: (team: SeasonTeam, changes: SeasonTeamCoachChange[]) => Promise<void>
 }) {
   const [showForm, setShowForm] = useState(false)
   const [editingSeason, setEditingSeason] = useState<Season | null>(null)
