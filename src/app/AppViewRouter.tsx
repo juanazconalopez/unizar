@@ -296,6 +296,7 @@ export function AppViewRouter({
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
         onAssignSeasonPlayerTeam={actions.club.assignSeasonPlayerTeam}
+        onSavePlayerLicense={hasPermission(profile, PERMISSIONS.seasons.licenses, permissionKeys) ? actions.club.savePlayerLicense : undefined}
         onAssignSeasonTeamCoach={actions.club.setSeasonTeamCoach}
         onToggleMembership={actions.club.toggleMembership}
         onUpdateProfile={actions.club.updateProfile}

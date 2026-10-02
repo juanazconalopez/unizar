@@ -568,6 +568,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          completed_at: string | null
           callup_time: string | null
           callup_venue: string | null
           competition_id: string | null
@@ -595,6 +596,7 @@ export type Database = {
           venue: string | null
         }
         Insert: {
+          completed_at?: string | null
           callup_time?: string | null
           callup_venue?: string | null
           competition_id?: string | null
@@ -622,6 +624,7 @@ export type Database = {
           venue?: string | null
         }
         Update: {
+          completed_at?: string | null
           callup_time?: string | null
           callup_venue?: string | null
           competition_id?: string | null
@@ -860,6 +863,25 @@ export type Database = {
           },
         ]
       }
+      season_player_licenses: {
+        Row: { season_id: string; player_id: string; license_type: "none" | "training" | "regional" | "national"; updated_at: string; updated_by: string | null }
+        Insert: { season_id: string; player_id: string; license_type?: "none" | "training" | "regional" | "national"; updated_at?: string; updated_by?: string | null }
+        Update: { season_id?: string; player_id?: string; license_type?: "none" | "training" | "regional" | "national"; updated_at?: string; updated_by?: string | null }
+        Relationships: [
+          { foreignKeyName: "season_player_licenses_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
+          { foreignKeyName: "season_player_licenses_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "season_player_licenses_updated_by_fkey"; columns: ["updated_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
+        ]
+      }
+      player_license_history: {
+        Row: { id: number; season_id: string; player_id: string; previous_license: string | null; license_type: string; changed_at: string; changed_by: string | null }
+        Insert: { id?: never; season_id: string; player_id: string; previous_license?: string | null; license_type: string; changed_at?: string; changed_by?: string | null }
+        Update: { season_id?: string; player_id?: string; previous_license?: string | null; license_type?: string; changed_at?: string; changed_by?: string | null }
+        Relationships: [
+          { foreignKeyName: "player_license_history_changed_by_fkey"; columns: ["changed_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "player_license_history_season_id_player_id_fkey"; columns: ["season_id", "player_id"]; isOneToOne: false; referencedRelation: "season_player_licenses"; referencedColumns: ["season_id", "player_id"] }
+        ]
+      }
       season_players: {
         Row: {
           active_from: string
@@ -868,7 +890,7 @@ export type Database = {
           id: string
           player_id: string
           season_id: string
-          season_team_id: string
+          season_team_id: string | null
         }
         Insert: {
           active_from: string
@@ -877,7 +899,7 @@ export type Database = {
           id?: string
           player_id: string
           season_id: string
-          season_team_id: string
+          season_team_id?: string | null
         }
         Update: {
           active_from?: string
@@ -886,7 +908,7 @@ export type Database = {
           id?: string
           player_id?: string
           season_id?: string
-          season_team_id?: string
+          season_team_id?: string | null
         }
         Relationships: [
           {
@@ -937,9 +959,18 @@ export type Database = {
         Relationships: [{ foreignKeyName: "season_holidays_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] }]
       }
       season_competitions: {
-        Row: { color: string; created_at: string; created_by: string; id: string; is_default: boolean; name: string; season_id: string; updated_at: string }
-        Insert: { color: string; created_at?: string; created_by: string; id?: string; is_default?: boolean; name: string; season_id: string; updated_at?: string }
-        Update: { color?: string; created_at?: string; created_by?: string; id?: string; is_default?: boolean; name?: string; season_id?: string; updated_at?: string }
+        Row: {
+          competition_level: "regional" | "national"
+          is_league: boolean
+          color: string; created_at: string; created_by: string; id: string; is_default: boolean; name: string; season_id: string; updated_at: string }
+        Insert: {
+          competition_level?: "regional" | "national"
+          is_league?: boolean
+          color: string; created_at?: string; created_by: string; id?: string; is_default?: boolean; name: string; season_id: string; updated_at?: string }
+        Update: {
+          competition_level?: "regional" | "national"
+          is_league?: boolean
+          color?: string; created_at?: string; created_by?: string; id?: string; is_default?: boolean; name?: string; season_id?: string; updated_at?: string }
         Relationships: [
           { foreignKeyName: "season_competitions_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "season_competitions_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
@@ -1383,6 +1414,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_player_season_memberships: {
+        Args: { checked_player_id?: string | null }
+        Returns: { id: string; season_id: string; player_id: string; active_from: string; active_until: string | null; created_at: string; season_team_id: string | null; license_type: "none" | "training" | "regional" | "national"; national_starts: number }[]
+      }
+      set_season_player_license: { Args: { checked_season_id: string; checked_player_id: string; checked_license: string }; Returns: number }
+
       cleanup_content_images: {
         Args: { checked_image_ids: string[] }
         Returns: { storage_path: string }[]
@@ -1398,7 +1435,10 @@ export type Database = {
       current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
       can_preview_player: { Args: { checked_player_id: string }; Returns: boolean }
       create_season_competition: {
-        Args: { checked_color: string; checked_name: string; checked_season_id: string }
+        Args: {
+          checked_level?: string
+          checked_is_league?: boolean
+          checked_color: string; checked_name: string; checked_season_id: string }
         Returns: string
       }
       create_season_team: {
@@ -1684,7 +1724,10 @@ export type Database = {
         Returns: undefined
       }
       update_season_competition: {
-        Args: { checked_color: string; checked_competition_id: string; checked_name: string }
+        Args: {
+          checked_level?: string
+          checked_is_league?: boolean
+          checked_color: string; checked_competition_id: string; checked_name: string }
         Returns: undefined
       }
     }

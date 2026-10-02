@@ -26,6 +26,7 @@ export function AppLayout({
   profile,
   permissionKeys,
   profileDetails,
+  licenseSummary,
   email,
   view,
   settingsSection,
@@ -46,6 +47,7 @@ export function AppLayout({
 }: {
   profile: Profile
   permissionKeys?: PermissionKey[]
+  licenseSummary?: string
   profileDetails?: ProfilePrivateDetails | null
   email: string
   view: ViewName
@@ -267,6 +269,7 @@ export function AppLayout({
       )}
       {profileDetailsOpen && onUpdateProfileDetails && (
         <ProfileDetailsDialog
+          licenseSummary={licenseSummary}
           currentBirthDate={profileDetails?.birth_date ?? ''}
           currentName={profile.display_name}
           currentPhone={profileDetails?.phone ?? ''}

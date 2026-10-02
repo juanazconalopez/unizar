@@ -1,3 +1,8 @@
+import { PlayerLicenseDialog } from './PlayerLicenseDialog'
+import type { SavePlayerLicense } from './PlayerLicenseDialog'
+import { licenseLabel, membershipLicense } from '../../lib/playerLicenses'
+import { membershipCoversDate } from '../../lib/selectors'
+import type { SeasonPlayer } from '../../types'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
@@ -17,9 +22,12 @@ import { ProvisionalAttendanceOptions } from './ProvisionalAttendanceOptions'
 import { getCurrentPlayerAbsence } from './playerAbsenceStatus'
 import { profileRoleClass, profileRoles } from './profileRoles'
 
-export function TeamMemberDialog({ person, details, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, activeTeams = [], absences = [], absenceNotes = [], onClose, onPreviewPlayer, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onAssignPlayerTeam, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
+export function TeamMemberDialog({ person, details, memberships = [], teams = [], onSaveLicense, currentUserId, possibleMatches, provisionalPlayers = [], provisionalAttendance = [], activeSeason, absences = [], absenceNotes = [], onClose, onPreviewPlayer, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
   person: Profile
   details?: ProfilePrivateDetails
+  memberships?: SeasonPlayer[]
+  onSaveLicense?: SavePlayerLicense
+  teams?: SeasonTeam[]
   currentUserId: string
   possibleMatches: Profile[]
   provisionalPlayers?: ProvisionalPlayer[]
@@ -27,7 +35,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   absences?: PlayerAbsence[]
   absenceNotes?: PlayerAbsencePrivateNote[]
   activeSeason?: Season
-  activeTeams?: SeasonTeam[]
   onClose: () => void
   onPreviewPlayer?: (player: Profile) => void
   onUpdate: (profile: Profile) => Promise<void>
@@ -36,13 +43,12 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   onArchive?: (profile: Profile) => Promise<void>
   onLoadPhoto?: (path: string) => Promise<string>
   onLinkProvisionalPlayers?: (guests: ProvisionalPlayer[], profile: Profile) => Promise<void>
-  onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>
   onSaveAbsence?: (player: Profile, values: PlayerAbsenceValues, absenceId?: string) => Promise<void>
   onDeleteAbsence?: (absenceId: string) => Promise<void>
   onDischargeAbsence?: (absenceId: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
-  const [activeDialog, setActiveDialog] = useState<'profile' | 'photo' | 'absence' | 'attendance'>('profile')
+  const [activeDialog, setActiveDialog] = useState<'profile' | 'photo' | 'absence' | 'attendance' | 'license'>('profile')
   const [absenceToEditId, setAbsenceToEditId] = useState<string | undefined>()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -55,7 +61,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   const [isViewer, setIsViewer] = useState(person.is_viewer)
   const [isOwner, setIsOwner] = useState(person.is_owner)
   const [selectedProvisionalIds, setSelectedProvisionalIds] = useState<string[]>([])
-  const [selectedTeamId, setSelectedTeamId] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
   const today = todayIso()
@@ -75,9 +80,10 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
   })
   const canLinkAttendance = Boolean(onLinkProvisionalPlayers && approved && person.is_player && provisionalCandidates.length > 0)
   const canSelectAttendanceOnApproval = Boolean(onLinkProvisionalPlayers && !person.is_approved && !person.is_archived && provisionalCandidates.length > 0)
-  const defaultTeam = activeTeams.find((team) => team.is_default) ?? activeTeams[0]
-  const approvalTeamId = selectedTeamId || defaultTeam?.id || ''
-  const showTeamSelector = Boolean(activeSeason && onAssignPlayerTeam && activeTeams.length > 1)
+  const activeMembership = memberships.find((membership) => membership.player_id === person.id && membership.season_id === activeSeason?.id && membershipCoversDate(membership, today))
+  const seasonMembership = activeMembership ?? memberships.find((membership) => membership.player_id === person.id && membership.season_id === activeSeason?.id)
+  const activeTeam = teams.find((team) => team.id === activeMembership?.season_team_id && team.season_id === activeSeason?.id)
+  const canModifyLicense = Boolean(approved && person.is_player && activeSeason && seasonMembership && onSaveLicense)
   const selectedProvisionals = provisionalCandidates.filter((guest) => selectedProvisionalIds.includes(guest.id))
   const selectedProvisionalDates = provisionalAttendance
     .filter((record) => selectedProvisionalIds.includes(record.provisional_player_id))
@@ -93,24 +99,10 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     return () => document.removeEventListener('pointerdown', closeOnOutsideClick)
   }, [menuOpen])
 
-  function openDialog(dialog: 'photo' | 'absence' | 'attendance', absenceId?: string) {
+  function openDialog(dialog: 'photo' | 'absence' | 'attendance' | 'license', absenceId?: string) {
     setMenuOpen(false)
     setAbsenceToEditId(absenceId)
     setActiveDialog(dialog)
-  }
-
-  async function dischargeCurrentAbsence() {
-    if (!currentAbsence || !onDischargeAbsence || !window.confirm(`¿Forzar el alta deportiva hoy a ${person.display_name}? Podrá volver a estar disponible desde hoy.`)) return
-    setMenuOpen(false)
-    setSaving(true)
-    setFormError('')
-    try {
-      await onDischargeAbsence(currentAbsence.id)
-    } catch (error) {
-      setFormError(errorText(error))
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -143,7 +135,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     setFormError('')
     try {
       await onUpdate({ ...person, is_approved: true, is_active: true, is_player: true })
-      if (showTeamSelector && activeSeason && onAssignPlayerTeam && approvalTeamId !== defaultTeam?.id) await onAssignPlayerTeam(activeSeason, person, approvalTeamId)
       if (selectedCount > 0 && onLinkProvisionalPlayers) await onLinkProvisionalPlayers(selectedProvisionals, person)
       onClose()
     } catch (error) {
@@ -175,6 +166,8 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
     }
   }
 
+  if (activeDialog === 'license' && canModifyLicense && activeSeason && seasonMembership && onSaveLicense) return <PlayerLicenseDialog membership={seasonMembership} onClose={() => setActiveDialog('profile')} onSave={onSaveLicense} person={person} season={activeSeason} />
+
   if (activeDialog === 'photo' && onSavePhoto) return <TeamMemberPhotoDialog onClose={() => setActiveDialog('profile')} onLoadPhoto={onLoadPhoto} onSave={onSavePhoto} onSaved={onClose} person={person} />
 
   if (activeDialog === 'absence' && onSaveAbsence) return <PlayerAbsenceDialog absences={personAbsences} editAbsenceId={absenceToEditId} notes={absenceNotes} onClose={() => setActiveDialog('profile')} onDelete={onDeleteAbsence} onDischarge={onDischargeAbsence} onSave={onSaveAbsence} person={person} />
@@ -190,10 +183,9 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <button aria-controls="team-member-actions" aria-expanded={menuOpen} aria-label={`Acciones de ${person.display_name}`} aria-haspopup="true" className="icon-button" onClick={() => setMenuOpen((open) => !open)} type="button"><Icon name="more" size={20} /></button>
         {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
           {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
-          {approved && person.is_active && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">{person.avatar_path ? 'Cambiar foto' : 'Subir foto'}</button>}
-          {person.is_player && currentAbsence && onDischargeAbsence
-            ? <button onClick={() => void dischargeCurrentAbsence()} type="button">Forzar alta deportiva</button>
-            : person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
+          {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
+          {canModifyLicense && <button onClick={() => openDialog('license')} type="button">Modificar ficha</button>}
+          {approved && person.is_active && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">Cambiar foto</button>}
           {canLinkAttendance && <button onClick={() => openDialog('attendance')} type="button">Vincular asistencias</button>}
           {approved && person.is_active && person.is_player && onPreviewPlayer && <button onClick={() => { setMenuOpen(false); onPreviewPlayer(person) }} type="button">Vista previa de jugadora</button>}
           <button onClick={onClose} type="button">Cerrar</button>
@@ -228,6 +220,10 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
       <div className="team-member-detail-grid">
         <Detail label="Email">{details?.email ? <a href={`mailto:${details.email}`}>{details.email}</a> : <em>Sin email</em>}</Detail>
         <Detail label="Fecha de nacimiento">{details?.birth_date ? formatDate(details.birth_date, { day: 'numeric', month: 'long', year: 'numeric' }) : <em>Sin fecha</em>}</Detail>
+        {person.is_player && <>
+          <Detail label="Ficha">{seasonMembership ? licenseLabel(membershipLicense(seasonMembership)) : <em>Sin ficha en la temporada activa</em>}</Detail>
+          <Detail label="Equipo">{activeTeam?.name ?? <em>Sin equipo en la temporada activa</em>}</Detail>
+        </>}
         <Detail label="En el equipo desde">{formatDate(person.created_at.slice(0, 10), { day: 'numeric', month: 'long', year: 'numeric' })}</Detail>
         <Detail label="Estado"><span className={`member-active-state ${person.is_active ? 'active' : 'inactive'}`}><Icon name={person.is_active ? 'check' : 'close'} size={14} />{person.is_active ? 'Activa' : 'Inactiva'}</span></Detail>
         <Detail label="Roles"><span className="person-role-list">{profileRoles(person).map((role) => <small className={profileRoleClass(role)} key={role}>{role}</small>)}</span></Detail>
@@ -253,9 +249,6 @@ export function TeamMemberDialog({ person, details, currentUserId, possibleMatch
         <p>Selecciona las invitadas que correspondan. Sus asistencias se vincularán al aprobar a la jugadora.</p>
         <ProvisionalAttendanceOptions attendance={provisionalAttendance} candidates={provisionalCandidates} onSelectionChange={setSelectedProvisionalIds} person={person} selectedIds={selectedProvisionalIds} />
       </section>}
-      {!person.is_approved && !person.is_archived && showTeamSelector && <label className="approval-team-select">Equipo de la temporada
-        <select onChange={(event) => setSelectedTeamId(event.target.value)} value={approvalTeamId}>{activeTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
-      </label>}
       {!person.is_approved && !person.is_archived && <div className="approval-actions"><span>Se habilitará como jugadora activa</span><button className="primary-button" disabled={saving} onClick={() => void approve()} type="button">{saving ? 'Aprobando…' : 'Aprobar como jugadora'}</button></div>}
       {person.is_archived && <div className="approval-actions"><span>Volverá como miembro aprobado, inicialmente inactivo.</span><button className="secondary-button" disabled={saving} onClick={() => void restore()} type="button">{saving ? 'Restaurando…' : 'Restaurar acceso'}</button></div>}
       {formError && <p className="form-error" role="alert">{formError}</p>}

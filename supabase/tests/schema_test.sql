@@ -1,5 +1,5 @@
 begin;
-select plan(363);
+select plan(397);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -321,12 +321,12 @@ select ok(
   exists (select 1 from public.permission_definitions where key = 'seasons.competitions' and owner_only and not configurable),
   'season competition management is an owner-only capability'
 );
-select has_function('public', 'create_season_competition', array['uuid','text','text'], 'season competitions can be created atomically');
-select has_function('public', 'update_season_competition', array['uuid','text','text'], 'season competitions can be updated atomically');
+select has_function('public', 'create_season_competition', array['uuid','text','text','text','boolean'], 'season competitions can be created atomically');
+select has_function('public', 'update_season_competition', array['uuid','text','text','text','boolean'], 'season competitions can be updated atomically');
 select has_function('public', 'set_default_season_competition', array['uuid'], 'the default season competition can be changed atomically');
 select has_function('public', 'delete_season_competition', array['uuid'], 'season competitions can be deleted atomically');
 select like(
-  pg_get_functiondef('public.create_season_competition(uuid,text,text)'::regprocedure),
+  pg_get_functiondef('public.create_season_competition(uuid,text,text,text,boolean)'::regprocedure),
   '%current_user_has_permission(''seasons.competitions'')%',
   'creating a season competition checks its owner-only permission'
 );
@@ -336,11 +336,11 @@ select like(
   'competition deletion unlocks published lineups before cascading their data'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.create_season_competition(uuid,text,text)', 'EXECUTE'),
+  has_function_privilege('authenticated', 'public.create_season_competition(uuid,text,text,text,boolean)', 'EXECUTE'),
   'authenticated owners can call season competition creation'
 );
 select ok(
-  not has_function_privilege('anon', 'public.create_season_competition(uuid,text,text)', 'EXECUTE'),
+  not has_function_privilege('anon', 'public.create_season_competition(uuid,text,text,text,boolean)', 'EXECUTE'),
   'anonymous users cannot create season competitions'
 );
 select ok(
@@ -997,6 +997,45 @@ select ok(not has_function_privilege('authenticated', 'public.invalidate_match_r
 select like(pg_get_functiondef('public.invalidate_match_result_review()'::regprocedure), '%report_events_reviewed = false%', 'lineup changes keep events but exclude unreviewed minutes');
 select like(pg_get_functiondef('public.save_match_report(uuid,integer,integer,integer,jsonb)'::regprocedure), '%membership.active_from%membership.active_until%', 'saving minutes checks membership on the match date');
 select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%membership.active_from%membership.active_until%', 'season minutes respect membership periods');
+
+
+select has_table('public','season_player_licenses','fichas por temporada separadas de pertenencia');
+select has_table('public','player_license_history','los cambios de ficha conservan auditoría');
+select col_is_null('public','season_players','season_team_id','las jugadoras pueden estar vinculadas sin equipo');
+select has_column('public','season_competitions','competition_level','las competiciones tienen nivel regional o nacional');
+select has_column('public','season_competitions','is_league','solo las ligas nacionales computan el límite');
+select has_function('public','get_player_season_memberships',array['uuid'],'consulta mínima de ficha y titularidades');
+select has_function('public','set_season_player_license',array['uuid','uuid','text'],'guardar la ficha sin mover de equipo');
+select ok((select relrowsecurity from pg_class where oid = 'public.season_player_licenses'::regclass),'las fichas tienen RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.player_license_history'::regclass),'la auditoría tiene RLS');
+select ok(not has_table_privilege('authenticated','public.season_player_licenses','UPDATE'),'sin escritura directa de fichas');
+select ok(not has_table_privilege('authenticated','public.player_license_history','INSERT'),'sin auditorías falsas desde cliente');
+select ok(not has_function_privilege('anon','public.set_season_player_license(uuid,uuid,text)','EXECUTE'),'anon no puede asignar fichas');
+select ok(has_function_privilege('authenticated','public.set_season_player_license(uuid,uuid,text)','EXECUTE'),'RPC disponible para owner autenticado');
+select ok(not has_function_privilege('authenticated','public.national_league_starts(uuid,uuid,uuid)','EXECUTE'),'contador interno no expone estadísticas arbitrarias');
+select ok(not has_function_privilege('authenticated','public.player_license_allows_match(uuid,uuid)','EXECUTE'),'elegibilidad interna no expuesta');
+select like(pg_get_functiondef('public.set_season_player_license(uuid,uuid,text)'::regprocedure),'%current_user_is_owner%seasons.licenses%','solo owner con permiso puede corregir fichas');
+select like(pg_get_functiondef('public.set_season_player_license(uuid,uuid,text)'::regprocedure),'%player_license_history%','cada cambio de tipo registra anterior y responsable');
+select like(pg_get_functiondef('public.national_league_starts(uuid,uuid,uuid)'::regprocedure),'%completed%report_events_reviewed%starter%national%is_league%','solo titularidades confirmadas de liga nacional');
+select like(pg_get_functiondef('public.player_license_allows_match(uuid,uuid)'::regprocedure),'%friendly%regional%national%< 6%','amistosos abiertos y regional bloqueada desde seis');
+select has_trigger('public','match_availability','match_availability_license_guard','disponibilidad validada en base de datos');
+select has_trigger('public','match_lineup','match_lineup_license_guard','propuestas validadas en base de datos');
+select has_trigger('public','matches','matches_published_license_guard','publicar un derbi revalida las dos convocatorias');
+select has_trigger('public','season_players','season_players_license_guard','no asignar equipo sin ficha deportiva');
+select like(pg_get_functiondef('public.get_player_season_memberships(uuid)'::regprocedure),'%auth.uid%current_user_is_owner%current_user_can_view_team_data%','se limita la consulta de fichas al propio perfil o staff autorizado');
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%player_license_allows_match%','disponibilidad no penaliza partidos para los que no hay ficha');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),'%player_license_allows_match%','el resumen personal respeta las fichas');
+select ok((select owner_only and not configurable from public.permission_definitions where key = 'seasons.licenses'),'gestión de fichas exclusiva del owner');
+
+select has_column('public','matches','completed_at','el histórico mantiene el instante de finalización');
+select has_trigger('public','matches','matches_completion_time','las correcciones conservan el instante de finalización');
+
+select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure),'%match_availability%published%','no se registran respuestas después de finalizar un partido');
+
+select ok(to_regprocedure('public.set_season_player_license(uuid,uuid,text,uuid)') is null,'no hay RPC de ficha que acepte cambiar el equipo');
+select like(pg_get_functiondef('public.set_season_player_license(uuid,uuid,text)'::regprocedure),'%if checked_license in (''none'',''training'') then%set season_team_id = null%active_until is null%','solo las fichas no deportivas retiran el equipo actual');
+select like(pg_get_functiondef('public.create_default_season_team()'::regprocedure),'%Unizar Femenino%season_player_licenses%''regional''%player_license_history%season_players%default_team_id%','la nueva temporada inicia fichas Regional con equipo predeterminado y auditoría');
+select ok(not has_function_privilege('authenticated','public.create_default_season_team()','EXECUTE'),'el inicializador solo se ejecuta mediante trigger');
 
 select * from finish();
 rollback;

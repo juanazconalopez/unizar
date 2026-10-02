@@ -8,7 +8,8 @@ import type { ProfileDetailsValues } from '../../types'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from './ProfilePhotoField'
 
-export function ProfileDetailsDialog({ currentName, email, currentPhone = '', currentBirthDate = '', avatarPath = null, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
+export function ProfileDetailsDialog({ currentName, email, licenseSummary, currentPhone = '', currentBirthDate = '', avatarPath = null, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
+  licenseSummary?: string
   currentName: string
   email: string
   currentPhone?: string
@@ -69,6 +70,7 @@ export function ProfileDetailsDialog({ currentName, email, currentPhone = '', cu
         <button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button>
       </div>
       <p className="profile-details-help">{helpText ?? 'El email pertenece a tu cuenta de Google. El teléfono y la fecha de nacimiento solo se utilizan para la gestión del equipo.'}</p>
+      {licenseSummary && <p className="form-hint">Ficha de jugadora: <strong>{licenseSummary}</strong>. La gestiona el owner.</p>}
       <figure className="profile-details-photo">
         <ProfilePhotoField avatarPath={avatarPath} name={displayName || currentName} onLoadPhoto={onLoadPhoto} />
         <figcaption>Foto de perfil</figcaption>

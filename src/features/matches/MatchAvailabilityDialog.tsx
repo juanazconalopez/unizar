@@ -40,7 +40,7 @@ export function MatchAvailabilityDialog({ availability, canEdit = false, eligibl
         <div>{responses.length ? responses.map((response) => {
           const profile = profilesById.get(response.player_id)
           const name = profile?.display_name ?? 'Jugadora no disponible'
-          return <article key={response.player_id}><Avatar name={name} /><div><strong>{name}</strong>{response.comment && <p>{response.comment}</p>}</div>{editable && onSave && <button className="secondary-button compact" onClick={() => setEditingPlayerId(response.player_id)} type="button">Editar</button>}</article>
+          return <article key={response.player_id}><Avatar name={name} /><div><strong>{name}</strong>{response.comment && <p>{response.comment}</p>}</div>{editable && eligibleProfiles.some((person) => person.id === response.player_id) && onSave && <button className="secondary-button compact" onClick={() => setEditingPlayerId(response.player_id)} type="button">Editar</button>}</article>
         }) : <p className="availability-empty">{group.empty}</p>}</div>
       </section>
     })}</div>

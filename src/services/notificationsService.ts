@@ -12,17 +12,17 @@ export async function fetchNotificationFeed(userId: string, canManageAvailabilit
       .eq('status', 'published')
       .gte('week_start', currentWeek)
       .lte('week_start', addDays(currentWeek, 28)),
-    supabase.from('season_players').select('*').eq('player_id', userId),
+    supabase.rpc('get_player_season_memberships', { checked_player_id: userId }),
     supabase
       .from('matches')
-      .select('*, seasons(name)')
+      .select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
       .eq('status', 'published')
       .gte('match_date', today)
       .lte('match_date', addDays(today, 84))
       .order('match_date', { ascending: true }),
     supabase
       .from('team_announcements')
-      .select('*, seasons(name)')
+      .select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
       .eq('status', 'published')
       .gte('announcement_date', today)
       .lte('announcement_date', addDays(today, 84))

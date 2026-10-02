@@ -80,7 +80,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const emptyResponse = Promise.resolve({ data: [], error: null })
   const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, absencesResponse, absenceNotesResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings, permissionConfiguration] = await Promise.all([
     requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
-    requirements.memberships ? supabase.from('season_players').select('*') : emptyResponse,
+    requirements.memberships ? supabase.rpc('get_player_season_memberships') : emptyResponse,
     requirements.profiles
       ? supabase.from('profiles').select('id, display_name, avatar_path, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').order('display_name')
       : emptyResponse,

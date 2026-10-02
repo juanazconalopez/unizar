@@ -22,7 +22,13 @@ export type ProfilePhotoChange = File | null | undefined
 
 export type Season = Tables<'seasons'>
 
-export type SeasonPlayer = Omit<Tables<'season_players'>, 'season_team_id'> & { season_team_id?: string }
+export type PlayerLicenseType = 'none' | 'training' | 'regional' | 'national'
+export type CompetitionLevel = 'regional' | 'national'
+export type SeasonPlayer = Omit<Tables<'season_players'>, 'season_team_id'> & {
+  season_team_id?: string | null
+  license_type?: PlayerLicenseType
+  national_starts?: number
+}
 
 export type SeasonTeam = Tables<'season_teams'>
 export type SeasonTeamCoach = Tables<'season_team_coaches'>
@@ -128,12 +134,15 @@ export type RugbyFormat = Enums<'rugby_format'>
 export type AvailabilityStatus = Enums<'availability_status'>
 export type LineupRole = Enums<'lineup_role'>
 export type SeasonCompetitionColor = 'purple' | 'blue' | 'orange' | 'red' | 'teal' | 'pink' | 'slate' | 'gold'
-export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color'> & {
+export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color' | 'competition_level' | 'is_league'> & {
   color: SeasonCompetitionColor
   match_count?: number
+  competition_level?: CompetitionLevel
+  is_league?: boolean
 }
 
-export type Match = Omit<Tables<'matches'>, 'competition_id' | 'team_id' | 'internal_fixture_id' | 'duration_minutes' | 'match_report_path' | 'team_score' | 'opponent_score' | 'report_events_reviewed'> & {
+export type Match = Omit<Tables<'matches'>, 'completed_at' | 'competition_id' | 'team_id' | 'internal_fixture_id' | 'duration_minutes' | 'match_report_path' | 'team_score' | 'opponent_score' | 'report_events_reviewed'> & {
+  completed_at?: string | null
   competition_id?: string | null
   team_id?: string | null
   internal_fixture_id?: string | null
@@ -143,7 +152,7 @@ export type Match = Omit<Tables<'matches'>, 'competition_id' | 'team_id' | 'inte
   opponent_score?: number | null
   report_events_reviewed?: boolean
   seasons: { name: string } | null
-  season_competitions?: { id: string; name: string; color: string; is_default: boolean } | null
+  season_competitions?: { id: string; name: string; color: string; is_default: boolean; competition_level?: CompetitionLevel; is_league?: boolean } | null
   season_teams?: { id: string; name: string; is_mixed: boolean; is_default: boolean } | null
 }
 

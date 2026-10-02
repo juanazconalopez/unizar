@@ -1,6 +1,6 @@
 import { addDays, mondayFor } from '../../lib/dates'
 import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
-import { membershipCoversDate } from '../../lib/selectors'
+import { matchLicenseRestriction } from '../../lib/playerLicenses'
 import type { Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
@@ -102,11 +102,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
     const ownAvailability = data.availability.some((item) => item.match_id === match.id && item.player_id === profile.id)
     const matchMonday = mondayFor(match.match_date)
     const reminderDay = today === matchMonday ? 'monday' : today === addDays(matchMonday, 2) ? 'wednesday' : null
-    const eligibleForMatch = data.memberships.some((membership) => (
-      membership.player_id === profile.id
-      && membership.season_id === match.season_id
-      && membershipCoversDate(membership, match.match_date)
-    ))
+    const eligibleForMatch = !matchLicenseRestriction(match, data.memberships, profile.id)
     if (playerRole && eligibleForMatch && !match.lineup_published && !ownAvailability && reminderDay) {
       items.push({
         id: `availability-missing:${match.id}:${reminderDay}:${today}`,

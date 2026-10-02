@@ -1,4 +1,5 @@
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
+import { matchLicenseRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -232,7 +233,7 @@ export function CalendarView(props: CalendarViewProps) {
   }
 
   function renderMatch(match: Match) {
-    const eligiblePlayerCount = activePlayers(props.profiles).filter((profile) => props.memberships.some((membership) => (
+    const eligiblePlayerCount = activePlayers(props.profiles).filter((profile) => !matchLicenseRestriction(match, props.memberships, profile.id) && props.memberships.some((membership) => (
       membership.player_id === profile.id
       && membership.season_id === match.season_id
       && membershipCoversDate(membership, match.match_date)
@@ -376,6 +377,7 @@ export function CalendarView(props: CalendarViewProps) {
       onSave={access.lineupEdit ? async (entries, published) => { await props.onSaveLineup(lineupMatch.match, entries, published); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`); setLineupMatch(null) } : undefined}
     />}
     {detailMatch && <MatchDetailDialog
+      licenseWarnings={lineupLicenseWarnings(detailMatch, props.lineups, props.memberships, props.profiles)}
       canEditMatch={access.matchEdit && (!detailMatch.internal_fixture_id || Boolean(props.isOwner))}
       canManageLineup={access.lineupEdit}
       canGraphicExport={props.isOwner}
@@ -405,7 +407,7 @@ export function CalendarView(props: CalendarViewProps) {
     {availabilityMatch && <MatchAvailabilityDialog
       availability={props.availability.filter((item) => item.match_id === availabilityMatch.id)}
       canEdit={access.availabilityEdit}
-      eligibleProfiles={activePlayers(props.profiles).filter((profile) => props.memberships.some((membership) => membership.player_id === profile.id && membership.season_id === availabilityMatch.season_id && membershipCoversDate(membership, availabilityMatch.match_date) && (props.isOwner || membership.season_team_id === availabilityMatch.team_id || props.seasonTeams?.some((team) => team.id === membership.season_team_id && team.is_mixed))))}
+      eligibleProfiles={activePlayers(props.profiles).filter((profile) => !matchLicenseRestriction(availabilityMatch, props.memberships, profile.id) && props.memberships.some((membership) => membership.player_id === profile.id && membership.season_id === availabilityMatch.season_id && membershipCoversDate(membership, availabilityMatch.match_date) && (props.isOwner || (availabilityMatch.match_kind === 'friendly' && !membership.season_team_id) || membership.season_team_id === availabilityMatch.team_id || props.seasonTeams?.some((team) => team.id === membership.season_team_id && team.is_mixed))))}
       match={availabilityMatch}
       profiles={props.profiles}
       onClose={() => setAvailabilityMatch(null)}

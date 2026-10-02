@@ -1,3 +1,5 @@
+import { todayIso } from './lib/dates'
+import { licenseLabel, membershipLicense } from './lib/playerLicenses'
 import { Suspense, useEffect } from 'react'
 import { AppViewRouter } from './app/AppViewRouter'
 import { PlayerPreviewView } from './app/viewModules'
@@ -89,6 +91,7 @@ function App() {
   }
 
   return <AppLayout
+    licenseSummary={profile.is_player ? data.memberships.filter((item) => item.player_id === profile.id && !item.active_until && data.seasons.some((season) => season.id === item.season_id && season.start_date <= todayIso() && season.end_date >= todayIso())).map((item) => licenseLabel(membershipLicense(item))).join(', ') || undefined : undefined}
     email={auth.session.user.email ?? ''}
     errorMessage={errorMessage}
     message={feedback.message}

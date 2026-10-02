@@ -5884,6 +5884,15 @@ button.survey-closure-card:focus-visible {
   text-align: center;
 }
 
+.season-team-roster-heading h3 .season-team-absence-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #a53636;
+  background: #fff0ed;
+  vertical-align: middle;
+}
+
 .season-team-roster-heading small,
 .season-team-coaches span {
   color: var(--muted);
@@ -13441,3 +13450,17 @@ button.survey-closure-card:focus-visible {
     animation: none;
   }
 }
+
+.player-license-dialog { width: min(560px, 100%); }
+.player-license-panel {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  margin-top: 18px;
+  border: 1px solid var(--border-color, #dce3df);
+  border-radius: 14px;
+}
+.player-license-panel h3, .player-license-panel p { margin: 0; }
+.player-license-panel label { display: grid; gap: 6px; min-width: 0; }
+.player-license-panel input, .player-license-panel select { width: 100%; min-width: 0; }
+.season-team-player > span > small { color: var(--text-muted, #64746a); }

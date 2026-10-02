@@ -11,6 +11,18 @@ function match(overrides: Partial<Match> = {}): Match {
 }
 
 describe('MatchLineupDialog', () => {
+  test('a coach can select a training-only player without a team for a friendly', () => {
+    render(<MatchLineupDialog demo canBorrowFromOtherTeams={false} availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match({ match_kind: 'friendly', team_id: 'team-1' })} memberships={[makeMembership({ license_type: 'training', season_team_id: null })]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir' }))
+    expect(screen.getByRole('button', { name: 'Guardar alineación' })).toBeEnabled()
+    expect(screen.queryByText(/prestada de otro equipo/)).not.toBeInTheDocument()
+  })
+
+  test('an old available response does not make a training-only player eligible for an official lineup', () => {
+    render(<MatchLineupDialog demo availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match()} memberships={[makeMembership({ license_type: 'training', season_team_id: null })]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
+    expect(screen.queryByRole('button', { name: 'Añadir' })).not.toBeInTheDocument()
+  })
+
   test('offers 23 numbered places for an official match', () => {
     render(<MatchLineupDialog availability={[]} entries={[]} match={match()} memberships={[makeMembership()]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
     expect(screen.getAllByText('Suelta aquí')).toHaveLength(23)

@@ -12,8 +12,8 @@ type QueryBuilder = {
   then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => Promise<unknown>
 }
 
-const mocks = vi.hoisted(() => ({ from: vi.fn() }))
-vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }))
+vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
 
 import { fetchNotificationFeed } from './notificationsService'
 
@@ -50,6 +50,7 @@ describe('notificationsService', () => {
       match_availability: availability, match_lineup: lineups, team_announcements: announcements,
     })[table])
 
+    mocks.rpc.mockResolvedValue({ data: [makeMembership()], error: null })
     const data = await fetchNotificationFeed('player-1')
     const currentWeek = mondayFor(todayIso())
     expect(tasks.gte).toHaveBeenCalledWith('week_start', currentWeek)

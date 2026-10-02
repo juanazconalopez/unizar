@@ -3,11 +3,14 @@ import type { FormEvent } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
 import { Icon } from '../../components/Icon'
+import { todayIso } from '../../lib/dates'
+import { getCurrentPlayerAbsence } from '../team/playerAbsenceStatus'
 import { displayNameContains } from '../../lib/displayNames'
 import { errorText } from '../../lib/errors'
-import { activeMembershipFor } from '../../lib/selectors'
+import { licenseAllowsTeam, licenseLabel, membershipLicense } from '../../lib/playerLicenses'
+import { activeMembershipFor, membershipCoversDate } from '../../lib/selectors'
 import { canBeSeasonTeamCoach, isPlayer } from '../../lib/permissions'
-import type { Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
+import type { PlayerAbsence, Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
 import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
 import { seasonTeamCoachRoleLabel, seasonTeamCoachRoles, type SeasonTeamCoachRole } from './seasonTeamCoachRoles'
 
@@ -17,11 +20,12 @@ type Panel =
   | { kind: 'move'; player: Profile }
   | { kind: 'coaches'; team: SeasonTeam }
 
-export function SeasonTeamsDialog({ season, teams, memberships, profiles, coaches, onClose, onCreate, onDelete, onSave, onAssignPlayer, onAssignCoach }: {
+export function SeasonTeamsDialog({ season, teams, memberships, profiles, coaches, playerAbsences = [], onClose, onCreate, onDelete, onSave, onAssignPlayer, onAssignCoach }: {
   season: Season
   teams: SeasonTeam[]
   memberships: SeasonPlayer[]
   profiles: Profile[]
+  playerAbsences?: PlayerAbsence[]
   coaches: SeasonTeamCoach[]
   onClose: () => void
   onCreate: (values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => Promise<void>
@@ -39,6 +43,12 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
   const activePlayers = profiles
     .filter((profile) => profile.is_approved && profile.is_active && !profile.is_archived && isPlayer(profile) && activeMembershipFor(memberships, season.id, profile.id))
     .sort((first, second) => first.display_name.localeCompare(second.display_name, 'es'))
+  const today = todayIso()
+  const currentAbsencePlayerIds = new Set((season.start_date <= today && season.end_date >= today ? activePlayers : [])
+    .filter((player) => membershipCoversDate(activeMembershipFor(memberships, season.id, player.id)!, today)
+      && getCurrentPlayerAbsence(playerAbsences, player.id, today))
+    .map((player) => player.id))
+  const absenceCount = (players: Profile[]) => players.filter((player) => currentAbsencePlayerIds.has(player.id)).length
   const activeCoaches = profiles
     .filter(canBeSeasonTeamCoach)
     .sort((first, second) => first.display_name.localeCompare(second.display_name, 'es'))
@@ -151,8 +161,8 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
 
   function playerRow(player: Profile) {
     return <li className="season-team-player" key={player.id}>
-      <span><Avatar name={player.display_name} /><strong>{player.display_name}</strong></span>
-      <button aria-label={`Mover a ${player.display_name} a otro equipo`} className="secondary-button compact" disabled={saving || seasonTeams.filter((team) => team.is_active && team.id !== memberTeam(player.id)).length === 0} onClick={() => showPanel({ kind: 'move', player })} type="button">Mover a…</button>
+      <span><Avatar name={player.display_name} /><strong>{player.display_name}</strong>{currentAbsencePlayerIds.has(player.id) && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={18} /></span>}<small>{licenseLabel(membershipLicense(activeMembershipFor(memberships, season.id, player.id)!))}</small></span>
+      <button aria-label={`Mover a ${player.display_name} a otro equipo`} className="secondary-button compact" disabled={!licenseAllowsTeam(membershipLicense(activeMembershipFor(memberships, season.id, player.id)!)) || saving || seasonTeams.filter((team) => team.is_active && team.id !== memberTeam(player.id)).length === 0} onClick={() => showPanel({ kind: 'move', player })} type="button">Mover a…</button>
     </li>
   }
 
@@ -170,13 +180,13 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
           const teamCoaches = assignedCoaches(team.id)
           if (search.trim() && !visiblePlayers.length) return null
           return <section aria-label={`${team.name}, ${teamPlayers.length} ${teamPlayers.length === 1 ? 'jugadora' : 'jugadoras'}`} className={`season-team-roster-card${team.is_active ? '' : ' inactive'}`} key={team.id}>
-            <div className="season-team-roster-heading"><div><h3>{team.name} <span>{teamPlayers.length}</span></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
+            <div className="season-team-roster-heading"><div><h3>{team.name} <span>{teamPlayers.length}</span> <AbsenceCount count={absenceCount(teamPlayers)} /></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
             <ul className="season-team-player-list">{visiblePlayers.map(playerRow)}</ul>
             {!visiblePlayers.length && <p className="season-team-empty">Sin jugadoras en este equipo.</p>}
             <div className="season-team-coaches"><div><strong>Entrenadores</strong>{teamCoaches.length ? <span className="season-team-coach-list">{teamCoaches.map(({ coach, role }) => <span key={coach.id}>{role === 'head_coach' ? <strong className="season-team-head-coach-role">{seasonTeamCoachRoleLabel(role)}</strong> : seasonTeamCoachRoleLabel(role)} · {coach.display_name}</span>)}</span> : <span>Sin entrenadores asignados</span>}</div><button aria-label={`Editar entrenadores de ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'coaches', team })} type="button">Editar</button></div>
           </section>
         })}
-        {visibleUnassignedPlayers.length > 0 && <section aria-label={`Sin equipo, ${unassignedPlayers.length} jugadoras`} className="season-team-roster-card unassigned"><div className="season-team-roster-heading"><div><h3>Sin equipo <span>{unassignedPlayers.length}</span></h3><small>Pendientes de asignación</small></div></div><ul className="season-team-player-list">{visibleUnassignedPlayers.map(playerRow)}</ul></section>}
+        {visibleUnassignedPlayers.length > 0 && <section aria-label={`Sin equipo, ${unassignedPlayers.length} jugadoras`} className="season-team-roster-card unassigned"><div className="season-team-roster-heading"><div><h3>Sin equipo <span>{unassignedPlayers.length}</span> <AbsenceCount count={absenceCount(unassignedPlayers)} /></h3><small>Sin ficha deportiva o pendientes de asignación</small></div></div><ul className="season-team-player-list">{visibleUnassignedPlayers.map(playerRow)}</ul></section>}
       </div>
       {!seasonTeams.length && !unassignedPlayers.length && <p className="lineup-empty">Todavía no hay equipos en esta temporada.</p>}
       {search.trim() && !searchHasMatches && <p className="lineup-empty">No hay jugadoras que coincidan con la búsqueda.</p>}
@@ -225,4 +235,8 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
       <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => showPanel({ kind: 'list' })} type="button">Volver a equipos</button>{panel.team && !panel.team.is_default && <button className="danger-button" disabled={saving} onClick={() => void deleteTeam(panel.team!)} type="button">Eliminar equipo</button>}<button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar equipo'}</button></div>
     </>}
   </Modal>
+}
+
+function AbsenceCount({ count }: { count: number }) {
+  return <span aria-label={`${count} ${count === 1 ? 'jugadora' : 'jugadoras'} de baja deportiva hoy`} className="season-team-absence-count" title="Jugadoras de baja deportiva hoy"><Icon name="medicalCross" size={14} />{count}</span>
 }

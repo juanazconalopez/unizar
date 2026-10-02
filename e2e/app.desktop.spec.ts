@@ -62,6 +62,11 @@ test('desktop shows up to three season rosters per row', async ({ page }) => {
 
   const dialog = page.getByRole('dialog', { name: 'Equipos' })
   const cards = dialog.locator('.season-team-roster-card')
+  const roster = dialog.getByRole('region', { name: /Unizar Femenino, \d+ jugadoras/ })
+  await expect(roster.getByLabel('1 jugadora de baja deportiva hoy')).toBeVisible()
+  await expect(roster.locator('.season-team-player').filter({ hasText: 'Sara Jiménez' }).getByRole('img', { name: 'Baja deportiva' })).toBeVisible()
+  await page.screenshot({ path: '/tmp/unizar-season-injuries-desktop.png', fullPage: true })
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
   const firstTwo = await cards.evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().toJSON()))
   expect(firstTwo).toHaveLength(2)
   expect(firstTwo[1].x).toBeGreaterThan(firstTwo[0].right - 1)
@@ -353,7 +358,7 @@ test('owner uploads photos for coach, Dirección and owner in the local demo', a
     await section.getByRole('button', { name: `Ver datos de ${name}` }).click()
     const profile = page.getByRole('dialog', { name })
     await profile.getByRole('button', { name: `Acciones de ${name}` }).click()
-    await profile.getByRole('button', { name: 'Subir foto' }).click()
+    await profile.getByRole('button', { name: 'Cambiar foto' }).click()
     const photo = page.getByRole('dialog', { name: `Foto de ${name}` })
     await photo.getByLabel('Seleccionar fotografía').setInputFiles({
       name: 'perfil.png', mimeType: 'image/png',
@@ -376,7 +381,7 @@ test('the player sees the photo uploaded by the owner in profile data', async ({
   await page.getByRole('button', { name: 'Ver datos de Marta Sánchez' }).click()
   const profile = page.getByRole('dialog', { name: 'Marta Sánchez' })
   await profile.getByRole('button', { name: 'Acciones de Marta Sánchez' }).click()
-  await profile.getByRole('button', { name: 'Subir foto' }).click()
+  await profile.getByRole('button', { name: 'Cambiar foto' }).click()
   const photo = page.getByRole('dialog', { name: 'Foto de Marta Sánchez' })
   await photo.getByLabel('Seleccionar fotografía').setInputFiles({
     name: 'marta.png', mimeType: 'image/png',

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { makePlayerAbsence, makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSeasonTeam } from '../../test/fixtures'
+import { makeMembership, makePlayerAbsence, makeProfile, makeProfilePrivateDetails, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSeasonTeam } from '../../test/fixtures'
 import { TeamView } from './TeamView'
 
 vi.mock('../profile/profilePhotoCrop', async (importOriginal) => {
@@ -54,8 +54,10 @@ describe('TeamView', () => {
   })
 
   test('shows player actions in order and opens a separate sports absence dialog', async () => {
-    const user = userEvent.setup()
-    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()}
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" onSave={vi.fn()} onSavePhoto={vi.fn()} onSaveAbsence={vi.fn()} onUpdate={vi.fn()} onSaveLicense={vi.fn()} seasons={[makeSeason()]} memberships={[makeMembership()]}
       profiles={[makeProfile()]} provisionalAttendance={[makeProvisionalAttendance()]}
       provisionalPlayers={[makeProvisionalPlayer()]} onLinkProvisionalPlayers={vi.fn()} />)
     await user.click(screen.getByText('Jugadoras activas'))
@@ -68,7 +70,7 @@ describe('TeamView', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
     const menu = dialog.querySelector<HTMLElement>('.team-member-actions-menu')!
     expect(within(menu).getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'Editar datos', 'Subir foto', 'Baja deportiva', 'Vincular asistencias', 'Vista previa de jugadora', 'Cerrar',
+      'Editar datos', 'Baja deportiva', 'Modificar ficha', 'Cambiar foto', 'Vincular asistencias', 'Vista previa de jugadora', 'Cerrar',
     ])
     await user.click(within(menu).getByRole('button', { name: 'Baja deportiva' }))
     const absenceDialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
@@ -87,6 +89,60 @@ describe('TeamView', () => {
     expect(dialog).not.toBeInTheDocument()
   })
 
+  test('shows current-season license and team below email and birth date, and returns from the license dialog', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} onSaveLicense={vi.fn()} profiles={[makeProfile()]} seasons={[makeSeason()]}
+      seasonTeams={[makeSeasonTeam({ id: 'team-1', name: 'Equipo actual' })]}
+      memberships={[makeMembership({ id: 'old', active_until: '2026-08-31', season_team_id: 'old-team', license_type: 'none' }), makeMembership({ active_from: '2026-09-01', season_team_id: 'team-1', license_type: 'national' })]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    const details = dialog.querySelector('.team-member-detail-grid')!
+    expect([...details.children].map((element) => element.firstChild?.textContent).slice(0, 4)).toEqual(['Email', 'Fecha de nacimiento', 'Ficha', 'Equipo'])
+    expect(details).toHaveTextContent('Nacional')
+    expect(details).toHaveTextContent('Equipo actual')
+    expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Modificar ficha' }))
+    expect(dialog).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Tipo de ficha')).toHaveValue('national')
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.getByRole('dialog', { name: 'Ana Martín' })).toBeInTheDocument()
+  })
+
+  test('keeps the season license visible after membership ends without showing the former team as current', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile()]} seasons={[makeSeason()]}
+      seasonTeams={[makeSeasonTeam({ id: 'historical', name: 'Equipo anterior' })]}
+      memberships={[makeMembership({ active_until: '2026-08-31', license_type: 'regional', season_team_id: 'historical' })]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(dialog.querySelector('.team-member-detail-grid')).toHaveTextContent('Regional')
+    expect(dialog.querySelector('.team-member-detail-grid')).toHaveTextContent('Sin equipo en la temporada activa')
+    expect(within(dialog).queryByText('Equipo anterior')).not.toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Acciones de Ana Martín' }))
+    expect(within(dialog).queryByRole('button', { name: 'Modificar ficha' })).not.toBeInTheDocument()
+  })
+
+  test('keeps Baja deportiva in the menu during an absence and offers discharge inside that dialog', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} onSaveAbsence={vi.fn()} onDischargeAbsence={vi.fn()}
+      profiles={[makeProfile()]} playerAbsences={[makePlayerAbsence({ starts_on: '2026-09-01', ends_on: '2026-09-30' })]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Baja deportiva' }))
+    expect(screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dar de alta hoy' })).toBeInTheDocument()
+  })
+
   test('lets the owner save a player photo from a separate profile action', async () => {
     const user = userEvent.setup()
     const profile = makeProfile()
@@ -96,7 +152,7 @@ describe('TeamView', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
-    await user.click(screen.getByRole('button', { name: 'Subir foto' }))
+    await user.click(screen.getByRole('button', { name: 'Cambiar foto' }))
     const dialog = screen.getByRole('dialog', { name: 'Foto de Ana Martín' })
     const file = new File(['photo'], 'ana.png', { type: 'image/png' })
     await user.upload(within(dialog).getByLabelText('Seleccionar fotografía'), file)
@@ -124,7 +180,7 @@ describe('TeamView', () => {
     const dialog = screen.getByRole('dialog', { name })
     expect(dialog.querySelector('.team-member-profile-summary')).not.toBeNull()
     await user.click(within(dialog).getByRole('button', { name: `Acciones de ${name}` }))
-    await user.click(within(dialog).getByRole('button', { name: 'Subir foto' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cambiar foto' }))
     const photoDialog = screen.getByRole('dialog', { name: `Foto de ${name}` })
     const file = new File(['photo'], 'perfil.png', { type: 'image/png' })
     await user.upload(within(photoDialog).getByLabelText('Seleccionar fotografía'), file)
@@ -140,7 +196,7 @@ describe('TeamView', () => {
     await user.click(screen.getByText('Entrenadores'))
     await user.click(screen.getByRole('button', { name: 'Ver datos de Andrea Inactiva' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Andrea Inactiva' }))
-    expect(screen.queryByRole('button', { name: 'Subir foto' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cambiar foto' })).not.toBeInTheDocument()
   })
 
   test('marks only a current sporting absence in the list and shows its dates in the profile', async () => {
@@ -397,7 +453,7 @@ describe('TeamView', () => {
     expect(onLink).toHaveBeenCalledWith([guest, guestWithSurname], profile)
   })
 
-  test('selects invited histories and a season team while approving a new player', async () => {
+  test('selects invited histories while leaving team management in Temporadas', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -409,7 +465,6 @@ describe('TeamView', () => {
     const otherTeam = makeSeasonTeam({ id: 'team-2', name: 'Equipo de desarrollo', is_default: false })
     const onUpdate = vi.fn().mockResolvedValue(undefined)
     const onLink = vi.fn().mockResolvedValue(undefined)
-    const onAssign = vi.fn().mockResolvedValue(undefined)
     render(<TeamView
       currentUserId="owner-1"
       profiles={[pending]}
@@ -417,7 +472,6 @@ describe('TeamView', () => {
       seasonTeams={[defaultTeam, otherTeam]}
       provisionalAttendance={[makeProvisionalAttendance()]}
       provisionalPlayers={[guest]}
-      onAssignPlayerTeam={onAssign}
       onLinkProvisionalPlayers={onLink}
       onUpdate={onUpdate}
     />)
@@ -428,21 +482,19 @@ describe('TeamView', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Acciones de Laura Nueva' }))
     expect(within(dialog).queryByRole('button', { name: 'Vincular asistencias' })).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('checkbox', { name: /Laura Invitada/ }))
-    await user.selectOptions(within(dialog).getByLabelText('Equipo de la temporada'), otherTeam.id)
+    expect(within(dialog).queryByLabelText('Equipo de la temporada')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Aprobar como jugadora' }))
 
     expect(window.confirm).toHaveBeenCalledWith('¿Aprobar como jugadora a Laura Nueva y vincular 1 invitada (1 asistencia)?')
     expect(onUpdate).toHaveBeenCalledWith({ ...pending, is_approved: true, is_active: true, is_player: true })
-    await waitFor(() => expect(onAssign).toHaveBeenCalledWith(season, pending, otherTeam.id))
     expect(onLink).toHaveBeenCalledWith([guest], pending)
-    expect(onUpdate.mock.invocationCallOrder[0]).toBeLessThan(onAssign.mock.invocationCallOrder[0])
-    expect(onAssign.mock.invocationCallOrder[0]).toBeLessThan(onLink.mock.invocationCallOrder[0])
+    expect(onUpdate.mock.invocationCallOrder[0]).toBeLessThan(onLink.mock.invocationCallOrder[0])
   })
 
   test('hides the team selector when the active season has only one team', async () => {
     const user = userEvent.setup()
     const pending = makeProfile({ id: 'pending', is_approved: false, is_active: false })
-    render(<TeamView currentUserId="owner-1" onAssignPlayerTeam={vi.fn()} onUpdate={vi.fn().mockResolvedValue(undefined)}
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn().mockResolvedValue(undefined)}
       profiles={[pending]} seasons={[makeSeason()]} seasonTeams={[makeSeasonTeam()]} />)
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     expect(screen.queryByLabelText('Equipo de la temporada')).not.toBeInTheDocument()

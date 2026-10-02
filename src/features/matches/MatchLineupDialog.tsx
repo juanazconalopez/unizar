@@ -1,3 +1,4 @@
+import { matchLicenseRestriction } from '../../lib/playerLicenses'
 import { Fragment, useEffect, useId, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Icon } from '../../components/Icon'
@@ -40,7 +41,7 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
   const starters = match.rugby_format === 'sevens' ? 7 : 15
   const eligible = activePlayers(profiles).filter((profile) => memberships.some((membership) => (
     membership.player_id === profile.id && membership.season_id === match.season_id && membershipCoversDate(membership, match.match_date)
-  )))
+  )) && !matchLicenseRestriction(match, memberships, profile.id))
   const availableIds = new Set(availability.filter((item) => item.status === 'available').map((item) => item.player_id))
   const [slots, setSlots] = useState<Record<number, string>>(() => Object.fromEntries(
     entries
@@ -58,10 +59,10 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
   const selectedIds = new Set(Object.values(slots))
   const reservedIds = new Set(reservedPlayerIds)
   const selectable = orderedLineupCandidates(eligible, memberships, seasonTeams, match.season_id, match.team_id)
-    .filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id) && !reservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2))
+    .filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id) && !reservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2 || (match.match_kind === 'friendly' && player.teamName === 'Sin equipo')))
   const containsBorrowedPlayer = !canBorrowFromOtherTeams && Object.values(slots).some((playerId) => {
     const membership = memberships.find((item) => item.season_id === match.season_id && item.player_id === playerId && membershipCoversDate(item, match.match_date))
-    return membership && membership.season_team_id !== match.team_id && !seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed)
+    return membership && !(match.match_kind === 'friendly' && !membership.season_team_id) && membership.season_team_id !== match.team_id && !seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed)
   })
 
   useEffect(() => {
@@ -91,6 +92,8 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
 
   async function save(confirmed = false) {
     if (!onSave) return
+    const blocked = Object.values(slots).find((playerId) => matchLicenseRestriction(match, memberships, playerId))
+    if (blocked) { setError(matchLicenseRestriction(match, memberships, blocked) ?? 'Revisa las fichas de la convocatoria.'); return }
     const missingStarters = Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])
     if (published && missingStarters.length && !confirmed) { setConfirmMissing(true); return }
     setSaving(true); setError('')

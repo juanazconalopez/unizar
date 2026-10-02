@@ -6,7 +6,7 @@ import { formatDate, seasonState, todayIso } from '../../lib/dates'
 import { downloadText } from '../../lib/fileExport'
 import { activePlayersXml, currentSeasonPlayers } from '../../lib/seasonExports'
 import { isPlayer } from '../../lib/permissions'
-import type { Profile, ProfilePrivateDetails, Season, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonValues } from '../../types'
+import type { PlayerAbsence, Profile, ProfilePrivateDetails, Season, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonValues } from '../../types'
 import type { SeasonCompetitionValues } from '../../services/seasonCompetitionsService'
 import { SeasonForm } from './SeasonForm'
 import { SeasonHolidayDialog } from './SeasonHolidayDialog'
@@ -15,12 +15,13 @@ import { fetchSeasonHolidays, saveSeasonHolidays } from '../../services/seasonHo
 import { SeasonTeamsDialog } from './SeasonTeamsDialog'
 import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
 
-export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, competitions = [], teams = [], teamCoaches = [], profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onSaveHolidays, onCreateCompetition, onDeleteCompetition, onSetDefaultCompetition, onUpdateCompetition, onCreateTeam, onUpdateTeam, onDeleteTeam, onAssignPlayerTeam, onAssignTeamCoach }: {
+export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seasons, competitions = [], teams = [], teamCoaches = [], playerAbsences = [], profiles, profilePrivateDetails = [], memberships, holidays: providedHolidays, onCreate, onDelete, onUpdate, onSaveHolidays, onCreateCompetition, onDeleteCompetition, onSetDefaultCompetition, onUpdateCompetition, onCreateTeam, onUpdateTeam, onDeleteTeam, onAssignPlayerTeam, onAssignTeamCoach }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   seasons: Season[]
   competitions?: SeasonCompetition[]
   teams?: SeasonTeam[]
+  playerAbsences?: PlayerAbsence[]
   teamCoaches?: SeasonTeamCoach[]
   profiles: Profile[]
   profilePrivateDetails?: ProfilePrivateDetails[]
@@ -102,7 +103,7 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
       </div>
       {holidaySeason && <SeasonHolidayDialog holidays={holidays.filter((holiday) => holiday.season_id === holidaySeason.id).map((holiday) => holiday.holiday_date)} onClose={() => setHolidaySeason(null)} onSave={async (dates) => { await (onSaveHolidays ?? saveSeasonHolidays)(holidaySeason.id, dates); if (!providedHolidays) setLoadedHolidays((current) => [...current.filter((holiday) => holiday.season_id !== holidaySeason.id), ...dates.map((holiday_date) => ({ season_id: holidaySeason.id, holiday_date }))]) }} season={holidaySeason} />}
       {competitionSeason && onCreateCompetition && onDeleteCompetition && onSetDefaultCompetition && onUpdateCompetition && <SeasonCompetitionsDialog competitions={competitions} season={competitionSeason} onClose={() => setCompetitionSeason(null)} onCreate={onCreateCompetition} onDelete={onDeleteCompetition} onSetDefault={onSetDefaultCompetition} onUpdate={onUpdateCompetition} />}
-      {teamSeason && onCreateTeam && onUpdateTeam && onDeleteTeam && onAssignPlayerTeam && onAssignTeamCoach && <SeasonTeamsDialog coaches={teamCoaches} memberships={memberships} profiles={profiles} season={teamSeason} teams={teams} onAssignCoach={onAssignTeamCoach} onAssignPlayer={(player, teamId) => onAssignPlayerTeam(teamSeason, player, teamId)} onClose={() => setTeamSeason(null)} onCreate={(values) => onCreateTeam(teamSeason, values)} onDelete={onDeleteTeam} onSave={onUpdateTeam} />}
+      {teamSeason && onCreateTeam && onUpdateTeam && onDeleteTeam && onAssignPlayerTeam && onAssignTeamCoach && <SeasonTeamsDialog playerAbsences={playerAbsences} coaches={teamCoaches} memberships={memberships} profiles={profiles} season={teamSeason} teams={teams} onAssignCoach={onAssignTeamCoach} onAssignPlayer={(player, teamId) => onAssignPlayerTeam(teamSeason, player, teamId)} onClose={() => setTeamSeason(null)} onCreate={(values) => onCreateTeam(teamSeason, values)} onDelete={onDeleteTeam} onSave={onUpdateTeam} />}
     </div>
 }
 

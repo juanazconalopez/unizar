@@ -10,6 +10,13 @@ const match: Match = {
 describe('MatchCard', () => {
   afterEach(() => vi.useRealTimers())
 
+  test('shows an official match without availability actions when the license blocks participation', () => {
+    render(<MatchCard isPlayer canEditMatch={false} licenseRestriction="La ficha solo permite participar en amistosos." match={{ ...match, match_kind: 'official' }} onOpen={vi.fn()} onSaveAvailability={vi.fn()} />)
+    expect(screen.getByText(/solo permite participar en amistosos/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ver detalle/ })).toBeInTheDocument()
+  })
+
   test('keeps the player card focused on logistics and quick availability', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-09-19T12:00:00'))

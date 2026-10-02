@@ -1,8 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { todayIso } from '../../lib/dates'
-import { makeMembership, makeProfile, makeProfilePrivateDetails, makeSeason, makeSeasonTeam } from '../../test/fixtures'
+import { makeMembership, makePlayerAbsence, makeProfile, makeProfilePrivateDetails, makeSeason, makeSeasonTeam } from '../../test/fixtures'
 import { SeasonsView } from './SeasonsView'
 
 const fileMocks = vi.hoisted(() => ({ downloadText: vi.fn() }))
@@ -10,6 +10,8 @@ vi.mock('../../lib/fileExport', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../lib/fileExport')>(),
   downloadText: fileMocks.downloadText,
 }))
+
+afterEach(() => { vi.useRealTimers() })
 
 describe('SeasonsView', () => {
   test('replaces manual memberships with team management', async () => {
@@ -39,6 +41,70 @@ describe('SeasonsView', () => {
     await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
     expect(screen.getByRole('heading', { name: 'Equipos' })).toBeInTheDocument()
     expect(screen.getAllByText('Unizar Femenino')).not.toHaveLength(0)
+  })
+
+  test('counts current sporting absences per roster, independently of search and excluding inactive or unlinked players', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const season = makeSeason()
+    const team = makeSeasonTeam({ id: 'team-1', name: 'Unizar A' })
+    const profiles = [
+      makeProfile({ id: 'current', display_name: 'Ana Vigente' }),
+      makeProfile({ id: 'expired', display_name: 'Beatriz Recuperada' }),
+      makeProfile({ id: 'future', display_name: 'Clara Programada' }),
+      makeProfile({ id: 'discharged', display_name: 'Diana Alta' }),
+      makeProfile({ id: 'unassigned', display_name: 'Eva Entrenamientos' }),
+      makeProfile({ id: 'future-member', display_name: 'Fátima Incorporación' }),
+      makeProfile({ id: 'inactive', display_name: 'Inactiva', is_active: false }),
+      makeProfile({ id: 'unlinked', display_name: 'Sin vinculación' }),
+      makeProfile({ id: 'staff', display_name: 'Entrenador', is_player: false, is_coach: true }),
+    ]
+    const memberships = profiles.filter((profile) => profile.id !== 'unlinked').map((profile) => makeMembership({
+      id: profile.id, player_id: profile.id, season_team_id: profile.id === 'unassigned' ? null : team.id,
+      license_type: profile.id === 'unassigned' ? 'training' : 'regional',
+      active_from: profile.id === 'future-member' ? '2026-10-01' : '2026-01-01',
+    }))
+    const playerAbsences = profiles.map((profile) => makePlayerAbsence({
+      id: profile.id, player_id: profile.id, starts_on: profile.id === 'future' ? '2026-10-01' : '2026-09-01',
+      ends_on: profile.id === 'expired' ? '2026-09-23' : null,
+      discharged_on: profile.id === 'discharged' ? '2026-09-24' : null,
+    }))
+    playerAbsences.push(makePlayerAbsence({ id: 'duplicate', player_id: 'current', starts_on: '2026-09-10' }))
+    render(<SeasonsView seasons={[season]} profiles={profiles} memberships={memberships} teams={[team]} playerAbsences={playerAbsences}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    const roster = screen.getByRole('region', { name: 'Unizar A, 5 jugadoras' })
+    expect(within(roster).getByLabelText('1 jugadora de baja deportiva hoy')).toHaveTextContent('1')
+    expect(within(roster).getAllByRole('img', { name: 'Baja deportiva' })).toHaveLength(1)
+    expect(within(roster).getByText('Ana Vigente').closest('li')).toContainElement(within(roster).getByRole('img', { name: 'Baja deportiva' }))
+    const unassigned = screen.getByRole('region', { name: 'Sin equipo, 1 jugadoras' })
+    expect(within(unassigned).getByLabelText('1 jugadora de baja deportiva hoy')).toBeInTheDocument()
+    expect(within(unassigned).getByRole('img', { name: 'Baja deportiva' })).toBeInTheDocument()
+    expect(screen.queryByText('Inactiva', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('Sin vinculación')).not.toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar jugadora' }), 'Beatriz')
+    expect(within(roster).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()
+    expect(within(roster).getByLabelText('1 jugadora de baja deportiva hoy')).toHaveTextContent('1')
+  })
+
+  test.each([
+    ['pasada', '2025-01-01', '2025-12-31'],
+    ['futura', '2027-01-01', '2027-12-31'],
+  ])('does not attach current injuries to a %s season roster', async (_state, start_date, end_date) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const team = makeSeasonTeam({ id: 'team-1' })
+    render(<SeasonsView seasons={[makeSeason({ start_date, end_date })]} profiles={[makeProfile()]}
+      memberships={[makeMembership({ active_from: start_date, season_team_id: team.id })]} teams={[team]} playerAbsences={[makePlayerAbsence()]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    const roster = screen.getByRole('region', { name: 'Unizar Femenino, 1 jugadora' })
+    expect(within(roster).getByLabelText('0 jugadoras de baja deportiva hoy')).toBeInTheDocument()
+    expect(within(roster).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()
   })
 
   test('offers active owners alongside coaches for team assignment', async () => {

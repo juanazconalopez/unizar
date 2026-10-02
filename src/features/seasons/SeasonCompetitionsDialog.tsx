@@ -34,7 +34,7 @@ export function SeasonCompetitionsDialog({ competitions, season, onClose, onCrea
     event.preventDefault()
     if (editing === undefined) return
     const form = new FormData(event.currentTarget)
-    const values = { name: String(form.get('name')), color: selectedColor }
+    const values: SeasonCompetitionValues = { name: String(form.get('name')), color: selectedColor, competitionLevel: form.get('level') === 'national' ? 'national' : 'regional', isLeague: form.get('isLeague') === 'on' }
     setSaving(true); setError('')
     try {
       if (editing) await onUpdate(editing, values)
@@ -86,6 +86,8 @@ export function SeasonCompetitionsDialog({ competitions, season, onClose, onCrea
     </> : <>
       <div className="form-grid">
         <label className="full-field">Nombre<input autoFocus defaultValue={editing?.name ?? ''} maxLength={80} name="name" placeholder="Ej. Copa Aragón" required spellCheck /></label>
+        <label>Nivel<select defaultValue={editing?.competition_level ?? 'regional'} name="level"><option value="regional">Regional</option><option value="national">Nacional</option></select></label>
+        <label><input defaultChecked={editing?.is_league ?? false} name="isLeague" type="checkbox" /> Es una liga (las titularidades de liga nacional cuentan para el límite de seis)</label>
         <fieldset className="competition-color-field full-field"><legend>Color</legend><div className="competition-color-palette">
           {COMPETITION_PALETTE.map((color) => {
             const unavailable = seasonCompetitions.some((item) => item.color === color.key && item.id !== editing?.id)

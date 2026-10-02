@@ -14,6 +14,8 @@ import { LineupGraphic, LineupGraphicDialog } from './LineupGraphicDialog'
 import { matchDateLabel, matchTitle } from './matchPresentation'
 
 export function MatchDetailDialog({
+  licenseRestriction,
+  licenseWarnings = [],
   canEditMatch,
   canManageLineup,
   canGraphicExport = false,
@@ -37,6 +39,8 @@ export function MatchDetailDialog({
   onLoadReportEvents,
   onViewAvailability,
 }: {
+  licenseRestriction?: string | null
+  licenseWarnings?: string[]
   canEditMatch: boolean
   canManageLineup: boolean
   canGraphicExport?: boolean
@@ -89,6 +93,7 @@ export function MatchDetailDialog({
   if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={selectedLineup} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>
+    {licenseWarnings.length > 0 && <div className="form-error" role="alert"><strong>Revisa las fichas de esta convocatoria</strong>{licenseWarnings.map((warning) => <p key={warning}>{warning}</p>)}</div>}
     <div className="task-detail-heading">
       <div><span className="eyebrow">{match.match_kind === 'official' ? match.season_competitions?.name ?? 'COMPETICIÓN' : 'AMISTOSO'}</span><h2 id={titleId}>{matchTitle(match)}</h2><p className="match-detail-date">{matchDateLabel(match)}</p></div>
       <div className="match-detail-heading-actions">
@@ -112,7 +117,8 @@ export function MatchDetailDialog({
     {match.team_score != null && match.opponent_score != null && <section className="match-detail-notes"><h3>Resultado del partido</h3><p>{match.team_score} - {match.opponent_score}{match.match_kind === 'official' ? ` · ${match.report_events_reviewed ? 'Eventos revisados' : 'Eventos pendientes de revisar'}` : ''}</p></section>}
     {onSaveReport && canEditMatch && match.match_date <= todayInMadridIso() && match.status !== 'draft' && match.status !== 'cancelled' && <div className="match-detail-actions"><button className="secondary-button" onClick={() => setReportOpen(true)} type="button">{match.team_score != null ? 'Editar resultado y minutos' : 'Registrar resultado y minutos'}</button></div>}
 
-    {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
+    {isPlayer && licenseRestriction && match.status === 'published' && <p className="form-hint">{licenseRestriction}</p>}
+    {isPlayer && !licenseRestriction && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
 
     <section className="match-detail-callup">
       <div className="match-detail-section-heading">

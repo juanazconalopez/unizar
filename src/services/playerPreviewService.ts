@@ -27,7 +27,7 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
   const player = playerResponse.data as Profile
   if (!player.is_player || !player.is_approved || !player.is_active || player.is_archived) throw new Error('La jugadora no tiene acceso activo para previsualizar.')
 
-  const membershipsResponse = await supabase.from('season_players').select('*').eq('player_id', playerId)
+  const membershipsResponse = await supabase.rpc('get_player_season_memberships', { checked_player_id: playerId })
   if (membershipsResponse.error) throw membershipsResponse.error
   const memberships = membershipsResponse.data ?? []
   const seasonIds = memberships.map((membership) => membership.season_id)
@@ -37,7 +37,7 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
     seasonIds.length ? supabase.from('tasks').select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
     supabase.from('task_results').select('*').eq('player_id', playerId),
     seasonIds.length ? supabase.from('team_announcements').select('*, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
-    seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default), season_teams(id,name,is_mixed,is_default)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date') : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league), season_teams(id,name,is_mixed,is_default)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date') : Promise.resolve({ data: [], error: null }),
     seasonIds.length ? supabase.from('season_holidays').select('holiday_date').in('season_id', seasonIds) : Promise.resolve({ data: [], error: null }),
   ])
   for (const response of [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse]) if (response.error) throw response.error

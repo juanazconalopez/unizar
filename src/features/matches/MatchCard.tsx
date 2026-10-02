@@ -4,6 +4,7 @@ import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 import { matchLogistics, matchTitle } from './matchPresentation'
 
 export type MatchCardProps = {
+  licenseRestriction?: string | null
   availability?: MatchAvailability[]
   canEditMatch: boolean
   canViewAvailability?: boolean
@@ -16,7 +17,7 @@ export type MatchCardProps = {
   onViewAvailability?: () => void
 }
 
-export function MatchCard({ availability = [], canEditMatch, canViewAvailability = false, eligiblePlayerCount = 0, isPlayer, match, ownAvailability, onOpen, onSaveAvailability, onViewAvailability }: MatchCardProps) {
+export function MatchCard({ licenseRestriction, availability = [], canEditMatch, canViewAvailability = false, eligiblePlayerCount = 0, isPlayer, match, ownAvailability, onOpen, onSaveAvailability, onViewAvailability }: MatchCardProps) {
   return (
     <article className="match-card" style={matchColorStyle(match)}>
       <button aria-label={`Ver detalle de ${matchTitle(match)}`} className="match-card-summary" onClick={onOpen} type="button">
@@ -33,7 +34,8 @@ export function MatchCard({ availability = [], canEditMatch, canViewAvailability
         {match.notes && <p className="match-notes">{match.notes}</p>}
       </button>
       {canViewAvailability && onViewAvailability && <AvailabilitySummary availability={availability} eligiblePlayerCount={eligiblePlayerCount} onView={onViewAvailability} />}
-      {isPlayer && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
+      {isPlayer && licenseRestriction && match.status === 'published' && <p className="form-hint">{licenseRestriction}</p>}
+      {isPlayer && !licenseRestriction && onSaveAvailability && <MatchAvailabilityResponse initial={ownAvailability} match={match} onSave={onSaveAvailability} />}
     </article>
   )
 }

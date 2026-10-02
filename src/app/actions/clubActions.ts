@@ -1,3 +1,5 @@
+import { savePlayerLicense } from '../../services/playerLicensesService'
+import type { PlayerLicenseType } from '../../types'
 import { activeMembershipFor } from '../../lib/selectors'
 import { archiveManagedProfile, updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
@@ -79,6 +81,12 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.requireConnection()
       await deleteSeasonTeam(team.id)
       context.notify('Equipo eliminado.')
+      await context.reloadData()
+    },
+    savePlayerLicense: async (season: Season, player: Profile, license: PlayerLicenseType) => {
+      context.requireConnection()
+      const affected = await savePlayerLicense(season.id, player.id, license)
+      context.notify(`Ficha actualizada.${affected ? ` Revisa ${affected} convocatoria(s) futura(s) con esta jugadora.` : ''}`)
       await context.reloadData()
     },
     assignSeasonPlayerTeam: async (season: Season, player: Profile, teamId: string) => {
