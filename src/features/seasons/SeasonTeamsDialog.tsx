@@ -238,5 +238,6 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
 }
 
 function AbsenceCount({ count }: { count: number }) {
+  if (count === 0) return null
   return <span aria-label={`${count} ${count === 1 ? 'jugadora' : 'jugadoras'} de baja deportiva hoy`} className="season-team-absence-count" title="Jugadoras de baja deportiva hoy"><Icon name="medicalCross" size={14} />{count}</span>
 }

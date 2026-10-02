@@ -64,6 +64,7 @@ test('desktop shows up to three season rosters per row', async ({ page }) => {
   const cards = dialog.locator('.season-team-roster-card')
   const roster = dialog.getByRole('region', { name: /Unizar Femenino, \d+ jugadoras/ })
   await expect(roster.getByLabel('1 jugadora de baja deportiva hoy')).toBeVisible()
+  await expect(dialog.getByRole('region', { name: 'Equipo de desarrollo, 0 jugadoras' }).locator('.season-team-absence-count')).toHaveCount(0)
   await expect(roster.locator('.season-team-player').filter({ hasText: 'Sara Jiménez' }).getByRole('img', { name: 'Baja deportiva' })).toBeVisible()
   await page.screenshot({ path: '/tmp/unizar-season-injuries-desktop.png', fullPage: true })
   expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)

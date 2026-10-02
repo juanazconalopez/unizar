@@ -41,6 +41,7 @@ describe('SeasonsView', () => {
     await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
     expect(screen.getByRole('heading', { name: 'Equipos' })).toBeInTheDocument()
     expect(screen.getAllByText('Unizar Femenino')).not.toHaveLength(0)
+    expect(screen.queryByLabelText('0 jugadoras de baja deportiva hoy')).not.toBeInTheDocument()
   })
 
   test('counts current sporting absences per roster, independently of search and excluding inactive or unlinked players', async () => {
@@ -103,7 +104,7 @@ describe('SeasonsView', () => {
       onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
     const roster = screen.getByRole('region', { name: 'Unizar Femenino, 1 jugadora' })
-    expect(within(roster).getByLabelText('0 jugadoras de baja deportiva hoy')).toBeInTheDocument()
+    expect(within(roster).queryByLabelText('0 jugadoras de baja deportiva hoy')).not.toBeInTheDocument()
     expect(within(roster).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()
   })
 
