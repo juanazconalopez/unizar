@@ -26,8 +26,9 @@ describe('TeamView', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-08-31T12:00:00'))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile({ avatar_path: 'players/ana.webp' })]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[makeProfile({ avatar_path: 'players/ana.webp', playing_positions: ['prop'], primary_position: 'prop' })]} profilePrivateDetails={[makeProfilePrivateDetails()]} />)
     await user.click(screen.getByText('Jugadoras activas'))
+    expect(screen.queryByRole('heading', { name: /Delanteras|Línea|Sin posición/ })).not.toBeInTheDocument()
 
     const card = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
     expect(card).toHaveTextContent('ana@example.com')

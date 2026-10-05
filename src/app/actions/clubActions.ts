@@ -1,7 +1,8 @@
 import { savePlayerLicense } from '../../services/playerLicensesService'
 import type { PlayerLicenseType } from '../../types'
 import { activeMembershipFor } from '../../lib/selectors'
-import { archiveManagedProfile, updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import { archiveManagedProfile, setPlayerPositions, updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails, updateProfilePermissions } from '../../services/profilesService'
+import type { PlayerPositionValues } from '../../lib/playerPositions'
 import { loadProfilePhotoUrl } from '../../services/profilePhotoService'
 import { createSeason, deleteSeason, updateSeason } from '../../services/seasonsService'
 import { saveTrainingAttendance } from '../../services/trainingAttendanceService'
@@ -22,6 +23,12 @@ import type { PlayerAbsenceValues } from '../../services/playerAbsencesService'
 
 export function createClubActions(context: ActionContext, memberships: SeasonPlayer[]) {
   return {
+    savePlayerPositions: async (player: Profile, values: PlayerPositionValues) => {
+      context.requireConnection()
+      await setPlayerPositions(player.id, values)
+      context.notify('Posiciones actualizadas.')
+      await context.reloadData()
+    },
     createSeason: async (values: SeasonValues) => {
       context.requireConnection()
       if (!context.userId) return

@@ -14,6 +14,59 @@ vi.mock('../../lib/fileExport', async (importOriginal) => ({
 afterEach(() => { vi.useRealTimers() })
 
 describe('SeasonsView', () => {
+  test('groups assigned rosters by principal without double counting versatile players or changing counts on search', async () => {
+    const user = userEvent.setup()
+    const team = makeSeasonTeam()
+    const players = [makeProfile({ playing_positions: ['prop', 'wing'], primary_position: 'prop' }), makeProfile({ id: 'wing', display_name: 'Beatriz Línea', playing_positions: ['wing'], primary_position: 'wing' }), makeProfile({ id: 'unknown', display_name: 'Clara Pendiente' })]
+    render(<SeasonsView seasons={[makeSeason()]} teams={[team]} profiles={players} memberships={players.map((player) => makeMembership({ id: player.id, player_id: player.id, season_team_id: team.id }))}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()} onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    const roster = within(screen.getByRole('region', { name: 'Unizar Femenino, 3 jugadoras' }))
+    expect(roster.getByRole('heading', { name: 'Delanteras 1' })).toBeInTheDocument()
+    expect(roster.getByRole('heading', { name: 'Línea 1' })).toBeInTheDocument()
+    expect(roster.getByRole('heading', { name: 'Sin posición 1' })).toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox'), 'Beatriz')
+    expect(roster.getByRole('heading', { name: 'Línea 1' })).toBeInTheDocument()
+    expect(roster.queryByText('Ana Martín')).not.toBeInTheDocument()
+  })
+  test('PDF preview includes unfiltered saved rosters, licenses and coaches without private details', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const season = makeSeason()
+    const team = makeSeasonTeam()
+    const players = [makeProfile({ display_name: 'Ana Regional' }), makeProfile({ id: 'training', display_name: 'Beatriz Entrenamientos' }), makeProfile({ id: 'inactive', is_active: false, display_name: 'Jugadora inactiva' })]
+    const coach = makeProfile({ id: 'coach', display_name: 'Entrenador Asignado', is_player: false, is_coach: true })
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    render(<SeasonsView seasons={[season]} profiles={[...players, coach]} teams={[team, makeSeasonTeam({ id: 'other-team', season_id: 'other-season', name: 'Otra temporada' })]}
+      memberships={[makeMembership({ season_team_id: team.id, license_type: 'regional' }), makeMembership({ id: 'training-member', player_id: 'training', license_type: 'training' }), makeMembership({ id: 'inactive-member', player_id: 'inactive', season_team_id: team.id })]}
+      playerAbsences={[makePlayerAbsence({ starts_on: '2026-09-01' })]}
+      profilePrivateDetails={[makeProfilePrivateDetails({ email: 'privado@example.com' })]}
+      teamCoaches={[{ season_team_id: team.id, coach_id: coach.id, role: 'head_coach', created_at: '2026-01-01' }]}
+      onCreate={vi.fn()} onDelete={vi.fn()} onUpdate={vi.fn()} onCreateTeam={vi.fn()} onUpdateTeam={vi.fn()}
+      onDeleteTeam={vi.fn()} onAssignPlayerTeam={vi.fn()} onAssignTeamCoach={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Gestionar equipos' }))
+    await user.type(screen.getByRole('searchbox'), 'Beatriz')
+    await user.click(screen.getByRole('button', { name: 'Exportar PDF' }))
+    const report = within(screen.getByRole('article', { name: 'Vista previa del PDF de equipos' }))
+    expect(report.getByText('Ana Regional')).toBeInTheDocument()
+    expect(report.getByText('Beatriz Entrenamientos')).toBeInTheDocument()
+    expect(report.getByText('Solo entrenamientos')).toBeInTheDocument()
+    expect(report.getByText('Sin equipo')).toBeInTheDocument()
+    expect(report.getByText('Entrenador principal')).toBeInTheDocument()
+    expect(report.getByText('Entrenador Asignado')).toBeInTheDocument()
+    expect(report.getByText('Baja deportiva')).toBeInTheDocument()
+    expect(report.queryByText('privado@example.com')).not.toBeInTheDocument()
+    expect(report.queryByText('+34 600 000 000')).not.toBeInTheDocument()
+    expect(report.queryByText('Jugadora inactiva')).not.toBeInTheDocument()
+    expect(report.queryByText('Otra temporada')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar PDF' }))
+    expect(print).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole('button', { name: 'Volver a equipos' }))
+    expect(screen.getByRole('searchbox')).toHaveValue('Beatriz')
+    print.mockRestore()
+  })
+
   test('replaces manual memberships with team management', async () => {
     const user = userEvent.setup()
     const season = makeSeason()

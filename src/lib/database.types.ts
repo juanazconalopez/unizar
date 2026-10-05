@@ -684,6 +684,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          playing_positions: string[]
+          primary_position: string | null
           avatar_path: string | null
           created_at: string
           display_name: string
@@ -698,6 +700,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          playing_positions?: string[]
+          primary_position?: string | null
           avatar_path?: string | null
           created_at?: string
           display_name: string
@@ -712,6 +716,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          playing_positions?: string[]
+          primary_position?: string | null
           avatar_path?: string | null
           created_at?: string
           display_name?: string
@@ -1414,6 +1420,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      set_player_positions: { Args: { checked_player_id: string; checked_positions: string[]; checked_primary_position: string | null }; Returns: undefined }
+      valid_player_positions: { Args: { positions: string[]; principal: string | null }; Returns: boolean }
       get_player_season_memberships: {
         Args: { checked_player_id?: string | null }
         Returns: { id: string; season_id: string; player_id: string; active_from: string; active_until: string | null; created_at: string; season_team_id: string | null; license_type: "none" | "training" | "regional" | "national"; national_starts: number }[]

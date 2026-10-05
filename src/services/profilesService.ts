@@ -2,6 +2,16 @@ import { supabase } from '../lib/supabase'
 import type { ManagedProfileValues, Profile, ProfileDetailsValues, ProfilePhotoChange } from '../types'
 import { invalidateBirthdayCache } from './birthdayService'
 import { deleteProfilePhoto, uploadProfilePhoto } from './profilePhotoService'
+import { validPlayerPositions } from '../lib/playerPositions'
+import type { PlayerPositionValues } from '../lib/playerPositions'
+
+export async function setPlayerPositions(playerId: string, values: PlayerPositionValues) {
+  if (!validPlayerPositions(values)) throw new Error('Selecciona posiciones válidas y una principal entre ellas.')
+  const { error } = await supabase.rpc('set_player_positions', {
+    checked_player_id: playerId, checked_positions: values.positions, checked_primary_position: values.primaryPosition,
+  })
+  if (error) throw error
+}
 
 export async function updateProfilePermissions(profile: Profile) {
   const { error } = await supabase.from('profiles').update({

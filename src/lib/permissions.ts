@@ -21,7 +21,7 @@ export const PERMISSIONS = {
   competition: { view: 'competition.view', sync: 'competition.sync' },
   library: { view: 'library.view', configure: 'library.configure', sync: 'library.sync' },
   settings: { view: 'settings.view', team: 'settings.team', seasons: 'settings.seasons', permissions: 'settings.permissions' },
-  team: { view: 'team.view', edit: 'team.edit', privateDetails: 'team.private_details', roles: 'team.roles', archive: 'team.archive', linkGuests: 'team.link_guests' },
+  team: { view: 'team.view', edit: 'team.edit', privateDetails: 'team.private_details', roles: 'team.roles', archive: 'team.archive', linkGuests: 'team.link_guests', positions: 'team.positions' },
   seasons: { view: 'seasons.view', create: 'seasons.create', edit: 'seasons.edit', delete: 'seasons.delete', memberships: 'seasons.memberships', competitions: 'seasons.competitions', licenses: 'seasons.licenses' },
 } as const
 
@@ -59,6 +59,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.attendance.view, PERMISSIONS.attendance.record, PERMISSIONS.attendance.report, PERMISSIONS.attendance.guests,
     PERMISSIONS.training.view, PERMISSIONS.training.create, PERMISSIONS.training.edit, PERMISSIONS.training.delete,
     PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
+    PERMISSIONS.team.positions,
     PERMISSIONS.exercises.delete, PERMISSIONS.competition.view, PERMISSIONS.library.view,
     PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
@@ -99,6 +100,10 @@ export function hasPermission(profile: Profile, permission: PermissionKey, loade
 }
 
 export function isPlayer(profile: Profile) { return profile.is_player }
+
+export function canManagePlayerPositions(profile: Profile, loadedKeys?: readonly string[]) {
+  return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.team.positions, loadedKeys)
+}
 
 export function canBeSeasonTeamCoach(profile: Profile) {
   return isEnabledProfile(profile) && (profile.is_coach || profile.is_owner)

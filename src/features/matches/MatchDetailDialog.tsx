@@ -10,6 +10,7 @@ import { lineupPlainText } from '../../lib/matchExports'
 import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup, Profile, SeasonTeamCoach } from '../../types'
 import { MatchAvailabilityResponse } from './MatchAvailabilityResponse'
 import { PublishedLineup } from './MatchLineupDialog'
+import { PlayerPositionSummary } from '../../components/PlayerPositionSummary'
 import { LineupGraphic, LineupGraphicDialog } from './LineupGraphicDialog'
 import { matchDateLabel, matchTitle } from './matchPresentation'
 
@@ -130,6 +131,7 @@ export function MatchDetailDialog({
         </div>
       </div>
       {hasPublishedLineup ? <>
+        {lineupView === 'image' && <PlayerPositionSummary players={[...new Set(selectedLineup.map((entry) => entry.player_id))].map((id) => profiles.find((player) => player.id === id) ?? { primary_position: null })} />}
         {showTeamSelector && <div aria-label="Equipo de la convocatoria" className="match-lineup-team-selector" role="group">{publishedTeams.map((team) => <button aria-pressed={selectedPublishedMatch.id === team.id} className="secondary-button compact" key={team.id} onClick={() => { setSelectedPublishedMatchId(team.id); setCopied(false); setCopyError('') }} type="button">{team.season_teams?.name ?? (team.is_home ? 'Equipo local' : 'Equipo visitante')}</button>)}</div>}
         <div className="match-lineup-view-panel" data-view="image" hidden={lineupView !== 'image'}>
           <LineupGraphic canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} embedded entries={selectedLineup} key={selectedPublishedMatch.id} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onOpen={() => setGraphicOpen(true)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />

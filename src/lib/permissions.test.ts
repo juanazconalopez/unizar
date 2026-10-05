@@ -1,8 +1,16 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
+import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
+  test('only enabled owners and coaches may edit positions, respecting the configured permission', () => {
+    expect(canManagePlayerPositions(makeProfile({ is_owner: true }), [])).toBe(true)
+    expect(canManagePlayerPositions(makeProfile({ is_coach: true }))).toBe(true)
+    expect(canManagePlayerPositions(makeProfile({ is_coach: true }), [])).toBe(false)
+    expect(canManagePlayerPositions(makeProfile({ is_coach: true, is_active: false }))).toBe(false)
+    expect(canManagePlayerPositions(makeProfile({ is_viewer: true }), [PERMISSIONS.team.positions])).toBe(false)
+    expect(canManagePlayerPositions(makeProfile(), [PERMISSIONS.team.positions])).toBe(false)
+  })
   test('gives the owner every permission', () => {
     const owner = makeProfile({ is_owner: true, is_player: false })
     expect(canConfigureClub(owner)).toBe(true)

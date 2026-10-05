@@ -1,3 +1,4 @@
+import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { matchLicenseRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
 import { useEffect, useRef, useState } from 'react'
@@ -51,6 +52,7 @@ type MatchesViewProps = {
   seasonTeams?: SeasonTeam[]
   demoCoaches?: SeasonTeamCoach[]
   onLoadGraphicPhoto?: (path: string) => Promise<string>
+  onSavePlayerPositions?: SavePlayerPositions
   userId: string
   focusedDate?: string
   canViewReport?: boolean
@@ -91,6 +93,7 @@ export function MatchesView({
   seasonTeams = [],
   demoCoaches,
   onLoadGraphicPhoto,
+  onSavePlayerPositions,
   userId,
   focusedDate,
   canViewReport = false,
@@ -261,6 +264,8 @@ export function MatchesView({
 
       {lineupMatch && (
         <MatchLineupDialog
+          onSavePositions={onSavePlayerPositions}
+          activeSeason={seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
           availability={availability.filter((item) => item.match_id === lineupMatch.match.id)}
           canExport={canManage || canViewReport}
           canGraphicExport={isOwner}

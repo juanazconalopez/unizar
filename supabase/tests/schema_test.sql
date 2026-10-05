@@ -1,5 +1,5 @@
 begin;
-select plan(397);
+select plan(411);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1036,6 +1036,22 @@ select ok(to_regprocedure('public.set_season_player_license(uuid,uuid,text,uuid)
 select like(pg_get_functiondef('public.set_season_player_license(uuid,uuid,text)'::regprocedure),'%if checked_license in (''none'',''training'') then%set season_team_id = null%active_until is null%','solo las fichas no deportivas retiran el equipo actual');
 select like(pg_get_functiondef('public.create_default_season_team()'::regprocedure),'%Unizar Femenino%season_player_licenses%''regional''%player_license_history%season_players%default_team_id%','la nueva temporada inicia fichas Regional con equipo predeterminado y auditoría');
 select ok(not has_function_privilege('authenticated','public.create_default_season_team()','EXECUTE'),'el inicializador solo se ejecuta mediante trigger');
+
+-- Posiciones habituales: permiso deportivo independiente de datos privados.
+select has_column('public', 'profiles', 'playing_positions', 'profiles store usual sports positions');
+select has_column('public', 'profiles', 'primary_position', 'profiles store a primary sports position');
+select has_function('public', 'set_player_positions', array['uuid','text[]','text'], 'positions have a restricted RPC');
+select ok(has_function_privilege('authenticated','public.set_player_positions(uuid,text[],text)','EXECUTE'), 'authenticated users may call the restricted positions RPC');
+select ok(not has_function_privilege('anon','public.set_player_positions(uuid,text[],text)','EXECUTE'), 'anonymous users cannot change positions');
+select ok(exists (select 1 from public.role_permissions where role = 'coach' and permission_key = 'team.positions'), 'coaches receive the sports positions permission');
+select like(pg_get_functiondef('public.set_player_positions(uuid,text[],text)'::regprocedure), '%current_user_has_permission%team.positions%', 'positions RPC checks the configured permission');
+select like(pg_get_functiondef('public.set_player_positions(uuid,text[],text)'::regprocedure), '%actor.is_owner or actor.is_coach%', 'positions RPC excludes players and management from writes');
+select ok(public.valid_player_positions(array['prop','centre'], 'prop'), 'a versatile player can have one principal');
+select ok(public.valid_player_positions(array[]::text[], null), 'an unassigned player has no principal');
+select ok(not public.valid_player_positions(array['prop','prop'], 'prop'), 'duplicate positions are rejected');
+select ok(not public.valid_player_positions(array['prop'], 'wing'), 'principal must belong to selected positions');
+select ok(exists (select 1 from pg_constraint where conname = 'profiles_playing_positions_check' and conrelid = 'public.profiles'::regclass), 'valid positions are enforced on persisted rows');
+select ok(exists (select 1 from pg_trigger where tgname = 'profiles_guard_playing_positions' and tgrelid = 'public.profiles'::regclass and not tgisinternal), 'direct profile writes cannot bypass position permissions');
 
 select * from finish();
 rollback;

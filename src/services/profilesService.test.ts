@@ -5,10 +5,19 @@ vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc } }))
 vi.mock('./profilePhotoService', () => ({ uploadProfilePhoto: mocks.upload, deleteProfilePhoto: mocks.remove }))
 
 import { makeProfile } from '../test/fixtures'
-import { updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails } from './profilesService'
+import { setPlayerPositions, updateManagedProfilePhoto, updateManagedProfile, updateOwnProfileDetails } from './profilesService'
 
 describe('profile persistence', () => {
   beforeEach(() => vi.clearAllMocks())
+
+  test('persists sports positions through a dedicated RPC and rejects an unrelated principal', async () => {
+    mocks.rpc.mockResolvedValue({ error: null })
+    await setPlayerPositions('player-1', { positions: ['prop', 'centre'], primaryPosition: 'prop' })
+    expect(mocks.rpc).toHaveBeenCalledWith('set_player_positions', { checked_player_id: 'player-1', checked_positions: ['prop', 'centre'], checked_primary_position: 'prop' })
+    mocks.rpc.mockClear()
+    await expect(setPlayerPositions('player-1', { positions: ['prop'], primaryPosition: 'wing' })).rejects.toThrow('principal')
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
 
   test('updates the authenticated profile details through the restricted function', async () => {
     mocks.rpc.mockResolvedValue({ data: undefined, error: null })

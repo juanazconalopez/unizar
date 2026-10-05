@@ -25,10 +25,12 @@ describe('MatchDetailDialog', () => {
     const user = userEvent.setup()
     const entries: MatchLineup[] = [{ match_id: match.id, player_id: 'player-1', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: '2026-09-01T10:00:00Z' }]
     const onViewAvailability = vi.fn()
-    render(<MatchDetailDialog canEditMatch={false} canManageLineup={false} canViewAvailability isPlayer={false} lineup={entries} match={{ ...match, lineup_published: true }} profiles={[makeProfile()]} demo onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onViewAvailability={onViewAvailability} />)
+    render(<MatchDetailDialog canEditMatch={false} canManageLineup={false} canViewAvailability isPlayer={false} lineup={entries} match={{ ...match, lineup_published: true }} profiles={[makeProfile({ playing_positions: ['prop', 'centre'], primary_position: 'prop' })]} demo onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onViewAvailability={onViewAvailability} />)
 
     const graphic = screen.getByRole('img', { name: 'Imagen de la convocatoria' })
     expect(graphic).toBeInTheDocument()
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Delanteras 1')
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Línea 0')
     expect(graphic.textContent).toContain('Quebrantahuesos Rugby vs Unizar Fem.')
     expect(graphic.textContent).not.toContain('CONVOCATORIA · XV')
     expect(graphic.textContent).not.toContain('septiembre')
@@ -36,6 +38,8 @@ describe('MatchDetailDialog', () => {
     expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver lista' }))
     expect(screen.getByRole('heading', { name: 'Titulares' })).toBeInTheDocument()
+    expect(screen.getAllByLabelText('Distribución por posición principal')).toHaveLength(1)
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Delanteras 1')
     expect(screen.queryByRole('img', { name: 'Imagen de la convocatoria' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copiar convocatoria' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Ver imagen' }))
@@ -56,7 +60,7 @@ describe('MatchDetailDialog', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const home: Match = { ...match, id: 'home', internal_fixture_id: 'derby', team_id: 'team-a', opponent: 'Unizar B', is_home: true, lineup_published: true, season_teams: { id: 'team-a', name: 'Unizar A', is_mixed: false, is_default: true } }
     const away: Match = { ...match, id: 'away', internal_fixture_id: 'derby', team_id: 'team-b', opponent: 'Unizar A', is_home: false, lineup_published: true, season_teams: { id: 'team-b', name: 'Unizar B', is_mixed: false, is_default: false } }
-    const profiles = [makeProfile({ id: 'player-a', display_name: 'Aitana' }), makeProfile({ id: 'player-b', display_name: 'Beatriz' })]
+    const profiles = [makeProfile({ id: 'player-a', display_name: 'Aitana', playing_positions: ['prop'], primary_position: 'prop' }), makeProfile({ id: 'player-b', display_name: 'Beatriz', playing_positions: ['wing'], primary_position: 'wing' })]
     const homeLineup: MatchLineup[] = [{ match_id: home.id, player_id: 'player-a', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: home.updated_at }]
     const awayLineup: MatchLineup[] = [{ match_id: away.id, player_id: 'player-b', role: 'starter', position: null, slot_number: 1, sort_order: 1, updated_at: away.updated_at }]
     const props = { canEditMatch: false, canManageLineup: false, canViewAvailability: false, isPlayer: false, lineup: homeLineup, match: home, pairedLineup: awayLineup, pairedMatch: away, profiles, demo: true, onClose: vi.fn(), onEdit: vi.fn(), onManageLineup: vi.fn(), onViewAvailability: vi.fn() }
@@ -66,9 +70,12 @@ describe('MatchDetailDialog', () => {
     expect(teams).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Unizar A' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveTextContent('Aitana')
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Delanteras 1')
     await user.click(screen.getByRole('button', { name: 'Unizar B' }))
     expect(screen.getByRole('button', { name: 'Unizar B' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveTextContent('Beatriz')
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Delanteras 0')
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Línea 1')
     expect(screen.getByRole('img', { name: 'Imagen de la convocatoria' })).not.toHaveTextContent('Aitana')
     await user.click(screen.getByRole('button', { name: 'Ver lista' }))
     const list = document.querySelector('.match-lineup-view-panel[data-view="list"]')

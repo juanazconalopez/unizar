@@ -1,3 +1,4 @@
+import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { matchLicenseRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
 import { useCallback, useEffect, useState } from 'react'
@@ -74,6 +75,7 @@ type CalendarViewProps = {
   demo?: boolean
   demoCoaches?: SeasonTeamCoach[]
   onLoadGraphicPhoto?: (path: string) => Promise<string>
+  onSavePlayerPositions?: SavePlayerPositions
   tasks: TrainingTask[]
   focusedDate?: string
   focusedAnnouncementId?: string
@@ -358,6 +360,8 @@ export function CalendarView(props: CalendarViewProps) {
       onSubmit={async (values) => { await props.onSaveMatch(matchForm ?? undefined, values); await refreshDate(values.matchDate); setSelectedDate(values.matchDate); setMonth(`${values.matchDate.slice(0, 7)}-01`); setMatchForm(undefined) }}
     />}
     {lineupMatch && <MatchLineupDialog
+      onSavePositions={props.onSavePlayerPositions}
+      activeSeason={props.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
       availability={props.availability.filter((item) => item.match_id === lineupMatch.match.id)}
       canExport
       canGraphicExport={props.isOwner}

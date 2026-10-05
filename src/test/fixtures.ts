@@ -31,6 +31,8 @@ export function makeMatch(overrides: Partial<Match> = {}): Match {
 
 export function makeProfile(overrides: Partial<Profile> = {}): Profile {
   return {
+    playing_positions: [],
+    primary_position: null,
     avatar_path: null,
     id: 'player-1',
     display_name: 'Ana Martín',

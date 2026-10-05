@@ -1,3 +1,4 @@
+import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { SavePlayerLicense } from './PlayerLicenseDialog'
 import type { SeasonPlayer } from '../../types'
 import { useState } from 'react'
@@ -38,7 +39,7 @@ const roleProfileKeys: Record<TeamRoleFilter, 'is_player' | 'is_coach' | 'is_vie
   owner: 'is_owner',
 }
 
-export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], playerAbsencePrivateNotes = [], seasons = [], seasonTeams = [], currentUserId, memberships = [], onSaveLicense, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
+export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles, profilePrivateDetails = [], provisionalPlayers = [], provisionalAttendance = [], playerAbsences = [], playerAbsencePrivateNotes = [], seasons = [], seasonTeams = [], currentUserId, memberships = [], onSaveLicense, onSavePositions, onUpdate, onSave, onSavePhoto, onArchive, onLoadPhoto, onLinkProvisionalPlayers, onSaveAbsence, onDeleteAbsence, onDischargeAbsence }: {
   embedded?: boolean
   hideEmbeddedTitle?: boolean
   profiles: Profile[]
@@ -51,6 +52,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   seasonTeams?: SeasonTeam[]
   memberships?: SeasonPlayer[]
   onSaveLicense?: SavePlayerLicense
+  onSavePositions?: SavePlayerPositions
   currentUserId: string
   onUpdate: (profile: Profile) => Promise<void>
   onSave?: (profile: Profile, values: ManagedProfileValues, photoChange?: ProfilePhotoChange) => Promise<void>
@@ -154,7 +156,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       {(showArchived || hasSearchOrFilters) && <div className="people-list">{archived.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />)}</div>}
     </section>}
     {hasSearchOrFilters && !hasSearchMatches && <p className="team-search-empty">{normalizedSearch ? `No hay personas que coincidan con “${search.trim()}” dentro de los filtros actuales.` : 'No hay personas que coincidan con los filtros actuales.'}</p>}
-    {selectedPerson && <TeamMemberDialog memberships={memberships} teams={seasonTeams} onSaveLicense={onSaveLicense} absences={playerAbsences} absenceNotes={playerAbsencePrivateNotes} activeSeason={activeSeason} currentUserId={currentUserId} details={selectedDetails} person={selectedPerson} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onDischargeAbsence={onDischargeAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSavePhoto={onSavePhoto} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
+    {selectedPerson && <TeamMemberDialog memberships={memberships} teams={seasonTeams} onSaveLicense={onSaveLicense} absences={playerAbsences} absenceNotes={playerAbsencePrivateNotes} activeSeason={activeSeason} currentUserId={currentUserId} details={selectedDetails} person={profiles.find((person) => person.id === selectedPerson.id) ?? selectedPerson} onSavePositions={onSavePositions} possibleMatches={possibleMatches} provisionalAttendance={provisionalAttendance} provisionalPlayers={provisionalPlayers} onArchive={onArchive} onClose={() => setSelectedPerson(null)} onDeleteAbsence={onDeleteAbsence} onDischargeAbsence={onDischargeAbsence} onLinkProvisionalPlayers={onLinkProvisionalPlayers} onLoadPhoto={onLoadPhoto} onPreviewPlayer={(player) => window.open(urlForNavigation({ view: 'player-preview', playerPreviewId: player.id }), '_blank', 'noopener')} onSave={onSave} onSavePhoto={onSavePhoto} onSaveAbsence={onSaveAbsence} onUpdate={onUpdate} />}
   </div>
 }
 

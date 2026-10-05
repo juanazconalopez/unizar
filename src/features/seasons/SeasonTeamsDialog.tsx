@@ -1,3 +1,4 @@
+import { groupPlayersByPosition } from '../../lib/playerPositions'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
@@ -13,9 +14,11 @@ import { canBeSeasonTeamCoach, isPlayer } from '../../lib/permissions'
 import type { PlayerAbsence, Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
 import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
 import { seasonTeamCoachRoleLabel, seasonTeamCoachRoles, type SeasonTeamCoachRole } from './seasonTeamCoachRoles'
+import { SeasonTeamsReport } from './SeasonTeamsReport'
 
 type Panel =
   | { kind: 'list' }
+  | { kind: 'export' }
   | { kind: 'team'; team: SeasonTeam | null }
   | { kind: 'move'; player: Profile }
   | { kind: 'coaches'; team: SeasonTeam }
@@ -159,6 +162,15 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     }
   }
 
+  function groupedPlayers(players: Profile[]) {
+    return groupPlayersByPosition(players).map((group) => {
+      const visible = group.players.filter(matchesSearch)
+      if (search.trim() && !visible.length) return null
+      if (!group.players.length && group.value === 'unassigned') return null
+      return <div key={group.value}><h4 className="playing-position-heading">{group.label}{' '}<small>{group.players.length}</small></h4><ul className="season-team-player-list">{visible.map(playerRow)}</ul></div>
+    })
+  }
+
   function playerRow(player: Profile) {
     return <li className="season-team-player" key={player.id}>
       <span><Avatar name={player.display_name} /><strong>{player.display_name}</strong>{currentAbsencePlayerIds.has(player.id) && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={18} /></span>}<small>{licenseLabel(membershipLicense(activeMembershipFor(memberships, season.id, player.id)!))}</small></span>
@@ -171,6 +183,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     {panel.kind === 'list' && <>
       <div className="season-team-toolbar">
         <label><Icon name="search" size={17} /><input aria-label="Buscar jugadora" onChange={(event) => setSearch(event.target.value)} placeholder="Buscar jugadora…" spellCheck type="search" value={search} /></label>
+        <button className="secondary-button" disabled={saving} onClick={() => showPanel({ kind: 'export' })} type="button"><Icon name="download" size={17} />Exportar PDF</button>
         <button className="primary-button" disabled={saving} onClick={() => showPanel({ kind: 'team', team: null })} type="button"><Icon name="plus" size={17} />Nuevo equipo</button>
       </div>
       <div className="season-team-roster-grid">
@@ -181,17 +194,39 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
           if (search.trim() && !visiblePlayers.length) return null
           return <section aria-label={`${team.name}, ${teamPlayers.length} ${teamPlayers.length === 1 ? 'jugadora' : 'jugadoras'}`} className={`season-team-roster-card${team.is_active ? '' : ' inactive'}`} key={team.id}>
             <div className="season-team-roster-heading"><div><h3>{team.name} <span>{teamPlayers.length}</span> <AbsenceCount count={absenceCount(teamPlayers)} /></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
-            <ul className="season-team-player-list">{visiblePlayers.map(playerRow)}</ul>
+            {groupedPlayers(teamPlayers)}
             {!visiblePlayers.length && <p className="season-team-empty">Sin jugadoras en este equipo.</p>}
             <div className="season-team-coaches"><div><strong>Entrenadores</strong>{teamCoaches.length ? <span className="season-team-coach-list">{teamCoaches.map(({ coach, role }) => <span key={coach.id}>{role === 'head_coach' ? <strong className="season-team-head-coach-role">{seasonTeamCoachRoleLabel(role)}</strong> : seasonTeamCoachRoleLabel(role)} · {coach.display_name}</span>)}</span> : <span>Sin entrenadores asignados</span>}</div><button aria-label={`Editar entrenadores de ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'coaches', team })} type="button">Editar</button></div>
           </section>
         })}
-        {visibleUnassignedPlayers.length > 0 && <section aria-label={`Sin equipo, ${unassignedPlayers.length} jugadoras`} className="season-team-roster-card unassigned"><div className="season-team-roster-heading"><div><h3>Sin equipo <span>{unassignedPlayers.length}</span> <AbsenceCount count={absenceCount(unassignedPlayers)} /></h3><small>Sin ficha deportiva o pendientes de asignación</small></div></div><ul className="season-team-player-list">{visibleUnassignedPlayers.map(playerRow)}</ul></section>}
+        {visibleUnassignedPlayers.length > 0 && <section aria-label={`Sin equipo, ${unassignedPlayers.length} jugadoras`} className="season-team-roster-card unassigned"><div className="season-team-roster-heading"><div><h3>Sin equipo <span>{unassignedPlayers.length}</span> <AbsenceCount count={absenceCount(unassignedPlayers)} /></h3><small>Sin ficha deportiva o pendientes de asignación</small></div></div>{groupedPlayers(unassignedPlayers)}</section>}
       </div>
       {!seasonTeams.length && !unassignedPlayers.length && <p className="lineup-empty">Todavía no hay equipos en esta temporada.</p>}
       {search.trim() && !searchHasMatches && <p className="lineup-empty">No hay jugadoras que coincidan con la búsqueda.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions"><button className="secondary-button" onClick={onClose} type="button">Cerrar</button></div>
+    </>}
+    {panel.kind === 'export' && <>
+      <p className="season-teams-export-hint">La exportación incluye todos los equipos y jugadoras vinculadas de esta temporada.</p>
+      <SeasonTeamsReport season={season} generatedOn={today} groups={[
+        ...seasonTeams.map((team) => ({
+          id: team.id, name: team.name, description: `${team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · ${team.is_active ? 'Activo' : 'Inactivo'}`,
+          coaches: assignedCoaches(team.id).map(({ coach, role }) => ({ id: coach.id, name: coach.display_name, role: seasonTeamCoachRoleLabel(role) })),
+          players: playersForTeam(team.id).map((player) => ({ id: player.id, name: player.display_name, primary_position: player.primary_position, license: licenseLabel(membershipLicense(activeMembershipFor(memberships, season.id, player.id)!)), absent: currentAbsencePlayerIds.has(player.id) })),
+        })),
+        ...(unassignedPlayers.length ? [{
+          id: 'unassigned', name: 'Sin equipo', description: 'Sin ficha deportiva o pendientes de asignación', coaches: [],
+          players: unassignedPlayers.map((player) => ({ id: player.id, name: player.display_name, primary_position: player.primary_position, license: licenseLabel(membershipLicense(activeMembershipFor(memberships, season.id, player.id)!)), absent: currentAbsencePlayerIds.has(player.id) })),
+        }] : []),
+      ]} teamCount={seasonTeams.length} />
+      <div className="form-actions">
+        <button className="secondary-button" onClick={() => showPanel({ kind: 'list' })} type="button">Volver a equipos</button>
+        <button className="primary-button" onClick={() => {
+          const previousTitle = document.title
+          document.title = `Equipos - ${season.name}`
+          try { window.print() } finally { document.title = previousTitle }
+        }} type="button"><Icon name="download" size={17} />Guardar PDF</button>
+      </div>
     </>}
     {panel.kind === 'move' && <>
       <div className="season-team-subview-heading"><span className="eyebrow">CAMBIAR DE EQUIPO</span><h3>{panel.player.display_name}</h3><p>Equipo actual: {seasonTeams.find((team) => team.id === memberTeam(panel.player.id))?.name ?? 'Sin equipo'}</p></div>

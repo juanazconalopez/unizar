@@ -11,6 +11,34 @@ function match(overrides: Partial<Match> = {}): Match {
 }
 
 describe('MatchLineupDialog', () => {
+  test('a coach edits positions through a public profile without losing the lineup draft', async () => {
+    const user = userEvent.setup()
+    const player = makeProfile({ playing_positions: ['prop'], primary_position: 'prop' })
+    const updated = { ...player, playing_positions: ['prop', 'wing'], primary_position: 'wing' }
+    const onSave = vi.fn()
+    const props = { demo: true, availability: [{ match_id: 'match-1', player_id: player.id, status: 'available' as const, comment: null, updated_at: player.created_at }], entries: [], match: match(), memberships: [makeMembership()], profiles: [player], onClose: vi.fn(), onSave }
+    const savePositions = vi.fn().mockImplementation(async () => { view.rerender(<MatchLineupDialog {...props} profiles={[updated]} onSavePositions={savePositions} />) })
+    const view = render(<MatchLineupDialog {...props} onSavePositions={savePositions} />)
+    await user.click(screen.getByRole('button', { name: 'Añadir' }))
+    await user.click(screen.getByRole('button', { name: 'Datos de perfil de Ana Martín' }))
+    expect(screen.queryByText('Email', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('Fecha de nacimiento', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByText('Teléfono', { exact: true })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    expect(screen.queryByRole('button', { name: 'Editar datos' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Modificar posiciones' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Ala' }))
+    await user.selectOptions(screen.getByRole('combobox'), 'wing')
+    await user.click(screen.getByRole('button', { name: /^Guardar$/ }))
+    expect(savePositions).toHaveBeenCalledWith(player, { positions: ['prop', 'wing'], primaryPosition: 'wing' })
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: /^Cerrar$/ }))
+    expect(screen.getByRole('combobox', { name: 'Posición de Ana Martín' })).toHaveValue('1')
+    const distribution = within(screen.getByLabelText('Distribución por posición principal'))
+    expect(distribution.getByText('Línea').closest('span')).toHaveTextContent('Línea 1')
+    expect(distribution.getByText('Delanteras').closest('span')).toHaveTextContent('Delanteras 0')
+  })
+
   test('a coach can select a training-only player without a team for a friendly', () => {
     render(<MatchLineupDialog demo canBorrowFromOtherTeams={false} availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match({ match_kind: 'friendly', team_id: 'team-1' })} memberships={[makeMembership({ license_type: 'training', season_team_id: null })]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Añadir' }))

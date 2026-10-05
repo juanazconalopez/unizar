@@ -1,3 +1,4 @@
+import { canManagePlayerPositions } from '../lib/permissions'
 import { Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
 import { Dashboard } from '../features/dashboard/Dashboard'
@@ -167,6 +168,7 @@ export function AppViewRouter({
         onReorderTasks={actions.tasks.reorder}
         onSaveAnnouncement={actions.announcements.save}
         onSaveLineup={actions.matches.saveLineup}
+        onSavePlayerPositions={canManagePlayerPositions(profile, permissionKeys) ? actions.club.savePlayerPositions : undefined}
         onSaveReport={actions.matches.saveReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
@@ -245,6 +247,7 @@ export function AppViewRouter({
         onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
         onSaveAvailability={actions.matches.saveAvailability}
         onSaveLineup={actions.matches.saveLineup}
+        onSavePlayerPositions={canManagePlayerPositions(profile, permissionKeys) ? actions.club.savePlayerPositions : undefined}
         onSaveReport={actions.matches.saveReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
@@ -296,6 +299,7 @@ export function AppViewRouter({
         onLoadProfilePhoto={actions.club.loadProfilePhoto}
         onLinkProvisionalPlayers={actions.club.linkProvisionalPlayers}
         onAssignSeasonPlayerTeam={actions.club.assignSeasonPlayerTeam}
+        onSavePlayerPositions={canManagePlayerPositions(profile, permissionKeys) ? actions.club.savePlayerPositions : undefined}
         onSavePlayerLicense={hasPermission(profile, PERMISSIONS.seasons.licenses, permissionKeys) ? actions.club.savePlayerLicense : undefined}
         onAssignSeasonTeamCoach={actions.club.setSeasonTeamCoach}
         onToggleMembership={actions.club.toggleMembership}

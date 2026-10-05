@@ -16,7 +16,7 @@ export type PlayerPreviewData = {
   holidays: string[]
 }
 
-const profileFields = 'id, display_name, avatar_path, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at'
+const profileFields = 'id, display_name, avatar_path, playing_positions, primary_position, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at'
 
 export async function fetchPlayerPreview(playerId: string): Promise<PlayerPreviewData> {
   const authorization = await supabase.rpc('can_preview_player', { checked_player_id: playerId })
