@@ -129,6 +129,69 @@ describe('training plan reading view', () => {
     expect(mocks.fetchTrainingPlan).toHaveBeenCalledWith(pastPlan.id)
   })
 
+  test.each(['card', 'detail'])('opens editing through the persistent route from the %s and saves the same plan', async (source) => {
+    mocks.fetchTrainingPlans.mockResolvedValue([plan])
+    mocks.saveTrainingPlan.mockResolvedValue(plan.id)
+    const user = userEvent.setup()
+    const onEditPlan = vi.fn()
+    const onReturnToList = vi.fn()
+    const props = { onNotify: vi.fn(), onEditPlan, onReturnToList, seasons: [season], userId: 'owner-1' }
+    const { rerender } = render(<TrainingPlansView {...props} />)
+    if (source === 'detail') {
+      await user.click(await screen.findByRole('button', { name: `Ver entrenamiento ${plan.title}` }))
+      await user.click(screen.getByRole('button', { name: /^Editar entrenamiento$/ }))
+    } else {
+      await user.click(await screen.findByRole('button', { name: `Editar entrenamiento ${plan.title}` }))
+    }
+    expect(onEditPlan).toHaveBeenCalledWith(plan.id)
+    rerender(<TrainingPlansView {...props} focusedPlanId={plan.id} focusedPlanMode="edit" />)
+
+    await user.click(await screen.findByRole('button', { name: 'Guardar cambios' }))
+    expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({ sessionDate: plan.session_date }), 'owner-1')
+    expect(onReturnToList).toHaveBeenCalledOnce()
+  })
+
+  test('edits an older plan absent from the list and keeps its identifier after recovering a draft', async () => {
+    const pastPlan = { ...plan, id: 'past-plan', session_date: addDays(todayIso(), -10) }
+    mocks.fetchTrainingPlans.mockResolvedValue([])
+    mocks.fetchTrainingPlan.mockResolvedValue(pastPlan)
+    mocks.saveTrainingPlan.mockResolvedValue(pastPlan.id)
+    const storageKey = trainingPlanDraftKey('owner-1', pastPlan.id)
+    localStorage.setItem(storageKey, JSON.stringify({ version: 1, savedAt: Date.now(), values: {
+      seasonId: season.id, sessionDate: pastPlan.session_date, title: 'Título revisado', objectives: '', material: '', status: 'draft',
+      exercises: [{ title: 'Defensa', description: 'Indicaciones revisadas', durationMinutes: 20, diagramData: { version: 1, template: 'full', elements: [] } }],
+    } }))
+    const user = userEvent.setup()
+    render(<TrainingPlansView focusedPlanId={pastPlan.id} focusedPlanMode="edit" onNotify={vi.fn()} seasons={[season]} userId="owner-1" />)
+    await user.click(await screen.findByRole('button', { name: 'Recuperar borrador' }))
+    expect(screen.queryByRole('button', { name: 'Crear entrenamiento' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(pastPlan.id, expect.objectContaining({ title: 'Título revisado', sessionDate: pastPlan.session_date }), 'owner-1')
+  })
+
+  test('does not offer creation when a requested existing plan fails to load', async () => {
+    mocks.fetchTrainingPlans.mockResolvedValue([])
+    mocks.fetchTrainingPlan.mockRejectedValue(new Error('No se ha podido cargar el entrenamiento.'))
+    render(<TrainingPlansView focusedPlanId="past-plan" focusedPlanMode="edit" onNotify={vi.fn()} seasons={[season]} userId="owner-1" onReturnToList={vi.fn()} />)
+    await screen.findByText('No se ha podido cargar el entrenamiento.')
+    expect(screen.getByRole('button', { name: 'Crear entrenamiento' })).toBeDisabled()
+    expect(mocks.saveTrainingPlan).not.toHaveBeenCalled()
+  })
+
+  test('resets the editor when navigating to another existing plan and saves its own values', async () => {
+    const otherPlan = { ...plan, id: 'plan-2', title: 'Otro entrenamiento', session_date: addDays(todayIso(), 2) }
+    mocks.fetchTrainingPlans.mockResolvedValue([plan, otherPlan])
+    mocks.saveTrainingPlan.mockResolvedValue(otherPlan.id)
+    const user = userEvent.setup()
+    const props = { onNotify: vi.fn(), seasons: [season], userId: 'owner-1', focusedPlanMode: 'edit' as const }
+    const { rerender } = render(<TrainingPlansView {...props} focusedPlanId={plan.id} />)
+    await screen.findByDisplayValue(plan.title)
+    rerender(<TrainingPlansView {...props} focusedPlanId={otherPlan.id} />)
+    await screen.findByDisplayValue(otherPlan.title)
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(otherPlan.id, expect.objectContaining({ title: otherPlan.title, sessionDate: otherPlan.session_date }), 'owner-1')
+  })
+
   test('duplicates a past training plan from its detail into a future editable session', async () => {
     const pastPlan = { ...plan, id: 'past-plan', session_date: addDays(todayIso(), -10), title: 'Entrenamiento histórico' }
     mocks.fetchTrainingPlans.mockResolvedValue([])
@@ -139,6 +202,7 @@ describe('training plan reading view', () => {
     await user.click((await screen.findAllByRole('button', { name: 'Duplicar entrenamiento' }))[0])
 
     expect(screen.getByText('DUPLICAR ENTRENAMIENTO')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Crear copia' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('Copia de Entrenamiento histórico')).toBeInTheDocument()
     expect(screen.getByLabelText('Fecha')).toHaveValue(addDays(todayIso(), 1))
   })

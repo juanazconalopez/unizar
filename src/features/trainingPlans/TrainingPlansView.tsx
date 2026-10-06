@@ -36,12 +36,17 @@ import {
   upcomingTrainingPlans,
 } from './trainingPlanMappers'
 
-type EditorSource = { plan?: TrainingPlan; template?: TrainingPlan }
+type EditorSource =
+  | { mode: 'create' }
+  | { mode: 'edit'; plan: TrainingPlan }
+  | { mode: 'duplicate'; template: TrainingPlan }
 
-export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, seasons, userId, onNotify, permissions }: {
+export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, seasons, userId, onNotify, onEditPlan, onReturnToList, permissions }: {
   demo?: boolean
   focusedPlanId?: string
   focusedPlanMode?: 'edit'
+  onEditPlan?: (planId: string) => void
+  onReturnToList?: () => void
   seasons: Season[]
   userId: string
   onNotify: (message: string) => void
@@ -75,7 +80,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
         setDemoPresets((current) => current.length ? current : demoExercisePresets(seasons, userId))
         if (focusedPlanId) {
           const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? null
-          if (focusedPlanMode === 'edit' && access.edit && focusedPlan) setEditor({ plan: focusedPlan })
+          if (focusedPlanMode === 'edit' && access.edit && focusedPlan) setEditor({ mode: 'edit', plan: focusedPlan })
           else setViewingPlan(focusedPlan)
         }
         setDemoMode(true)
@@ -85,7 +90,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
       setPlans(loadedPlans)
       if (focusedPlanId) {
         const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? await fetchTrainingPlan(focusedPlanId)
-        if (focusedPlanMode === 'edit' && access.edit) setEditor({ plan: focusedPlan })
+        if (focusedPlanMode === 'edit' && access.edit) setEditor({ mode: 'edit', plan: focusedPlan })
         else setViewingPlan(focusedPlan)
       }
       setDemoMode(false)
@@ -106,6 +111,18 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
     const timer = window.setTimeout(() => void load(), 0)
     return () => window.clearTimeout(timer)
   }, [load])
+
+  function editPlan(plan: TrainingPlan) {
+    if (onEditPlan) { onEditPlan(plan.id); return }
+    setViewingPlan(null)
+    setEditor({ mode: 'edit', plan })
+  }
+
+  function returnToList() {
+    setEditor(null)
+    setViewingPlan(null)
+    if (focusedPlanId) onReturnToList?.()
+  }
 
   async function remove(plan: TrainingPlan) {
     if (!window.confirm(`¿Eliminar el entrenamiento “${plan.title}” y todos sus ejercicios?`)) return
@@ -186,21 +203,24 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   }
 
   if (editor) {
+    const editedPlan = editor.mode === 'edit' ? editor.plan : undefined
+    const template = editor.mode === 'duplicate' ? editor.template : undefined
     return <TrainingPlanEditor
-      plan={editor.plan}
+      key={editedPlan?.id ?? (template ? `duplicate-${template.id}` : 'new')}
+      plan={editedPlan}
       seasons={seasons}
-      template={editor.template}
+      template={template}
       userId={userId}
-      onCancel={() => setEditor(null)}
-      onDelete={editor.plan && access.delete ? async () => { await remove(editor.plan!); setEditor(null) } : undefined}
+      onCancel={returnToList}
+      onDelete={editedPlan && access.delete ? async () => { await remove(editedPlan); returnToList() } : undefined}
       onSavePlan={async (values) => {
         if (!demoMode) {
-          await saveTrainingPlan(editor.plan?.id, values, userId)
+          await saveTrainingPlan(editedPlan?.id, values, userId)
           return
         }
-        const saved = demoPlanFromValues(values, seasons, editor.plan)
-        setPlans((current) => editor.plan
-          ? current.map((item) => item.id === editor.plan?.id ? saved : item)
+        const saved = demoPlanFromValues(values, seasons, editedPlan)
+        setPlans((current) => editedPlan
+          ? current.map((item) => item.id === editedPlan.id ? saved : item)
           : [saved, ...current])
       }}
       onLoadPresets={async () => access.viewExercises ? demoMode ? demoPresets : fetchTrainingExercisePresets() : []}
@@ -214,8 +234,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
       canPublish={access.publish}
       onSaved={async (message) => {
         onNotify(message)
-        if (!demoMode) await load()
-        setEditor(null)
+        if (!demoMode && !(focusedPlanId && onReturnToList)) await load()
+        returnToList()
       }}
     />
   }
@@ -223,9 +243,9 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   if (viewingPlan) {
     return <TrainingPlanDetail
       plan={viewingPlan}
-      onBack={() => setViewingPlan(null)}
-      onDuplicate={access.create ? () => { setViewingPlan(null); setEditor({ template: viewingPlan }) } : undefined}
-      onEdit={access.edit ? () => { setViewingPlan(null); setEditor({ plan: viewingPlan }) } : undefined}
+      onBack={returnToList}
+      onDuplicate={access.create ? () => { setViewingPlan(null); setEditor({ mode: 'duplicate', template: viewingPlan }) } : undefined}
+      onEdit={access.edit ? () => editPlan(viewingPlan) : undefined}
     />
   }
 
@@ -234,7 +254,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
       <PageHeader
         action={<div className="training-header-actions">
           {access.viewExercises && <button className="secondary-button" onClick={() => void openLibrary()} type="button"><Icon name="strategy" size={17} />Biblioteca de ejercicios</button>}
-          {access.create && <button className="primary-button" disabled={!seasons.length} onClick={() => setEditor({})}><Icon name="plus" size={17} />Crear entrenamiento</button>}
+          {access.create && <button className="primary-button" disabled={!seasons.length || loading || Boolean(focusedPlanId)} onClick={() => setEditor({ mode: 'create' })}><Icon name="plus" size={17} />Crear entrenamiento</button>}
         </div>}
         eyebrow="PLANIFICACIÓN DEL EQUIPO"
         subtitle="Prepara cada sesión con ejercicios de texto y esquemas tácticos reutilizables."
@@ -243,7 +263,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
 
       {demoMode && <div className="training-demo-banner"><Icon name="spark" size={17} /><span><strong>Modo de muestra local.</strong> Puedes editar y guardar en memoria; aplica la migración 029 para persistir en Supabase.</span></div>}
 
-      {loadError && <div className="training-load-error"><p>{loadError}</p><button className="secondary-button compact" onClick={() => void load()}>Reintentar</button></div>}
+      {loadError && <div className="training-load-error"><p>{loadError}</p><button className="secondary-button compact" onClick={() => void load()}>Reintentar</button>{focusedPlanId && onReturnToList && <button className="text-button" onClick={returnToList}>Volver a entrenamientos</button>}</div>}
       {loading ? <div className="training-loading">Cargando entrenamientos…</div> : visiblePlans.length ? (
         <div className="training-plan-list">
           {visiblePlans.map((plan) => {
@@ -268,8 +288,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
                   </div>
                 </div>
                 <div className="training-plan-card-actions">
-                  {access.create && <button aria-label={`Duplicar entrenamiento ${plan.title}`} className="icon-button" onClick={() => setEditor({ template: plan })} title="Duplicar entrenamiento" type="button"><Icon name="copy" size={16} /></button>}
-                  {access.edit && <button aria-label={`Editar entrenamiento ${plan.title}`} className="icon-button" onClick={() => setEditor({ plan })} title="Editar entrenamiento" type="button"><Icon name="edit" size={16} /></button>}
+                  {access.create && <button aria-label={`Duplicar entrenamiento ${plan.title}`} className="icon-button" onClick={() => setEditor({ mode: 'duplicate', template: plan })} title="Duplicar entrenamiento" type="button"><Icon name="copy" size={16} /></button>}
+                  {access.edit && <button aria-label={`Editar entrenamiento ${plan.title}`} className="icon-button" onClick={() => editPlan(plan)} title="Editar entrenamiento" type="button"><Icon name="edit" size={16} /></button>}
                 </div>
               </article>
             )

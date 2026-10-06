@@ -236,7 +236,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
         <div className="training-editor-actions">
           {plan && onDelete && <button className="danger-button" disabled={saving || deleting} onClick={() => void deletePlan()} type="button">{deleting ? 'Eliminando…' : 'Eliminar entrenamiento'}</button>}
           <button className="secondary-button" disabled={saving || deleting} onClick={onCancel} type="button">Cancelar</button>
-          <button className="primary-button" disabled={saving || deleting}>{saving ? 'Guardando…' : plan ? 'Guardar cambios' : 'Crear entrenamiento'}</button>
+          <button className="primary-button" disabled={saving || deleting}>{saving ? 'Guardando…' : plan ? 'Guardar cambios' : template ? 'Crear copia' : 'Crear entrenamiento'}</button>
         </div>
         </form>
       </div>

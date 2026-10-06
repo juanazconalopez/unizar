@@ -60,7 +60,7 @@ export function AppViewRouter({
       : <SectionLoading />
   }
 
-  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}:${navigation.settingsSection ?? ''}`}>
+  return <ViewErrorBoundary key={`${view}:${navigation.date ?? ''}:${navigation.announcementId ?? ''}:${navigation.trainingPlanId ?? ''}:${navigation.trainingPlanMode ?? ''}:${navigation.settingsSection ?? ''}`}>
     <Suspense fallback={<SectionLoading />}>
       {view !== 'competition' && view !== 'library' && !hasWorkingSeason(profile, data.seasons, data.memberships, userId, permissionKeys) && (
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
@@ -124,7 +124,7 @@ export function AppViewRouter({
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
-      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} permissions={{
+      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} onEditPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' })} onReturnToList={() => navigate('training')} permissions={{
         create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
         viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
       }} />}
