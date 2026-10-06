@@ -13,8 +13,8 @@ vi.mock('./ContentImage', () => ({ ContentImage: ({ id }: { id: string }) => <sp
 
 import { ContentImageTextarea } from './ContentImageTextarea'
 
-function ControlledTextarea() {
-  const [value, setValue] = useState('Indicaciones')
+function ControlledTextarea({ initialValue = 'Indicaciones' }: { initialValue?: string }) {
+  const [value, setValue] = useState(initialValue)
   return <ContentImageTextarea label="Descripción" onChange={setValue} value={value} />
 }
 
@@ -54,6 +54,28 @@ describe('ContentImageTextarea', () => {
 
     expect(editor).toHaveTextContent('Indicaciones')
     expect(mocks.discard).toHaveBeenCalledWith(imageId)
+  })
+
+  it('inserta en la selección original después de preparar la imagen con el editor bloqueado', async () => {
+    let finish!: (id: string) => void
+    mocks.stage.mockImplementationOnce(() => new Promise<string>((resolve) => { finish = resolve }))
+    render(<ControlledTextarea initialValue="<strong>Antes</strong><em>Después</em>" />)
+    const editor = screen.getByRole('textbox', { name: 'Descripción' })
+    const range = document.createRange()
+    range.setStartAfter(editor.firstChild!)
+    range.collapse(true)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+    const file = new File(['image'], 'captura.png', { type: 'image/png' })
+
+    fireEvent.paste(editor, { clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => file }] } })
+    expect(editor).toHaveAttribute('contenteditable', 'false')
+    window.getSelection()!.removeAllRanges()
+    finish(imageId)
+
+    await screen.findByRole('button', { name: 'Quitar imagen 1' })
+    expect(editor.innerHTML).toBe(`<strong>Antes</strong>\n[[imagen:${imageId}]]\n<em>Después</em>`)
+    expect(editor).toHaveAttribute('contenteditable', 'true')
   })
 
   it('permite pegar imágenes sin mostrar el selector de archivos', () => {

@@ -91,28 +91,49 @@ export function ContentImageTextarea({ label, value, onChange, className = '', m
     }
   }
 
-  function insertTextAtCursor(text: string) {
-    if (typeof document.execCommand !== 'function') {
-      onChange([value.trimEnd(), text.trim(), ''].filter(Boolean).join('\n'))
-      return
+  function editorSelection() {
+    const editor = editorRef.current
+    const selection = window.getSelection()
+    if (!editor || !selection?.rangeCount) return null
+    const range = selection.getRangeAt(0)
+    return editor.contains(range.startContainer) && editor.contains(range.endContainer) ? range.cloneRange() : null
+  }
+
+  function insertTextAtCursor(text: string, savedRange: Range | null) {
+    const editor = editorRef.current
+    if (!editor) return
+    const range = savedRange && editor.contains(savedRange.startContainer) && editor.contains(savedRange.endContainer)
+      ? savedRange : document.createRange()
+    if (range !== savedRange) {
+      range.selectNodeContents(editor)
+      range.collapse(false)
     }
-    focusEditor()
-    document.execCommand('insertText', false, text)
+    // La preparación bloquea contentEditable. execCommand no inserta texto en ese estado.
+    // El rango conserva el punto de pegado y permite insertar la referencia igualmente.
+    range.deleteContents()
+    const node = document.createTextNode(text)
+    range.insertNode(node)
+    range.setStartAfter(node)
+    range.collapse(true)
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
     syncEditorContent()
   }
 
   async function addFiles(files: File[]) {
-    if (!files.length) return
+    if (!files.length || busy || textareaProps.readOnly) return
     if (imageIds.length + files.length > maxImages) {
       setMessage(`Puedes añadir hasta ${maxImages} imágenes en este campo.`)
       return
     }
+    const savedRange = editorSelection()
     setBusy(true)
     setMessage('Preparando imagen…')
     try {
       const tokens: string[] = []
       for (const file of files) tokens.push(contentImageToken(await stageContentImage(file)))
-      insertTextAtCursor(`\n${tokens.join('\n')}\n`)
+      insertTextAtCursor(`\n${tokens.join('\n')}\n`, savedRange)
       setMessage(files.length === 1 ? 'Imagen preparada. Se subirá al guardar.' : `${files.length} imágenes preparadas. Se subirán al guardar.`)
     } catch (error) {
       setMessage(errorText(error))

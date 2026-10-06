@@ -203,6 +203,7 @@ Reglas importantes:
   - `TrainingPresetEditor`;
   - `TacticsBoard`;
   - `trainingPlanMappers` para transformaciones puras y modo demo.
+- Las imágenes pegadas en el editor con formato se preparan en cliente y se insertan como referencias internas, conservando el punto de pegado aunque el editor esté bloqueado durante la compresión. No usar `execCommand` para insertar esas referencias mientras `contentEditable` esté desactivado. Las pruebas de navegador deben cubrir pegar, guardar y volver a abrir el entrenamiento con su imagen y formato.
 - En el editor, la única acción “Añadir ejercicio” aparece debajo del último ejercicio. Los ejercicios nuevos se incorporan al final y se reordenan con los controles existentes.
 - `demo.local` monta esta sección con datos en memoria mediante la propiedad `demo`; no debe consultar Supabase.
 - El detalle ofrece “Guardar PDF” mediante el diálogo de impresión nativo y una hoja de estilos de impresión, sin añadir una dependencia de generación de PDF.
