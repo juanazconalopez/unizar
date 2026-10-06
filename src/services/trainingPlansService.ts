@@ -173,7 +173,9 @@ export async function saveTrainingPlan(planId: string | undefined, values: Train
   })
   if (error) {
     await cleanupContentImages(uploadedIds)
-    if (error.code === '23505') throw new Error('Ya existe un entrenamiento planificado para esa fecha.')
+    if (error.code === '23505' && error.message.includes('training_plans_session_date_key')) {
+      throw new Error('Ya existe un entrenamiento planificado para esa fecha.')
+    }
     throw error
   }
   await cleanupContentImages(previousIds)

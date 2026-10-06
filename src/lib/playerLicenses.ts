@@ -27,6 +27,15 @@ export function matchLicenseRestriction(match: Match, memberships: SeasonPlayer[
   return null
 }
 
+// Consultar un partido no exige ficha deportiva ni pertenecer a su equipo.
+// Responder disponibilidad sí exige Regional/Nacional, también en amistosos.
+export function matchAvailabilityRestriction(match: Match, memberships: SeasonPlayer[], playerId: string): string | null {
+  const membership = memberships.find((item) => item.player_id === playerId && item.season_id === match.season_id && membershipCoversDate(item, match.match_date))
+  if (!membership) return 'No está vinculada a la temporada en la fecha del partido.'
+  if (!licenseAllowsTeam(membershipLicense(membership))) return 'Puedes consultar el partido y la convocatoria. Para responder disponibilidad necesitas ficha Regional o Nacional.'
+  return matchLicenseRestriction(match, memberships, playerId)
+}
+
 export function lineupLicenseWarnings(match: Match, lineup: MatchLineup[], memberships: SeasonPlayer[], profiles: Profile[]): string[] {
   if (match.status === 'completed' || match.status === 'cancelled') return []
   return lineup.filter((entry) => entry.match_id === match.id).flatMap((entry) => {

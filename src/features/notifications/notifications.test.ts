@@ -19,6 +19,12 @@ const feed = (overrides: Partial<NotificationFeedData> = {}): NotificationFeedDa
 })
 
 describe('buildNotifications', () => {
+  test.each(['none', 'training'] as const)('%s recibe información del amistoso, pero no recordatorios para responder', (license_type) => {
+    const friendly = match({ match_kind: 'friendly', match_date: '2026-08-15', lineup_published: false })
+    const notifications = buildNotifications(feed({ matches: [friendly], memberships: [makeMembership({ license_type })], lineups: [] }), makeProfile(), '2026-08-10')
+    expect(notifications.some((item) => item.title === 'Nuevo partido publicado')).toBe(true)
+    expect(notifications.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
+  })
   test('keeps a profile reminder until phone and birth date are complete', () => {
     const incomplete = buildNotifications(
       feed({ tasks: [], matches: [], lineups: [] }),

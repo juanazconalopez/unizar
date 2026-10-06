@@ -90,6 +90,37 @@ describe('PlayerCalendarView', () => {
     expect(common.onLoadMatchMonth).toHaveBeenCalledWith('2026-09-01')
   })
 
+  test.each(['none', 'training'] as const)('%s ve el partido de otro equipo y su convocatoria sin poder responder, incluso en amistosos', async (license_type) => {
+    const common = props()
+    common.memberships = [makeMembership({ license_type, season_team_id: null })]
+    common.matches = [makeMatch({ match_kind: 'friendly', team_id: 'team-a', lineup_published: true, notes: 'Información del equipo A' })]
+    const entry = { match_id: 'match-1', player_id: 'player-1', role: 'starter' as const, slot_number: 1, position: null, sort_order: 1, updated_at: today }
+    const user = userEvent.setup()
+    render(<PlayerCalendarView {...common} demo lineups={[entry]} />)
+
+    expect(screen.getByText('Información del equipo A')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem.*Rival Rugby/ }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'Convocatoria publicada' })).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Ver lista' }))
+    expect(within(dialog).getByText('Ana Martín', { selector: '.lineup-roster span' })).toBeVisible()
+    expect(within(dialog).queryByRole('button', { name: /Asistiré|Rechazar|Cambiar respuesta|Modificar respuesta/ })).not.toBeInTheDocument()
+    expect(common.onSaveAvailability).not.toHaveBeenCalled()
+  })
+
+  test('una jugadora del equipo B ve el partido del A y responde con ficha Regional', async () => {
+    const common = props()
+    common.memberships = [makeMembership({ license_type: 'regional', season_team_id: 'team-b' })]
+    common.matches = [makeMatch({ team_id: 'team-a' })]
+    const user = userEvent.setup()
+    render(<PlayerCalendarView {...common} />)
+    await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem.*Rival Rugby/ }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Asistiré' }))
+    expect(common.onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ team_id: 'team-a' }), 'available', '')
+  })
+
   test('loads and selects the month linked by a match notification', async () => {
     const common = props()
     render(<PlayerCalendarView {...common} focusedDate="2026-10-14" />)

@@ -1,6 +1,6 @@
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
-import { matchLicenseRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
+import { matchAvailabilityRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -167,14 +167,14 @@ export function MatchesView({
   }
 
   function renderMatch(match: Match) {
-    const eligiblePlayerCount = activePlayers(profiles).filter((profile) => !matchLicenseRestriction(match, memberships, profile.id) && memberships.some((membership) => (
+    const eligiblePlayerCount = activePlayers(profiles).filter((profile) => !matchAvailabilityRestriction(match, memberships, profile.id) && memberships.some((membership) => (
       membership.player_id === profile.id
       && membership.season_id === match.season_id
       && membershipCoversDate(membership, match.match_date)
     ))).length
     return (
       <MatchCard
-        licenseRestriction={matchLicenseRestriction(match, memberships, userId)}
+        licenseRestriction={matchAvailabilityRestriction(match, memberships, userId)}
         availability={availability.filter((item) => item.match_id === match.id)}
         canEditMatch={canManage}
         canViewAvailability={canViewAvailability}
@@ -294,7 +294,7 @@ export function MatchesView({
       )}
 
       {detailMatch && <MatchDetailDialog
-        licenseRestriction={matchLicenseRestriction(detailMatch, memberships, userId)}
+        licenseRestriction={matchAvailabilityRestriction(detailMatch, memberships, userId)}
         licenseWarnings={lineupLicenseWarnings(detailMatch, lineups, memberships, profiles)}
         canEditMatch={canManage && (!detailMatch.internal_fixture_id || isOwner)}
         canGraphicExport={isOwner}
@@ -333,7 +333,7 @@ export function MatchesView({
         <MatchAvailabilityDialog
           availability={availability.filter((item) => item.match_id === availabilityMatch.id)}
           canEdit={canEditPlayerAvailability}
-          eligibleProfiles={activePlayers(profiles).filter((profile) => !matchLicenseRestriction(availabilityMatch, memberships, profile.id) && memberships.some((membership) => (
+          eligibleProfiles={activePlayers(profiles).filter((profile) => !matchAvailabilityRestriction(availabilityMatch, memberships, profile.id) && memberships.some((membership) => (
             membership.player_id === profile.id
             && membership.season_id === availabilityMatch.season_id
             && membershipCoversDate(membership, availabilityMatch.match_date)

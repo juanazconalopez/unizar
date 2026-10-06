@@ -1,4 +1,4 @@
-import { matchLicenseRestriction } from '../../lib/playerLicenses'
+import { matchAvailabilityRestriction } from '../../lib/playerLicenses'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -155,7 +155,7 @@ export function PlayerCalendarView({
 
   function renderMatch(match: Match) {
     return <MatchCard
-      licenseRestriction={matchLicenseRestriction(match, memberships, userId)}
+      licenseRestriction={matchAvailabilityRestriction(match, memberships, userId)}
       canEditMatch={false}
       isPlayer
       key={match.id}
@@ -235,7 +235,7 @@ export function PlayerCalendarView({
       </section>
     </div>
     {detailMatch && <MatchDetailDialog
-      licenseRestriction={matchLicenseRestriction(detailMatch, memberships, userId)}
+      licenseRestriction={matchAvailabilityRestriction(detailMatch, memberships, userId)}
       canEditMatch={false}
       canManageLineup={false}
       canViewAvailability={false}

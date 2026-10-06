@@ -1,5 +1,5 @@
 begin;
-select plan(411);
+select plan(419);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -897,7 +897,7 @@ select has_function('public', 'save_player_absence', array['uuid', 'uuid', 'date
 select has_function('public', 'save_match_events', array['uuid', 'jsonb'], 'staff can save structured match events');
 select has_function('public', 'get_season_player_minutes', array['uuid'], 'season playing minutes are calculated from events');
 select ok(has_function_privilege('authenticated', 'public.get_season_player_minutes(uuid)', 'EXECUTE'), 'authenticated users can read protected minutes');
-select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%player_has_absence_on%', 'an active absence blocks match eligibility');
+select unlike(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%player_has_absence_on%', 'las bajas no impiden consultar partidos');
 select like(pg_get_functiondef('public.get_season_player_minutes(uuid)'::regprocedure), '%calculate_match_player_minutes%', 'season minutes use the same interval calculation as report validation');
 
 select has_column('public', 'matches', 'internal_fixture_id', 'linked internal fixtures are stored on matches');
@@ -915,18 +915,18 @@ select ok(exists (select 1 from pg_policies where schemaname = 'public' and tabl
   and policyname = 'Players can read published lineup profiles' and qual like '%current_user_can_read_published_lineup_profile%'),
   'published lineup profiles use a helper to avoid RLS recursion');
 
-select like(pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure), '%public.current_user_is_owner() or membership.season_team_id%', 'owner can confirm a borrowed player while coaches remain team scoped');
+select like(pg_get_functiondef('public.set_player_match_availability(uuid,uuid,public.availability_status,text)'::regprocedure), '%public.current_user_is_owner()%membership.season_team_id = checked_match.team_id%', 'owner can confirm a borrowed player while coaches remain team scoped');
 select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure), '%public.player_has_absence_on%', 'publication rejects a player with a new absence');
-select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%mixed.is_mixed%', 'mixed team players can respond before an internal fixture is assigned');
+select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure), '%membership.active_from <= match.match_date%membership.active_until%', 'la visibilidad respeta los periodos de vinculación');
 
 select like(pg_get_functiondef('public.current_user_can_view_season_team(uuid)'::regprocedure),
   '%current_user_has_permission(''matches.view'')%', 'team visibility requires the configurable match permission');
 select like(pg_get_functiondef('public.current_user_can_view_season_team(uuid)'::regprocedure),
   '%coach.is_active and not coach.is_archived%', 'mixed team access rejects inactive coaches');
+select unlike(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure),
+  '%season_team_id%', 'las jugadoras ven partidos de todos los equipos');
 select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure),
-  '%membership.season_team_id = match.team_id%', 'players see matches assigned to their season team');
-select like(pg_get_functiondef('public.player_can_access_match(uuid,uuid)'::regprocedure),
-  '%public.match_availability availability%', 'borrowed players can see the match after owner confirmation');
+  '%match.status <> ''draft''%player.is_approved%player.is_active%not player.is_archived%player.is_player%', 'consultar partidos excluye borradores y perfiles inactivos');
 select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'matches'
   and policyname = 'Scoped staff and players can read matches' and qual like '%matches.view%'),
   'match reads respect the configurable view permission');
@@ -1023,8 +1023,8 @@ select has_trigger('public','match_lineup','match_lineup_license_guard','propues
 select has_trigger('public','matches','matches_published_license_guard','publicar un derbi revalida las dos convocatorias');
 select has_trigger('public','season_players','season_players_license_guard','no asignar equipo sin ficha deportiva');
 select like(pg_get_functiondef('public.get_player_season_memberships(uuid)'::regprocedure),'%auth.uid%current_user_is_owner%current_user_can_view_team_data%','se limita la consulta de fichas al propio perfil o staff autorizado');
-select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%player_license_allows_match%','disponibilidad no penaliza partidos para los que no hay ficha');
-select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),'%player_license_allows_match%','el resumen personal respeta las fichas');
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%player_license_allows_availability%','disponibilidad no penaliza partidos para los que no hay ficha');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),'%player_license_allows_availability%','el resumen personal respeta las fichas');
 select ok((select owner_only and not configurable from public.permission_definitions where key = 'seasons.licenses'),'gestión de fichas exclusiva del owner');
 
 select has_column('public','matches','completed_at','el histórico mantiene el instante de finalización');
@@ -1052,6 +1052,16 @@ select ok(not public.valid_player_positions(array['prop','prop'], 'prop'), 'dupl
 select ok(not public.valid_player_positions(array['prop'], 'wing'), 'principal must belong to selected positions');
 select ok(exists (select 1 from pg_constraint where conname = 'profiles_playing_positions_check' and conrelid = 'public.profiles'::regclass), 'valid positions are enforced on persisted rows');
 select ok(exists (select 1 from pg_trigger where tgname = 'profiles_guard_playing_positions' and tgrelid = 'public.profiles'::regclass and not tgisinternal), 'direct profile writes cannot bypass position permissions');
+
+-- 074: consultar cualquier equipo no concede permiso de respuesta sin ficha deportiva.
+select has_function('public','player_license_allows_availability',array['uuid','uuid'],'elegibilidad de respuesta independiente de la convocatoria');
+select ok(not has_function_privilege('authenticated','public.player_license_allows_availability(uuid,uuid)','EXECUTE'),'helper interno no expone fichas de otras jugadoras');
+select like(pg_get_functiondef('public.player_license_allows_availability(uuid,uuid)'::regprocedure), '%effective.license_type in (''regional'',''national'')%public.player_license_allows_match%', 'todos los tipos de partido requieren ficha deportiva para responder');
+select like(pg_get_functiondef('public.player_license_allows_availability(uuid,uuid)'::regprocedure), '%player_license_history%Europe/Madrid%player_license_allows_match%', 'los informes conservan ficha histórica, zona horaria y límite nacional');
+select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure), '%tg_table_name = ''match_availability''%player_license_allows_availability%', 'el trigger protege respuestas propias y las registradas por staff');
+select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure), '%season_player_licenses license%license.license_type in (''regional'',''national'')%', 'la ficha vigente también bloquea respuestas a partidos de fechas pasadas');
+select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure), '%player_has_absence_on%paired.lineup_published%', 'abrir la visibilidad mantiene bajas y reservas del derbi al responder');
+select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_lineup' and policyname = 'Scoped staff and selected players can read lineups' and qual like '%lineup_published%' and qual like '%player_can_access_match%'), 'convocatorias de todos los equipos se leen solo cuando se publican');
 
 select * from finish();
 rollback;

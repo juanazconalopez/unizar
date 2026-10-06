@@ -1574,6 +1574,10 @@ export type Database = {
         Returns: Json
       }
       normalize_display_name: { Args: { value: string }; Returns: string }
+      player_license_allows_availability: {
+        Args: { checked_match_id: string; checked_player_id: string }
+        Returns: boolean
+      }
       player_can_access_match: {
         Args: { checked_match_id: string; checked_player_id: string }
         Returns: boolean
