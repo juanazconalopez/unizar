@@ -1,5 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
+import { checkPlayerAbsenceDischarge } from './playerAbsenceDischarge'
+
+for (const entry of ['menu', 'pencil'] as const) {
+  test(`owner discharges a player immediately from the absence ${entry} on desktop`, async ({ page }, testInfo) => {
+    await checkPlayerAbsenceDischarge(page, testInfo.project.name, entry)
+  })
+}
 
 test('desktop keeps the sidebar and content layout usable', async ({ page }) => {
   await page.goto('/')

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { checkPlayerAbsenceDischarge } from './playerAbsenceDischarge'
 
 async function selectUpcomingMatchDay(page: Page, matchIndex: number) {
   let remainingIndex = matchIndex
@@ -255,8 +256,7 @@ test('owner manages team and seasons from settings on mobile', async ({ page }) 
   await saraCard.click()
   const saraProfile = page.getByRole('dialog', { name: 'Sara Jiménez', exact: true })
   await expect(saraProfile.getByRole('region', { name: 'Bajas deportivas' })).toContainText('Vigente')
-  await saraProfile.getByRole('button', { name: 'Acciones de Sara Jiménez' }).click()
-  await saraProfile.getByRole('button', { name: 'Baja deportiva', exact: true }).click()
+  await saraProfile.getByRole('button', { name: 'Editar baja deportiva vigente' }).click()
   const absenceDialog = page.getByRole('dialog', { name: 'Baja deportiva de Sara Jiménez' })
   await expect(saraProfile).toHaveCount(0)
   await expect(absenceDialog.getByLabel('Inicio')).toBeVisible()
@@ -374,6 +374,12 @@ test('owner registers a sporting absence and sees its red indicator on mobile', 
   await profileDialog.getByRole('button', { name: 'Cerrar' }).click()
   await expect(card.getByRole('img', { name: 'Baja deportiva' })).toBeVisible()
 })
+
+for (const entry of ['menu', 'pencil'] as const) {
+  test(`owner discharges a player immediately from the absence ${entry} on mobile`, async ({ page }, testInfo) => {
+    await checkPlayerAbsenceDischarge(page, testInfo.project.name, entry)
+  })
+}
 
 test('owner records an invited player and later links multiple provisional histories', async ({ page }) => {
   await page.goto('/')

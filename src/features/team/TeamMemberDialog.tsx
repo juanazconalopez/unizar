@@ -110,6 +110,20 @@ export function TeamMemberDialog({ person, details, showPrivateDetails = true, o
     setActiveDialog(dialog)
   }
 
+  async function dischargeCurrentAbsence() {
+    setMenuOpen(false)
+    if (saving || !currentAbsence || !onDischargeAbsence || !window.confirm('¿Dar de alta hoy a ' + person.display_name + '? Podrá volver a estar disponible desde hoy.')) return
+    setSaving(true)
+    setFormError('')
+    try {
+      await onDischargeAbsence(currentAbsence.id)
+    } catch (cause) {
+      setFormError(errorText(cause))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!onSave) return
@@ -192,7 +206,8 @@ export function TeamMemberDialog({ person, details, showPrivateDetails = true, o
         <button aria-controls="team-member-actions" aria-expanded={menuOpen} aria-label={`Acciones de ${person.display_name}`} aria-haspopup="true" className="icon-button" onClick={() => setMenuOpen((open) => !open)} type="button"><Icon name="more" size={20} /></button>
         {menuOpen && <div className="team-member-actions-menu" id="team-member-actions">
           {approved && onSave && <button onClick={() => { setEditing(true); setMenuOpen(false) }} type="button">Editar datos</button>}
-          {person.is_player && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
+          {person.is_player && currentAbsence && onDischargeAbsence && <button disabled={saving} onClick={() => void dischargeCurrentAbsence()} type="button">Alta deportiva</button>}
+          {person.is_player && !currentAbsence && onSaveAbsence && <button onClick={() => openDialog('absence')} type="button">Baja deportiva</button>}
           {canModifyLicense && <button onClick={() => openDialog('license')} type="button">Modificar ficha</button>}
           {approved && person.is_player && onSavePositions && <button onClick={() => openDialog('positions')} type="button">Modificar posiciones</button>}
           {approved && person.is_active && onSavePhoto && <button onClick={() => openDialog('photo')} type="button">Cambiar foto</button>}

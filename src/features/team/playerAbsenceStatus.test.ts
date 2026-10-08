@@ -18,4 +18,10 @@ describe('getCurrentPlayerAbsence', () => {
     const absence = makePlayerAbsence()
     expect(getCurrentPlayerAbsence([absence], 'player-1', '2027-01-01')).toBe(absence)
   })
+
+  test('makes the player available on the discharge date while preserving the expected end', () => {
+    const absence = makePlayerAbsence({ starts_on: '2026-09-20', ends_on: '2026-09-30', discharged_on: '2026-09-24' })
+    expect(getCurrentPlayerAbsence([absence], 'player-1', '2026-09-23')).toBe(absence)
+    expect(getCurrentPlayerAbsence([absence], 'player-1', '2026-09-24')).toBeUndefined()
+  })
 })

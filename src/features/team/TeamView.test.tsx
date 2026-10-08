@@ -130,18 +130,78 @@ describe('TeamView', () => {
     expect(within(dialog).queryByRole('button', { name: 'Modificar ficha' })).not.toBeInTheDocument()
   })
 
-  test('keeps Baja deportiva in the menu during an absence and offers discharge inside that dialog', async () => {
+  test.each([
+    { entry: 'menu', endsOn: null },
+    { entry: 'menu', endsOn: '2026-09-30' },
+    { entry: 'pencil', endsOn: null },
+    { entry: 'pencil', endsOn: '2026-09-30' },
+  ])('discharges a current absence from $entry with expected end $endsOn and returns to the profile', async ({ entry, endsOn }) => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    vi.setSystemTime(new Date('2026-09-24T12:00:00'))
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} onSaveAbsence={vi.fn()} onDischargeAbsence={vi.fn()}
-      profiles={[makeProfile()]} playerAbsences={[makePlayerAbsence({ starts_on: '2026-09-01', ends_on: '2026-09-30' })]} />)
+    const onSaveAbsence = vi.fn()
+    const onDischargeAbsence = vi.fn().mockResolvedValue(undefined)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const absence = makePlayerAbsence({ starts_on: '2026-09-01', ends_on: endsOn })
+    const props = { currentUserId: 'owner-1', onUpdate: vi.fn(), onSaveAbsence, onDischargeAbsence, profiles: [makeProfile()] }
+    const { rerender } = render(<TeamView {...props} playerAbsences={[absence]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    if (entry === 'pencil') {
+      await user.click(screen.getByRole('button', { name: 'Editar baja deportiva vigente' }))
+      const dialog = screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })
+      await user.click(within(dialog).getByRole('button', { name: 'Dar de alta hoy' }))
+    } else {
+      await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+      expect(screen.queryByRole('button', { name: 'Baja deportiva' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Alta deportiva' }))
+    }
+    expect(confirm).toHaveBeenCalledWith('¿Dar de alta hoy a Ana Martín? Podrá volver a estar disponible desde hoy.')
+    expect(onDischargeAbsence).toHaveBeenCalledExactlyOnceWith('absence-1')
+    expect(onSaveAbsence).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'Baja deportiva de Ana Martín' })).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Ana Martín' })).toBeInTheDocument()
+    rerender(<TeamView {...props} playerAbsences={[{ ...absence, discharged_on: '2026-09-24' }]} />)
+    expect(within(screen.getByRole('dialog', { name: 'Ana Martín' })).queryByRole('img', { name: 'Baja deportiva' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    expect(screen.getByRole('button', { name: 'Baja deportiva' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Alta deportiva' })).not.toBeInTheDocument()
+  })
+
+  test.each([
+    { starts_on: '2026-09-25', ends_on: null, discharged_on: null },
+    { starts_on: '2026-09-01', ends_on: '2026-09-23', discharged_on: null },
+    { starts_on: '2026-09-01', ends_on: null, discharged_on: '2026-09-24' },
+  ])('offers Baja deportiva when the player has no current absence: %j', async (dates) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<TeamView currentUserId="owner-1" profiles={[makeProfile()]} playerAbsences={[makePlayerAbsence(dates)]} onUpdate={vi.fn()} onSaveAbsence={vi.fn()} onDischargeAbsence={vi.fn()} />)
     await user.click(screen.getByText('Jugadoras activas'))
     await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
     await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
-    await user.click(screen.getByRole('button', { name: 'Baja deportiva' }))
-    expect(screen.getByRole('dialog', { name: 'Baja deportiva de Ana Martín' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dar de alta hoy' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Baja deportiva' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Alta deportiva' })).not.toBeInTheDocument()
+  })
+
+  test.each(['cancel', 'error'])('keeps the current absence when menu discharge ends in %s', async (outcome) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-24T12:00:00+02:00'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(window, 'confirm').mockReturnValue(outcome !== 'cancel')
+    const onDischargeAbsence = vi.fn().mockRejectedValue(new Error('No se pudo registrar el alta.'))
+    render(<TeamView currentUserId="owner-1" profiles={[makeProfile()]} playerAbsences={[makePlayerAbsence()]} onUpdate={vi.fn()} onSaveAbsence={vi.fn()} onDischargeAbsence={onDischargeAbsence} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+    await user.click(screen.getByRole('button', { name: 'Ver datos de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    await user.click(screen.getByRole('button', { name: 'Alta deportiva' }))
+    if (outcome === 'cancel') expect(onDischargeAbsence).not.toHaveBeenCalled()
+    else expect(screen.getByRole('alert')).toHaveTextContent('No se pudo registrar el alta.')
+    const profile = screen.getByRole('dialog', { name: 'Ana Martín' })
+    expect(within(profile).getByRole('img', { name: 'Baja deportiva' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Acciones de Ana Martín' }))
+    expect(screen.getByRole('button', { name: 'Alta deportiva' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Baja deportiva' })).not.toBeInTheDocument()
   })
 
   test('lets the owner save a player photo from a separate profile action', async () => {

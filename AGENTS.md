@@ -131,6 +131,7 @@ Reglas importantes:
 - Dirección consulta información del equipo, pero no debe adquirir permisos de escritura deportiva.
 - Solo el owner administra temporadas, permisos, vinculaciones y datos privados del equipo.
 - En Ajustes → Equipo, el listado es informativo y no contiene controles de permisos. Cada tarjeta abre Datos de perfil; el menú ofrece por separado la edición de nombre, teléfono, fecha de nacimiento, estado y roles, y la gestión de la fotografía de cualquier usuario activo; el email de Google es siempre de solo lectura.
+- En el menú de Datos de perfil, «Alta deportiva» sustituye a «Baja deportiva» mientras exista una baja vigente. El alta requiere confirmación, tiene efecto desde hoy y conserva el histórico; después vuelve a mostrarse «Baja deportiva». El lápiz del historial permite editar la baja vigente y también dar el alta.
 - Los cambios de estado o roles requieren confirmación. Desautorizar y restaurar se realizan dentro de la ficha, nunca desde el listado.
 - El owner no puede desactivarse, quitarse su propio rol ni dejar la aplicación sin otro owner activo; estas reglas se validan también en las RPC.
 - Las posiciones habituales se guardan en el perfil y se conservan entre temporadas: pilar, talonadora, segunda línea, tercera línea, medio de melé, apertura, centro, ala y zaguera. Puede haber varias posiciones y una principal incluida entre ellas; si no hay ninguna, la principal es nula. La principal determina un único grupo Delanteras/Línea; las pendientes aparecen en Sin posición. No se deriva del dorsal del partido.

@@ -69,6 +69,7 @@ export function PlayerAbsenceDialog({ person, absences, editAbsenceId, notes = [
     setError('')
     try {
       await onDischarge(absence.id)
+      onClose()
     } catch (cause) {
       setError(errorText(cause))
     } finally {
@@ -108,6 +109,7 @@ export function PlayerAbsenceDialog({ person, absences, editAbsenceId, notes = [
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="form-actions">
+      {editingAbsence && currentAbsence?.id === editingAbsence.id && !currentAbsence.discharged_on && onDischarge && <button className="secondary-button" disabled={saving} onClick={() => void discharge(currentAbsence)} type="button">Dar de alta hoy</button>}
       <button className="secondary-button" disabled={saving} onClick={onClose} type="button">Cancelar</button>
       <button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : editingAbsence ? 'Guardar cambios' : 'Registrar baja'}</button>
     </div>
