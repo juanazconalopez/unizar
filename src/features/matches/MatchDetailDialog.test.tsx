@@ -10,6 +10,19 @@ const match: Match = {
 }
 
 describe('MatchDetailDialog', () => {
+  test('el borrador oficial conserva huecos titulares y el resumen global sin cabeceras por posición', () => {
+    const lineup: MatchLineup[] = [{ match_id: match.id, player_id: 'player-1', role: 'starter', position: null, slot_number: 9, sort_order: 9, updated_at: match.updated_at }]
+    render(<MatchDetailDialog canEditMatch canManageLineup canViewAvailability={false} isPlayer={false} lineup={lineup} match={{ ...match, match_kind: 'official' }} profiles={[makeProfile({ primary_position: 'wing' })]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onViewAvailability={vi.fn()} />)
+    expect(screen.getByText('Borrador de convocatoria')).toBeInTheDocument()
+    const section = screen.getByRole('heading', { name: 'Titulares' }).closest('section')!
+    expect(section.querySelectorAll('[data-slot-number]')).toHaveLength(15)
+    expect(section.querySelector('[data-slot-number="6"] span')).toBeEmptyDOMElement()
+    expect(section.querySelector('[data-slot-number="9"]')).toHaveTextContent('9Ana Martín')
+    expect(screen.getByLabelText('Distribución por posición principal')).toHaveTextContent('Línea 1')
+    expect(screen.queryByRole('heading', { name: /Delanteras|Línea|Sin posición/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Suplentes' })).not.toBeInTheDocument()
+  })
+
   test('shows callup and match logistics and encourages players before publication', () => {
     render(<MatchDetailDialog canEditMatch={false} canManageLineup={false} canViewAvailability={false} isPlayer lineup={[]} match={match} profiles={[]} onClose={vi.fn()} onEdit={vi.fn()} onManageLineup={vi.fn()} onSaveAvailability={vi.fn()} onViewAvailability={vi.fn()} />)
 

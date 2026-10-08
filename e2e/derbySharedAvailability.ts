@@ -20,6 +20,15 @@ export async function checkSharedDerbyAvailability(page: Page) {
   await expect(pool).not.toContainText('Aitana Ruiz')
   await editor.getByRole('button', { name: 'Guardar alineación' }).click()
   await expect(review.locator('.internal-fixture-conflicts')).toHaveCount(0)
+  const sides = review.locator('.internal-fixture-sides>section')
+  for (const side of await sides.all()) {
+    await expect(side.locator('.internal-fixture-player')).toHaveCount(15)
+    expect(await side.locator('.internal-fixture-player b').allTextContents()).toEqual(Array.from({ length: 15 }, (_, index) => `${index + 1}`))
+  }
+  await expect(sides.nth(1).locator('[data-slot-number="6"] span')).toHaveText('')
+  await sides.nth(1).locator('[data-slot-number="6"]').scrollIntoViewIfNeeded()
+  expect(await review.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+  await page.screenshot({ path: `/tmp/unizar-revision-dorsales-${page.viewportSize()?.width}.png` })
 
   // También se reserva B al volver a A; quitar y guardar libera a la jugadora.
   await review.getByRole('button', { name: 'Editar convocatoria de Unizar A' }).click()
@@ -46,4 +55,12 @@ export async function checkSharedDerbyAvailability(page: Page) {
   await published.getByRole('button', { name: 'Ver lista' }).click()
   await expect(published.locator('.lineup-roster')).toContainText('Alba Sánchez')
   await expect(published.locator('.lineup-roster')).not.toContainText('Aitana Ruiz')
+  const starters = published.getByRole('heading', { name: 'Titulares' }).locator('..')
+  await expect(starters.locator('[data-slot-number]')).toHaveCount(15)
+  await expect(starters.locator('[data-slot-number="6"] span')).toHaveText('')
+  await expect(published.getByRole('heading', { name: /Delanteras|Línea|Sin posición/ })).toHaveCount(0)
+  await expect(published.getByLabel('Distribución por posición principal')).toBeVisible()
+  await expect(published.getByRole('heading', { name: 'Suplentes' })).toHaveCount(0)
+  expect(await published.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+  await page.screenshot({ path: `/tmp/unizar-listado-dorsales-${page.viewportSize()?.width}.png` })
 }

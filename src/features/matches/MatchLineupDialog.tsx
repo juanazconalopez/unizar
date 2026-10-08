@@ -20,6 +20,8 @@ import { activePlayers, membershipCoversDate } from '../../lib/selectors'
 import type { Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
 import { matchLogistics, matchTitle } from './matchPresentation'
 import { orderedLineupCandidates } from './lineupCandidates'
+import { lineupRosterRows } from './lineupRoster'
+import type { LineupRosterRow } from './lineupRoster'
 import { fetchSeasonPlayerMinutes } from '../../services/matchesService'
 import { LineupGraphicDialog } from './LineupGraphicDialog'
 
@@ -209,13 +211,16 @@ function MissingStartersDialog({ missing, onCancel, onConfirm }: { missing: numb
 function IconWarning() { return <span aria-hidden="true">!</span> }
 
 export function PublishedLineup({ entries, profiles, starters, onOpenPlayer }: { entries: MatchLineup[]; profiles: Profile[]; starters: number; onOpenPlayer?: (playerId: string) => void }) {
-  const ordered = [...entries].sort((first, second) => first.slot_number - second.slot_number)
-  return <div className="lineup-roster"><PlayerPositionSummary players={[...new Set(entries.map((entry) => entry.player_id))].map((id) => profiles.find((player) => player.id === id) ?? { primary_position: null })} /><RosterSection entries={ordered.filter((entry) => entry.slot_number <= starters)} label="Titulares" profiles={profiles} onOpenPlayer={onOpenPlayer} /><RosterSection entries={ordered.filter((entry) => entry.slot_number > starters)} label="Suplentes" profiles={profiles} onOpenPlayer={onOpenPlayer} /></div>
+  const rows = lineupRosterRows(entries, starters)
+  return <div className="lineup-roster"><PlayerPositionSummary players={[...new Set(entries.map((entry) => entry.player_id))].map((id) => profiles.find((player) => player.id === id) ?? { primary_position: null })} /><RosterSection rows={rows.filter((row) => row.slotNumber <= starters)} label="Titulares" profiles={profiles} onOpenPlayer={onOpenPlayer} /><RosterSection rows={rows.filter((row) => row.slotNumber > starters)} label="Suplentes" profiles={profiles} onOpenPlayer={onOpenPlayer} /></div>
 }
 
-function RosterSection({ entries, label, profiles, onOpenPlayer }: { entries: MatchLineup[]; label: string; profiles: Profile[]; onOpenPlayer?: (playerId: string) => void }) {
-  if (!entries.length) return null
-  return <section><h3>{label}</h3>{groupPlayersByPosition(entries.map((entry) => ({ ...entry, primary_position: profiles.find((player) => player.id === entry.player_id)?.primary_position ?? null }))).filter((group) => group.players.length > 0).map((group) => <Fragment key={group.value}><h4 className="playing-position-heading">{group.label}{' '}<small>{group.players.length}</small></h4>{group.players.map((entry) => <div key={entry.player_id}><b>{entry.slot_number}</b>{onOpenPlayer ? <button aria-label={`Datos de perfil de ${profiles.find((player) => player.id === entry.player_id)?.display_name ?? 'Jugadora'}`} className="player-profile-link" onClick={() => onOpenPlayer(entry.player_id)} type="button">{profiles.find((player) => player.id === entry.player_id)?.display_name ?? 'Jugadora'}</button> : <span>{profiles.find((profile) => profile.id === entry.player_id)?.display_name ?? 'Jugadora'}</span>}</div>)}</Fragment>)}</section>
+function RosterSection({ rows, label, profiles, onOpenPlayer }: { rows: LineupRosterRow[]; label: string; profiles: Profile[]; onOpenPlayer?: (playerId: string) => void }) {
+  if (!rows.length) return null
+  return <section><h3>{label}</h3>{rows.map(({ slotNumber, entry }) => {
+    const name = entry ? profiles.find((profile) => profile.id === entry.player_id)?.display_name ?? 'Jugadora' : ''
+    return <div key={slotNumber} data-slot-number={slotNumber}><b>{slotNumber}</b>{entry && onOpenPlayer ? <button aria-label={`Datos de perfil de ${name}`} className="player-profile-link" onClick={() => onOpenPlayer(entry.player_id)} type="button">{name}</button> : <span>{name}</span>}</div>
+  })}</section>
 }
 
 function lineupLimit(match: Match) {

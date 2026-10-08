@@ -10,6 +10,31 @@ const away = { id: 'match-b', internal_fixture_id: 'fixture-1', is_home: false, 
 const entry = (match_id: string, player_id: string): MatchLineup => ({ match_id, player_id, slot_number: 1, sort_order: 1, role: 'starter', position: null, updated_at: '2026-09-20T12:00:00Z' })
 
 describe('InternalFixtureReviewDialog', () => {
+  test('muestra los quince dorsales aunque falte la titular seis y solo las suplentes asignadas', () => {
+    const players = Array.from({ length: 15 }, (_, index) => makeProfile({ id: `player-${index + 1}` }))
+    players.push(makeProfile({ id: 'sub', display_name: 'Beatriz López' }))
+    const entries = players.slice(0, 15).map((player, index) => ({ ...entry(home.id, player.id), slot_number: index + 1 })).filter((item) => item.slot_number !== 6)
+    entries.push({ ...entry(home.id, 'sub'), slot_number: 21, role: 'substitute' })
+    render(<InternalFixtureReviewDialog demo matches={[home, away]} lineups={entries} profiles={players} onClose={vi.fn()} onEdit={vi.fn()} onSave={vi.fn()} onFinalize={vi.fn()} onUnlock={vi.fn()} />)
+    const homeSide = screen.getByRole('heading', { name: 'Unizar A 15/23' }).closest('section')!
+    const homeRows = [...homeSide.querySelectorAll('.internal-fixture-player')]
+    expect(homeRows.map((row) => row.querySelector('b')?.textContent)).toEqual([...Array.from({ length: 15 }, (_, index) => `${index + 1}`), '21'])
+    expect(homeRows[5].querySelector('span')).toBeEmptyDOMElement()
+    expect(homeRows[15]).toHaveTextContent('21Beatriz López')
+    expect(homeSide).toHaveTextContent('14/15 titulares')
+    const awaySide = screen.getByRole('heading', { name: 'Unizar B 0/23' }).closest('section')!
+    expect(awaySide.querySelectorAll('.internal-fixture-player')).toHaveLength(15)
+    for (const name of awaySide.querySelectorAll('.internal-fixture-player span')) expect(name).toBeEmptyDOMElement()
+  })
+
+  test('los derbis de seven mantienen siete dorsales titulares por equipo', () => {
+    render(<InternalFixtureReviewDialog demo matches={[{ ...home, rugby_format: 'sevens' }, { ...away, rugby_format: 'sevens' }]} lineups={[]} profiles={[]} onClose={vi.fn()} onEdit={vi.fn()} onSave={vi.fn()} onFinalize={vi.fn()} onUnlock={vi.fn()} />)
+    for (const side of screen.getByRole('dialog').querySelectorAll('.internal-fixture-sides>section')) {
+      expect(side.querySelectorAll('.internal-fixture-player')).toHaveLength(7)
+      expect(side).toHaveTextContent('0/7 titulares')
+    }
+  })
+
   test('requires the owner to resolve a player proposed by both teams', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn().mockResolvedValue(undefined)
