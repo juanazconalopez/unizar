@@ -1,3 +1,4 @@
+import { crossTeamCallupReference } from '../../lib/crossTeamCallups'
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { matchAvailabilityRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
@@ -360,6 +361,7 @@ export function CalendarView(props: CalendarViewProps) {
       onSubmit={async (values) => { await props.onSaveMatch(matchForm ?? undefined, values); await refreshDate(values.matchDate); setSelectedDate(values.matchDate); setMonth(`${values.matchDate.slice(0, 7)}-01`); setMatchForm(undefined) }}
     />}
     {lineupMatch && <MatchLineupDialog
+      demoCallupReference={props.demo ? crossTeamCallupReference(lineupMatch.match, props.matches, props.lineups, lineupMatch.match.season_competitions?.restrict_cross_team_callups === true) : undefined}
       onSavePositions={props.onSavePlayerPositions}
       activeSeason={props.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())}
       availability={props.availability.filter((item) => item.match_id === lineupMatch.match.id)}
@@ -406,7 +408,7 @@ export function CalendarView(props: CalendarViewProps) {
     {reviewFixtureId && props.isOwner && props.onFinalizeInternal && (() => {
       const fixtureMatches = props.matches.filter((match) => match.internal_fixture_id === reviewFixtureId).sort((a, b) => Number(b.is_home) - Number(a.is_home))
       if (fixtureMatches.length !== 2) return null
-      return <InternalFixtureReviewDialog matches={[fixtureMatches[0], fixtureMatches[1]]} lineups={props.lineups} profiles={props.profiles} onClose={() => setReviewFixtureId(null)} onEdit={(match) => { setReviewFixtureId(null); setLineupMatch({ match, editable: true }) }} onSave={async (...args) => { await props.onSaveLineup(...args); await props.onLoadMatchMonth(`${fixtureMatches[0].match_date.slice(0, 7)}-01`) }} onFinalize={async (match) => { await props.onFinalizeInternal?.(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`) }} onUnlock={async (match) => { await props.onUnlockLineup(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`) }} />
+      return <InternalFixtureReviewDialog demo={props.demo} demoReferences={props.demo ? Object.fromEntries(fixtureMatches.map((match) => [match.id, crossTeamCallupReference(match, props.matches, props.lineups, match.season_competitions?.restrict_cross_team_callups === true)])) : undefined} matches={[fixtureMatches[0], fixtureMatches[1]]} lineups={props.lineups} profiles={props.profiles} onClose={() => setReviewFixtureId(null)} onEdit={(match) => { setReviewFixtureId(null); setLineupMatch({ match, editable: true }) }} onSave={async (...args) => { await props.onSaveLineup(...args); await props.onLoadMatchMonth(`${fixtureMatches[0].match_date.slice(0, 7)}-01`) }} onFinalize={async (match) => { await props.onFinalizeInternal?.(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`) }} onUnlock={async (match) => { await props.onUnlockLineup(match); await props.onLoadMatchMonth(`${match.match_date.slice(0, 7)}-01`) }} />
     })()}
     {availabilityMatch && <MatchAvailabilityDialog
       availability={props.availability.filter((item) => item.match_id === availabilityMatch.id)}

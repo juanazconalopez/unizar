@@ -75,8 +75,8 @@ test('published match graphic fits inside the mobile detail', async ({ page }) =
   await page.getByRole('button', { name: 'Gestión' }).click()
   await page.getByRole('menuitem', { name: 'Partidos' }).click()
   await page.getByRole('button', { name: 'Vista de lista' }).click()
-  await page.getByRole('button', { name: 'Ver detalle de Unizar Fem. vs Ingenieros Industriales' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Unizar Fem. vs Ingenieros Industriales' })
+  await page.getByRole('button', { name: 'Ver detalle de Unizar Femenino vs Ingenieros Industriales' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Unizar Femenino vs Ingenieros Industriales' })
   await expect(dialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Ver lista' }).click()
   await expect(dialog.getByRole('heading', { name: 'Titulares' })).toBeVisible()
@@ -207,7 +207,8 @@ test('owner creates a season competition and uses it as the default match compet
 
   const matchCard = page.locator('.match-card').filter({ hasText: 'Rival multiliga E2E' })
   await expect(matchCard.getByText('Copa Catalana')).toBeVisible()
-  await expect(matchCard).toHaveCSS('border-left-color', 'rgb(57, 123, 159)')
+  // La competición se conserva, pero el color corresponde al equipo asignado.
+  await expect(matchCard).toHaveCSS('border-left-color', 'rgb(116, 89, 174)')
 })
 
 test('permission dependencies remain consistent when saving on mobile', async ({ page }) => {

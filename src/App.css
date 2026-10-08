@@ -6194,6 +6194,20 @@ button.survey-closure-card:focus-visible {
   border: 0;
 }
 
+.season-competitions-dialog label.cross-team-callup-option,
+.cross-team-callup-demo label.cross-team-callup-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cross-team-callup-option input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  flex: 0 0 16px;
+}
+
 .competition-color-palette {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

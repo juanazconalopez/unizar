@@ -950,9 +950,9 @@ export type Database = {
         ]
       }
       season_teams: {
-        Row: { id: string; season_id: string; name: string; is_mixed: boolean; is_default: boolean; is_active: boolean; created_by: string; created_at: string; updated_at: string }
-        Insert: { id?: string; season_id: string; name: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by: string; created_at?: string; updated_at?: string }
-        Update: { id?: string; season_id?: string; name?: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by?: string; created_at?: string; updated_at?: string }
+        Row: { color: string; id: string; season_id: string; name: string; is_mixed: boolean; is_default: boolean; is_active: boolean; created_by: string; created_at: string; updated_at: string }
+        Insert: { color?: string; id?: string; season_id: string; name: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by: string; created_at?: string; updated_at?: string }
+        Update: { color?: string; id?: string; season_id?: string; name?: string; is_mixed?: boolean; is_default?: boolean; is_active?: boolean; created_by?: string; created_at?: string; updated_at?: string }
         Relationships: [
           { foreignKeyName: "season_teams_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] },
           { foreignKeyName: "season_teams_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
@@ -967,14 +967,17 @@ export type Database = {
       season_competitions: {
         Row: {
           competition_level: "regional" | "national"
+          restrict_cross_team_callups: boolean
           is_league: boolean
           color: string; created_at: string; created_by: string; id: string; is_default: boolean; name: string; season_id: string; updated_at: string }
         Insert: {
           competition_level?: "regional" | "national"
+          restrict_cross_team_callups?: boolean
           is_league?: boolean
           color: string; created_at?: string; created_by: string; id?: string; is_default?: boolean; name: string; season_id: string; updated_at?: string }
         Update: {
           competition_level?: "regional" | "national"
+          restrict_cross_team_callups?: boolean
           is_league?: boolean
           color?: string; created_at?: string; created_by?: string; id?: string; is_default?: boolean; name?: string; season_id?: string; updated_at?: string }
         Relationships: [
@@ -1443,18 +1446,18 @@ export type Database = {
       current_user_has_permission: { Args: { checked_permission: string }; Returns: boolean }
       can_preview_player: { Args: { checked_player_id: string }; Returns: boolean }
       create_season_competition: {
-        Args: {
+        Args: { checked_restrict_cross_team?: boolean;
           checked_level?: string
           checked_is_league?: boolean
           checked_color: string; checked_name: string; checked_season_id: string }
         Returns: string
       }
       create_season_team: {
-        Args: { checked_is_mixed: boolean; checked_name: string; checked_season_id: string }
+        Args: { checked_color: string; checked_is_mixed: boolean; checked_name: string; checked_season_id: string }
         Returns: string
       }
       update_season_team: {
-        Args: { checked_is_active: boolean; checked_is_mixed: boolean; checked_name: string; checked_team_id: string }
+        Args: { checked_color: string; checked_is_active: boolean; checked_is_mixed: boolean; checked_name: string; checked_team_id: string }
         Returns: undefined
       }
       delete_season_team: { Args: { checked_team_id: string }; Returns: undefined }
@@ -1574,6 +1577,28 @@ export type Database = {
         Returns: Json
       }
       normalize_display_name: { Args: { value: string }; Returns: string }
+      get_cross_team_callup_reference: { Args: { checked_match_id: string }; Returns: Json }
+      cross_team_callup_reference_internal: { Args: { checked_match_id: string }; Returns: Json }
+      get_match_availability: {
+        Args: { checked_match_ids: string[]; checked_player_id?: string }
+        Returns: {
+          match_id: string
+          player_id: string
+          status: Database['public']['Enums']['availability_status']
+          comment: string | null
+          updated_at: string
+        }[]
+      }
+      match_fixture_availability: {
+        Args: { checked_match_id: string }
+        Returns: {
+          match_id: string
+          player_id: string
+          status: Database['public']['Enums']['availability_status']
+          comment: string | null
+          updated_at: string
+        }[]
+      }
       player_license_allows_availability: {
         Args: { checked_match_id: string; checked_player_id: string }
         Returns: boolean
@@ -1736,7 +1761,7 @@ export type Database = {
         Returns: undefined
       }
       update_season_competition: {
-        Args: {
+        Args: { checked_restrict_cross_team?: boolean;
           checked_level?: string
           checked_is_league?: boolean
           checked_color: string; checked_competition_id: string; checked_name: string }

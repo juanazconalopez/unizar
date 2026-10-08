@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { checkSharedDerbyAvailability } from './derbySharedAvailability'
 
 test('owner assigns any dorsal in the real derby editor on mobile', async ({ page }) => {
   await page.goto('/')
@@ -20,4 +21,8 @@ test('owner assigns any dorsal in the real derby editor on mobile', async ({ pag
   await expect(editor.getByRole('combobox', { name: 'Posición de Nora Martín' })).toHaveValue('1')
   await editor.getByRole('button', { name: 'Guardar alineación' }).click()
   await expect(page.getByRole('dialog', { name: 'Unizar A vs Unizar B' })).toContainText('1/23')
+})
+
+test('owner prepares and publishes B using responses recorded only on the A fixture', async ({ page }) => {
+  await checkSharedDerbyAvailability(page)
 })

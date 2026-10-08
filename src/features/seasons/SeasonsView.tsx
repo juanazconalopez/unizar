@@ -37,7 +37,7 @@ export function SeasonsView({ embedded = false, hideEmbeddedTitle = false, seaso
   onDeleteCompetition?: (competition: SeasonCompetition) => Promise<void>
   onSetDefaultCompetition?: (competition: SeasonCompetition) => Promise<void>
   onUpdateCompetition?: (competition: SeasonCompetition, values: SeasonCompetitionValues) => Promise<void>
-  onCreateTeam?: (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => Promise<void>
+  onCreateTeam?: (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed' | 'color'>) => Promise<void>
   onUpdateTeam?: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onDeleteTeam?: (team: SeasonTeam) => Promise<void>
   onAssignPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>

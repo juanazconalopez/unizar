@@ -1,0 +1,37 @@
+import { expect, type Page } from '@playwright/test'
+
+export async function checkSharedDerbyAvailability(page: Page) {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos' }).click()
+  await page.getByRole('button', { name: 'Gestionar convocatorias del derbi' }).click()
+  const review = page.getByRole('dialog', { name: 'Unizar A vs Unizar B' })
+  await review.getByRole('button', { name: 'Editar convocatoria de Unizar A' }).click()
+  let editor = page.getByRole('dialog')
+  await editor.locator('.available-player-pool article').filter({ hasText: 'Aitana Ruiz' }).getByRole('button', { name: 'Añadir' }).click()
+  await editor.getByRole('button', { name: 'Guardar alineación' }).click()
+
+  await review.getByRole('button', { name: 'Editar convocatoria de Unizar B' }).click()
+  editor = page.getByRole('dialog')
+  await expect(editor.locator('.lineup-team-group.priority-0')).toContainText('Unizar B')
+  const pool = editor.locator('.available-player-pool')
+  await expect(pool).toContainText('Nora Martín')
+  await pool.locator('article').filter({ hasText: 'Alba Sánchez' }).getByRole('button', { name: 'Añadir' }).click()
+  // Los borradores permiten una propuesta coincidente que el owner debe resolver.
+  await pool.locator('article').filter({ hasText: 'Aitana Ruiz' }).getByRole('button', { name: 'Añadir' }).click()
+  await editor.getByRole('button', { name: 'Guardar alineación' }).click()
+  await expect(review).toContainText('1 jugadora propuesta en ambos equipos')
+  await expect(review.getByRole('button', { name: 'Publicar ambas convocatorias' })).toBeDisabled()
+  await review.getByRole('button', { name: 'Dejar en Unizar A', exact: true }).click()
+  await expect(review.locator('.internal-fixture-conflicts')).toHaveCount(0)
+  await review.getByRole('button', { name: 'Publicar ambas convocatorias' }).click()
+  await review.getByRole('button', { name: 'Publicar ambas convocatorias' }).click()
+  await expect(review.getByRole('button', { name: 'Desbloquear ambas convocatorias' })).toBeVisible()
+  await review.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  await page.getByRole('button', { name: 'Ver convocatorias publicadas' }).click()
+  const published = page.getByRole('dialog')
+  await published.getByRole('button', { name: 'Unizar B', exact: true }).click()
+  await published.getByRole('button', { name: 'Ver lista' }).click()
+  await expect(published.locator('.lineup-roster')).toContainText('Alba Sánchez')
+  await expect(published.locator('.lineup-roster')).not.toContainText('Aitana Ruiz')
+}

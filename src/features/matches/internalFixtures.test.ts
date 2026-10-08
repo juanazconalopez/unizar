@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import type { Match } from '../../types'
-import { visibleFixtureMatches } from './internalFixtures'
+import type { Match, MatchAvailability } from '../../types'
+import { fixtureAvailability, visibleFixtureMatches } from './internalFixtures'
+import { makeMatch } from '../../test/fixtures'
 
 describe('visibleFixtureMatches', () => {
   test('shows one card for a linked derby and keeps an away side visible to its coach', () => {
@@ -9,5 +10,35 @@ describe('visibleFixtureMatches', () => {
     const external = { id: 'external', internal_fixture_id: null } as Match
     expect(visibleFixtureMatches([away, home, external])).toEqual([home, external])
     expect(visibleFixtureMatches([away])).toEqual([away])
+  })
+})
+
+describe('fixtureAvailability', () => {
+  const home = makeMatch({ id: 'home', internal_fixture_id: 'derby', is_home: true })
+  const away = makeMatch({ id: 'away', internal_fixture_id: 'derby', is_home: false })
+  const response: MatchAvailability = { match_id: home.id, player_id: 'player-1', status: 'available', comment: null, updated_at: '2026-10-01T10:00:00Z' }
+
+  test('una respuesta en A sirve para preparar B, sin copiar filas guardadas', () => {
+    expect(fixtureAvailability(away, [home, away], [response])).toEqual([{ ...response, match_id: away.id }])
+    expect(response.match_id).toBe(home.id)
+  })
+  test('la última respuesta prevalece, incluso si retira disponibilidad desde la otra ficha', () => {
+    const withdrawal = { ...response, match_id: away.id, status: 'unavailable' as const, updated_at: '2026-10-01T12:00:00+01:00' }
+    for (const match of [home, away]) {
+      expect(fixtureAvailability(match, [home, away], [response, withdrawal])).toEqual([{ ...withdrawal, match_id: match.id }])
+    }
+  })
+  test('un empate se resuelve igual en ambas fichas y sin depender del orden de carga', () => {
+    const other = { ...response, match_id: away.id, status: 'doubt' as const }
+    expect(fixtureAvailability(home, [home, away], [response, other])[0].status).toBe('doubt')
+    expect(fixtureAvailability(away, [home, away], [other, response])[0].status).toBe('doubt')
+  })
+  test('no mezcla otros partidos, temporadas o fechas ni partidos externos sin derbi', () => {
+    const external = makeMatch({ id: 'external' })
+    const wrongSeason = { ...away, id: 'wrong-season', season_id: 'other' }
+    const wrongDate = { ...away, id: 'wrong-date', match_date: '2026-11-01' }
+    const responses = [external, wrongSeason, wrongDate].map((match) => ({ ...response, match_id: match.id }))
+    expect(fixtureAvailability(home, [home, away, external, wrongSeason, wrongDate], responses)).toEqual([])
+    expect(fixtureAvailability(external, [home, away, external], [response])).toEqual([])
   })
 })

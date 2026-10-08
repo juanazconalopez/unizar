@@ -1,3 +1,4 @@
+import { isSeasonTeamColor, nextSeasonTeamColor, TEAM_PALETTE, teamPaletteEntry } from '../../lib/seasonCompetitions'
 import { groupPlayersByPosition } from '../../lib/playerPositions'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
@@ -11,7 +12,7 @@ import { errorText } from '../../lib/errors'
 import { licenseAllowsTeam, licenseLabel, membershipLicense } from '../../lib/playerLicenses'
 import { activeMembershipFor, membershipCoversDate } from '../../lib/selectors'
 import { canBeSeasonTeamCoach, isPlayer } from '../../lib/permissions'
-import type { PlayerAbsence, Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach } from '../../types'
+import type { PlayerAbsence, Profile, Season, SeasonPlayer, SeasonTeam, SeasonTeamCoach, SeasonTeamColor } from '../../types'
 import type { SeasonTeamCoachChange, SeasonTeamValues } from '../../services/seasonTeamsService'
 import { seasonTeamCoachRoleLabel, seasonTeamCoachRoles, type SeasonTeamCoachRole } from './seasonTeamCoachRoles'
 import { SeasonTeamsReport } from './SeasonTeamsReport'
@@ -31,7 +32,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
   playerAbsences?: PlayerAbsence[]
   coaches: SeasonTeamCoach[]
   onClose: () => void
-  onCreate: (values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => Promise<void>
+  onCreate: (values: Pick<SeasonTeamValues, 'name' | 'isMixed' | 'color'>) => Promise<void>
   onDelete: (team: SeasonTeam) => Promise<void>
   onSave: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onAssignPlayer: (player: Profile, teamId: string) => Promise<void>
@@ -39,6 +40,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
 }) {
   const [panel, setPanel] = useState<Panel>({ kind: 'list' })
   const [search, setSearch] = useState('')
+  const [selectedColor, setSelectedColor] = useState<SeasonTeamColor>('purple')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [coachDrafts, setCoachDrafts] = useState<Record<string, { assigned: boolean; role: SeasonTeamCoachRole }>>({})
@@ -87,6 +89,10 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
 
   function showPanel(nextPanel: Panel) {
     setError('')
+    if (nextPanel.kind === 'team') {
+      const color = nextPanel.team?.color
+      setSelectedColor(color && isSeasonTeamColor(color) ? color : nextPanel.team ? 'purple' : nextSeasonTeamColor(seasonTeams))
+    }
     if (nextPanel.kind === 'coaches') {
       const hasHeadCoach = persistedTeamHasHeadCoach(nextPanel.team.id)
       setCoachDrafts(Object.fromEntries(activeCoaches.map((coach) => {
@@ -103,7 +109,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     event.preventDefault()
     if (panel.kind !== 'team') return
     const form = new FormData(event.currentTarget)
-    const values = { name: String(form.get('name')).trim(), isMixed: form.get('isMixed') === 'on', isActive: form.get('isActive') === 'on' }
+    const values = { name: String(form.get('name')).trim(), isMixed: form.get('isMixed') === 'on', isActive: form.get('isActive') === 'on', color: selectedColor }
     setSaving(true)
     setError('')
     try {
@@ -193,7 +199,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
           const teamCoaches = assignedCoaches(team.id)
           if (search.trim() && !visiblePlayers.length) return null
           return <section aria-label={`${team.name}, ${teamPlayers.length} ${teamPlayers.length === 1 ? 'jugadora' : 'jugadoras'}`} className={`season-team-roster-card${team.is_active ? '' : ' inactive'}`} key={team.id}>
-            <div className="season-team-roster-heading"><div><h3>{team.name} <span>{teamPlayers.length}</span> <AbsenceCount count={absenceCount(teamPlayers)} /></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
+            <div className="season-team-roster-heading"><div><h3><i aria-hidden="true" style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', marginRight: 6, backgroundColor: teamPaletteEntry(team.color).solid }} />{team.name} <span>{teamPlayers.length}</span> <AbsenceCount count={absenceCount(teamPlayers)} /></h3><small>{team.is_default ? 'Equipo inicial' : team.is_mixed ? 'Grupo mixto' : 'Equipo competitivo'} · {team.is_active ? 'Activo' : 'Inactivo'}</small></div><button aria-label={`Editar equipo ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'team', team })} type="button">Editar equipo</button></div>
             {groupedPlayers(teamPlayers)}
             {!visiblePlayers.length && <p className="season-team-empty">Sin jugadoras en este equipo.</p>}
             <div className="season-team-coaches"><div><strong>Entrenadores</strong>{teamCoaches.length ? <span className="season-team-coach-list">{teamCoaches.map(({ coach, role }) => <span key={coach.id}>{role === 'head_coach' ? <strong className="season-team-head-coach-role">{seasonTeamCoachRoleLabel(role)}</strong> : seasonTeamCoachRoleLabel(role)} · {coach.display_name}</span>)}</span> : <span>Sin entrenadores asignados</span>}</div><button aria-label={`Editar entrenadores de ${team.name}`} className="text-button" onClick={() => showPanel({ kind: 'coaches', team })} type="button">Editar</button></div>
@@ -266,6 +272,7 @@ export function SeasonTeamsDialog({ season, teams, memberships, profiles, coache
     {panel.kind === 'team' && <>
       <div className="season-team-subview-heading"><span className="eyebrow">{panel.team ? 'EDITAR EQUIPO' : 'NUEVO EQUIPO'}</span><h3>{panel.team?.name ?? 'Datos del equipo'}</h3></div>
       <div className="season-team-fields"><label>Nombre<input autoFocus defaultValue={panel.team?.name ?? ''} maxLength={80} name="name" required spellCheck /></label><label className="check-field"><input defaultChecked={panel.team?.is_mixed ?? false} name="isMixed" type="checkbox" />Grupo mixto</label>{panel.team && <label className="check-field"><input defaultChecked={panel.team.is_active} name="isActive" type="checkbox" />Equipo activo</label>}</div>
+      <fieldset className="competition-color-field full-field"><legend>Color del equipo</legend><div className="competition-color-palette">{TEAM_PALETTE.map((color) => <label key={color.key}><input checked={selectedColor === color.key} disabled={saving} name="color" onChange={() => setSelectedColor(color.key)} type="radio" value={color.key} /><span style={{ backgroundColor: color.solid }} /><small>{color.label}</small></label>)}</div><p className="form-hint">Se utiliza en las tarjetas y el calendario de todos los partidos de este equipo.</p></fieldset>
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="form-actions"><button className="secondary-button" disabled={saving} onClick={() => showPanel({ kind: 'list' })} type="button">Volver a equipos</button>{panel.team && !panel.team.is_default && <button className="danger-button" disabled={saving} onClick={() => void deleteTeam(panel.team!)} type="button">Eliminar equipo</button>}<button className="primary-button" disabled={saving}>{saving ? 'Guardando…' : 'Guardar equipo'}</button></div>
     </>}

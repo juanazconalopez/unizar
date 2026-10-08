@@ -72,7 +72,7 @@ export function createClubActions(context: ActionContext, memberships: SeasonPla
       context.notify(`Competición eliminada${deletedMatches ? ` junto con ${deletedMatches} ${deletedMatches === 1 ? 'partido' : 'partidos'}` : ''}.`)
       await context.reloadData()
     },
-    createSeasonTeam: async (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => {
+    createSeasonTeam: async (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed' | 'color'>) => {
       context.requireConnection()
       await createSeasonTeam(season.id, values)
       context.notify('Equipo creado.')

@@ -110,13 +110,13 @@ test('published match detail embeds the graphic and keeps availability and copy 
   await page.getByRole('button', { name: 'Gestión' }).click()
   await page.getByRole('menuitem', { name: 'Partidos' }).click()
   await page.getByRole('button', { name: 'Vista de lista' }).click()
-  await page.getByRole('button', { name: 'Ver detalle de Unizar Fem. vs Ingenieros Industriales' }).click()
+  await page.getByRole('button', { name: 'Ver detalle de Unizar Femenino vs Ingenieros Industriales' }).click()
 
-  const dialog = page.getByRole('dialog', { name: 'Unizar Fem. vs Ingenieros Industriales' })
+  const dialog = page.getByRole('dialog', { name: 'Unizar Femenino vs Ingenieros Industriales' })
   const graphic = dialog.getByRole('img', { name: 'Imagen de la convocatoria' })
   await expect(graphic).toBeVisible()
   const embeddedWidth = (await graphic.boundingBox())?.width ?? 0
-  await expect(graphic).toContainText('Unizar Fem. vs Ingenieros Industriales')
+  await expect(graphic).toContainText('Unizar Femenino vs Ingenieros Industriales')
   await expect(graphic).not.toContainText('CONVOCATORIA · XV')
   await expect(dialog.getByRole('button', { name: 'Ver disponibilidades' })).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Copiar convocatoria' })).toBeVisible()

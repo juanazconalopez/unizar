@@ -10,8 +10,8 @@ type QueryBuilder = {
   then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => Promise<unknown>
 }
 
-const mocks = vi.hoisted(() => ({ from: vi.fn() }))
-vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from } }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }))
+vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
 
 import { fetchAttendanceDate, fetchAttendanceForSessions, fetchMatchWindow, fetchTaskWindow } from './trainingQueriesService'
 
@@ -61,19 +61,31 @@ describe('training data queries', () => {
       match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1',
       created_at: '2026-08-01T10:00:00Z', updated_at: '2026-08-01T10:00:00Z', seasons: { name: '2026' },
     }])
-    const availability = query([])
+    mocks.rpc.mockResolvedValue({ data: [], error: null })
     const lineup = query([])
     mocks.from.mockImplementation((table: string) => {
       if (table === 'matches') return matches
-      return table === 'match_availability' ? availability : lineup
+      return lineup
     })
 
     const data = await fetchMatchWindow('2026-09-01', '2026-09-30')
     expect(matches.gte).toHaveBeenCalledWith('match_date', '2026-09-01')
     expect(matches.lte).toHaveBeenCalledWith('match_date', '2026-09-30')
-    expect(availability.in).toHaveBeenCalledWith('match_id', ['match-1'])
+    expect(mocks.rpc).toHaveBeenCalledWith('get_match_availability', { checked_match_ids: ['match-1'] })
     expect(lineup.in).toHaveBeenCalledWith('match_id', ['match-1'])
     expect(data.matches).toHaveLength(1)
+  })
+
+  test('loads shared derby responses even when a coach only receives the away match', async () => {
+    const away = { id: 'away', internal_fixture_id: 'derby', match_date: '2026-10-10' }
+    const sharedResponse = { match_id: 'away', player_id: 'player-b', status: 'available', comment: null, updated_at: '2026-10-01T10:00:00Z' }
+    const matches = query([away])
+    mocks.from.mockImplementation((table: string) => table === 'matches' ? matches : query([]))
+    mocks.rpc.mockResolvedValue({ data: [sharedResponse], error: null })
+    const result = await fetchMatchWindow('2026-10-01', '2026-10-31')
+    expect(result.matchAvailability).toEqual([sharedResponse])
+    expect(mocks.rpc).toHaveBeenCalledWith('get_match_availability', { checked_match_ids: ['away'] })
+    expect(mocks.from).not.toHaveBeenCalledWith('match_availability')
   })
 
   test('loads attendance through its session relationship for one date', async () => {

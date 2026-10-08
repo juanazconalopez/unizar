@@ -1,5 +1,6 @@
 import { addDays, mondayFor, monthEnd, monthStart, offsetMonth } from '../lib/dates'
 import { supabase } from '../lib/supabase'
+import { fetchMatchAvailability } from './matchAvailabilityService'
 import type {
   AttendanceRecord,
   Match,
@@ -76,7 +77,7 @@ export async function fetchAnnouncementWindow(fromDate: string, toDate: string):
 export async function fetchHomeAttention(today: string, seasonEnd: string) {
   const announcementEnd = homeAgendaEnd(today, seasonEnd)
   const [matchesResponse, announcementsResponse] = await Promise.all([
-    supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league), season_teams(id,name,is_mixed,is_default)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
+    supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
     supabase.from('team_announcements').select('*, seasons(name)').eq('status', 'published').gte('announcement_date', today).lte('announcement_date', announcementEnd).order('announcement_date', { ascending: true }).limit(4),
   ])
   if (matchesResponse.error) throw matchesResponse.error
@@ -178,18 +179,17 @@ export async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
 }
 
 export async function fetchMatchWindow(fromDate: string, toDate?: string): Promise<MatchWindowData> {
-  let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league), season_teams(id,name,is_mixed,is_default)').gte('match_date', fromDate).order('match_date', { ascending: true })
+  let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').gte('match_date', fromDate).order('match_date', { ascending: true })
   if (toDate) query = query.lte('match_date', toDate)
   const { data, error } = await query
   if (error) throw error
   const matches = data ?? []
   if (!matches.length) return emptyMatchWindow
   const matchIds = matches.map((match) => match.id)
-  const [availabilityResponse, lineupsResponse] = await Promise.all([
-    supabase.from('match_availability').select('*').in('match_id', matchIds),
+  const [matchAvailability, lineupsResponse] = await Promise.all([
+    fetchMatchAvailability(matchIds),
     supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order'),
   ])
-  if (availabilityResponse.error) throw availabilityResponse.error
   if (lineupsResponse.error) throw lineupsResponse.error
-  return { matches, matchAvailability: availabilityResponse.data ?? [], matchLineups: lineupsResponse.data ?? [] }
+  return { matches, matchAvailability, matchLineups: lineupsResponse.data ?? [] }
 }

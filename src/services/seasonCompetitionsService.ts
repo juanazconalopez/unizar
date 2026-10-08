@@ -2,7 +2,7 @@ import { isSeasonCompetitionColor } from '../lib/seasonCompetitions'
 import { supabase } from '../lib/supabase'
 import type { SeasonCompetition, SeasonCompetitionColor, CompetitionLevel } from '../types'
 
-export type SeasonCompetitionValues = { name: string; color: SeasonCompetitionColor; competitionLevel?: CompetitionLevel; isLeague?: boolean }
+export type SeasonCompetitionValues = { name: string; color: SeasonCompetitionColor; competitionLevel?: CompetitionLevel; isLeague?: boolean; restrictCrossTeamCallups?: boolean }
 
 export async function fetchSeasonCompetitions(seasonIds: string[]): Promise<SeasonCompetition[]> {
   if (!seasonIds.length) return []
@@ -18,6 +18,7 @@ export async function fetchSeasonCompetitions(seasonIds: string[]): Promise<Seas
       color: row.color,
       competition_level: row.competition_level,
       is_league: row.is_league,
+      restrict_cross_team_callups: row.restrict_cross_team_callups,
       created_at: row.created_at,
       created_by: row.created_by,
       id: row.id,
@@ -35,6 +36,7 @@ export async function createSeasonCompetition(seasonId: string, values: SeasonCo
     checked_season_id: seasonId,
     checked_name: values.name.trim(),
     checked_color: values.color,
+    checked_restrict_cross_team: values.restrictCrossTeamCallups ?? false,
     ...(values.competitionLevel ? { checked_level: values.competitionLevel, checked_is_league: values.isLeague ?? false } : {}),
   })
   if (error) throw error
@@ -45,6 +47,7 @@ export async function updateSeasonCompetition(competitionId: string, values: Sea
     checked_competition_id: competitionId,
     checked_name: values.name.trim(),
     checked_color: values.color,
+    ...(values.restrictCrossTeamCallups !== undefined ? { checked_restrict_cross_team: values.restrictCrossTeamCallups } : {}),
     ...(values.competitionLevel ? { checked_level: values.competitionLevel, checked_is_league: values.isLeague ?? false } : {}),
   })
   if (error) throw error

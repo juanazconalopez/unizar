@@ -1,3 +1,4 @@
+import { crossTeamCallupReference } from '../../lib/crossTeamCallups'
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
 import { matchAvailabilityRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
@@ -274,6 +275,7 @@ export function MatchesView({
           canPublish={!lineupMatch.match.internal_fixture_id}
           canBorrowFromOtherTeams={isOwner}
           demo={demo}
+          demoCallupReference={demo ? crossTeamCallupReference(lineupMatch.match, matches, lineups, lineupMatch.match.season_competitions?.restrict_cross_team_callups === true) : undefined}
           entries={lineups.filter((entry) => entry.match_id === lineupMatch.match.id)}
           match={lineupMatch.match}
           memberships={memberships}
@@ -326,7 +328,7 @@ export function MatchesView({
       {reviewFixtureId && isOwner && onFinalizeInternal && onUnlockLineup && (() => {
         const fixtureMatches = matches.filter((item) => item.internal_fixture_id === reviewFixtureId).sort((a, b) => Number(b.is_home) - Number(a.is_home))
         if (fixtureMatches.length !== 2) return null
-        return <InternalFixtureReviewDialog matches={[fixtureMatches[0], fixtureMatches[1]]} lineups={lineups} profiles={profiles} onClose={() => setReviewFixtureId(null)} onEdit={(match) => { setReviewFixtureId(null); setLineupMatch({ match, editable: true }) }} onSave={onSaveLineup} onFinalize={onFinalizeInternal} onUnlock={onUnlockLineup} />
+        return <InternalFixtureReviewDialog demo={demo} demoReferences={demo ? Object.fromEntries(fixtureMatches.map((match) => [match.id, crossTeamCallupReference(match, matches, lineups, match.season_competitions?.restrict_cross_team_callups === true)])) : undefined} matches={[fixtureMatches[0], fixtureMatches[1]]} lineups={lineups} profiles={profiles} onClose={() => setReviewFixtureId(null)} onEdit={(match) => { setReviewFixtureId(null); setLineupMatch({ match, editable: true }) }} onSave={onSaveLineup} onFinalize={onFinalizeInternal} onUnlock={onUnlockLineup} />
       })()}
 
       {availabilityMatch && (

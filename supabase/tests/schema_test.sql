@@ -1,5 +1,5 @@
 begin;
-select plan(419);
+select plan(462);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -321,12 +321,12 @@ select ok(
   exists (select 1 from public.permission_definitions where key = 'seasons.competitions' and owner_only and not configurable),
   'season competition management is an owner-only capability'
 );
-select has_function('public', 'create_season_competition', array['uuid','text','text','text','boolean'], 'season competitions can be created atomically');
-select has_function('public', 'update_season_competition', array['uuid','text','text','text','boolean'], 'season competitions can be updated atomically');
+select has_function('public', 'create_season_competition', array['uuid','text','text','text','boolean','boolean'], 'season competitions can be created atomically');
+select has_function('public', 'update_season_competition', array['uuid','text','text','text','boolean','boolean'], 'season competitions can be updated atomically');
 select has_function('public', 'set_default_season_competition', array['uuid'], 'the default season competition can be changed atomically');
 select has_function('public', 'delete_season_competition', array['uuid'], 'season competitions can be deleted atomically');
 select like(
-  pg_get_functiondef('public.create_season_competition(uuid,text,text,text,boolean)'::regprocedure),
+  pg_get_functiondef('public.create_season_competition(uuid,text,text,text,boolean,boolean)'::regprocedure),
   '%current_user_has_permission(''seasons.competitions'')%',
   'creating a season competition checks its owner-only permission'
 );
@@ -336,11 +336,11 @@ select like(
   'competition deletion unlocks published lineups before cascading their data'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.create_season_competition(uuid,text,text,text,boolean)', 'EXECUTE'),
+  has_function_privilege('authenticated', 'public.create_season_competition(uuid,text,text,text,boolean,boolean)', 'EXECUTE'),
   'authenticated owners can call season competition creation'
 );
 select ok(
-  not has_function_privilege('anon', 'public.create_season_competition(uuid,text,text,text,boolean)', 'EXECUTE'),
+  not has_function_privilege('anon', 'public.create_season_competition(uuid,text,text,text,boolean,boolean)', 'EXECUTE'),
   'anonymous users cannot create season competitions'
 );
 select ok(
@@ -877,7 +877,7 @@ select col_is_fk('public', 'matches', 'team_id', 'official matches can reference
 select ok(exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'season_teams_one_mixed_idx'), 'a season can have at most one mixed team');
 select ok(exists (select 1 from pg_trigger where tgname = 'seasons_create_default_team' and not tgisinternal), 'new seasons create their default team');
 select ok(exists (select 1 from pg_trigger where tgrelid = 'public.matches'::regclass and tgname = 'enforce_configurable_permission' and tgenabled = 'O'), 'match permission trigger remains active after the team backfill');
-select has_function('public', 'create_season_team', array['uuid', 'text', 'boolean'], 'owners can create season teams through a protected function');
+select has_function('public', 'create_season_team', array['uuid', 'text', 'boolean', 'text'], 'owners can create season teams through a protected function');
 select has_function('public', 'assign_season_player_team', array['uuid', 'uuid', 'uuid'], 'owners can reassign a season player');
 select has_function('public', 'save_season_team_coaches', array['uuid', 'jsonb'], 'owners can assign team coaches and roles');
 select like(pg_get_functiondef('public.save_season_team_coaches(uuid,jsonb)'::regprocedure), '%current_user_has_permission(''seasons.teams'')%', 'only authorized owners can assign team coaches');
@@ -942,10 +942,10 @@ select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regproced
   '%other_match.internal_fixture_id is distinct from fixture_id%',
   'final review rejects same-day reservations outside the internal fixture');
 
-select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean)'::regprocedure),
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean,text)'::regprocedure),
   '%other_match set opponent = trim(checked_name)%',
   'renaming a team updates the rival name on its paired fixture');
-select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean)'::regprocedure),
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean,text)'::regprocedure),
   '%Un equipo que participa en un derbi no puede convertirse en mixto%',
   'a team already in a derby cannot become mixed');
 
@@ -1062,6 +1062,59 @@ select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedu
 select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure), '%season_player_licenses license%license.license_type in (''regional'',''national'')%', 'la ficha vigente también bloquea respuestas a partidos de fechas pasadas');
 select like(pg_get_functiondef('public.guard_match_player_license()'::regprocedure), '%player_has_absence_on%paired.lineup_published%', 'abrir la visibilidad mantiene bajas y reservas del derbi al responder');
 select ok(exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'match_lineup' and policyname = 'Scoped staff and selected players can read lineups' and qual like '%lineup_published%' and qual like '%player_can_access_match%'), 'convocatorias de todos los equipos se leen solo cuando se publican');
+
+
+-- 075: una respuesta al derbi permite preparar cualquiera de sus convocatorias.
+select has_function('public','match_fixture_availability',array['uuid'],'helper único para disponibilidad del derbi');
+select has_function('public','get_match_availability',array['uuid[]','uuid'],'lectura protegida de respuestas efectivas');
+select ok(not has_function_privilege('authenticated','public.match_fixture_availability(uuid)','EXECUTE'),'el helper interno no expone respuestas arbitrarias');
+select ok(not has_function_privilege('anon','public.get_match_availability(uuid[],uuid)','EXECUTE'),'anon no puede leer disponibilidades');
+select like(pg_get_functiondef('public.match_fixture_availability(uuid)'::regprocedure),'%related.internal_fixture_id = target.internal_fixture_id%related.season_id = target.season_id%related.match_date = target.match_date%','el pool solo comparte fichas del mismo derbi, temporada y fecha');
+select like(pg_get_functiondef('public.match_fixture_availability(uuid)'::regprocedure),'%distinct on (response.player_id)%response.updated_at desc, response.match_id%','una respuesta efectiva por jugadora con último estado y desempate estable');
+select like(pg_get_functiondef('public.get_match_availability(uuid[],uuid)'::regprocedure),'%matches.view%response.player_id = (select auth.uid())%matches.availability_own%player_can_access_match%matches.availability_team%current_user_can_view_season_team%','jugadoras solo leen su respuesta y staff mantiene su ámbito');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure),'%match_fixture_availability(checked_match_id)%','guardar B admite disponibilidad respondida en A');
+select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure),'%match_fixture_availability(match.id)%','la publicación conjunta usa la misma respuesta compartida');
+select like(pg_get_functiondef('public.guard_match_availability()'::regprocedure),'%related.lineup_published%delete from public.match_lineup%related.internal_fixture_id = fixture_id%','cerrar o retirar disponibilidad abarca las dos fichas');
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%match_fixture_availability%','informe de equipo reconoce respuestas de ambas fichas');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),'%match_fixture_availability%','resumen personal reconoce la respuesta compartida');
+
+
+-- Colores de equipos: configuración mínima, autorizada y validada en SQL.
+select has_column('public', 'season_teams', 'color', 'season teams have a configurable color');
+select col_not_null('public', 'season_teams', 'color', 'team color is required');
+select ok(exists (select 1 from pg_attrdef definition join pg_attribute attribute on attribute.attrelid = definition.adrelid and attribute.attnum = definition.adnum where definition.adrelid = 'public.season_teams'::regclass and attribute.attname = 'color' and pg_get_expr(definition.adbin, definition.adrelid) = '''purple''::text'), 'new default teams start purple');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.season_teams'::regclass and conname = 'season_teams_color_check'), 'team colors are restricted to the palette');
+select has_function('public', 'update_season_team', array['uuid', 'text', 'boolean', 'boolean', 'text'], 'team updates include a color');
+select ok(to_regprocedure('public.create_season_team(uuid,text,boolean)') is null, 'legacy team creation overload is removed');
+select ok(to_regprocedure('public.update_season_team(uuid,text,boolean,boolean)') is null, 'legacy team update overload is removed');
+select like(pg_get_functiondef('public.create_season_team(uuid,text,boolean,text)'::regprocedure), '%current_user_has_permission(''seasons.teams'')%', 'creating colored teams requires owner permission');
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean,text)'::regprocedure), '%current_user_has_permission(''seasons.teams'')%', 'changing team color requires owner permission');
+select like(pg_get_functiondef('public.create_season_team(uuid,text,boolean,text)'::regprocedure), '%checked_color is null or checked_color not in%', 'creating teams validates the color');
+select like(pg_get_functiondef('public.update_season_team(uuid,text,boolean,boolean,text)'::regprocedure), '%checked_color is null or checked_color not in%', 'changing teams validates the color');
+select ok(not has_function_privilege('anon', 'public.create_season_team(uuid,text,boolean,text)', 'EXECUTE'), 'anonymous users cannot create colored teams');
+select ok(not has_function_privilege('anon', 'public.update_season_team(uuid,text,boolean,boolean,text)', 'EXECUTE'), 'anonymous users cannot change team colors');
+select ok(has_function_privilege('authenticated', 'public.update_season_team(uuid,text,boolean,boolean,text)', 'EXECUTE'), 'authenticated owners can invoke team color updates');
+
+
+-- 077: la restricción usa la última acta de la misma competición y no bloquea borradores.
+select has_column('public','season_competitions','restrict_cross_team_callups','restricción configurable por competición');
+select col_not_null('public','season_competitions','restrict_cross_team_callups','configuración explícita del límite');
+select has_function('public','get_cross_team_callup_reference',array['uuid'],'referencia protegida para el editor');
+select ok(not has_function_privilege('anon','public.get_cross_team_callup_reference(uuid)','EXECUTE'),'anon no consulta actas de referencia');
+select ok(not has_function_privilege('authenticated','public.cross_team_callup_reference_internal(uuid)','EXECUTE'),'helper no permite consultar partidos fuera de ámbito');
+select like(pg_get_functiondef('public.get_cross_team_callup_reference(uuid)'::regprocedure),'%matches.lineup_edit%current_user_can_edit_match%','consulta valida permiso y equipo');
+select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%other.season_id = target.season_id%other.competition_id = target.competition_id%','referencia respeta temporada y competición');
+select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%other.team_id <> target.team_id%','compara con el otro equipo');
+select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%other.internal_fixture_id is distinct from target.internal_fixture_id%','excluye la pareja del propio derbi');
+select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%previous.status = ''completed'' and previous.report_events_reviewed%','no sustituye un acta pendiente por una antigua');
+select ok(exists(select 1 from pg_trigger where tgname = 'cross_team_callup_publication_guard' and tgenabled = 'O' and tgrelid = 'public.matches'::regclass),'publicación normal y conjunta protegidas por trigger');
+select like(pg_get_functiondef('public.guard_cross_team_callup_publication()'::regprocedure),'%not new.lineup_published%','se permiten borradores con más de siete');
+select like(pg_get_functiondef('public.guard_cross_team_callup_publication()'::regprocedure),'%count(distinct lineup.player_id)%repeated > 7%','máximo siete jugadoras únicas de toda la convocatoria');
+select like(pg_get_functiondef('public.guard_cross_team_callup_publication()'::regprocedure),'%Confirma el acta del último partido del otro equipo%','sin acta confirmada no se publica');
+select ok(exists(select 1 from pg_trigger where tgname = 'match_callup_competition_lock' and tgenabled = 'O' and tgrelid = 'public.matches'::regclass),'publicación y confirmación se coordinan por competición');
+select like(pg_get_functiondef('public.lock_match_callup_competition()'::regprocedure),'%order by id for update%','bloqueo ordenado durante escrituras de partidos');
+
+select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%lineup.match_id = previous.id and previous.lineup_published%','no se expone el borrador del otro equipo al consultar la restricción');
 
 select * from finish();
 rollback;

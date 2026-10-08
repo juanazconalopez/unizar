@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { Match, SeasonCompetition, SeasonCompetitionColor } from '../types'
+import type { Match, SeasonCompetition, SeasonCompetitionColor, SeasonTeamColor } from '../types'
 
 export type CompetitionPaletteEntry = {
   key: SeasonCompetitionColor
@@ -25,6 +25,24 @@ export const DEFAULT_MATCH_COLOR = {
   solid: '#2d7653', soft: '#e4f2e8', border: '#82b59d', text: '#205d43',
 }
 
+export const TEAM_PALETTE = [
+  COMPETITION_PALETTE[0],
+  { key: 'green' as const, label: 'Verde', ...DEFAULT_MATCH_COLOR },
+  ...COMPETITION_PALETTE.slice(1),
+]
+
+export function isSeasonTeamColor(value: string): value is SeasonTeamColor {
+  return TEAM_PALETTE.some((entry) => entry.key === value)
+}
+
+export function teamPaletteEntry(color: string | undefined) {
+  return TEAM_PALETTE.find((entry) => entry.key === color) ?? TEAM_PALETTE[0]
+}
+
+export function nextSeasonTeamColor(teams: Array<{ color?: string }>): SeasonTeamColor {
+  return TEAM_PALETTE.find((color) => !teams.some((team) => team.color === color.key))?.key ?? 'purple'
+}
+
 export function isSeasonCompetitionColor(value: string): value is SeasonCompetitionColor {
   return COMPETITION_PALETTE.some((entry) => entry.key === value)
 }
@@ -34,6 +52,7 @@ export function paletteEntry(color: SeasonCompetitionColor | string | null | und
 }
 
 export function matchColor(match: Match) {
+  if (match.team_id && match.season_teams?.color && isSeasonTeamColor(match.season_teams.color)) return teamPaletteEntry(match.season_teams.color)
   if (match.status === 'draft' || match.match_kind === 'friendly') return DEFAULT_MATCH_COLOR
   return paletteEntry(match.season_competitions?.color)
 }
@@ -65,6 +84,11 @@ export function matchLegendItems(matches: Match[]) {
   const items = new Map<string, { key: string; label: string; solid: string }>()
   for (const match of matches) {
     if (match.status === 'cancelled') continue
+    if (match.team_id && match.season_teams?.color && isSeasonTeamColor(match.season_teams.color)) {
+      const team = match.season_teams
+      items.set(`team:${team.id}`, { key: `team:${team.id}`, label: team.name, solid: teamPaletteEntry(team.color).solid })
+      continue
+    }
     if (match.status === 'draft' || match.match_kind === 'friendly') {
       items.set('default', { key: 'default', label: 'Amistosos y borradores', solid: DEFAULT_MATCH_COLOR.solid })
       continue

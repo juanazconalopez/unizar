@@ -28,7 +28,7 @@ describe('seasonCompetitionsService', () => {
     mocks.rpc.mockResolvedValueOnce({ data: 2, error: null })
     await expect(deleteSeasonCompetition('competition-1')).resolves.toBe(2)
 
-    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'create_season_competition', { checked_season_id: 'season-1', checked_name: 'Copa Aragón', checked_color: 'orange' })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'create_season_competition', { checked_season_id: 'season-1', checked_name: 'Copa Aragón', checked_color: 'orange', checked_restrict_cross_team: false })
     expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'update_season_competition', { checked_competition_id: 'competition-1', checked_name: 'Liga Catalana', checked_color: 'blue' })
     expect(mocks.rpc).toHaveBeenNthCalledWith(3, 'set_default_season_competition', { checked_competition_id: 'competition-1' })
     expect(mocks.rpc).toHaveBeenNthCalledWith(4, 'delete_season_competition', { checked_competition_id: 'competition-1' })

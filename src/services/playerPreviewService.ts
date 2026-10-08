@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fetchMatchAvailability } from './matchAvailabilityService'
 import type { Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask } from '../types'
 import type { SurveyClosure } from './surveysService'
 
@@ -37,22 +38,21 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
     seasonIds.length ? supabase.from('tasks').select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
     supabase.from('task_results').select('*').eq('player_id', playerId),
     seasonIds.length ? supabase.from('team_announcements').select('*, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
-    seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league), season_teams(id,name,is_mixed,is_default)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date') : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date') : Promise.resolve({ data: [], error: null }),
     seasonIds.length ? supabase.from('season_holidays').select('holiday_date').in('season_id', seasonIds) : Promise.resolve({ data: [], error: null }),
   ])
   for (const response of [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse]) if (response.error) throw response.error
   const matches = matchesResponse.data ?? []
   const matchIds = matches.map((match) => match.id)
-  const [availabilityResponse, lineupsResponse] = await Promise.all([
-    matchIds.length ? supabase.from('match_availability').select('*').in('match_id', matchIds).eq('player_id', playerId) : Promise.resolve({ data: [], error: null }),
+  const [availability, lineupsResponse] = await Promise.all([
+    fetchMatchAvailability(matchIds, playerId),
     matchIds.length ? supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order') : Promise.resolve({ data: [], error: null }),
   ])
-  if (availabilityResponse.error) throw availabilityResponse.error
   if (lineupsResponse.error) throw lineupsResponse.error
   return {
     player, seasons: seasonsResponse.data ?? [], memberships,
     profiles: profilesResponse.data ?? [], tasks: tasksResponse.data ?? [], results: resultsResponse.data ?? [],
-    announcements: announcementsResponse.data ?? [], matches, availability: availabilityResponse.data ?? [], lineups: lineupsResponse.data ?? [],
+    announcements: announcementsResponse.data ?? [], matches, availability, lineups: lineupsResponse.data ?? [],
     holidays: (holidaysResponse.data ?? []).map((holiday) => holiday.holiday_date),
   }
 }

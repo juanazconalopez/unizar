@@ -15,7 +15,7 @@ describe('SeasonCompetitionsDialog', () => {
     expect(screen.getByRole('radio', { name: 'Azul' })).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Crear competición' }))
 
-    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ id: 'season-1' }), { name: 'Copa Aragón', color: 'blue', competitionLevel: 'regional', isLeague: false })
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ id: 'season-1' }), { name: 'Copa Aragón', color: 'blue', competitionLevel: 'regional', isLeague: false, restrictCrossTeamCallups: false })
   })
 
   test('changes the default and warns with the affected match count before deletion', async () => {

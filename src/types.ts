@@ -30,7 +30,8 @@ export type SeasonPlayer = Omit<Tables<'season_players'>, 'season_team_id'> & {
   national_starts?: number
 }
 
-export type SeasonTeam = Tables<'season_teams'>
+// Los fixtures anteriores al color de equipo conservan el color de competición.
+export type SeasonTeam = Omit<Tables<'season_teams'>, 'color'> & { color?: string }
 export type SeasonTeamCoach = Tables<'season_team_coaches'>
 export type PlayerAbsence = Tables<'player_absences'>
 export type PlayerAbsencePrivateNote = Tables<'player_absence_private_notes'>
@@ -134,8 +135,10 @@ export type RugbyFormat = Enums<'rugby_format'>
 export type AvailabilityStatus = Enums<'availability_status'>
 export type LineupRole = Enums<'lineup_role'>
 export type SeasonCompetitionColor = 'purple' | 'blue' | 'orange' | 'red' | 'teal' | 'pink' | 'slate' | 'gold'
-export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color' | 'competition_level' | 'is_league'> & {
+export type SeasonTeamColor = SeasonCompetitionColor | 'green'
+export type SeasonCompetition = Omit<Tables<'season_competitions'>, 'color' | 'competition_level' | 'is_league' | 'restrict_cross_team_callups'> & {
   color: SeasonCompetitionColor
+  restrict_cross_team_callups?: boolean
   match_count?: number
   competition_level?: CompetitionLevel
   is_league?: boolean
@@ -152,8 +155,8 @@ export type Match = Omit<Tables<'matches'>, 'completed_at' | 'competition_id' | 
   opponent_score?: number | null
   report_events_reviewed?: boolean
   seasons: { name: string } | null
-  season_competitions?: { id: string; name: string; color: string; is_default: boolean; competition_level?: CompetitionLevel; is_league?: boolean } | null
-  season_teams?: { id: string; name: string; is_mixed: boolean; is_default: boolean } | null
+  season_competitions?: { id: string; name: string; color: string; is_default: boolean; competition_level?: CompetitionLevel; is_league?: boolean; restrict_cross_team_callups?: boolean } | null
+  season_teams?: { id: string; name: string; is_mixed: boolean; is_default: boolean; color?: string } | null
 }
 
 export type MatchAvailability = Tables<'match_availability'>

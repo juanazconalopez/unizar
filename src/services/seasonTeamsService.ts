@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { SeasonTeam, SeasonTeamCoach } from '../types'
+import type { SeasonTeam, SeasonTeamCoach, SeasonTeamColor } from '../types'
 import type { SeasonTeamCoachRole } from '../features/seasons/seasonTeamCoachRoles'
 
 export type SeasonTeamCoachChange = { coachId: string; assigned: boolean; role: SeasonTeamCoachRole }
@@ -8,6 +8,7 @@ export type SeasonTeamValues = {
   name: string
   isMixed: boolean
   isActive: boolean
+  color?: SeasonTeamColor
 }
 
 export async function fetchSeasonTeams(seasonIds: string[]): Promise<SeasonTeam[]> {
@@ -30,11 +31,12 @@ export async function fetchPublishedMatchCoachNames(matchId: string): Promise<st
   return (data ?? []).map((coach) => coach.display_name)
 }
 
-export async function createSeasonTeam(seasonId: string, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) {
+export async function createSeasonTeam(seasonId: string, values: Pick<SeasonTeamValues, 'name' | 'isMixed' | 'color'>) {
   const { error } = await supabase.rpc('create_season_team', {
     checked_season_id: seasonId,
     checked_name: values.name.trim(),
     checked_is_mixed: values.isMixed,
+    checked_color: values.color ?? 'purple',
   })
   if (error) throw error
 }
@@ -45,6 +47,7 @@ export async function updateSeasonTeam(team: SeasonTeam, values: SeasonTeamValue
     checked_name: values.name.trim(),
     checked_is_mixed: values.isMixed,
     checked_is_active: values.isActive,
+    checked_color: values.color ?? team.color ?? 'purple',
   })
   if (error) throw error
 }

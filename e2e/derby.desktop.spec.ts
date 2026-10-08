@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { checkSharedDerbyAvailability } from './derbySharedAvailability'
 
 test('owner reorders the real derby lineup by dragging a player', async ({ page }) => {
   await page.goto('/')
@@ -20,4 +21,8 @@ test('owner reorders the real derby lineup by dragging a player', async ({ page 
   await slots.nth(2).locator('.lineup-player-identity').dragTo(slots.nth(0))
   await expect(editor.getByRole('combobox', { name: 'Posición de Nora Martín' })).toHaveValue('3')
   await expect(editor.getByRole('combobox', { name: 'Posición de Aitana Ruiz' })).toHaveValue('1')
+})
+
+test('owner prepares and publishes B using responses recorded only on the A fixture', async ({ page }) => {
+  await checkSharedDerbyAvailability(page)
 })

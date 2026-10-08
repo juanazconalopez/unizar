@@ -53,7 +53,7 @@ export function SettingsView({ section: requestedSection, currentUserId, members
   onDeleteSeasonCompetition?: (competition: SeasonCompetition) => Promise<void>
   onSetDefaultSeasonCompetition?: (competition: SeasonCompetition) => Promise<void>
   onUpdateSeasonCompetition?: (competition: SeasonCompetition, values: SeasonCompetitionValues) => Promise<void>
-  onCreateSeasonTeam?: (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed'>) => Promise<void>
+  onCreateSeasonTeam?: (season: Season, values: Pick<SeasonTeamValues, 'name' | 'isMixed' | 'color'>) => Promise<void>
   onUpdateSeasonTeam?: (team: SeasonTeam, values: SeasonTeamValues) => Promise<void>
   onDeleteSeasonTeam?: (team: SeasonTeam) => Promise<void>
   onAssignSeasonPlayerTeam?: (season: Season, player: Profile, teamId: string) => Promise<void>

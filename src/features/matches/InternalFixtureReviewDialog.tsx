@@ -1,3 +1,7 @@
+import { crossTeamCallupRestriction } from '../../lib/crossTeamCallups'
+import type { CrossTeamCallupReference } from '../../lib/crossTeamCallups'
+import { useCrossTeamCallupReference } from '../../hooks/useCrossTeamCallupReference'
+import { CrossTeamCallupStatus } from './CrossTeamCallupStatus'
 import { useId, useState } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
@@ -5,7 +9,9 @@ import type { Match, MatchLineup, Profile } from '../../types'
 
 type LineupDraft = Omit<MatchLineup, 'match_id' | 'updated_at'>[]
 
-export function InternalFixtureReviewDialog({ matches, lineups, profiles, onClose, onEdit, onSave, onFinalize, onUnlock }: {
+export function InternalFixtureReviewDialog({ demo = false, demoReferences, matches, lineups, profiles, onClose, onEdit, onSave, onFinalize, onUnlock }: {
+  demo?: boolean
+  demoReferences?: Record<string, CrossTeamCallupReference>
   matches: [Match, Match]
   lineups: MatchLineup[]
   profiles: Profile[]
@@ -20,6 +26,10 @@ export function InternalFixtureReviewDialog({ matches, lineups, profiles, onClos
   const [error, setError] = useState('')
   const [confirmMissing, setConfirmMissing] = useState(false)
   const sides = matches.map((match) => ({ match, entries: lineups.filter((entry) => entry.match_id === match.id).sort((a, b) => a.slot_number - b.slot_number) }))
+  const firstCheck = useCrossTeamCallupReference(matches[0].id, matches[0].season_competitions?.restrict_cross_team_callups === true, demo, demoReferences?.[matches[0].id])
+  const secondCheck = useCrossTeamCallupReference(matches[1].id, matches[1].season_competitions?.restrict_cross_team_callups === true, demo, demoReferences?.[matches[1].id])
+  const checks = [firstCheck, secondCheck]
+  const publicationBlocked = checks.some((check, index) => check.loading || check.error || (check.reference && crossTeamCallupRestriction(check.reference, sides[index].entries.map((entry) => entry.player_id))))
   const overlap = sides[0].entries.filter((entry) => sides[1].entries.some((other) => other.player_id === entry.player_id))
   const published = matches.every((match) => match.lineup_published)
   const starters = matches[0].rugby_format === 'sevens' ? 7 : 15
@@ -38,7 +48,7 @@ export function InternalFixtureReviewDialog({ matches, lineups, profiles, onClos
   }
 
   function finalize() {
-    if (overlap.length) return
+    if (overlap.length || publicationBlocked) return
     if (sides.some((side) => side.entries.filter((entry) => entry.slot_number <= starters).length < starters) && !confirmMissing) {
       setConfirmMissing(true)
       return
@@ -49,9 +59,9 @@ export function InternalFixtureReviewDialog({ matches, lineups, profiles, onClos
   return <Modal className="lineup-dialog internal-fixture-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">PARTIDO ENTRE EQUIPOS DEL CDU</span><h2 id={titleId}>{matches[0].season_teams?.name ?? 'Equipo local'} vs {matches[1].season_teams?.name ?? 'Equipo visitante'}</h2><p>Dos propuestas, una convocatoria final por equipo.</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose} type="button">×</button></div>
     {overlap.length > 0 && <section className="internal-fixture-conflicts"><h3>{overlap.length} {overlap.length === 1 ? 'jugadora propuesta' : 'jugadoras propuestas'} en ambos equipos</h3><p>El owner debe decidir en qué convocatoria queda cada una antes de publicar.</p>{overlap.map((entry) => <div key={entry.player_id}><strong>{profiles.find((profile) => profile.id === entry.player_id)?.display_name ?? 'Jugadora'}</strong>{sides.map((side) => <button className="secondary-button compact" disabled={saving} key={side.match.id} onClick={() => resolve(entry.player_id, side.match)} type="button">Dejar en {side.match.season_teams?.name ?? 'este equipo'}</button>)}</div>)}</section>}
-    <div className="internal-fixture-sides">{sides.map(({ match, entries }) => <section key={match.id}><h3>{match.season_teams?.name ?? 'Equipo'} <small>{entries.length}/23</small></h3><p>{entries.filter((entry) => entry.slot_number <= starters).length}/{starters} titulares · {match.lineup_published ? 'Publicada' : 'Borrador'}</p><div>{entries.length ? entries.map((entry) => <div className="internal-fixture-player" key={entry.player_id}><b>{entry.slot_number}</b><span>{profiles.find((profile) => profile.id === entry.player_id)?.display_name ?? 'Jugadora'}</span></div>) : <span className="lineup-empty">Todavía no hay jugadoras propuestas.</span>}</div><button className="secondary-button" disabled={saving || published} onClick={() => onEdit(match)} type="button">Editar convocatoria de {match.season_teams?.name ?? 'este equipo'}</button></section>)}</div>
+    <div className="internal-fixture-sides">{sides.map(({ match, entries }, index) => <section key={match.id}>{checks[index].loading && <p className="form-hint">Comprobando el acta anterior…</p>}{checks[index].error && <p className="form-error" role="alert">No se puede publicar: {checks[index].error}</p>}{checks[index].reference && <CrossTeamCallupStatus reference={checks[index].reference} playerIds={entries.map((entry) => entry.player_id)} profiles={profiles} />}<h3>{match.season_teams?.name ?? 'Equipo'} <small>{entries.length}/23</small></h3><p>{entries.filter((entry) => entry.slot_number <= starters).length}/{starters} titulares · {match.lineup_published ? 'Publicada' : 'Borrador'}</p><div>{entries.length ? entries.map((entry) => <div className="internal-fixture-player" key={entry.player_id}><b>{entry.slot_number}</b><span>{profiles.find((profile) => profile.id === entry.player_id)?.display_name ?? 'Jugadora'}</span></div>) : <span className="lineup-empty">Todavía no hay jugadoras propuestas.</span>}</div><button className="secondary-button" disabled={saving || published} onClick={() => onEdit(match)} type="button">Editar convocatoria de {match.season_teams?.name ?? 'este equipo'}</button></section>)}</div>
     {confirmMissing && <p className="form-hint">Faltan titulares en una o ambas convocatorias. Pulsa de nuevo «Publicar ambas convocatorias» para confirmar.</p>}
     {error && <p className="form-error">{error}</p>}
-    <div className="form-actions">{published ? <button className="danger-button" disabled={saving} onClick={() => void run(() => onUnlock(matches[0]))} type="button">Desbloquear ambas convocatorias</button> : <button className="primary-button" disabled={saving || overlap.length > 0} onClick={finalize} type="button">Publicar ambas convocatorias</button>}</div>
+    <div className="form-actions">{published ? <button className="danger-button" disabled={saving} onClick={() => void run(() => onUnlock(matches[0]))} type="button">Desbloquear ambas convocatorias</button> : <button className="primary-button" disabled={saving || overlap.length > 0 || publicationBlocked} onClick={finalize} type="button">Publicar ambas convocatorias</button>}</div>
   </Modal>
 }
