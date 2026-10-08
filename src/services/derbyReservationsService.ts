@@ -1,0 +1,10 @@
+import { supabase } from '../lib/supabase'
+
+export async function fetchDerbyReservedPlayers(matchId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_derby_reserved_player_ids', { checked_match_id: matchId })
+  if (error) throw error
+  if (!Array.isArray(data) || data.some((id) => typeof id !== 'string')) {
+    throw new Error('No se han podido comprobar las reservas del otro equipo.')
+  }
+  return data
+}

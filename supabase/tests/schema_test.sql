@@ -1,5 +1,5 @@
 begin;
-select plan(462);
+select plan(470);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1115,6 +1115,16 @@ select ok(exists(select 1 from pg_trigger where tgname = 'match_callup_competiti
 select like(pg_get_functiondef('public.lock_match_callup_competition()'::regprocedure),'%order by id for update%','bloqueo ordenado durante escrituras de partidos');
 
 select like(pg_get_functiondef('public.cross_team_callup_reference_internal(uuid)'::regprocedure),'%lineup.match_id = previous.id and previous.lineup_published%','no se expone el borrador del otro equipo al consultar la restricción');
+
+-- 078: reservas del mismo derbi sin abrir el borrador del otro equipo.
+select has_function('public','get_derby_reserved_player_ids',array['uuid'],'reservas protegidas del derbi');
+select ok(not has_function_privilege('anon','public.get_derby_reserved_player_ids(uuid)','EXECUTE'),'anon no consulta reservas');
+select ok(has_function_privilege('authenticated','public.get_derby_reserved_player_ids(uuid)','EXECUTE'),'staff autorizado puede consultar reservas');
+select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%matches.lineup_edit%current_user_can_edit_match%','reservas validan permiso y equipo');
+select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%other.id <> target.id%other.internal_fixture_id = target.internal_fixture_id%','solo reserva la otra ficha del derbi');
+select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%other.season_id = target.season_id%other.match_date = target.match_date%','reservas respetan temporada y fecha');
+select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%array_agg(distinct lineup.player_id)%','devuelve solo identificadores únicos de titulares y suplentes');
+select unlike(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%lineup_published%','las propuestas guardadas también reservan antes de publicar');
 
 select * from finish();
 rollback;

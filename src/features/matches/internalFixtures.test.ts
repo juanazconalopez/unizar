@@ -1,7 +1,35 @@
 import { describe, expect, test } from 'vitest'
-import type { Match, MatchAvailability } from '../../types'
-import { fixtureAvailability, visibleFixtureMatches } from './internalFixtures'
+import type { Match, MatchAvailability, MatchLineup } from '../../types'
+import { fixtureAvailability, reservedLineupPlayerIds, visibleFixtureMatches } from './internalFixtures'
 import { makeMatch } from '../../test/fixtures'
+
+describe('reservedLineupPlayerIds', () => {
+  const home = makeMatch({ id: 'home', internal_fixture_id: 'derby' })
+  const away = makeMatch({ id: 'away', internal_fixture_id: 'derby', is_home: false })
+  const entry = (matchId: string, playerId: string, slot = 1): MatchLineup => ({
+    match_id: matchId, player_id: playerId, slot_number: slot, sort_order: slot,
+    role: slot <= 15 ? 'starter' : 'substitute', position: null, updated_at: home.updated_at,
+  })
+
+  test('reserva titulares y suplentes de un borrador guardado en el otro equipo, en ambos sentidos', () => {
+    const lineups = [entry(home.id, 'home-starter'), entry(home.id, 'home-sub', 16), entry(away.id, 'away-starter')]
+    expect(reservedLineupPlayerIds(away, [home, away], lineups)).toEqual(['home-starter', 'home-sub'])
+    expect(reservedLineupPlayerIds(home, [home, away], lineups)).toEqual(['away-starter'])
+  })
+
+  test('libera a una jugadora al retirarla del otro equipo y guardar', () => {
+    const lineups = [entry(home.id, 'player')]
+    expect(reservedLineupPlayerIds(away, [home, away], lineups)).toEqual(['player'])
+    expect(reservedLineupPlayerIds(away, [home, away], [])).toEqual([])
+  })
+
+  test('conserva reservas de otros partidos del día sin duplicados e ignora otras fechas', () => {
+    const other = makeMatch({ id: 'other' })
+    const tomorrow = makeMatch({ id: 'tomorrow', match_date: '2026-12-31' })
+    const lineups = [entry(home.id, 'player'), entry(other.id, 'player'), entry(other.id, 'other-player'), entry(tomorrow.id, 'tomorrow-player')]
+    expect(reservedLineupPlayerIds(away, [home, away, other, tomorrow], lineups)).toEqual(['player', 'other-player'])
+  })
+})
 
 describe('visibleFixtureMatches', () => {
   test('shows one card for a linked derby and keeps an away side visible to its coach', () => {

@@ -1,4 +1,10 @@
-import type { Match, MatchAvailability } from '../../types'
+import type { Match, MatchAvailability, MatchLineup } from '../../types'
+
+/** Las propuestas guardadas del otro equipo del derbi también reservan jugadoras. */
+export function reservedLineupPlayerIds(match: Match, matches: Match[], lineups: MatchLineup[]): string[] {
+  const otherMatchIds = new Set(matches.filter((item) => item.id !== match.id && item.match_date === match.match_date).map((item) => item.id))
+  return [...new Set(lineups.filter((entry) => otherMatchIds.has(entry.match_id)).map((entry) => entry.player_id))]
+}
 
 /** Disponibilidad única por jugadora para ambas fichas, sin duplicar datos guardados. */
 export function fixtureAvailability(match: Match, matches: Match[], availability: MatchAvailability[]): MatchAvailability[] {

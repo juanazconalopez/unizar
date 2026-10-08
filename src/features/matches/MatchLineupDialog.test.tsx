@@ -11,6 +11,27 @@ function match(overrides: Partial<Match> = {}): Match {
 }
 
 describe('MatchLineupDialog', () => {
+  test('excluye reservas del otro equipo sin borrar coincidencias previas y las libera al actualizar', () => {
+    const player = makeProfile()
+    const other = makeProfile({ id: 'other', display_name: 'Beatriz López' })
+    const props = {
+      demo: true, match: match({ internal_fixture_id: 'derby' }),
+      availability: [player, other].map((item) => ({ match_id: 'match-1', player_id: item.id, status: 'available' as const, comment: null, updated_at: item.created_at })),
+      entries: [{ match_id: 'match-1', player_id: other.id, slot_number: 1, sort_order: 1, role: 'starter' as const, position: null, updated_at: other.created_at }],
+      memberships: [makeMembership(), makeMembership({ player_id: other.id })], profiles: [player, other], onClose: vi.fn(), onSave: vi.fn(),
+    }
+    const view = render(<MatchLineupDialog {...props} reservedPlayerIds={[player.id, other.id]} />)
+    const pool = screen.getByRole('dialog').querySelector('.available-player-pool')!
+    expect(pool).not.toHaveTextContent(player.display_name)
+    expect(screen.getByRole('button', { name: 'Quitar a Beatriz López' })).toBeInTheDocument()
+    fireEvent.drop(screen.getByRole('dialog').querySelectorAll('.lineup-slot')[1], { dataTransfer: { getData: () => player.id } })
+    expect(screen.queryByRole('combobox', { name: 'Posición de Ana Martín' })).not.toBeInTheDocument()
+    view.rerender(<MatchLineupDialog {...props} reservedPlayerIds={[]} />)
+    expect(pool).toHaveTextContent(player.display_name)
+    fireEvent.click(within(pool as HTMLElement).getByRole('button', { name: 'Añadir' }))
+    expect(screen.getByRole('combobox', { name: 'Posición de Ana Martín' })).toHaveValue('2')
+  })
+
   test('a coach edits positions through a public profile without losing the lineup draft', async () => {
     const user = userEvent.setup()
     const player = makeProfile({ playing_positions: ['prop'], primary_position: 'prop' })

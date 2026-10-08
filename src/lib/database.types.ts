@@ -1577,6 +1577,7 @@ export type Database = {
         Returns: Json
       }
       normalize_display_name: { Args: { value: string }; Returns: string }
+      get_derby_reserved_player_ids: { Args: { checked_match_id: string }; Returns: string[] }
       get_cross_team_callup_reference: { Args: { checked_match_id: string }; Returns: Json }
       cross_team_callup_reference_internal: { Args: { checked_match_id: string }; Returns: Json }
       get_match_availability: {

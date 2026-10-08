@@ -1,5 +1,6 @@
 import { crossTeamCallupRestriction } from '../../lib/crossTeamCallups'
 import type { CrossTeamCallupReference } from '../../lib/crossTeamCallups'
+import { useDerbyReservedPlayers } from '../../hooks/useDerbyReservedPlayers'
 import { useCrossTeamCallupReference } from '../../hooks/useCrossTeamCallupReference'
 import { CrossTeamCallupStatus } from './CrossTeamCallupStatus'
 import { groupPlayersByPosition } from '../../lib/playerPositions'
@@ -74,9 +75,11 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
     demo, demoCallupReference)
   const callupRestriction = callupCheck.reference ? crossTeamCallupRestriction(callupCheck.reference, selectedIds) : null
   const publicationBlocked = callupCheck.loading || Boolean(callupCheck.error || callupRestriction)
-  const reservedIds = new Set(reservedPlayerIds)
+  const derbyReservations = useDerbyReservedPlayers(match.id, editable && Boolean(match.internal_fixture_id) && !demo)
+  const reservationsBlocked = derbyReservations.loading || Boolean(derbyReservations.error)
+  const reservedIds = new Set([...reservedPlayerIds, ...derbyReservations.playerIds])
   const selectable = orderedLineupCandidates(eligible, memberships, seasonTeams, match.season_id, match.team_id)
-    .filter((player) => availableIds.has(player.id) && !selectedIds.has(player.id) && !reservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2 || (match.match_kind === 'friendly' && player.teamName === 'Sin equipo')))
+    .filter((player) => !reservationsBlocked && availableIds.has(player.id) && !selectedIds.has(player.id) && !reservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2 || (match.match_kind === 'friendly' && player.teamName === 'Sin equipo')))
   const selectableTeams = [...new Set(selectable.map((player) => player.teamName))].map((name) => ({ name, players: selectable.filter((player) => player.teamName === name) }))
   const containsBorrowedPlayer = !canBorrowFromOtherTeams && Object.values(slots).some((playerId) => {
     const membership = memberships.find((item) => item.season_id === match.season_id && item.player_id === playerId && membershipCoversDate(item, match.match_date))
@@ -94,6 +97,7 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
     setSlots((current) => {
       const sourceKey = Object.keys(current).find((key) => current[Number(key)] === playerId)
       const source = sourceKey ? Number(sourceKey) : null
+      if (source === null && !selectable.some((player) => player.id === playerId)) return current
       if (source === slot || current[slot]) return current
       const next = { ...current }
       if (source !== null) delete next[source]
@@ -110,6 +114,7 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
 
   async function save(confirmed = false) {
     if (!onSave) return
+    if (reservationsBlocked) { setError('Espera a que se comprueben las reservas del derbi.'); return }
     const blocked = Object.values(slots).find((playerId) => matchLicenseRestriction(match, memberships, playerId))
     if (blocked) { setError(matchLicenseRestriction(match, memberships, blocked) ?? 'Revisa las fichas de la convocatoria.'); return }
     if (published && publicationBlocked) { setError(callupCheck.error ?? callupRestriction ?? 'Espera a que se compruebe el acta anterior.'); return }
@@ -156,11 +161,13 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
 
   return <Modal className="lineup-dialog" disabled={saving} labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">{editable ? 'GESTIONAR ALINEACIÓN' : 'CONVOCATORIA'}</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{matchLogistics(match)} · {Object.keys(slots).length}/{limit} jugadoras</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
+    {derbyReservations.loading && <p className="form-hint">Comprobando las jugadoras reservadas en el otro equipo…</p>}
+    {derbyReservations.error && <p className="form-error" role="alert">No se pueden comprobar las reservas del derbi: {derbyReservations.error} Vuelve a abrir la convocatoria para intentarlo de nuevo.</p>}
     {callupCheck.loading && <p className="form-hint">Comprobando el acta anterior del otro equipo…</p>}
     {callupCheck.error && <p className="form-error" role="alert">No se puede publicar: {callupCheck.error} Puedes guardar el borrador.</p>}
     {callupCheck.reference && <CrossTeamCallupStatus reference={callupCheck.reference} playerIds={selectedIds} profiles={profiles} />}
     {editable ? <div className="lineup-board">
-      <section className="available-player-pool"><h3>Disponibles</h3><p>{canBorrowFromOtherTeams ? 'Equipo del partido, mixto y después el resto de equipos.' : 'Equipo del partido y mixto. El owner gestiona los préstamos.'}</p><div>{selectableTeams.map((team) => <Fragment key={team.name}><h4 className={`lineup-team-group priority-${team.players[0].priority}`}>{team.name}{team.players[0].priority === 0 ? ' · Prioridad' : team.players[0].priority === 1 ? ' · Mixto' : ''}</h4>{groupPlayersByPosition(team.players).filter((group) => group.players.length > 0).map((group) => <Fragment key={group.value}><h5 className="playing-position-heading">{group.label}{' '}<small>{group.players.length}</small></h5>{group.players.map((player) => <article draggable key={player.id} onDragStart={(event) => event.dataTransfer.setData('text/player-id', player.id)}><Avatar name={player.display_name} /><span>{onSavePositions ? <button aria-label={`Datos de perfil de ${player.display_name}`} className="player-profile-link" onClick={() => setProfilePlayerId(player.id)} type="button">{player.display_name}</button> : <strong>{player.display_name}</strong>}<small>{minutesByPlayer.get(player.id) ?? 0} min esta temporada</small></span><button className="secondary-button compact" onClick={() => { const empty = Array.from({ length: limit }, (_, index) => index + 1).find((slot) => !slots[slot]); if (empty) assign(player.id, empty) }} type="button">Añadir</button></article>)}</Fragment>)}</Fragment>)}{!selectable.length && <span className="lineup-empty">No quedan jugadoras disponibles sin asignar.</span>}</div></section>
+      <section className="available-player-pool"><h3>Disponibles</h3><p>{canBorrowFromOtherTeams ? 'Equipo del partido, mixto y después el resto de equipos.' : 'Equipo del partido y mixto. El owner gestiona los préstamos.'}</p><div>{selectableTeams.map((team) => <Fragment key={team.name}><h4 className={`lineup-team-group priority-${team.players[0].priority}`}>{team.name}{team.players[0].priority === 0 ? ' · Prioridad' : team.players[0].priority === 1 ? ' · Mixto' : ''}</h4>{groupPlayersByPosition(team.players).filter((group) => group.players.length > 0).map((group) => <Fragment key={group.value}><h5 className="playing-position-heading">{group.label}{' '}<small>{group.players.length}</small></h5>{group.players.map((player) => <article draggable key={player.id} onDragStart={(event) => event.dataTransfer.setData('text/player-id', player.id)}><Avatar name={player.display_name} /><span>{onSavePositions ? <button aria-label={`Datos de perfil de ${player.display_name}`} className="player-profile-link" onClick={() => setProfilePlayerId(player.id)} type="button">{player.display_name}</button> : <strong>{player.display_name}</strong>}<small>{minutesByPlayer.get(player.id) ?? 0} min esta temporada</small></span><button className="secondary-button compact" onClick={() => { const empty = Array.from({ length: limit }, (_, index) => index + 1).find((slot) => !slots[slot]); if (empty) assign(player.id, empty) }} type="button">Añadir</button></article>)}</Fragment>)}</Fragment>)}{!reservationsBlocked && !selectable.length && <span className="lineup-empty">No quedan jugadoras disponibles sin asignar.</span>}</div></section>
       <section className="numbered-lineup"><h3>Alineación</h3><PlayerPositionSummary players={[...selectedIds].map((id) => profiles.find((player) => player.id === id) ?? { primary_position: null })} /><p className="lineup-reorder-help">Arrastra cada jugadora a un dorsal libre. Para cambiarlo después, elige otro dorsal libre; si está ocupado, quita primero a su jugadora.</p><div className="lineup-section-label">Titulares</div>{Array.from({ length: limit }, (_, index) => index + 1).map((slot) => {
         const playerId = slots[slot]
         const player = eligible.find((item) => item.id === playerId) ?? profiles.find((item) => item.id === playerId)
@@ -175,7 +182,7 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
         </div>
       })}</section>
     </div> : <><PublishedLineup entries={entries} profiles={profiles} starters={starters} onOpenPlayer={onSavePositions ? setProfilePlayerId : undefined} />{(locked && onUnlock) || canExport || (canGraphicExport && locked) ? <div className="lineup-export-actions">{locked && onUnlock && <button className="danger-button" onClick={() => setConfirmUnlock(true)} type="button">Desbloquear para editar</button>}{canGraphicExport && locked && <button className="secondary-button" onClick={() => setGraphicOpen(true)} type="button">Vista gráfica</button>}{canExport && <><button className="secondary-button" onClick={() => void copyLineup()} type="button"><Icon name="copy" size={17} />{copied ? 'Convocatoria copiada' : 'Copiar convocatoria'}</button><button className="primary-button" onClick={() => downloadText(`convocatoria-${match.match_date}-${match.opponent}.xml`, lineupXml(match, entries, profiles), 'application/xml')} type="button"><Icon name="download" size={17} />Descargar XML</button></>}</div> : null}{error && <p className="form-error">{error}</p>}</>}
-    {editable && <>{containsBorrowedPlayer && <p className="form-hint">Esta convocatoria incluye una jugadora prestada de otro equipo. El owner debe guardar los cambios mientras permanezca asignada.</p>}{canPublish && <label className="publish-lineup"><input checked={published} disabled={locked} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{locked ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>}{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving || containsBorrowedPlayer || (published && publicationBlocked)} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
+    {editable && <>{containsBorrowedPlayer && <p className="form-hint">Esta convocatoria incluye una jugadora prestada de otro equipo. El owner debe guardar los cambios mientras permanezca asignada.</p>}{canPublish && <label className="publish-lineup"><input checked={published} disabled={locked} onChange={(event) => setPublished(event.target.checked)} type="checkbox" />{locked ? 'Convocatoria publicada' : 'Publicar convocatoria para las jugadoras'}</label>}{error && <p className="form-error">{error}</p>}<div className="form-actions"><button className="secondary-button" onClick={onClose}>Cancelar</button><button className="primary-button" disabled={saving || reservationsBlocked || containsBorrowedPlayer || (published && publicationBlocked)} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar alineación'}</button></div></>}
     {confirmMissing && <MissingStartersDialog missing={Array.from({ length: starters }, (_, index) => index + 1).filter((slot) => !slots[slot])} onCancel={() => setConfirmMissing(false)} onConfirm={() => { setConfirmMissing(false); void save(true) }} />}
     {confirmUnlock && <UnlockLineupDialog onCancel={() => setConfirmUnlock(false)} onConfirm={() => void unlock()} />}
   </Modal>
