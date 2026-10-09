@@ -1,5 +1,5 @@
 begin;
-select plan(470);
+select plan(500);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -360,7 +360,8 @@ select like(
 );
 select ok(to_regprocedure('public.save_match_lineup(uuid,jsonb,boolean)') is not null, 'atomic lineup save function exists');
 select is(
-  (select count(*)::integer from pg_constraint where confrelid = 'public.matches'::regclass and confdeltype = 'c'),
+  (select count(*)::integer from pg_constraint where confrelid = 'public.matches'::regclass and confdeltype = 'c'
+    and conrelid in ('public.match_availability'::regclass, 'public.match_lineup'::regclass)),
   2,
   'deleting a match cascades to availability and lineup'
 );
@@ -885,8 +886,8 @@ select like(pg_get_functiondef('public.save_season_team_coaches(uuid,jsonb)'::re
 select ok(not has_function_privilege('anon', 'public.save_season_team_coaches(uuid,jsonb)', 'EXECUTE'), 'anonymous users cannot assign team coaches');
 select ok(has_function_privilege('authenticated', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'authenticated owner sessions can invoke player team assignment');
 select ok(not has_function_privilege('anon', 'public.assign_season_player_team(uuid,uuid,uuid)', 'EXECUTE'), 'anonymous users cannot invoke player team assignment');
-select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%other_match.match_date = checked_date%', 'lineup saving prevents duplicate same-day reservations');
-select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%for update%', 'lineup reservation validation locks the day atomically');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%match_participation_window(other_match.match_date) = public.match_participation_window(checked_date)%', 'guardar impide reservas duplicadas el fin de semana y el mismo día');
+select like(pg_get_functiondef('public.save_match_lineup(uuid,jsonb,boolean)'::regprocedure), '%lock_match_participation_window(checked_date)%for update%', 'guardar bloquea la ventana antes de la ficha');
 select like(pg_get_functiondef('public.assign_active_season_on_player_authorization()'::regprocedure), '%team.is_default%', 'newly approved players join the default season team');
 
 select has_table('public', 'player_absences', 'player absences are persisted');
@@ -1023,7 +1024,7 @@ select has_trigger('public','match_lineup','match_lineup_license_guard','propues
 select has_trigger('public','matches','matches_published_license_guard','publicar un derbi revalida las dos convocatorias');
 select has_trigger('public','season_players','season_players_license_guard','no asignar equipo sin ficha deportiva');
 select like(pg_get_functiondef('public.get_player_season_memberships(uuid)'::regprocedure),'%auth.uid%current_user_is_owner%current_user_can_view_team_data%','se limita la consulta de fichas al propio perfil o staff autorizado');
-select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%player_license_allows_availability%','disponibilidad no penaliza partidos para los que no hay ficha');
+select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),'%player_license_allows_availability%','disponibilidad no penaliza partidos para los que no hay ficha');
 select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),'%player_license_allows_availability%','el resumen personal respeta las fichas');
 select ok((select owner_only and not configurable from public.permission_definitions where key = 'seasons.licenses'),'gestión de fichas exclusiva del owner');
 
@@ -1125,6 +1126,58 @@ select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::reg
 select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%other.season_id = target.season_id%other.match_date = target.match_date%','reservas respetan temporada y fecha');
 select like(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%array_agg(distinct lineup.player_id)%','devuelve solo identificadores únicos de titulares y suplentes');
 select unlike(pg_get_functiondef('public.get_derby_reserved_player_ids(uuid)'::regprocedure),'%lineup_published%','las propuestas guardadas también reservan antes de publicar');
+
+-- 079/080: una oportunidad y un detalle, con el mismo criterio en ambos informes.
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),
+  '%player_availability_opportunities(checked_season_id, p.id)%as eligible_matches%', 'el informe cuenta oportunidades reales por jugadora');
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),
+  '%player_availability_opportunities(checked_season_id, p.id)%availability_status is not null%as availability_responded%', 'una respuesta por oportunidad');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),
+  '%availability_totals as (%count(*)%as eligible_matches%', 'el resumen personal cuenta oportunidades únicas');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),
+  '%availability_totals as (%availability_status is not null%as availability_responded%', 'los estados personales no duplican oportunidades');
+select like(pg_get_functiondef('public.get_player_season_summary(uuid,uuid)'::regprocedure),
+  '%fixture_details as (%player_availability_opportunities%opportunity.match_id = md.id%from fixture_details md%', 'el detalle muestra el mismo partido de referencia que el cómputo');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.match_availability_coach_changes'::regclass
+  and confrelid = 'public.matches'::regclass and confdeltype = 'c'), 'borrar un partido elimina también los cambios de disponibilidad');
+select ok(exists (select 1 from pg_constraint where conrelid = 'public.match_events'::regclass
+  and confrelid = 'public.matches'::regclass and confdeltype = 'c'), 'borrar un partido elimina también los eventos de los que se derivan sus minutos');
+
+
+-- 080: fin de semana, préstamos, permisos mínimos y protección ante escrituras directas.
+select is(public.match_participation_window(date '2026-10-16'), date '2026-10-16', 'viernes abre la ventana');
+select is(public.match_participation_window(date '2026-10-17'), date '2026-10-16', 'sábado comparte viernes');
+select is(public.match_participation_window(date '2026-10-18'), date '2026-10-16', 'domingo comparte viernes');
+select is(public.match_participation_window(date '2026-10-19'), date '2026-10-19', 'lunes no se une al fin de semana');
+select is(public.match_participation_window(date '2026-11-01'), date '2026-10-30', 'el fin de semana cruza de mes');
+select is(public.match_participation_window(date '2027-01-03'), date '2027-01-01', 'domingo de otra temporada conserva su viernes');
+select has_function('public','get_match_lineup_reservations',array['uuid'],'RPC protegida de reservas por ventana');
+select ok(not has_function_privilege('anon','public.get_match_lineup_reservations(uuid)','EXECUTE'),'anon no consulta reservas');
+select ok(has_function_privilege('authenticated','public.get_match_lineup_reservations(uuid)','EXECUTE'),'staff autorizado consulta reservas');
+select like(pg_get_functiondef('public.get_match_lineup_reservations(uuid)'::regprocedure),
+  '%matches.lineup_edit%current_user_can_edit_match%', 'la RPC comprueba permiso y equipo');
+select like(pg_get_functiondef('public.get_match_lineup_reservations(uuid)'::regprocedure),
+  '%other.id <> target.id%other.status <>%match_participation_window%', 'reservas excluyen cancelados y cubren toda la ventana incluso al cambiar de temporada');
+select unlike(pg_get_functiondef('public.get_match_lineup_reservations(uuid)'::regprocedure),
+  '%slot_number%', 'no expone dorsales ni el borrador completo');
+select ok(not has_function_privilege('authenticated','public.player_availability_opportunities(uuid,uuid)','EXECUTE'),'el helper de respuestas es privado');
+select ok(not has_function_privilege('authenticated','public.match_participation_player_ids(uuid)','EXECUTE'),'el helper de convocadas es privado');
+select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),
+  '%distinct on (public.match_participation_window(match.match_date))%', 'una oportunidad por ventana');
+select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),
+  '%membership.active_from%membership.active_until%membership.season_team_id = match.team_id%team.is_mixed%lineup.player_id is not null%', 'equipo histórico, mixto y préstamo guardado');
+select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),
+  '%(lineup.player_id is not null) desc%membership.season_team_id = match.team_id%', 'la convocatoria guardada prioriza el préstamo');
+select like(pg_get_functiondef('public.match_participation_player_ids(uuid)'::regprocedure),
+  '%match_lineup%union%player_availability_opportunities%', 'suplentes automáticas de amistosos no duplican oportunidades');
+select like(pg_get_functiondef('public.lock_match_participation_window(date)'::regprocedure),
+  '%pg_advisory_xact_lock%', 'los guardados simultáneos se serializan');
+select has_trigger('public','match_lineup','match_lineup_participation_guard','protección de escrituras directas de convocatoria');
+select has_trigger('public','matches','matches_calendar_participation_guard','protección al publicar, restaurar o reprogramar');
+select like(pg_get_functiondef('public.guard_match_calendar_participation()'::regprocedure),
+  '%new.match_date,new.season_id,new.status,new.lineup_published%lock_match_participation_window%', 'el cambio de fecha o estado vuelve a comprobar las reservas');
+select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure),
+  '%lock_match_participation_window%match_participation_window(other_match.match_date)%', 'el derbi se publica respetando reservas de todo el fin de semana');
 
 select * from finish();
 rollback;

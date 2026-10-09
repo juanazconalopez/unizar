@@ -31,7 +31,7 @@ import { MatchDetailDialog } from './MatchDetailDialog'
 import { MatchForm } from './MatchForm'
 import { MatchLineupDialog } from './MatchLineupDialog'
 import { InternalFixtureReviewDialog } from './InternalFixtureReviewDialog'
-import { reservedLineupPlayerIds, visibleFixtureMatches } from './internalFixtures'
+import { lineupReservations, visibleFixtureMatches } from './internalFixtures'
 import { MatchListView } from './MatchListView'
 import { SeasonCallupReportView } from './SeasonCallupReportView'
 
@@ -281,7 +281,7 @@ export function MatchesView({
           memberships={memberships}
           profiles={profiles}
           seasonTeams={seasonTeams}
-          reservedPlayerIds={reservedLineupPlayerIds(lineupMatch.match, matches, lineups)}
+          reservations={lineupReservations(lineupMatch.match, matches, lineups)}
           onClose={() => setLineupMatch(null)}
           onUnlock={lineupMatch.editable && canUnlockLineup && onUnlockLineup && (!lineupMatch.match.internal_fixture_id || isOwner) ? async () => {
             await onUnlockLineup(lineupMatch.match)

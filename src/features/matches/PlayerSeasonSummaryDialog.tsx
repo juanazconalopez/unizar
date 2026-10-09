@@ -58,6 +58,7 @@ function PlayerSeasonSummaryContent({ summary }: { summary: PlayerSeasonSummary 
     </div>
     <section className="season-availability-detail">
       <h3>Disponibilidad</h3>
+      <p className="form-hint">Una oportunidad de su equipo o préstamo por fin de semana (viernes a domingo); entre semana, por día. Las respuestas se conservan por partido.</p>
       <div><AvailabilityItem count={summary.availability.available} label="Disponible" tone="available" /><AvailabilityItem count={summary.availability.doubt} label="En duda" tone="doubt" /><AvailabilityItem count={summary.availability.unavailable} label="No disponible" tone="unavailable" /><AvailabilityItem count={summary.availability.unanswered} label="Sin responder" tone="unanswered" /></div>
     </section>
     <section className="season-match-history">

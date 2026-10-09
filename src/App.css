@@ -2574,6 +2574,15 @@ legend {
   cursor: grabbing;
 }
 
+.available-player-pool article.lineup-player-reserved {
+  cursor: default;
+  background: #f1f3f2;
+}
+
+.available-player-pool article.lineup-player-reserved small {
+  color: var(--ink);
+}
+
 .available-player-pool .avatar,
 .lineup-slot .avatar {
   width: 31px;

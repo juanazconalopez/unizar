@@ -38,7 +38,7 @@ import { MatchAvailabilityDialog } from '../matches/MatchAvailabilityDialog'
 import { MatchCard } from '../matches/MatchCard'
 import { MatchDetailDialog } from '../matches/MatchDetailDialog'
 import { InternalFixtureReviewDialog } from '../matches/InternalFixtureReviewDialog'
-import { reservedLineupPlayerIds, visibleFixtureMatches } from '../matches/internalFixtures'
+import { lineupReservations, visibleFixtureMatches } from '../matches/internalFixtures'
 import { MatchForm } from '../matches/MatchForm'
 import { MatchLineupDialog } from '../matches/MatchLineupDialog'
 import { SeasonCallupReportView } from '../matches/SeasonCallupReportView'
@@ -377,7 +377,7 @@ export function CalendarView(props: CalendarViewProps) {
       memberships={props.memberships}
       profiles={props.profiles}
       seasonTeams={props.seasonTeams}
-      reservedPlayerIds={reservedLineupPlayerIds(lineupMatch.match, props.matches, props.lineups)}
+      reservations={lineupReservations(lineupMatch.match, props.matches, props.lineups)}
       onClose={() => setLineupMatch(null)}
       onUnlock={access.lineupUnlock && (!lineupMatch.match.internal_fixture_id || props.isOwner) ? async () => { await props.onUnlockLineup(lineupMatch.match); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`) } : undefined}
       onSave={access.lineupEdit ? async (entries, published) => { await props.onSaveLineup(lineupMatch.match, entries, published); await props.onLoadMatchMonth(`${lineupMatch.match.match_date.slice(0, 7)}-01`); setLineupMatch(null) } : undefined}

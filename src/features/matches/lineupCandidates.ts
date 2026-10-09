@@ -1,12 +1,13 @@
 import type { Profile, SeasonPlayer, SeasonTeam } from '../../types'
+import { membershipCoversDate } from '../../lib/selectors'
 
 export type LineupCandidate = Profile & { teamName: string; priority: 0 | 1 | 2 }
 
 /** Orden operativo: equipo del partido, mixto y el resto agrupado por equipo. */
-export function orderedLineupCandidates(players: Profile[], memberships: SeasonPlayer[], teams: SeasonTeam[], seasonId: string, teamId: string | null | undefined): LineupCandidate[] {
+export function orderedLineupCandidates(players: Profile[], memberships: SeasonPlayer[], teams: SeasonTeam[], seasonId: string, teamId: string | null | undefined, date?: string): LineupCandidate[] {
   const teamsById = new Map(teams.filter((team) => team.season_id === seasonId).map((team) => [team.id, team]))
   return players.map((player) => {
-    const membership = memberships.find((item) => item.season_id === seasonId && item.player_id === player.id && !item.active_until)
+    const membership = memberships.find((item) => item.season_id === seasonId && item.player_id === player.id && (date ? membershipCoversDate(item, date) : !item.active_until))
     const team = membership?.season_team_id ? teamsById.get(membership.season_team_id) : undefined
     const priority: 0 | 1 | 2 = team?.id === teamId ? 0 : team?.is_mixed ? 1 : 2
     return { ...player, teamName: team?.name ?? 'Sin equipo', priority }

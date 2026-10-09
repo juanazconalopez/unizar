@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import type { Match, MatchAvailability, MatchLineup } from '../../types'
-import { fixtureAvailability, reservedLineupPlayerIds, visibleFixtureMatches } from './internalFixtures'
+import { fixtureAvailability, lineupReservations, reservedLineupPlayerIds, visibleFixtureMatches } from './internalFixtures'
 import { makeMatch } from '../../test/fixtures'
 
 describe('reservedLineupPlayerIds', () => {
@@ -28,6 +28,20 @@ describe('reservedLineupPlayerIds', () => {
     const tomorrow = makeMatch({ id: 'tomorrow', match_date: '2026-12-31' })
     const lineups = [entry(home.id, 'player'), entry(other.id, 'player'), entry(other.id, 'other-player'), entry(tomorrow.id, 'tomorrow-player')]
     expect(reservedLineupPlayerIds(away, [home, away, other, tomorrow], lineups)).toEqual(['player', 'other-player'])
+  })
+
+  test('reserva sábado/domingo, muestra la referencia externa y libera cancelados o borrados', () => {
+    const saturday = { ...home, match_date: '2026-10-17' }
+    const sunday = makeMatch({ id: 'external', match_date: '2026-10-18', team_id: 'b', season_teams: { id: 'b', name: 'Unizar B', is_mixed: false, is_default: false } })
+    const next = makeMatch({ id: 'next', match_date: '2026-10-24' })
+    const cancelled = makeMatch({ id: 'cancelled', match_date: sunday.match_date, status: 'cancelled' })
+    const otherSeason = { ...sunday, id: 'other-season', season_id: 'other' }
+    const entries = [entry(sunday.id, 'reserved', 16), entry(next.id, 'next'), entry(cancelled.id, 'cancelled'), entry(otherSeason.id, 'other')]
+    expect(lineupReservations(saturday, [saturday, sunday, next, cancelled, otherSeason], entries)).toEqual([
+      { player_id: 'reserved', match_id: sunday.id, team_name: 'Unizar B', match_date: sunday.match_date, is_derby: false },
+      { player_id: 'other', match_id: otherSeason.id, team_name: 'Unizar B', match_date: sunday.match_date, is_derby: false },
+    ])
+    expect(reservedLineupPlayerIds(saturday, [saturday, next, cancelled], entries)).toEqual([])
   })
 })
 

@@ -10,7 +10,7 @@ const match = (overrides: Partial<Match> = {}): Match => ({
   id: 'match-1', season_id: 'season-1', competition_id: 'competition-1', opponent: 'Rival Rugby', match_date: addDays(todayIso(), 7), kickoff_time: '12:00:00', venue: 'Campo central', callup_time: null, callup_venue: null, is_home: true, notes: 'Llegar con antelación.', status: 'published', match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), seasons: { name: 'Temporada 2026' }, season_competitions: { id: 'competition-1', name: 'Liga Aragonesa', color: 'purple', is_default: true }, ...overrides,
 })
 
-const common = { seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', canManage: false, canViewAvailability: false, isPlayer: true, onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
+const common = { demo: true, seasons: [makeSeason()], memberships: [makeMembership()], profiles: [makeProfile()], lineups: [], availability: [], matches: [match()], userId: 'player-1', canManage: false, canViewAvailability: false, isPlayer: true, onDelete: vi.fn(), onSaveLineup: vi.fn(), onSaveMatch: vi.fn() }
 
 describe('MatchesView', () => {
   test('always asks for availability before Wednesday of the match week', () => {

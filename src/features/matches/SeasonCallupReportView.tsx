@@ -89,7 +89,7 @@ export function SeasonCallupReportView({ season, onLoad, onLoadPlayer }: {
         </table>
         {!report.players.length && <EmptyState title="Sin participantes" text="Todavía no hay jugadoras inscritas en esta temporada." />}
       </div>
-      <p className="callup-report-note">La asistencia se calcula sobre los entrenamientos realizados durante el periodo de inscripción de cada jugadora.</p>
+      <p className="callup-report-note">Disponibilidad: respuestas sobre las oportunidades de su equipo o préstamo, una por fin de semana (viernes a domingo) y por día entre semana. «No disponible» y «En duda» también cuentan como respuesta. La asistencia se calcula sobre los entrenamientos realizados durante su periodo de inscripción.</p>
       {selectedPlayerId && onLoadPlayer && <PlayerSeasonSummaryDialog key={selectedPlayerId} onClose={() => setSelectedPlayerId(null)} onLoad={onLoadPlayer} playerId={selectedPlayerId} season={season} />}
     </section>
   )

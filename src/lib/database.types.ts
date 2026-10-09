@@ -1578,6 +1578,17 @@ export type Database = {
       }
       normalize_display_name: { Args: { value: string }; Returns: string }
       get_derby_reserved_player_ids: { Args: { checked_match_id: string }; Returns: string[] }
+      get_match_lineup_reservations: {
+        Args: { checked_match_id: string }
+        Returns: { player_id: string; match_id: string; team_name: string; match_date: string; is_derby: boolean }[]
+      }
+      match_participation_window: { Args: { checked_date: string }; Returns: string }
+      player_availability_opportunities: {
+        Args: { checked_season_id: string; checked_player_id: string }
+        Returns: { match_id: string; window_start: string; availability_status: Database['public']['Enums']['availability_status'] | null }[]
+      }
+      match_participation_player_ids: { Args: { checked_match_id: string }; Returns: { player_id: string }[] }
+      lock_match_participation_window: { Args: { checked_date: string }; Returns: undefined }
       get_cross_team_callup_reference: { Args: { checked_match_id: string }; Returns: Json }
       cross_team_callup_reference_internal: { Args: { checked_match_id: string }; Returns: Json }
       get_match_availability: {

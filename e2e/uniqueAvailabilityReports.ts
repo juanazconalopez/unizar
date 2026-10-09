@@ -1,0 +1,50 @@
+import { expect, type Page } from '@playwright/test'
+
+export async function checkUniqueAvailabilityReports(page: Page) {
+  await page.clock.install({ time: new Date('2026-09-24T12:00:00+02:00') })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Gestión' }).click()
+  await page.getByRole('menuitem', { name: 'Partidos', exact: true }).click()
+  await page.getByRole('button', { name: 'Resumen de convocatorias' }).click()
+  const row = page.getByRole('table').getByRole('row').filter({ hasText: 'Marta Sánchez' })
+  const availability = row.locator('td').nth(4).locator('strong')
+  const [initialResponses, initialMatches] = (await availability.innerText()).split('/').map(Number)
+  await page.getByRole('button', { name: 'Volver a partidos' }).click()
+
+  for (const date of ['2026-10-17', '2026-11-15']) {
+    await page.getByRole('button', { name: 'Nuevo partido', exact: true }).click()
+    const form = page.getByRole('dialog', { name: 'Nuevo partido' })
+    await form.getByLabel('Fecha', { exact: true }).fill(date)
+    await form.getByLabel('Tipo de rival').selectOption('internal')
+    await form.getByRole('combobox', { name: 'Equipo local', exact: true }).selectOption('demo-team-default')
+    await form.getByRole('combobox', { name: 'Equipo visitante', exact: true }).selectOption('demo-team-development')
+    await form.getByLabel('Estado').selectOption('published')
+    await form.getByRole('button', { name: 'Guardar partido' }).click()
+    const card = page.locator('.match-card').filter({ hasText: 'Equipo de desarrollo' })
+    await card.getByRole('button', { name: /Ver detalle/ }).click()
+    await page.getByRole('button', { name: 'Ver disponibilidades' }).click()
+    await page.locator('.availability-group article').filter({ hasText: 'Marta Sánchez' }).getByRole('button', { name: 'Editar', exact: true }).click()
+    const response = page.getByRole('dialog', { name: 'Marta Sánchez', exact: true })
+    await response.getByLabel('Respuesta').selectOption('available')
+    await response.getByRole('button', { name: 'Guardar disponibilidad' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).click()
+  }
+
+  await page.getByRole('button', { name: 'Resumen de convocatorias' }).click()
+  await expect(availability).toHaveText(`${initialResponses + 2}/${initialMatches + 2}`)
+  await row.getByRole('button', { name: 'Marta Sánchez', exact: true }).click()
+  const summary = page.getByRole('dialog', { name: 'Marta Sánchez', exact: true })
+  await expect(summary).toContainText(`${initialResponses + 2}/${initialMatches + 2} respuestas`)
+  await expect(summary.locator('.season-match-history article')).toHaveCount(initialMatches + 2)
+  await summary.getByRole('button', { name: 'Cerrar', exact: true }).click()
+  await page.getByRole('button', { name: 'Volver a partidos' }).click()
+
+  const card = page.locator('.match-card').filter({ hasText: 'Equipo de desarrollo' })
+  await card.getByRole('button', { name: /Ver detalle/ }).click()
+  await page.getByRole('button', { name: 'Editar partido', exact: true }).click()
+  const form = page.getByRole('dialog', { name: 'Editar partido' })
+  page.once('dialog', (dialog) => dialog.accept())
+  await form.getByRole('button', { name: 'Eliminar partido', exact: true }).click()
+  await page.getByRole('button', { name: 'Resumen de convocatorias' }).click()
+  await expect(availability).toHaveText(`${initialResponses + 1}/${initialMatches + 1}`)
+}

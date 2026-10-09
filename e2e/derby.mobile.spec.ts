@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { checkSharedDerbyAvailability } from './derbySharedAvailability'
+import { checkWeekendAvailability } from './weekendAvailability'
+import { checkUniqueAvailabilityReports } from './uniqueAvailabilityReports'
+
+test('availability reports count each derby once and discard a deleted fixture on mobile', async ({ page }) => {
+  await checkUniqueAvailabilityReports(page)
+})
 
 test('owner assigns any dorsal in the real derby editor on mobile', async ({ page }) => {
   await page.goto('/')
@@ -25,4 +31,8 @@ test('owner assigns any dorsal in the real derby editor on mobile', async ({ pag
 
 test('owner prepares and publishes B using responses recorded only on the A fixture', async ({ page }) => {
   await checkSharedDerbyAvailability(page)
+})
+
+test('separate weekend matches reserve players visibly and count one team opportunity', async ({ page }) => {
+  await checkWeekendAvailability(page)
 })
