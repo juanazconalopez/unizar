@@ -61,6 +61,8 @@ test('owner can open demo training plans and find the PDF action', async ({ page
   await page.getByRole('button', { name: /Ver entrenamiento/ }).first().click()
   await expect(page.getByText('VISTA DEL ENTRENAMIENTO')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Guardar PDF' })).toBeVisible()
+  await expect(page.locator('.tactics-preview svg').first()).toBeVisible()
+  await expect(page.locator('.tactics-preview canvas')).toHaveCount(0)
 
   await page.evaluate(() => {
     window.print = () => { document.documentElement.dataset.printRequested = 'true' }
@@ -70,6 +72,7 @@ test('owner can open demo training plans and find the PDF action', async ({ page
 
   await page.emulateMedia({ media: 'print' })
   await expect(page.locator('.training-detail-page')).toBeVisible()
+  await expect(page.locator('.tactics-preview svg').first()).toBeVisible()
   if (browserName === 'chromium') {
     const pdf = await page.pdf({ format: 'A4', printBackground: true })
     const pageCount = pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0

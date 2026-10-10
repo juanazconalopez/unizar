@@ -43,7 +43,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean, canVi
   }
 }
 
-export async function fetchTaskWindow(userId: string, canManageTasks: boolean, fromWeek: string, toWeek: string): Promise<TaskWindowData> {
+export async function fetchTaskWindow(userId: string, canManageTasks: boolean, fromWeek: string, toWeek: string, options: { includeAnnouncements?: boolean } = {}): Promise<TaskWindowData> {
   const [tasksResponse, announcements] = await Promise.all([
     supabase
       .from('tasks')
@@ -51,7 +51,7 @@ export async function fetchTaskWindow(userId: string, canManageTasks: boolean, f
       .gte('week_start', fromWeek)
       .lte('week_start', toWeek)
       .order('week_start', { ascending: false }),
-    fetchAnnouncementWindow(fromWeek, addDays(toWeek, 6)),
+    options.includeAnnouncements === false ? Promise.resolve([]) : fetchAnnouncementWindow(fromWeek, addDays(toWeek, 6)),
   ])
   if (tasksResponse.error) throw tasksResponse.error
   const tasks = tasksResponse.data ?? []

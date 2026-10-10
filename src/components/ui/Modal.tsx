@@ -27,6 +27,7 @@ export function Modal({ children, className, disabled = false, labelledBy, onClo
     document.body.style.overflow = 'hidden'
     if (pageContent) pageContent.style.overflow = 'hidden'
     const frame = window.requestAnimationFrame(() => {
+      if (dialogRef.current?.contains(document.activeElement)) return
       const focusable = dialogRef.current?.querySelector<HTMLElement>('[autofocus], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')
       focusable?.focus()
     })

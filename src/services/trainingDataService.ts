@@ -109,7 +109,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const seasonCompetitions = needsCompetitionCatalog
     ? await fetchSeasonCompetitions(seasons.map((season) => season.id))
     : []
-  const seasonTeams = requirements.seasons
+  const seasonTeams = ['settings', 'calendar', 'matches'].includes(scope)
     ? await fetchSeasonTeams(seasons.map((season) => season.id))
     : []
   const seasonTeamCoaches = scope === 'settings'
@@ -123,20 +123,22 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   let calendarBirthdays: CalendarBirthday[] = []
 
   if (scope === 'home') {
-    todayBirthdays = await fetchTodayBirthdays(userId, todayIso())
-    taskData = await fetchTaskWindow(userId, canViewTeam, currentWeek, currentWeek)
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
-    if (activeSeason) {
-      const attention = await fetchHomeAttention(todayIso(), activeSeason.end_date)
-      taskData.announcements = attention.announcements
-      matchData = { ...emptyMatchWindow, matches: attention.matches }
-    }
     const dashboardSeason = activeSeason ?? seasons[0]
-    if (dashboardSeason) {
-      const { data, error } = await supabase.from('training_sessions').select('*').gte('session_date', dashboardSeason.start_date).lte('session_date', dashboardSeason.end_date).order('session_date', { ascending: false })
-      if (error) throw error
-      attendanceData = await fetchAttendanceForSessions(data ?? [], userId)
-    }
+    const [birthdays, tasks, attention, personalAttendance] = await Promise.all([
+      fetchTodayBirthdays(userId, todayIso()),
+      fetchTaskWindow(userId, canViewTeam, currentWeek, currentWeek, { includeAnnouncements: !activeSeason }),
+      activeSeason ? fetchHomeAttention(todayIso(), activeSeason.end_date) : Promise.resolve(null),
+      // El panel de equipo no muestra asistencia personal. Mantener la misma
+      // condición que Dashboard evita descargar toda la temporada para el staff.
+      dashboardSeason && !canViewTeamData(profile)
+        ? fetchHomeAttendance(dashboardSeason, userId)
+        : Promise.resolve(emptyAttendanceWindow),
+    ])
+    todayBirthdays = birthdays
+    taskData = attention ? { ...tasks, announcements: attention.announcements } : tasks
+    matchData = attention ? { ...emptyMatchWindow, matches: attention.matches } : emptyMatchWindow
+    attendanceData = personalAttendance
   } else if (scope === 'tasks' || scope === 'calendar') {
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
     const managerEnd = activeSeason?.end_date && activeSeason.end_date >= currentWeek ? mondayFor(activeSeason.end_date) : addDays(currentWeek, 84)
@@ -177,4 +179,13 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     announcements: taskData.announcements, todayBirthdays, seasonBirthdays, calendarBirthdays, libraryItems, librarySettings,
     permissionKeys, permissionConfiguration,
   }
+}
+
+async function fetchHomeAttendance(season: Season, userId: string) {
+  const until = season.end_date < todayIso() ? season.end_date : todayIso()
+  const { data, error } = await supabase.from('training_sessions').select('*')
+    .gte('session_date', season.start_date).lte('session_date', until)
+    .order('session_date', { ascending: false })
+  if (error) throw error
+  return fetchAttendanceForSessions(data ?? [], userId)
 }

@@ -30,6 +30,16 @@ function query(data: unknown[]): QueryBuilder {
 describe('training data queries', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  test('does not request announcements when home loads its limited agenda separately', async () => {
+    mocks.from.mockReturnValue(query([]))
+
+    const data = await fetchTaskWindow('player-1', false, '2026-08-03', '2026-08-03', { includeAnnouncements: false })
+
+    expect(mocks.from).toHaveBeenCalledOnce()
+    expect(mocks.from).toHaveBeenCalledWith('tasks')
+    expect(data.announcements).toEqual([])
+  })
+
   test('loads only task results related to the requested week and player', async () => {
     const tasks = query([{
       id: 'task-1', season_id: 'season-1', week_start: '2026-08-03', title: 'Tarea',

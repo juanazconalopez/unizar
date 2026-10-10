@@ -2,7 +2,7 @@ import { todayIso } from './lib/dates'
 import { licenseLabel, membershipLicense } from './lib/playerLicenses'
 import { Suspense, useEffect } from 'react'
 import { AppViewRouter } from './app/AppViewRouter'
-import { PlayerPreviewView } from './app/viewModules'
+import { PlayerPreviewView, preloadView } from './app/viewModules'
 import { createAnnouncementActions } from './app/actions/announcementActions'
 import type { AppActions } from './app/actions/appActions'
 import { createClubActions } from './app/actions/clubActions'
@@ -20,6 +20,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOperationFeedback } from './hooks/useOperationFeedback'
 import { useTrainingData } from './hooks/useTrainingData'
 import { canManageSport, canViewTeamData, isPlayer } from './lib/permissions'
+import { clearContentImageCache } from './services/contentImagesService'
 import './App.css'
 
 function App() {
@@ -31,6 +32,10 @@ function App() {
   const notifications = useNotifications(data.profile, auth.session?.user.id, data.ownProfileDetails)
   const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
   const userId = auth.session?.user.id
+
+  useEffect(() => {
+    if (userId) preloadView(view)
+  }, [userId, view])
 
   async function reloadData() {
     await Promise.all([data.reload(), notifications.reload()])
@@ -65,7 +70,7 @@ function App() {
 
   async function handleSignOut() {
     navigate('home', true)
-    await import('./services/contentImagesService').then(({ clearContentImageCache }) => clearContentImageCache()).catch(() => undefined)
+    await clearContentImageCache().catch(() => undefined)
     await auth.signOut()
   }
 

@@ -28,6 +28,7 @@ export async function checkPastedTrainingImage(page: Page) {
     }, 'image/png')
   })
   await expect(page.getByText(/^Imagen preparada\. Se subirá al guardar\./)).toBeVisible()
+  await expect(page.getByRole('button', { name: /(?:Crear|Editar) esquema táctico/ })).toHaveCount(0)
   await expect(description).toContainText('[[imagen:')
   await page.locator('.content-image-preview').first().scrollIntoViewIfNeeded()
   await expect(page.getByAltText('Imagen adjunta')).toBeVisible()

@@ -28,7 +28,7 @@ describe('September preseason drafts', () => {
     })
   })
 
-  test('provides an editable tactical drawing for every exercise', () => {
+  test('keeps the historical tactical drawing for every demo exercise', () => {
     expect(plans).toHaveLength(4)
     plans.flatMap((plan) => plan.exercises).forEach((exercise) => {
       expect(exercise.diagramData.elements.length).toBeGreaterThan(0)

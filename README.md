@@ -72,11 +72,13 @@ sincronizar; el catálogo es de lectura para usuarios aprobados y activos.
 
 ## Desarrollo local
 
-Requiere Node `20.19` o posterior compatible con Vite 8.
+Requiere Node **24.21.0 LTS**, fijado en `.nvmrc` y `.node-version`.
+La instalación comprueba la versión mediante `engines` y `.npmrc`.
 
 ```bash
-nvm use 22
-npm install
+nvm install
+nvm use
+npm ci
 npm run dev
 ```
 
@@ -106,7 +108,7 @@ src/
 ## Comprobaciones
 
 ```bash
-nvm use 22
+nvm use
 npm test
 npm run lint
 npm run build
@@ -117,7 +119,7 @@ se guardan junto al archivo probado (`*.test.tsx`); `src/test` contiene únicame
 la configuración y las fixtures compartidas. Para trabajar en modo interactivo:
 
 ```bash
-nvm use 22
+nvm use
 npm run test:watch
 ```
 
@@ -125,7 +127,7 @@ Los tipos del esquema usados por el cliente de Supabase se guardan en
 `src/lib/database.types.ts`. Regéneralos después de aplicar una migración:
 
 ```bash
-nvm use 22
+nvm use
 SUPABASE_PROJECT_ID=tu-project-ref SUPABASE_ACCESS_TOKEN=tu-token npm run types:supabase
 ```
 
@@ -138,27 +140,42 @@ y se ejecutan con Supabase CLI mediante `supabase test db`.
 
 En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
 
-## Publicación en Cloudflare Pages
+## Publicación en Cloudflare Workers
 
-Conecta el repositorio de GitHub desde **Workers & Pages → Create → Pages → Connect to Git** y utiliza:
+El despliegue actual utiliza Workers Builds, conectado al repositorio de GitHub.
+La configuración se encuentra en **Workers & Pages → unizar → Settings → Build**:
 
 - Rama de producción: `main`
 - Comando de compilación: `npm run build`
-- Directorio de salida: `dist`
-- Versión de Node: la indicada en `.node-version`
+- Comando de despliegue: `npx wrangler deploy`
+- Recursos generados por Vite: `dist`
+- Versión de Node: **24.21.0**, indicada en `.node-version` y `.nvmrc`.
+  Si existe `NODE_VERSION` en **Build Variables and Secrets**, debe tener ese mismo
+  valor en todos los builds. Véase la [configuración oficial del build de Workers](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/#overriding-default-versions).
 
-Configura estas variables tanto para producción como para las vistas previas:
+Configura estas variables en **Build Variables and Secrets** para producción y,
+si se habilitan, también para las vistas previas:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
-Después del primer despliegue, añade la dirección `https://<proyecto>.pages.dev` a las URLs de redirección permitidas de Supabase. La URI autorizada de Google continúa siendo el callback de Supabase, no la URL de Cloudflare.
+Vite incorpora estas variables durante la compilación. Añadirlas solo a las
+variables de ejecución del Worker no configura el frontend.
+
+Para comprobar la versión efectiva, abre **Deployments → Build** en la fila del
+despliegue y busca `nodejs@24.21.0` e `Installing nodejs 24.21.0`. Un registro
+anterior conserva la versión con la que se compiló; cambiar archivos o variables
+solo tiene efecto en una compilación nueva.
+
+Añade la dirección `https://<worker>.<cuenta>.workers.dev` y las direcciones de
+vista previa utilizadas a las URLs de redirección permitidas de Supabase. La URI
+autorizada de Google continúa siendo el callback de Supabase, no la URL de Cloudflare.
 
 ## Aplicación instalable (PWA)
 
 La compilación genera el manifest, el service worker y los iconos necesarios para
 instalar la aplicación desde Android, iOS y navegadores de escritorio. No se deben
-añadir reglas de caché globales en Cloudflare Pages: el HTML y el service worker
+añadir reglas de caché globales en Cloudflare: el HTML y el service worker
 necesitan revalidarse para detectar cada despliegue, mientras que los recursos de
 Vite ya incluyen hashes y se almacenan de forma segura.
 
@@ -190,6 +207,25 @@ los escudos y las fuentes se guardan después de su primer uso. Las consultas de
 Supabase también se separan por sección para que Inicio no descargue resultados,
 partidos o asistencias de gestión que no necesita.
 
+Inicio y Datos de perfil también se cargan bajo demanda: la pantalla de acceso no
+descarga el renderizador de contenido con formato ni el campo internacional de
+teléfono. Tras recuperar la sesión se precarga la sección solicitada en paralelo
+con sus consultas. Inicio consulta cumpleaños, tareas, agenda y asistencia personal
+en paralelo; evita repetir la consulta de avisos, no carga catálogos de equipos que
+no utiliza y no descarga asistencia personal para el panel de equipo del staff.
+El resumen personal conserva las sesiones realizadas y las restricciones de
+temporada y vinculación.
+
+El build comprueba el grafo de JavaScript estático del arranque y el de Inicio;
+`npm run check:bundle` repite la medición sin recompilar. El arranque tiene un presupuesto
+de 600 kB sin comprimir y 180 kB gzip. La medición excluye CSS, imágenes, datos de
+Supabase y la compresión del servidor; no es una medición de tiempo en un iPhone.
+
+Los nuevos esquemas de ejercicios se adjuntan pegando imágenes en su descripción.
+La pizarra táctica y las dependencias Konva se han retirado. Los esquemas antiguos
+siguen visibles mediante SVG, incluidos los PDF por impresión, y se conservan al
+editar, duplicar o guardar un ejercicio predefinido. No requiere migración SQL.
+
 Cuando el navegador lo permite aparece **Instalar aplicación** en el perfil. En
 iPhone y iPad se muestra una guía para añadirla desde Safari. Si se pierde la
 conexión, la aplicación avisa, impide enviar cambios desde sus manejadores y ofrece
@@ -198,3 +234,93 @@ un reintento explícito si la carga inicial no puede completarse.
 Las pruebas móviles incluyen Chromium y WebKit con el dispositivo iPhone 14,
 incluidos el almacenamiento lleno o bloqueado y una fotografía inicial pendiente.
 Para preparar los navegadores de pruebas: `npx playwright install chromium webkit`.
+
+## Migración a Node 24 y mantenimiento
+
+La migración local utiliza **Node 24.21.0 LTS** y su npm **11.19.0**. Desarrollo y
+el build de Cloudflare fijan la versión mediante `.nvmrc` y `.node-version`;
+`engines` limita el proyecto a Node 24 y `.npmrc` impide instalar con una rama
+incompatible. La [guía oficial de Node](https://nodejs.org/en/blog/migrations/v22-to-v24)
+indica soporte para Node 24 hasta abril de 2028.
+
+Fases aplicadas:
+
+1. **Node con el lockfile anterior.** Se comprobó primero `npm ci`, pruebas, lint
+   y build con Node 24, antes de actualizar dependencias. El tamaño del arranque
+   permaneció igual. Una compilación local registró 8,52 s con Node 22 y 8,18 s con
+   Node 24; estas ejecuciones aisladas no acreditan una mejora de compilación y no
+   miden fluidez en Safari. Node construye la web; las usuarias ejecutan JavaScript
+   en su navegador.
+2. **Dependencias compatibles por grupos.** Vite pasa a 8.3.4, React y React DOM a
+   19.3.0, Supabase JS a 2.117.3, PDF.js a 6.4.299, Playwright a 1.64.0 y Vitest a
+   4.1.11. Se actualizaron también tipos, ESLint, Testing Library, teléfono y CLI
+   de Supabase; las versiones exactas quedan en `package-lock.json`. Se mantiene
+   TypeScript 6, jsdom 28 y PWA 1 con Workbox 7: sus siguientes versiones mayores
+   requieren una revisión independiente. El plugin de React queda fijado en
+   6.0.5, compatible con Vite 8; npm no pudo resolver los peers opcionales de Babel
+   de 6.1.2 con este conjunto de dependencias. La instalación final se valida con
+   `npm ci`, sin forzar esa resolución.
+3. **Refactorización localizada.** `dashboardSelectors.ts` reúne los cálculos
+   puros de Inicio y conserva reglas de temporada, publicación y vinculación.
+   Solo calcula el resumen que se muestra (jugadora o staff), agrupa vinculaciones
+   por jugadora y reutiliza resultados por tarea; React memoriza el resumen hasta
+   que cambian sus datos o el día. `AppNavigation`, `navigationEntries` y
+   `MobileProfileMenu` separan navegación, configuración y menú del layout.
+   `CalendarTrainingPlans` separa las tarjetas de entrenamientos del calendario.
+   `App.css` importa los módulos de `src/styles` en el orden original; la
+   extracción conserva todas las reglas y la cascada. Una corrección de la modal
+   impide que su foco inicial interrumpa la escritura en un campo ya seleccionado.
+4. **Medición.** El presupuesto continúa en 600 kB JS sin comprimir / 180 kB gzip.
+   Tras actualizar dependencias, el arranque registra aproximadamente 575,5 kB /
+   163,1 kB gzip y el arranque más Inicio 937,1 kB / 275,0 kB gzip. Las versiones
+   nuevas incrementan algo el tamaño respecto a las optimizaciones anteriores
+   (538,4 kB / 152,6 kB gzip); el límite no se ha elevado. En una comparación local
+   con Node 24, 40 jugadoras, 240 vinculaciones, 6 tareas y 1.000 cálculos por panel,
+   el cálculo personal pasó de unos 0,23 ms a 0,013 ms y el del staff de 0,23 ms a
+   0,15 ms, conservando los mismos resultados. Es una medición de lógica pura,
+   sin red, DOM ni dispositivo real, y no representa el tiempo completo de Inicio.
+5. **Comprobaciones continuas.** `.github/workflows/quality.yml` prepara pruebas,
+   lint, build con presupuesto y revisión de espacios para pull requests y cambios
+   en `main`, usando `.nvmrc` y `npm ci`. No despliega la aplicación ni requiere
+   credenciales de Supabase. Vitest no carga `.env.local` y usa valores ficticios
+   de Supabase para que las pruebas funcionen también en un checkout limpio.
+   Los E2E se ejecutan localmente con Chromium y WebKit;
+   `demo.local` no está versionada y no está disponible en el checkout de CI.
+
+Validación local de esta migración: instalación limpia y árbol de dependencias
+correctos; 611 pruebas en 116 archivos y 124 E2E aprobados; lint, build de
+producción, presupuesto, TypeScript y build de demo correctos. Inicio, Calendario
+y Entrenamientos conservan la geometría de referencia en escritorio y WebKit
+móvil. La vista previa de producción permite entrar sin almacenamiento y recargar
+la pantalla de acceso sin conexión cuando la caché está disponible. El workflow
+está preparado y revisado localmente; su ejecución en GitHub queda pendiente de
+subir estos cambios.
+
+Para validar localmente:
+
+```bash
+nvm use
+npm ci
+npm test -- --run --maxWorkers=2
+npm run lint
+npm run build
+npx tsc -p demo.local/tsconfig.json
+npx vite build --config demo.local/vite.config.ts
+npm run test:e2e
+git diff --check
+```
+
+Antes de publicar, comprobar la vista previa de Cloudflare con Node 24.21.0, el
+acceso real con Google y la actualización desde una PWA de la versión anterior.
+La configuración del repositorio no permite verificar una posible sobrescritura
+`NODE_VERSION` del panel de Cloudflare. Las pruebas locales no sustituyen esas
+comprobaciones del despliegue ni una prueba en un iPhone físico. Esta migración
+no necesita cambios de esquema ni ejecutar SQL en Supabase.
+
+Revisar dependencias mensualmente y cuando una corrección afecte al proyecto;
+actualizar por grupos compatibles y mantener el lockfile. Para futuras mejoras,
+medir por separado acceso sin sesión, Inicio de jugadora, Inicio de staff y cambios
+de mes del calendario, comparando descarga, consultas y renderizado con los mismos
+datos y condiciones. Mantener la coordinación de `useTrainingData`, las reglas de
+permisos y los selectores de dominio al extraer componentes; la división de archivos
+mejora mantenimiento y solo mejora rendimiento cuando reduce trabajo o carga.

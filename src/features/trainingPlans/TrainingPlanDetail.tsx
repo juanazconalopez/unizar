@@ -2,7 +2,7 @@ import { Icon } from '../../components/Icon'
 import { RichContent } from '../../components/RichContent'
 import { formatDate } from '../../lib/dates'
 import type { TrainingPlan } from '../../types'
-import { TacticsBoardPreview } from './TacticsBoard'
+import { TrainingDiagramPreview } from './TrainingDiagramPreview'
 import { trainingPlanStatusLabel } from './trainingPlanMappers'
 
 export function TrainingPlanDetail({ plan, onBack, onDuplicate, onEdit }: { plan: TrainingPlan; onBack: () => void; onDuplicate?: () => void; onEdit?: () => void }) {
@@ -27,7 +27,7 @@ export function TrainingPlanDetail({ plan, onBack, onDuplicate, onEdit }: { plan
       <header><span className="training-detail-number">{index + 1}</span><div><h3>{exercise.title}</h3><p>Ejercicio {index + 1} de {plan.training_exercises.length}</p></div><span className="training-detail-exercise-time"><Icon name="clock" size={16} /><strong>{exercise.duration_minutes}</strong> min</span></header>
       <div className={`training-detail-exercise-body${exercise.diagram_data.elements.length ? '' : ' without-board'}`}>
         <div className="training-detail-instructions"><section><span className="eyebrow">DESARROLLO</span><RichContent eagerImages fallback="Sin descripción." text={exercise.description} /></section></div>
-        {exercise.diagram_data.elements.length > 0 && <div className="training-detail-board"><div><span className="eyebrow">ESQUEMA</span><small>{exercise.diagram_data.template === 'full' ? 'Campo completo' : exercise.diagram_data.template === 'half' ? 'Medio campo' : 'Zona de 22'}</small></div><TacticsBoardPreview data={exercise.diagram_data} label={`Esquema táctico de ${exercise.title}`} /></div>}
+        {exercise.diagram_data.elements.length > 0 && <div className="training-detail-board"><div><span className="eyebrow">ESQUEMA</span><small>{exercise.diagram_data.template === 'full' ? 'Campo completo' : exercise.diagram_data.template === 'half' ? 'Medio campo' : 'Zona de 22'}</small></div><TrainingDiagramPreview data={exercise.diagram_data} label={`Esquema táctico de ${exercise.title}`} /></div>}
       </div>
     </article>)}</div>
     <div className="training-detail-footer"><button className="secondary-button" onClick={onBack} type="button">Volver</button></div>

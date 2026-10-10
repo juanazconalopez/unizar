@@ -20,11 +20,6 @@ vi.mock('../../services/trainingPlansService', () => ({
   saveTrainingExercisePreset: mocks.saveTrainingExercisePreset,
   updateTrainingExercisePreset: mocks.updateTrainingExercisePreset,
 }))
-vi.mock('./TacticsBoard', () => ({
-  TacticsBoard: () => null,
-  TacticsBoardPreview: ({ label }: { label: string }) => <div aria-label={label}>Campo táctico</div>,
-}))
-
 import { TrainingPlansView } from './TrainingPlansView'
 import { trainingPlanDraftKey } from './useTrainingPlanDraft'
 
@@ -232,6 +227,7 @@ describe('training plan reading view', () => {
     const expectedDate = formatDate(plan.session_date, { weekday: 'long', day: 'numeric', month: 'short' })
     expect(screen.getByText(expectedDate.charAt(0).toUpperCase() + expectedDate.slice(1))).toHaveAttribute('dateTime', plan.session_date)
     expect(screen.getAllByText('Añadir imagen')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /(?:Crear|Editar) esquema táctico/ })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Datos de la sesión' }).closest('.training-editor-scroll')).toBeInTheDocument()
     expect(screen.queryByLabelText('Participantes')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Puntos técnicos')).not.toBeInTheDocument()
@@ -280,7 +276,7 @@ describe('training plan reading view', () => {
 
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({
-      exercises: [expect.objectContaining({ description: 'Descripción que no quiero perder.' })],
+      exercises: [expect.objectContaining({ description: 'Descripción que no quiero perder.', diagramData: plan.training_exercises[0].diagram_data })],
     }), 'owner-1')
     expect(localStorage.getItem(storageKey)).toBeNull()
   })
@@ -324,7 +320,7 @@ describe('training plan reading view', () => {
     await user.clear(title)
     await user.type(title, 'Circuito revisado')
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-    expect(mocks.updateTrainingExercisePreset).toHaveBeenCalledWith('preset-1', expect.objectContaining({ title: 'Circuito revisado' }), 'owner-1')
+    expect(mocks.updateTrainingExercisePreset).toHaveBeenCalledWith('preset-1', expect.objectContaining({ title: 'Circuito revisado', diagramData: preset.diagram_data }), 'owner-1')
     expect(await screen.findByText('Circuito revisado')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Editar ejercicio Circuito revisado' }))

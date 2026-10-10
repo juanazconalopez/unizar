@@ -1,26 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Profile, ProfileDetailsValues, ProfilePrivateDetails, ViewName } from '../../types'
 import { Icon } from '../Icon'
-import type { IconName } from '../Icon'
 import { Avatar } from '../ui/Avatar'
 import { ClubBrand } from '../ui/ClubBrand'
 import { Modal } from '../ui/Modal'
 import { useInstallApp } from '../../hooks/useInstallApp'
 import { NotificationCenter } from '../../features/notifications/NotificationCenter'
-import { ProfileDetailsDialog } from '../../features/profile/ProfileDetailsDialog'
+import { SectionLoading, ViewErrorBoundary } from '../AsyncViewState'
 import type { AppNotification } from '../../features/notifications/notifications'
-import { hasPermission, PERMISSIONS } from '../../lib/permissions'
 import type { PermissionKey } from '../../lib/permissions'
 import type { NavigationTarget } from '../../lib/navigation'
+import { AppNavigation } from './AppNavigation'
+import { navigationEntries } from './navigationEntries'
+import { MobileProfileMenu, NotificationButton } from './MobileProfileMenu'
 
-type NavigationLeaf = { id: ViewName; label: string; icon: IconName; target?: NavigationTarget }
-type NavigationGroup = { id: 'attendance' | 'management' | 'settings'; label: string; icon: IconName; children: NavigationLeaf[] }
-type NavigationEntry = NavigationLeaf | NavigationGroup
+const ProfileDetailsDialog = lazy(() => import('../../features/profile/ProfileDetailsDialog').then(({ ProfileDetailsDialog }) => ({ default: ProfileDetailsDialog })))
 
-function isNavigationGroup(entry: NavigationEntry): entry is NavigationGroup {
-  return 'children' in entry
-}
 
 export function AppLayout({
   profile,
@@ -68,7 +64,6 @@ export function AppLayout({
   children: ReactNode
 }) {
   const contentRef = useRef<HTMLElement>(null)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -76,45 +71,8 @@ export function AppLayout({
   const [highlightMissingProfileDetails, setHighlightMissingProfileDetails] = useState(false)
   const installApp = useInstallApp()
   const showInstallAction = installApp.canInstall || installApp.needsIosInstructions
-  const can = (permission: PermissionKey) => hasPermission(profile, permission, permissionKeys)
   const canEditProfile = profile.is_approved && profile.is_active && !profile.is_archived && Boolean(onUpdateProfileDetails)
-  const navigation: NavigationEntry[] = [
-    { id: 'home', label: 'Inicio', icon: 'home' },
-    ...((can(PERMISSIONS.calendar.manage) || can(PERMISSIONS.calendar.personal)) ? [{ id: 'calendar' as const, label: 'Calendario', icon: 'calendar' as const }] : []),
-    ...(can(PERMISSIONS.attendance.view) ? [{
-        id: 'attendance' as const,
-        label: 'Asistencia',
-        icon: 'check' as const,
-        children: [
-          ...(can(PERMISSIONS.attendance.view) ? [{ id: 'attendance' as const, label: 'Registrar asistencia', icon: 'check' as const }] : []),
-          ...(can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
-        ],
-      }] : []),
-    ...((can(PERMISSIONS.training.view) || can(PERMISSIONS.matches.teamAvailability) || can(PERMISSIONS.surveys.manage)) ? [{
-      id: 'management' as const,
-      label: 'Gestión',
-      icon: 'settings' as const,
-      children: [
-        ...(can(PERMISSIONS.matches.teamAvailability) ? [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }] : []),
-        ...(can(PERMISSIONS.training.view) ? [{ id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const }] : []),
-        ...(can(PERMISSIONS.surveys.manage) ? [{ id: 'surveys' as const, label: 'Encuestas', icon: 'statistics' as const }] : []),
-      ],
-    }] : []),
-    ...(!can(PERMISSIONS.attendance.view) && can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
-    ...(can(PERMISSIONS.competition.view) ? [{ id: 'competition' as const, label: 'Competición', icon: 'trophy' as const }] : []),
-    ...(can(PERMISSIONS.library.view) ? [{ id: 'library' as const, label: 'Librería', icon: 'folder' as const }] : []),
-    ...(can(PERMISSIONS.settings.view) ? [{
-      id: 'settings' as const,
-      label: 'Ajustes',
-      icon: 'settings' as const,
-      children: [
-        { id: 'settings' as const, label: 'Equipo', icon: 'users' as const, target: { view: 'settings' as const, settingsSection: 'team' as const } },
-        { id: 'settings' as const, label: 'Temporadas', icon: 'calendar' as const, target: { view: 'settings' as const, settingsSection: 'seasons' as const } },
-        { id: 'settings' as const, label: 'Librería', icon: 'folder' as const, target: { view: 'settings' as const, settingsSection: 'library' as const } },
-        { id: 'settings' as const, label: 'Permisos', icon: 'settings' as const, target: { view: 'settings' as const, settingsSection: 'permissions' as const } },
-      ],
-    }] : []),
-  ]
+  const navigation = useMemo(() => navigationEntries(profile, permissionKeys), [profile, permissionKeys])
 
   const role = profileRoles(profile).join(' · ') || 'Miembro'
 
@@ -133,30 +91,12 @@ export function AppLayout({
     contentRef.current?.scrollTo({ top: 0 })
   }, [view])
 
-  useEffect(() => {
-    if (!profileMenuOpen) return
-
-    function closeOnOutsidePress(event: PointerEvent) {
-      if (!profileMenuRef.current?.contains(event.target as Node)) setProfileMenuOpen(false)
-    }
-
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setProfileMenuOpen(false)
-    }
-
-    document.addEventListener('pointerdown', closeOnOutsidePress)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePress)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [profileMenuOpen])
 
   return (
     <div className={`app-shell${online ? '' : ' offline'}`}>
       <aside className="sidebar">
         <ClubBrand onClick={() => navigate('home')} />
-        <Navigation items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
+        <AppNavigation items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
         {showInstallAction && (
           <button className="sidebar-install" onClick={requestInstall} type="button">
             <Icon name="download" size={17} />Instalar aplicación
@@ -177,53 +117,20 @@ export function AppLayout({
       <main className="content" ref={contentRef}>
         <header className="mobile-header">
           <ClubBrand compact onClick={() => navigate('home')} />
-          <div className="mobile-profile-actions" ref={profileMenuRef}>
-            <NotificationButton count={notificationUnreadCount} onClick={() => setNotificationsOpen(true)} />
-            <button
-              aria-expanded={profileMenuOpen}
-              aria-haspopup="menu"
-              aria-label="Abrir menú de usuario"
-              className="mobile-avatar-button"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-              type="button"
-            >
-              <Avatar name={profile.display_name} />
-            </button>
-            {profileMenuOpen && (
-              <div className="mobile-profile-menu" role="menu">
-                <div className="mobile-profile-summary">
-                  <Avatar name={profile.display_name} />
-                  <div>
-                    <strong>{profile.display_name}</strong>
-                    <span>{email || 'Cuenta de Google'}</span>
-                  </div>
-                </div>
-                <span className="mobile-role">{role}</span>
-                {canEditProfile && (
-                  <button className="mobile-profile-edit-button" onClick={() => { setProfileMenuOpen(false); setHighlightMissingProfileDetails(false); setProfileDetailsOpen(true) }} role="menuitem" type="button">
-                    Editar mis datos
-                  </button>
-                )}
-                {showInstallAction && (
-                  <button className="mobile-install-button" onClick={requestInstall} role="menuitem" type="button">
-                    <Icon name="download" size={18} />Instalar aplicación
-                  </button>
-                )}
-                <button
-                  className="mobile-signout-button"
-                  onClick={() => {
-                    setProfileMenuOpen(false)
-                    onSignOut()
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  <Icon name="logout" size={18} />
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
+          <MobileProfileMenu
+            name={profile.display_name}
+            email={email}
+            role={role}
+            open={profileMenuOpen}
+            canEditProfile={canEditProfile}
+            showInstallAction={showInstallAction}
+            notificationUnreadCount={notificationUnreadCount}
+            onOpenChange={setProfileMenuOpen}
+            onOpenNotifications={() => setNotificationsOpen(true)}
+            onEditProfile={() => { setHighlightMissingProfileDetails(false); setProfileDetailsOpen(true) }}
+            onRequestInstall={requestInstall}
+            onSignOut={onSignOut}
+          />
         </header>
         {message && <div className="toast success"><Icon name="check" size={18} />{message}</div>}
         {errorMessage && <div className="toast error">{errorMessage}</div>}
@@ -231,7 +138,7 @@ export function AppLayout({
         {children}
       </main>
 
-      <Navigation mobile items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
+      <AppNavigation mobile items={navigation} settingsSection={settingsSection} view={view} onNavigate={navigate} />
       {notificationsOpen && (
         <Modal className="notification-dialog" labelledBy="notification-center-title" onClose={() => setNotificationsOpen(false)}>
           <div className="notification-dialog-close"><button aria-label="Cerrar avisos" className="icon-button" onClick={() => setNotificationsOpen(false)} type="button">×</button></div>
@@ -268,6 +175,7 @@ export function AppLayout({
         </Modal>
       )}
       {profileDetailsOpen && onUpdateProfileDetails && (
+        <ViewErrorBoundary><Suspense fallback={<Modal labelledBy="profile-loading-title" onClose={() => setProfileDetailsOpen(false)}><h2 id="profile-loading-title">Datos de perfil</h2><SectionLoading /></Modal>}>
         <ProfileDetailsDialog
           licenseSummary={licenseSummary}
           currentBirthDate={profileDetails?.birth_date ?? ''}
@@ -280,6 +188,7 @@ export function AppLayout({
           onLoadPhoto={onLoadProfilePhoto}
           onSave={onUpdateProfileDetails}
         />
+        </Suspense></ViewErrorBoundary>
       )}
     </div>
   )
@@ -292,85 +201,4 @@ function profileRoles(profile: Profile) {
     profile.is_coach ? 'Entrenador' : '',
     profile.is_viewer ? 'Dirección' : '',
   ].filter(Boolean)
-}
-
-function NotificationButton({ count, onClick }: { count: number; onClick: () => void }) {
-  return (
-    <button aria-label={count ? `Avisos, ${count} sin leer` : 'Avisos'} className="notification-button" onClick={onClick} type="button">
-      <Icon name="bell" size={19} />
-      {count > 0 && <span>{count > 9 ? '9+' : count}</span>}
-    </button>
-  )
-}
-
-function Navigation({ items, settingsSection, view, mobile = false, onNavigate }: {
-  items: NavigationEntry[]
-  settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
-  view: ViewName
-  mobile?: boolean
-  onNavigate: (view: ViewName | NavigationTarget) => void
-}) {
-  const [openGroup, setOpenGroup] = useState<NavigationGroup['id'] | null>(null)
-  const navRef = useRef<HTMLElement>(null)
-  const selectedSettingsSection = settingsSection ?? 'team'
-
-  useEffect(() => {
-    if (!openGroup) return
-    function closeOnOutsidePress(event: PointerEvent) {
-      if (!navRef.current?.contains(event.target as Node)) setOpenGroup(null)
-    }
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpenGroup(null)
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePress)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePress)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [openGroup])
-
-  return (
-    <nav ref={navRef} aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'} className={mobile ? 'mobile-nav' : undefined}>
-      {items.map((item) => {
-        const grouped = isNavigationGroup(item)
-        const active = grouped ? item.children.some((child) => child.id === view) : view === item.id
-        const itemClassName = mobile ? (active ? 'active' : '') : (active ? 'nav-item active' : 'nav-item')
-        if (!grouped) {
-          return <button className={itemClassName} key={item.id} onClick={() => { setOpenGroup(null); onNavigate(item.target ?? item.id) }} type="button">
-            <Icon name={item.icon} />
-            <span>{item.label}</span>
-          </button>
-        }
-        const expanded = openGroup === item.id
-        return <div className={`nav-group${expanded ? ' open' : ''}`} key={item.id}>
-          <button
-            aria-expanded={expanded}
-            aria-haspopup="menu"
-            className={itemClassName}
-            onClick={() => setOpenGroup((current) => current === item.id ? null : item.id)}
-            type="button"
-          >
-            <Icon name={item.icon} />
-            <span>{item.label}</span>
-            <b aria-hidden="true" className="nav-group-chevron">⌄</b>
-          </button>
-          {expanded && <div className="nav-submenu" role="menu">
-            {item.children.map((child) => (
-              <button
-                className={view === child.id && (!child.target?.settingsSection || child.target.settingsSection === selectedSettingsSection) ? 'active' : ''}
-                key={`${item.id}-${child.label}`}
-                onClick={() => { setOpenGroup(null); onNavigate(child.target ?? child.id) }}
-                role="menuitem"
-                type="button"
-              >
-                <Icon name={child.icon} size={16} />
-                <span>{child.label}</span>
-              </button>
-            ))}
-          </div>}
-        </div>
-      })}
-    </nav>
-  )
 }

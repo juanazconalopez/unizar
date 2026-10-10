@@ -38,14 +38,14 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 
 ## Entorno de desarrollo
 
-- Utilizar siempre Node.js 22 mediante:
+- Utilizar siempre la versión de Node.js 24 LTS fijada en `.nvmrc` y `.node-version` mediante:
 
   ```bash
   source /home/jazcona/.nvm/nvm.sh
-  nvm use 22
+  nvm use
   ```
 
-- El proyecto utiliza npm y conserva `package-lock.json`.
+- El proyecto utiliza npm y conserva `package-lock.json`; instalar con `npm ci`. `.npmrc` comprueba la rama de Node. Al actualizar Node, sincronizar `.nvmrc`, `.node-version`, `engines` y cualquier variable `NODE_VERSION` del build remoto.
 - Comandos principales:
 
   ```bash
@@ -72,7 +72,7 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 - Vitest y Testing Library.
 - Playwright para pruebas E2E.
 - PWA mediante `vite-plugin-pwa` y Workbox.
-- Konva y React Konva para pizarras tácticas.
+- SVG para consultar esquemas históricos de entrenamientos, sin Konva.
 - No hay Redux ni otro almacén global. El estado se mantiene mediante hooks y componentes.
 
 ## Supabase y límites del plan
@@ -194,7 +194,7 @@ Reglas importantes:
 ### Entrenamientos
 
 - Planificación privada para owner y entrenadores.
-- Incluye sesiones, ejercicios reutilizables y pizarras tácticas.
+- Incluye sesiones y ejercicios reutilizables con imágenes pegadas en la descripción. La pizarra táctica se ha retirado; los esquemas históricos se conservan y se muestran como SVG de solo lectura, también en impresión. Editar o duplicar un ejercicio no debe borrar su `diagram_data` existente.
 - Componentes principales en `src/features/trainingPlans`:
 
   - `TrainingPlansView` como controlador/listado;
@@ -202,7 +202,7 @@ Reglas importantes:
   - `TrainingPlanDetail`;
   - `TrainingExerciseLibrary`;
   - `TrainingPresetEditor`;
-  - `TacticsBoard`;
+  - `TrainingDiagramPreview` para esquemas históricos;
   - `trainingPlanMappers` para transformaciones puras y modo demo.
 - Las imágenes pegadas en el editor con formato se preparan en cliente y se insertan como referencias internas, conservando el punto de pegado aunque el editor esté bloqueado durante la compresión. No usar `execCommand` para insertar esas referencias mientras `contentEditable` esté desactivado. Las pruebas de navegador deben cubrir pegar, guardar y volver a abrir el entrenamiento con su imagen y formato.
 - El lápiz del listado y del detalle abre una ruta de edición con `training` y `trainingAction=edit`, conservando el identificador incluso al recargar. El editor distingue explícitamente crear, editar y duplicar, y se reinicia al cambiar de entrenamiento. Una edición guarda sobre el identificador original y muestra «Guardar cambios»; una duplicación muestra «Crear copia». Un fallo al cargar un entrenamiento existente no debe ofrecer una creación en su lugar. Guardar o cancelar la edición vuelve al listado y limpia la ruta de edición.
@@ -304,6 +304,7 @@ Reglas importantes:
 - `src/App.tsx` debe mantenerse como raíz de composición, autenticación y montaje del layout.
 - `src/app/AppViewRouter.tsx` conecta cada vista con sus datos y acciones.
 - `src/app/viewModules.ts` centraliza lazy loading y precarga de vistas.
+- `AppLayout` compone `AppNavigation` y `MobileProfileMenu`; `navigationEntries.ts` configura las entradas usando los permisos comunes.
 - `src/hooks/useAppNavigation.ts` gestiona historial y navegación.
 - `src/hooks/useOperationFeedback.ts` gestiona mensajes, errores y comprobación de conexión.
 - `src/app/actions` separa operaciones por dominio:
@@ -337,16 +338,16 @@ Reglas importantes:
 ### Componentes y lógica pura
 
 - Extraer componentes cuando un archivo contenga varias pantallas o editores completos.
-- Extraer transformaciones y cálculos de dominio a módulos puros para probarlos sin React.
+- Extraer transformaciones y cálculos de dominio a módulos puros para probarlos sin React. Inicio utiliza `features/dashboard/dashboardSelectors.ts`, que calcula únicamente el panel mostrado y conserva publicación, temporada y vinculación.
 - No crear hooks únicamente para ocultar código; utilizar hooks para estado, efectos o comportamiento reutilizable.
 - Evitar contextos globales para dependencias que pueden pasarse explícitamente por el router de vistas.
 - Agrupar acciones relacionadas en objetos por dominio cuando una vista necesite muchas callbacks.
 
 ### Estilos
 
-- Actualmente los estilos globales principales están en `src/App.css` y `src/index.css`.
+- `src/App.css` centraliza los imports de `src/styles` y conserva su orden; `src/index.css` contiene los estilos base y las variables globales.
 - Conservar nombres de clase existentes al extraer componentes para evitar cambios visuales involuntarios.
-- Si `App.css` sigue creciendo, dividir por funcionalidad manteniendo el orden de importación y la cascada. No migrar toda la aplicación a CSS Modules dentro de una modificación funcional pequeña.
+- Añadir estilos en el módulo correspondiente de `src/styles`; al extraer o mover reglas, mantener el orden de importación y la cascada. No migrar toda la aplicación a CSS Modules dentro de una modificación funcional pequeña.
 - Verificar siempre escritorio y móvil después de cambios en calendarios, modales, navegación o formularios.
 
 ## Fechas y zona horaria
@@ -365,6 +366,7 @@ Reglas importantes:
 - Las listas habituales tienen decenas de personas; priorizar consultas claras y payloads mínimos antes que tablas precalculadas.
 - Al añadir una consulta a Inicio, evitar cargar datos privados o colecciones completas si basta con un resumen RPC.
 - No invalidar toda la caché del navegador salvo que el cambio afecte realmente a esos datos.
+- Inicio y Datos de perfil se cargan bajo demanda. El build comprueba el presupuesto de JavaScript estático del arranque con `scripts/check-startup-size.mjs` (600 kB sin comprimir / 180 kB gzip); no subirlo para ocultar una regresión de carga. `npm run check:bundle` muestra además el tamaño incluyendo Inicio. Las consultas independientes de Inicio se ejecutan en paralelo y el panel del staff no necesita asistencia personal.
 
 ## Notificaciones
 

@@ -1,0 +1,949 @@
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.season-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+}
+
+.season-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.season-state {
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-weight: 800;
+}
+
+.season-state.activa {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.season-state.próxima {
+  color: #39717a;
+  background: #e7f2f4;
+}
+
+.season-state.finalizada {
+  color: #6d7472;
+  background: #edf0ee;
+}
+
+.season-card h3 {
+  margin: 20px 0 7px;
+  font-size: 19px;
+}
+
+.season-card>p {
+  min-height: 36px;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.season-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.season-card-export {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.season-teams-dialog {
+  width: min(1200px, 100%);
+}
+
+.season-team-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.season-team-toolbar>label {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--muted);
+}
+
+.season-team-toolbar input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  outline: 0;
+}
+
+.season-team-toolbar>label:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.season-team-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.season-team-roster-grid:where(:not(:has(> :nth-child(3)))) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.season-team-roster-grid:where(:has(> :only-child)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.season-team-roster-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfcfb;
+}
+
+.season-team-roster-card.inactive {
+  background: #f7f8f7;
+}
+
+.season-team-roster-card.unassigned {
+  border-color: #dbc9a0;
+  background: #fffbf3;
+}
+
+.season-team-roster-heading,
+.season-team-coaches {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.season-team-roster-heading h3 {
+  margin: 0 0 3px;
+  font-size: 14px;
+}
+
+.season-team-roster-heading h3 span {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 10px;
+  text-align: center;
+}
+
+.season-team-roster-heading h3 .season-team-absence-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #a53636;
+  background: #fff0ed;
+  vertical-align: middle;
+}
+
+.season-team-roster-heading small,
+.season-team-coaches span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.season-team-roster-heading button,
+.season-team-coaches button {
+  flex: 0 0 auto;
+  padding: 3px;
+  font-size: 11px;
+}
+
+.season-team-player-list {
+  min-height: 36px;
+  margin: 13px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.season-team-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.season-team-player>span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.season-team-player strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.season-team-player button {
+  flex: 0 0 auto;
+}
+
+.season-team-empty {
+  margin: 14px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.season-team-coaches {
+  align-items: center;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+
+.season-team-coaches>div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.season-team-coaches>div>strong {
+  color: var(--green);
+  font-size: 12px;
+}
+
+.season-team-coach-list {
+  display: grid;
+  gap: 3px;
+}
+
+.season-team-head-coach-role {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.season-team-subview-heading {
+  margin: 0 0 16px;
+}
+
+.season-team-subview-heading h3 {
+  margin: 5px 0;
+  font-size: 18px;
+}
+
+.season-team-subview-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.season-team-destinations,
+.season-team-coach-options {
+  display: grid;
+  gap: 8px;
+}
+
+.season-team-destination {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fbfcfb;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.season-team-destination:hover,
+.season-team-destination:focus-visible {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.season-team-destination span {
+  display: grid;
+  gap: 2px;
+}
+
+.season-team-destination small {
+  color: var(--muted);
+}
+
+.season-team-coach-option {
+  min-height: 54px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.season-team-coach-option label {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.season-team-coach-option label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.season-team-coach-option input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--green);
+}
+
+.season-team-coach-option select {
+  width: min(240px, 48%);
+  min-width: 160px;
+  min-height: 36px;
+  padding: 6px 28px 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .season-team-coach-option {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .season-team-coach-option select {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.season-team-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.season-team-fields>label:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.season-team-fields>.check-field {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: 9px;
+  cursor: pointer;
+}
+
+.season-team-fields>.check-field input {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--green);
+}
+
+@media (max-width: 900px) {
+  .season-team-roster-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .season-team-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .season-team-toolbar>label,
+  .season-team-toolbar>button {
+    width: 100%;
+  }
+
+  .season-team-roster-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.season-competitions-dialog {
+  width: min(780px, 100%);
+}
+
+.season-competition-list {
+  margin: 18px 0;
+  display: grid;
+  gap: 9px;
+}
+
+.season-competition-row {
+  min-height: 62px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  display: grid;
+  grid-template-columns: 15px minmax(140px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  background: #fbfcfb;
+}
+
+.season-competition-row>i {
+  width: 13px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.season-competition-row>div {
+  display: grid;
+  gap: 3px;
+}
+
+.season-competition-row>div strong {
+  font-size: 12px;
+}
+
+.season-competition-row>div span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.season-competition-row>.text-button {
+  padding: 7px;
+  font-size: 10px;
+}
+
+.competition-default-label {
+  padding: 5px 8px;
+  border-radius: 20px;
+  color: var(--green);
+  background: var(--green-soft);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.competition-color-field {
+  padding: 0;
+  border: 0;
+}
+
+.season-competitions-dialog label.cross-team-callup-option,
+.cross-team-callup-demo label.cross-team-callup-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cross-team-callup-option input[type="checkbox"] {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  flex: 0 0 16px;
+}
+
+.competition-color-palette {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.competition-color-palette label {
+  position: relative;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.competition-color-palette label:has(input:checked) {
+  border-color: var(--green);
+  box-shadow: inset 0 0 0 1px var(--green);
+}
+
+.competition-color-palette label.unavailable {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.competition-color-palette input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.competition-color-palette span {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+.competition-color-palette small {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+
+.season-state-help {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.season-context-notice {
+  width: min(1016px, calc(100% - 104px));
+  margin: 22px auto -35px;
+  padding: 13px 15px;
+  border: 1px solid #e6d49a;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  color: #775f18;
+  background: #fffaf0;
+}
+
+.season-context-notice>span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #b3912e;
+}
+
+.season-context-notice strong {
+  display: block;
+  font-size: 12px;
+}
+
+.season-context-notice p {
+  margin: 3px 0 0;
+  color: #786d4a;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.full-button {
+  width: 100%;
+}
+
+.member-list {
+  margin-top: 15px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.member-list>label {
+  padding: 9px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.member-list>label>span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.member-list strong,
+.member-list small {
+  display: block;
+}
+
+.member-list small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.member-list input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.people-list {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+
+.person-row {
+  padding: 17px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.person-row:last-child {
+  border-bottom: 0;
+}
+
+.person-identity {
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.person-identity>div strong,
+.person-identity>div span {
+  display: block;
+}
+
+.person-identity strong {
+  font-size: 13px;
+}
+
+.person-identity strong small {
+  display: inline;
+  color: var(--green);
+}
+
+.person-identity>div span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.person-profile-details {
+  width: 100%;
+  padding-left: 49px;
+  order: 3;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-details-state-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-completion-state {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 20px;
+  color: #176847;
+  background: #daf0e2;
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .35px;
+}
+
+.person-profile-details.incomplete .profile-completion-state {
+  color: #876c18;
+  background: #faf1c8;
+}
+
+.person-profile-edit {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid #cfe0d8;
+  color: var(--green);
+  background: #f4faf6;
+}
+
+.person-profile-edit:hover {
+  background: var(--green-soft);
+}
+
+.person-identity>.person-profile-edit {
+  margin-left: auto;
+}
+
+.person-profile-details>div {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.person-profile-details>div>span {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.person-profile-details b {
+  color: #60716c;
+  text-transform: uppercase;
+  font-size: 8px;
+}
+
+.person-profile-details a,
+.person-profile-details strong,
+.person-profile-details em {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.person-profile-details a:hover {
+  color: var(--green);
+  text-decoration: underline;
+}
+
+.approval-request {
+  background: linear-gradient(90deg, #fff 0%, #f6fbf8 100%);
+}
+
+.approval-request.has-possible-match {
+  display: grid;
+  grid-template-columns: minmax(210px, .8fr) minmax(260px, 1.2fr) auto;
+}
+
+.duplicate-profile-warning {
+  padding: 10px 12px;
+  border: 1px solid #e6d49a;
+  border-radius: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #775f18;
+  background: #fffaf0;
+}
+
+.duplicate-profile-warning>svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.duplicate-profile-warning strong {
+  display: block;
+  font-size: 11px;
+}
+
+.duplicate-profile-warning p {
+  margin: 3px 0 0;
+  color: #786d4a;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.duplicate-profile-warning b {
+  color: #66500e;
+}
+
+.approval-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.approval-request.has-possible-match .approval-actions {
+  justify-content: flex-end;
+}
+
+.approval-actions>span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.person-controls {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+
+.permission-toggles {
+  display: flex;
+  gap: 21px;
+}
+
+.danger-button {
+  padding: 7px 10px;
+  border: 1px solid #ebc7bf;
+  border-radius: 8px;
+  color: #984e42;
+  background: #fff7f5;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.danger-button:hover {
+  background: #fff0ed;
+}
+
+.archived-users {
+  margin-top: 24px;
+}
+
+.archived-users>.text-button {
+  margin-bottom: 12px;
+}
+
+.archived-person {
+  opacity: .78;
+}
+
+.toggle {
+  position: relative;
+  min-width: 72px;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.toggle input {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  opacity: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.toggle:focus-within i {
+  outline: 3px solid rgba(30, 111, 92, .24);
+  outline-offset: 2px;
+}
+
+.toggle i {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border-radius: 12px;
+  background: #cbd4d0;
+  transition: .2s;
+}
+
+.toggle i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  transition: .2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+}
+
+.toggle input:checked+i {
+  background: var(--green);
+}
+
+.toggle input:checked+i::after {
+  transform: translateX(14px);
+}
+
+.toggle input:disabled+i {
+  opacity: .45;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  padding: 46px 20px;
+  border: 1px dashed #cad7d1;
+  border-radius: 14px;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, .5);
+}
+
+.empty-state>span {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.empty-state h3 {
+  margin: 13px 0 5px;
+  font-size: 16px;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}

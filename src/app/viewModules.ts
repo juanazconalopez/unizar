@@ -2,6 +2,7 @@ import { lazy } from 'react'
 import type { ViewName } from '../types'
 
 const modules = {
+  home: () => import('../features/dashboard/Dashboard'),
   attendance: () => import('../features/attendance/AttendanceView'),
   settings: () => import('../features/settings/SettingsView'),
   statistics: () => import('../features/statistics/StatisticsView'),
@@ -17,6 +18,7 @@ const modules = {
   playerPreview: () => import('../features/playerPreview/PlayerPreviewView'),
 }
 
+export const Dashboard = lazy(() => modules.home().then(({ Dashboard }) => ({ default: Dashboard })))
 export const AttendanceView = lazy(() => modules.attendance().then(({ AttendanceView }) => ({ default: AttendanceView })))
 export const SettingsView = lazy(() => modules.settings().then(({ SettingsView }) => ({ default: SettingsView })))
 export const StatisticsView = lazy(() => modules.statistics().then(({ StatisticsView }) => ({ default: StatisticsView })))

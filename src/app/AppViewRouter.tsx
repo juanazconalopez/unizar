@@ -1,7 +1,6 @@
 import { canManagePlayerPositions } from '../lib/permissions'
-import { Suspense, useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
-import { Dashboard } from '../features/dashboard/Dashboard'
 import type { useCompetitionData } from '../hooks/useCompetitionData'
 import type { useTrainingData } from '../hooks/useTrainingData'
 import { todayIso } from '../lib/dates'
@@ -16,8 +15,9 @@ import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
 import { hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
-import { AttendanceView, CalendarView, CompetitionView, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingPlansView } from './viewModules'
-import { SurveyCalendarResultsDialog } from '../features/surveys/SurveyCalendarResultsDialog'
+import { AttendanceView, CalendarView, CompetitionView, Dashboard, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingPlansView } from './viewModules'
+
+const SurveyCalendarResultsDialog = lazy(() => import('../features/surveys/SurveyCalendarResultsDialog').then(({ SurveyCalendarResultsDialog }) => ({ default: SurveyCalendarResultsDialog })))
 
 type TrainingController = ReturnType<typeof useTrainingData>
 type CompetitionController = ReturnType<typeof useCompetitionData>

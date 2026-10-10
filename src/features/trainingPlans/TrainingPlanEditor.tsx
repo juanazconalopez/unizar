@@ -6,8 +6,8 @@ import { Modal } from '../../components/ui/Modal'
 import { formatDate } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import { seasonForDate } from '../../lib/selectors'
-import type { Season, TacticsBoardData, TrainingExercisePreset, TrainingExerciseValues, TrainingPlan, TrainingPlanValues } from '../../types'
-import { TacticsBoard, TacticsBoardPreview } from './TacticsBoard'
+import type { Season, TrainingExercisePreset, TrainingExerciseValues, TrainingPlan, TrainingPlanValues } from '../../types'
+import { TrainingDiagramPreview } from './TrainingDiagramPreview'
 import { emptyTrainingExercise, exerciseValuesFromPreset, initialTrainingPlanValues } from './trainingPlanMappers'
 import { trainingPlanDraftKey, useTrainingPlanDraft } from './useTrainingPlanDraft'
 
@@ -27,7 +27,6 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
 }) {
   const [initialValues] = useState<TrainingPlanValues>(() => initialTrainingPlanValues(plan, template, seasons))
   const [values, setValues] = useState<TrainingPlanValues>(initialValues)
-  const [boardExercise, setBoardExercise] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [formError, setFormError] = useState('')
@@ -159,7 +158,6 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
     try { await onDelete(); draft.clearDraft() } catch (error) { setFormError(errorText(error)); setDeleting(false) }
   }
 
-  const activeBoardExercise = boardExercise === null ? undefined : values.exercises[boardExercise]
 
   return (
     <div className="page training-editor-page">
@@ -202,7 +200,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
         </section>
 
         <section className="training-editor-section">
-          <div className="training-section-heading"><span>2</span><div><h2>Ejercicios</h2><p>Ordena la sesión, añade indicaciones y prepara cada esquema.</p></div></div>
+          <div className="training-section-heading"><span>2</span><div><h2>Ejercicios</h2><p>Ordena la sesión y añade indicaciones. Puedes pegar imágenes con los esquemas en la descripción.</p></div></div>
           <div className="training-exercise-list">
             {values.exercises.map((exercise, index) => (
               <article className="training-exercise-card" key={index}>
@@ -221,11 +219,6 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
                   <label>Duración (min)<input max="240" min="1" onChange={(event) => updateExercise(index, { durationMinutes: Number(event.target.value) })} required type="number" value={exercise.durationMinutes} /></label>
                   <ContentImageTextarea className="full-field" label="Descripción" onChange={(value) => updateExercise(index, { description: value })} placeholder="Explica la organización y el desarrollo del ejercicio…" rows={3} value={exercise.description} />
                 </div>
-                <button className={exercise.diagramData.elements.length ? 'training-board-button populated' : 'training-board-button'} onClick={() => setBoardExercise(index)} type="button">
-                  {exercise.diagramData.elements.length > 0 && <span className="training-board-preview"><i /><i /><i /></span>}
-                  <span><strong>{exercise.diagramData.elements.length ? 'Editar esquema táctico' : 'Crear esquema táctico'}</strong><small>Campo, jugadoras, rivales, conos, balones, flechas y zonas.</small></span>
-                  <Icon name="arrow" />
-                </button>
               </article>
             ))}
             <button className="secondary-button training-add-exercise-action" onClick={() => setAddDialog('choice')} type="button"><Icon name="plus" size={16} />Añadir ejercicio</button>
@@ -240,13 +233,6 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
         </div>
         </form>
       </div>
-
-      {activeBoardExercise && <TacticsBoard
-        exerciseTitle={activeBoardExercise.title}
-        initialData={activeBoardExercise.diagramData}
-        onCancel={() => setBoardExercise(null)}
-        onSave={(diagramData: TacticsBoardData) => { updateExercise(boardExercise!, { diagramData }); setBoardExercise(null) }}
-      />}
 
       {addDialog === 'choice' && <Modal className="training-add-exercise-dialog" labelledBy="training-add-exercise-title" onClose={() => setAddDialog(null)}>
         <div className="training-preset-heading">
@@ -276,7 +262,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
               <header><div><span className="eyebrow">VISTA PREVIA</span><h3>{selectedPreset.title}</h3></div><strong>{selectedPreset.duration_minutes} min</strong></header>
               <RichContent fallback="Sin descripción." text={selectedPreset.description} />
               {selectedPreset.diagram_data.elements.length
-                ? <TacticsBoardPreview data={selectedPreset.diagram_data} label={`Vista previa de ${selectedPreset.title}`} />
+                ? <TrainingDiagramPreview data={selectedPreset.diagram_data} label={`Vista previa de ${selectedPreset.title}`} />
                 : <div className="training-detail-no-board">Este ejercicio no tiene esquema.</div>}
             </article>}
           </div>

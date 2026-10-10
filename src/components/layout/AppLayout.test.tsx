@@ -183,6 +183,7 @@ describe('AppLayout', () => {
     )
 
     await user.click(screen.getAllByRole('button', { name: 'Editar mis datos' })[0])
+    await screen.findByLabelText('Nombre y apellidos')
     const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
     const input = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(input)
@@ -236,6 +237,7 @@ describe('AppLayout', () => {
     await user.click(screen.getAllByRole('button', { name: 'Avisos, 1 sin leer' })[0])
     await user.click(screen.getByRole('button', { name: /Completa tus datos de perfil/ }))
 
+    await screen.findByLabelText(/^Teléfono/)
     const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
     expect(within(dialog).getByLabelText(/^Teléfono/).closest('.profile-phone-field')).toHaveClass('profile-field-missing')
     expect(within(dialog).getByLabelText(/^Fecha de nacimiento/).closest('label')).toHaveClass('profile-field-missing')

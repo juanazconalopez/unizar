@@ -44,6 +44,7 @@ import { MatchLineupDialog } from '../matches/MatchLineupDialog'
 import { SeasonCallupReportView } from '../matches/SeasonCallupReportView'
 import { SurveyClosureCards } from '../surveys/SurveyClosureCards'
 import { HolidayDayContext } from './HolidayDayContext'
+import { CalendarTrainingPlans } from './CalendarTrainingPlans'
 import { AnnouncementCard } from '../tasks/AnnouncementCard'
 import { AnnouncementForm } from '../tasks/AnnouncementForm'
 import { TaskAlerts } from '../tasks/TaskAlerts'
@@ -295,10 +296,7 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActions(announcement)} announcement={announcement} initialOpen={props.focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
           </div>}
           {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={(survey) => onOpenSurveyResults?.(survey.id)} />}
-          {selectedTrainingPlans.length > 0 && <div className="selected-calendar-group selected-day-trainings">
-            <div className="task-week-heading"><h2>Entrenamientos</h2><span>{selectedTrainingPlans.length}</span></div>
-            <div className="calendar-training-list">{selectedTrainingPlans.map((plan) => <article className={plan.status === 'draft' ? 'training-calendar-draft' : undefined} key={plan.id}><span>E</span><div><div className="calendar-training-title"><strong>{plan.title}</strong>{plan.status === 'draft' && <b>Borrador</b>}</div><small>{plan.status === 'draft' ? 'Solo visible para el equipo técnico' : 'Plan de entrenamiento preparado'}</small></div>{plan.status === 'draft' ? props.onEditTrainingPlan && <button className="secondary-button compact" onClick={() => props.onEditTrainingPlan?.(plan.id)} type="button"><Icon name="edit" size={14} />Editar entrenamiento</button> : <button className="secondary-button compact" onClick={() => props.onOpenTrainingPlan(plan.id)} type="button">Ver entrenamiento <Icon name="arrow" size={14} /></button>}</article>)}</div>
-          </div>}
+          <CalendarTrainingPlans plans={selectedTrainingPlans} onEdit={props.onEditTrainingPlan} onOpen={props.onOpenTrainingPlan} />
           {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
             <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
             <div className="match-list">{selectedMatches.map(renderMatch)}</div>
