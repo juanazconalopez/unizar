@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppLaunchSplash } from './AppLaunchSplash'
+import { StrictMode } from 'react'
 
 describe('AppLaunchSplash', () => {
   afterEach(() => vi.useRealTimers())
@@ -26,5 +27,22 @@ describe('AppLaunchSplash', () => {
 
     act(() => vi.advanceTimersByTime(250))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('desaparece aunque la fotografía siga pendiente, también en StrictMode', () => {
+    vi.useFakeTimers()
+    render(<StrictMode><AppLaunchSplash /></StrictMode>)
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('desaparece si falla la fotografía y limpia los temporizadores al desmontarse', () => {
+    vi.useFakeTimers()
+    const { container, unmount } = render(<AppLaunchSplash />)
+    fireEvent.error(container.querySelector('.launch-splash-photo')!)
+    act(() => vi.advanceTimersByTime(2000))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 })

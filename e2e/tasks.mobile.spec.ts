@@ -1,6 +1,20 @@
 import { expect, test, type Page } from '@playwright/test'
 import { checkPlayerAbsenceDischarge } from './playerAbsenceDischarge'
 
+async function expectFixedMobileLayout(page: Page) {
+  const header = await page.locator('.mobile-header').boundingBox()
+  const navigation = await page.locator('.mobile-nav').boundingBox()
+  const viewport = page.viewportSize()
+  expect(header).not.toBeNull()
+  expect(navigation).not.toBeNull()
+  expect(viewport).not.toBeNull()
+  expect(header!.y).toBeGreaterThanOrEqual(0)
+  expect(header!.y).toBeLessThan(2)
+  const bottom = navigation!.y + navigation!.height
+  expect(bottom).toBeGreaterThanOrEqual(viewport!.height - 2)
+  expect(bottom).toBeLessThanOrEqual(viewport!.height + 1)
+}
+
 async function selectUpcomingMatchDay(page: Page, matchIndex: number) {
   let remainingIndex = matchIndex
 
@@ -38,7 +52,7 @@ test('owner plans and reviews task results on mobile', async ({ page }) => {
   }
 })
 
-test('owner can open demo training plans and find the PDF action', async ({ page }) => {
+test('owner can open demo training plans and find the PDF action', async ({ page, browserName }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Gestión' }).click()
   await page.getByRole('menuitem', { name: 'Entrenamientos' }).click()
@@ -48,10 +62,19 @@ test('owner can open demo training plans and find the PDF action', async ({ page
   await expect(page.getByText('VISTA DEL ENTRENAMIENTO')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Guardar PDF' })).toBeVisible()
 
+  await page.evaluate(() => {
+    window.print = () => { document.documentElement.dataset.printRequested = 'true' }
+  })
+  await page.getByRole('button', { name: 'Guardar PDF' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-print-requested', 'true')
+
   await page.emulateMedia({ media: 'print' })
-  const pdf = await page.pdf({ format: 'A4', printBackground: true })
-  const pageCount = pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0
-  expect(pageCount).toBeGreaterThan(1)
+  await expect(page.locator('.training-detail-page')).toBeVisible()
+  if (browserName === 'chromium') {
+    const pdf = await page.pdf({ format: 'A4', printBackground: true })
+    const pageCount = pdf.toString('latin1').match(/\/Type\s*\/Page\b/g)?.length ?? 0
+    expect(pageCount).toBeGreaterThan(1)
+  }
 })
 
 test('staff home shows team progress and exposes the linked video task', async ({ page }) => {
@@ -109,12 +132,7 @@ test('player fatigue options remain horizontal on mobile', async ({ page }) => {
   expect(box?.height).toBeLessThan(100)
   await page.locator('.fatigue-options label').last().click()
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
-  const header = await page.locator('.mobile-header').boundingBox()
-  const navigation = await page.locator('.mobile-nav').boundingBox()
-  expect(header?.y).toBeGreaterThanOrEqual(0)
-  expect(header?.y).toBeLessThan(2)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+  await expectFixedMobileLayout(page)
 })
 
 test('player opens her profile data without photo upload controls', async ({ page }) => {
@@ -328,12 +346,7 @@ test('selecting attendance keeps the mobile header and navigation fixed', async 
   await players.nth(1).click()
 
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
-  const header = await page.locator('.mobile-header').boundingBox()
-  const navigation = await page.locator('.mobile-nav').boundingBox()
-  expect(header?.y).toBeGreaterThanOrEqual(0)
-  expect(header?.y).toBeLessThan(2)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+  await expectFixedMobileLayout(page)
 })
 
 test('owner uploads and sees a coach photo on mobile', async ({ page }) => {
@@ -400,8 +413,10 @@ test('owner records an invited player and later links multiple provisional histo
   await page.getByRole('button', { name: 'Ver datos de Nerea Ruiz' }).click()
   const profileDialog = page.getByRole('dialog', { name: 'Nerea Ruiz', exact: true })
   await expect(profileDialog.getByRole('region', { name: 'Vincular asistencias al autorizar' })).toBeVisible()
-  await profileDialog.getByRole('checkbox', { name: /Nerea Ruis/ }).check()
-  await profileDialog.getByRole('checkbox', { name: /Nueva Jugadora Prueba/ }).check()
+  for (const name of ['Nerea Ruis', 'Nueva Jugadora Prueba']) {
+    await profileDialog.locator('.provisional-link-options label').filter({ hasText: name }).click()
+    await expect(profileDialog.getByRole('checkbox', { name: new RegExp(name) })).toBeChecked()
+  }
   await expect(profileDialog.getByLabel('Equipo de la temporada')).toHaveCount(0)
   page.once('dialog', (dialog) => dialog.accept())
   await profileDialog.getByRole('button', { name: 'Aprobar como jugadora' }).click()
@@ -420,7 +435,7 @@ test('owner records an invited player and later links multiple provisional histo
 
 })
 
-test('scrolling the lineup modal does not move the screen behind it', async ({ page }) => {
+test('scrolling the lineup modal does not move the screen behind it', async ({ page, browserName }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Calendario' }).click()
   await selectUpcomingMatchDay(page, 1)
@@ -433,16 +448,17 @@ test('scrolling the lineup modal does not move the screen behind it', async ({ p
 
   const dialog = page.locator('.lineup-dialog')
   await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight })
-  await dialog.hover()
-  await page.mouse.wheel(0, 1800)
+  if (browserName === 'chromium') {
+    await dialog.hover()
+    await page.mouse.wheel(0, 1800)
+  } else {
+    // Mobile WebKit no admite rueda de ratón: recorremos la modal hasta sus dos extremos.
+    await dialog.evaluate((element) => { element.scrollTop = 0 })
+    await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight })
+  }
 
   expect(await content.evaluate((element) => element.scrollTop)).toBe(initialScroll)
-  const header = await page.locator('.mobile-header').boundingBox()
-  const navigation = await page.locator('.mobile-nav').boundingBox()
-  expect(header?.y).toBeGreaterThanOrEqual(0)
-  expect(header?.y).toBeLessThan(2)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeGreaterThanOrEqual(913)
-  expect((navigation?.y ?? 0) + (navigation?.height ?? 0)).toBeLessThanOrEqual(916)
+  await expectFixedMobileLayout(page)
 
   await page.getByRole('button', { name: 'Cerrar' }).click()
   await expect(content).toHaveCSS('overflow-y', 'auto')

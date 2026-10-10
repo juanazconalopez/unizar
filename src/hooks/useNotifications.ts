@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildNotifications } from '../features/notifications/notifications'
 import type { AppNotification, NotificationFeedData } from '../features/notifications/notifications'
 import { todayIso } from '../lib/dates'
+import { readLocalStorage, writeLocalStorage } from '../lib/browserStorage'
 import { canManageSport } from '../lib/permissions'
 import { fetchNotificationFeed } from '../services/notificationsService'
 import type { Profile, ProfilePrivateDetails } from '../types'
@@ -90,7 +91,7 @@ function notificationStorageKey(userId?: string) {
 function readNotificationIds(userId?: string) {
   if (!userId) return new Set<string>()
   try {
-    const value = JSON.parse(localStorage.getItem(notificationStorageKey(userId)) ?? '[]') as unknown
+    const value = JSON.parse(readLocalStorage(notificationStorageKey(userId)) ?? '[]') as unknown
     return new Set(Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [])
   } catch {
     return new Set<string>()
@@ -104,5 +105,5 @@ function persistReadIds(
 ) {
   const trimmed = new Set([...ids].slice(-200))
   update({ userId, ids: trimmed })
-  if (userId) localStorage.setItem(notificationStorageKey(userId), JSON.stringify([...trimmed]))
+  if (userId) writeLocalStorage(notificationStorageKey(userId), JSON.stringify([...trimmed]))
 }

@@ -3,11 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const imageId = '123e4567-e89b-42d3-a456-426614174000'
-const mocks = vi.hoisted(() => ({ discard: vi.fn(), stage: vi.fn() }))
+const mocks = vi.hoisted(() => ({ discard: vi.fn(), stage: vi.fn(), volatile: vi.fn() }))
 
 vi.mock('../services/contentImagesService', () => ({
   discardStagedContentImage: mocks.discard,
   stageContentImage: mocks.stage,
+  isStagedContentImageVolatile: mocks.volatile,
 }))
 vi.mock('./ContentImage', () => ({ ContentImage: ({ id }: { id: string }) => <span>Vista {id}</span> }))
 
@@ -22,6 +23,7 @@ describe('ContentImageTextarea', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.stage.mockResolvedValue(imageId)
+    mocks.volatile.mockReturnValue(false)
   })
 
   it('intercepta una imagen pegada y añade una referencia interna', async () => {
@@ -41,6 +43,16 @@ describe('ContentImageTextarea', () => {
     })
     expect(screen.getByText(`Vista ${imageId}`)).toBeInTheDocument()
     expect(screen.getByText('Imagen preparada. Se subirá al guardar.')).toBeInTheDocument()
+  })
+
+  it('permite pegar sin caché y avisa de que hay que guardar antes de recargar', async () => {
+    mocks.volatile.mockReturnValue(true)
+    render(<ControlledTextarea />)
+    fireEvent.paste(screen.getByRole('textbox', { name: 'Descripción' }), {
+      clipboardData: { items: [{ kind: 'file', type: 'image/png', getAsFile: () => new File(['image'], 'captura.png', { type: 'image/png' }) }] },
+    })
+    expect(await screen.findByText(/Guarda antes de cerrar o recargar/)).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Descripción' })).toHaveTextContent(`[[imagen:${imageId}]]`)
   })
 
   it('quita la referencia y descarta la imagen local pendiente', async () => {

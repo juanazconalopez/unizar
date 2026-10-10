@@ -45,16 +45,24 @@ export function useAuth() {
 
   async function signInWithGoogle() {
     setErrorMessage('')
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    })
-    if (error) setErrorMessage(error.message)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (error) setErrorMessage(error.message)
+    } catch (error) {
+      setErrorMessage(errorText(error))
+    }
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut()
-    if (error) setErrorMessage(error.message)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) setErrorMessage(error.message)
+    } catch (error) {
+      setErrorMessage(errorText(error))
+    }
   }
 
   return { session, loading, errorMessage, signInWithGoogle, signOut }

@@ -14,6 +14,12 @@ export default defineConfig({
       testMatch: /.*\.desktop\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
+    {
+      name: 'iphone-14-webkit',
+      timeout: 60_000,
+      testMatch: /.*\.mobile\.spec\.ts/,
+      use: { ...devices['iPhone 14'], browserName: 'webkit' },
+    },
   ],
   webServer: {
     command: 'npm run dev -- --config demo.local/vite.config.ts --host 127.0.0.1 --port 4174',

@@ -15,7 +15,7 @@ const photoUrls = new Map<string, string>()
 const photoDataUrls = new Map<string, Promise<string>>()
 
 function cacheAvailable() {
-  return typeof caches !== 'undefined' && typeof location !== 'undefined'
+  try { return typeof caches !== 'undefined' && typeof location !== 'undefined' } catch { return false }
 }
 
 function cacheName(userId: string) {

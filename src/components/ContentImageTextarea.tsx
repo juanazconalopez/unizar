@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ClipboardEvent, ChangeEvent, TextareaHTMLAttributes } from 'react'
 import { contentImageIds, contentImageToken, removeContentImageToken } from '../lib/contentImageTokens'
 import { errorText } from '../lib/errors'
-import { discardStagedContentImage, stageContentImage } from '../services/contentImagesService'
+import { discardStagedContentImage, isStagedContentImageVolatile, stageContentImage } from '../services/contentImagesService'
 import { ContentImage } from './ContentImage'
 
 type FormatAction = 'bold' | 'italic' | 'strike' | 'underline' | 'bullet' | 'number' | 'quote' | 'link'
@@ -131,10 +131,13 @@ export function ContentImageTextarea({ label, value, onChange, className = '', m
     setBusy(true)
     setMessage('Preparando imagen…')
     try {
-      const tokens: string[] = []
-      for (const file of files) tokens.push(contentImageToken(await stageContentImage(file)))
-      insertTextAtCursor(`\n${tokens.join('\n')}\n`, savedRange)
-      setMessage(files.length === 1 ? 'Imagen preparada. Se subirá al guardar.' : `${files.length} imágenes preparadas. Se subirán al guardar.`)
+      const ids: string[] = []
+      for (const file of files) ids.push(await stageContentImage(file))
+      insertTextAtCursor(`\n${ids.map(contentImageToken).join('\n')}\n`, savedRange)
+      const preparedMessage = files.length === 1 ? 'Imagen preparada. Se subirá al guardar.' : `${files.length} imágenes preparadas. Se subirán al guardar.`
+      setMessage(ids.some(isStagedContentImageVolatile)
+        ? `${preparedMessage} Guarda antes de cerrar o recargar: este dispositivo no puede conservar las imágenes pendientes.`
+        : preparedMessage)
     } catch (error) {
       setMessage(errorText(error))
     } finally {

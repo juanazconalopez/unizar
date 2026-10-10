@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { TrainingPlanValues } from '../../types'
+import { readLocalStorage, removeLocalStorageItem, writeLocalStorage } from '../../lib/browserStorage'
 
 const DRAFT_VERSION = 1
 const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
@@ -19,34 +20,26 @@ export function trainingPlanDraftKey(userId: string, planId?: string, templateId
 }
 
 export function loadTrainingPlanDraft(storageKey: string): TrainingPlanValues | null {
-  if (!storageAvailable()) return null
   try {
-    const draft = JSON.parse(localStorage.getItem(storageKey) ?? 'null') as unknown
+    const draft = JSON.parse(readLocalStorage(storageKey) ?? 'null') as unknown
     if (!isStoredTrainingPlanDraft(draft) || Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
-      localStorage.removeItem(storageKey)
+      removeLocalStorageItem(storageKey)
       return null
     }
     return draft.values
   } catch {
-    localStorage.removeItem(storageKey)
+    removeLocalStorageItem(storageKey)
     return null
   }
 }
 
 export function storeTrainingPlanDraft(storageKey: string, values: TrainingPlanValues) {
-  if (!storageAvailable()) return false
-  try {
-    const draft: StoredTrainingPlanDraft = { version: DRAFT_VERSION, savedAt: Date.now(), values }
-    localStorage.setItem(storageKey, JSON.stringify(draft))
-    return true
-  } catch {
-    return false
-  }
+  const draft: StoredTrainingPlanDraft = { version: DRAFT_VERSION, savedAt: Date.now(), values }
+  return writeLocalStorage(storageKey, JSON.stringify(draft))
 }
 
 export function removeTrainingPlanDraft(storageKey: string) {
-  if (!storageAvailable()) return
-  try { localStorage.removeItem(storageKey) } catch { /* A disabled storage must not break the editor. */ }
+  removeLocalStorageItem(storageKey)
 }
 
 export function useTrainingPlanDraft({ storageKey, initialValues, values, onRecover }: {
@@ -161,8 +154,4 @@ function isStoredTrainingPlanDraft(value: unknown): value is StoredTrainingPlanD
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object'
-}
-
-function storageAvailable() {
-  return typeof localStorage !== 'undefined'
 }

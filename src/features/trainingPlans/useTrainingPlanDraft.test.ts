@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { TrainingPlanValues } from '../../types'
 import {
   loadTrainingPlanDraft,
@@ -51,5 +51,15 @@ describe('training plan local drafts', () => {
     localStorage.setItem(malformedKey, JSON.stringify({ version: 1, savedAt: Date.now(), values: { title: 42 } }))
     expect(loadTrainingPlanDraft(malformedKey)).toBeNull()
     expect(localStorage.getItem(malformedKey)).toBeNull()
+  })
+
+  test('continues editing when draft storage is blocked', () => {
+    for (const method of ['getItem', 'setItem', 'removeItem'] as const) {
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => { throw new DOMException('Bloqueado', 'SecurityError') })
+    }
+    const key = trainingPlanDraftKey('owner-1', 'plan-1')
+    expect(loadTrainingPlanDraft(key)).toBeNull()
+    expect(storeTrainingPlanDraft(key, values)).toBe(false)
+    expect(() => removeTrainingPlanDraft(key)).not.toThrow()
   })
 })

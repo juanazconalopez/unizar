@@ -17,6 +17,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await clearProfilePhotoCache()
+  vi.unstubAllGlobals()
 })
 
 describe('private profile photo cache', () => {
@@ -33,6 +34,21 @@ describe('private profile photo cache', () => {
     expect(dataUrl).toMatch(/^data:image\/jpeg;base64,/)
     expect(storage.download).toHaveBeenCalledTimes(1)
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+  })
+
+  test.each(['open', 'put'])('uses memory when the private photo cache %s fails', async (operation) => {
+    const failure = new DOMException('Sin almacenamiento', 'QuotaExceededError')
+    vi.stubGlobal('caches', {
+      open: operation === 'open' ? vi.fn().mockRejectedValue(failure) : vi.fn().mockResolvedValue({
+        match: vi.fn().mockResolvedValue(undefined), put: vi.fn().mockRejectedValue(failure),
+      }),
+      keys: vi.fn().mockResolvedValue([]),
+      delete: vi.fn().mockResolvedValue(true),
+    })
+    setProfilePhotoCacheUser('owner-1')
+    await expect(loadProfilePhotoUrl('member-1/photo.jpg')).resolves.toBe('blob:foto')
+    await expect(loadProfilePhotoUrl('member-1/photo.jpg')).resolves.toBe('blob:foto')
+    expect(storage.download).toHaveBeenCalledOnce()
   })
 
   test('reuses the browser cache after a module reload and separates accounts', async () => {

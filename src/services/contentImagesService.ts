@@ -17,11 +17,12 @@ export type ContentImageEntityType = 'task' | 'announcement' | 'training_plan' |
 type PreparedImage = { blob: Blob; width: number; height: number }
 
 const stagedImages = new Map<string, PreparedImage>()
+const volatileStagedImages = new Set<string>()
 const metadataCache = new Map<string, Promise<ContentImage>>()
 let abandonedCleanupStarted = false
 
 function cacheAvailable() {
-  return typeof caches !== 'undefined' && typeof location !== 'undefined'
+  try { return typeof caches !== 'undefined' && typeof location !== 'undefined' } catch { return false }
 }
 
 function cacheRequest(id: string, state: 'pending' | 'stored') {
@@ -29,34 +30,47 @@ function cacheRequest(id: string, state: 'pending' | 'stored') {
 }
 
 async function writeBlobToCache(id: string, state: 'pending' | 'stored', prepared: PreparedImage) {
-  if (!cacheAvailable()) return
-  const cache = await caches.open(CACHE_NAME)
-  await cache.put(cacheRequest(id, state), new Response(prepared.blob, {
-    headers: {
-      'content-type': 'image/webp',
-      'content-length': String(prepared.blob.size),
-      'x-image-width': String(prepared.width),
-      'x-image-height': String(prepared.height),
-      'x-cached-at': String(Date.now()),
-    },
-  }))
-  await pruneImageCache(cache)
+  try {
+    if (!cacheAvailable()) return false
+    const cache = await caches.open(CACHE_NAME)
+    await cache.put(cacheRequest(id, state), new Response(prepared.blob, {
+      headers: {
+        'content-type': 'image/webp',
+        'content-length': String(prepared.blob.size),
+        'x-image-width': String(prepared.width),
+        'x-image-height': String(prepared.height),
+        'x-cached-at': String(Date.now()),
+      },
+    }))
+    await pruneImageCache(cache)
+    return true
+  } catch {
+    // Una caché llena o bloqueada no debe impedir pegar, mostrar ni guardar imágenes.
+    return false
+  }
 }
 
 async function readBlobFromCache(id: string, state: 'pending' | 'stored'): Promise<PreparedImage | null> {
-  if (!cacheAvailable()) return null
-  const response = await (await caches.open(CACHE_NAME)).match(cacheRequest(id, state))
-  if (!response) return null
-  return {
-    blob: await response.blob(),
-    width: Number(response.headers.get('x-image-width')) || 1,
-    height: Number(response.headers.get('x-image-height')) || 1,
+  try {
+    if (!cacheAvailable()) return null
+    const response = await (await caches.open(CACHE_NAME)).match(cacheRequest(id, state))
+    if (!response) return null
+    return {
+      blob: await response.blob(),
+      width: Number(response.headers.get('x-image-width')) || 1,
+      height: Number(response.headers.get('x-image-height')) || 1,
+    }
+  } catch {
+    return null
   }
 }
 
 async function deleteCachedBlob(id: string, state: 'pending' | 'stored') {
-  if (!cacheAvailable()) return
-  await (await caches.open(CACHE_NAME)).delete(cacheRequest(id, state))
+  try {
+    if (cacheAvailable()) await (await caches.open(CACHE_NAME)).delete(cacheRequest(id, state))
+  } catch {
+    // La eliminación de la imagen en memoria y en Supabase sigue adelante.
+  }
 }
 
 async function pruneImageCache(cache: Cache) {
@@ -91,12 +105,17 @@ export async function stageContentImage(file: File) {
   const prepared = await prepareContentImage(file)
   const id = newImageId()
   stagedImages.set(id, prepared)
-  await writeBlobToCache(id, 'pending', prepared)
+  if (!await writeBlobToCache(id, 'pending', prepared)) volatileStagedImages.add(id)
   return id
+}
+
+export function isStagedContentImageVolatile(id: string) {
+  return volatileStagedImages.has(id)
 }
 
 export async function discardStagedContentImage(id: string) {
   stagedImages.delete(id)
+  volatileStagedImages.delete(id)
   await deleteCachedBlob(id, 'pending')
 }
 
@@ -229,8 +248,13 @@ export async function loadContentImageBlob(id: string) {
 export async function clearContentImageCache() {
   metadataCache.clear()
   stagedImages.clear()
+  volatileStagedImages.clear()
   abandonedCleanupStarted = false
-  if (cacheAvailable()) await caches.delete(CACHE_NAME)
+  try {
+    if (cacheAvailable()) await caches.delete(CACHE_NAME)
+  } catch {
+    // La memoria ya está vacía; una caché bloqueada no impide cerrar sesión.
+  }
 }
 
 export async function prepareContentImage(file: File): Promise<PreparedImage> {

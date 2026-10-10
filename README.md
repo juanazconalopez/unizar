@@ -166,6 +166,20 @@ Cuando hay una versión nueva, la aplicación muestra el aviso **Nueva versión
 disponible**. La actualización solo se aplica al pulsar el botón para evitar perder
 un formulario que se esté rellenando y conserva la sesión de Supabase.
 
+La caché es opcional, tanto en Safari como en la aplicación instalada. Si el
+navegador bloquea el almacenamiento o no queda espacio, las imágenes se descargan
+desde Supabase y las recién pegadas se conservan en memoria para poder guardarlas.
+En ese caso se avisa de que hay que guardar antes de cerrar o recargar. Los avisos
+siguen funcionando y los borradores indican si no se pueden conservar en el
+dispositivo. La pantalla inicial desaparece a los dos segundos, aunque su fotografía
+no termine de cargar.
+
+Si una sección necesita un archivo de una versión anterior, **Actualizar y
+reintentar** activa la actualización pendiente o retira únicamente el service worker
+antiguo de esta aplicación antes de recargar. Conserva la sesión y los borradores;
+no borra globalmente los datos del navegador. Las cachés de recursos y fuentes
+se pueden liberar automáticamente ante un error de cuota.
+
 Los datos no se guardan en la caché del service worker. Se consultan al iniciar la
 aplicación y se refrescan silenciosamente al volver a primer plano o recuperar la
 conexión, siempre que haya pasado al menos un minuto desde la última carga.
@@ -180,3 +194,7 @@ Cuando el navegador lo permite aparece **Instalar aplicación** en el perfil. En
 iPhone y iPad se muestra una guía para añadirla desde Safari. Si se pierde la
 conexión, la aplicación avisa, impide enviar cambios desde sus manejadores y ofrece
 un reintento explícito si la carga inicial no puede completarse.
+
+Las pruebas móviles incluyen Chromium y WebKit con el dispositivo iPhone 14,
+incluidos el almacenamiento lleno o bloqueado y una fotografía inicial pendiente.
+Para preparar los navegadores de pruebas: `npx playwright install chromium webkit`.

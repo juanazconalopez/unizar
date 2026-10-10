@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { readLocalStorage, removeLocalStorageByPrefix, removeLocalStorageItem, writeLocalStorage } from '../lib/browserStorage'
 import type { CalendarBirthday, SeasonBirthday, TodayBirthday } from '../types'
 
 const CACHE_PREFIX = 'unizar:birthdays:'
@@ -46,33 +47,19 @@ export async function fetchPlayerCalendarBirthdays(userId: string, seasonId: str
 
 /** Clears derived birthday data after a local profile, roster or season change. */
 export function invalidateBirthdayCache() {
-  if (!storageAvailable()) return
-  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
-    const key = localStorage.key(index)
-    if (key?.startsWith(CACHE_PREFIX)) localStorage.removeItem(key)
-  }
+  removeLocalStorageByPrefix(CACHE_PREFIX)
 }
 
 function readDailyCache<T>(key: string, today: string): T | null {
-  if (!storageAvailable()) return null
   try {
-    const cached = JSON.parse(localStorage.getItem(key) ?? 'null') as DailyCache<T> | null
+    const cached = JSON.parse(readLocalStorage(key) ?? 'null') as DailyCache<T> | null
     return cached?.storedOn === today ? cached.data : null
   } catch {
-    localStorage.removeItem(key)
+    removeLocalStorageItem(key)
     return null
   }
 }
 
 function writeDailyCache<T>(key: string, today: string, data: T) {
-  if (!storageAvailable()) return
-  try {
-    localStorage.setItem(key, JSON.stringify({ storedOn: today, data } satisfies DailyCache<T>))
-  } catch {
-    // A full or disabled localStorage should never prevent the screen loading.
-  }
-}
-
-function storageAvailable() {
-  return typeof localStorage !== 'undefined'
+  writeLocalStorage(key, JSON.stringify({ storedOn: today, data } satisfies DailyCache<T>))
 }

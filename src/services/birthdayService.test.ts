@@ -43,4 +43,14 @@ describe('birthday cache', () => {
     expect(mocks.rpc).toHaveBeenCalledOnce()
     expect(mocks.rpc).toHaveBeenCalledWith('get_player_season_birthday_calendar')
   })
+
+  test('loads birthdays and invalidates safely when reads, writes and removals are blocked', async () => {
+    mocks.rpc.mockResolvedValue({ data: [], error: null })
+    for (const method of ['getItem', 'setItem', 'removeItem'] as const) {
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => { throw new DOMException('Bloqueado', 'SecurityError') })
+    }
+    await expect(fetchTodayBirthdays('player-1', '2026-09-02')).resolves.toEqual([])
+    await expect(fetchPlayerCalendarBirthdays('player-1', 'season-1', '2026-09-02')).resolves.toEqual([])
+    expect(() => invalidateBirthdayCache()).not.toThrow()
+  })
 })

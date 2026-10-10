@@ -50,13 +50,16 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'versioned-app-assets',
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30, purgeOnQuotaError: true },
             },
           },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
             handler: 'StaleWhileRevalidate',
-            options: { cacheName: 'google-font-styles' },
+            options: {
+              cacheName: 'google-font-styles',
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30, purgeOnQuotaError: true },
+            },
           },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
@@ -64,7 +67,7 @@ export default defineConfig({
             options: {
               cacheName: 'google-font-files',
               cacheableResponse: { statuses: [0, 200] },
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
             },
           },
         ],

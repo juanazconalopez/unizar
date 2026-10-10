@@ -32,6 +32,6 @@ export const SurveyResponseView = lazy(() => modules.survey().then(({ SurveyResp
 export const PlayerPreviewView = lazy(() => modules.playerPreview().then(({ PlayerPreviewView }) => ({ default: PlayerPreviewView })))
 
 export function preloadView(view: ViewName) {
-  if (view in modules) void modules[view as keyof typeof modules]()
-  if (view === 'calendar') void modules.playerCalendar()
+  if (view in modules) void modules[view as keyof typeof modules]().catch(() => undefined)
+  if (view === 'calendar') void modules.playerCalendar().catch(() => undefined)
 }

@@ -52,4 +52,16 @@ describe('useAuth', () => {
     expect(result.current.session).toBeNull()
     expect(result.current.errorMessage).toBe('No se ha podido recuperar la sesión.')
   })
+
+  test('exposes login and logout rejections instead of leaving an unhandled promise', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: null }, error: null })
+    mocks.signInWithOAuth.mockRejectedValue(new DOMException('Sin espacio para guardar la sesión', 'QuotaExceededError'))
+    mocks.signOut.mockRejectedValue(new Error('No se ha podido cerrar la sesión'))
+    const { result } = renderHook(() => useAuth())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await act(() => result.current.signInWithGoogle())
+    expect(result.current.errorMessage).toBe('Sin espacio para guardar la sesión')
+    await act(() => result.current.signOut())
+    expect(result.current.errorMessage).toBe('No se ha podido cerrar la sesión')
+  })
 })

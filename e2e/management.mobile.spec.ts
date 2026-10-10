@@ -70,7 +70,7 @@ test('owner saves a holiday and sees it in the calendar', async ({ page }) => {
   await expect(page.getByText('Sin entrenamiento de campo programado')).toBeVisible()
 })
 
-test('published match graphic fits inside the mobile detail', async ({ page }) => {
+test('published match graphic fits inside the mobile detail', async ({ page, browserName }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Gestión' }).click()
   await page.getByRole('menuitem', { name: 'Partidos' }).click()
@@ -91,10 +91,16 @@ test('published match graphic fits inside the mobile detail', async ({ page }) =
   expect(box).not.toBeNull()
   const centerX = box!.x + box!.width / 2
   const centerY = box!.y + 90
-  const client = await page.context().newCDPSession(page)
-  await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centerX - 40, y: centerY, id: 1 }, { x: centerX + 40, y: centerY, id: 2 }] })
-  await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: centerX - 80, y: centerY, id: 1 }, { x: centerX + 80, y: centerY, id: 2 }] })
-  await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  if (browserName === 'chromium') {
+    const client = await page.context().newCDPSession(page)
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: centerX - 40, y: centerY, id: 1 }, { x: centerX + 40, y: centerY, id: 2 }] })
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: centerX - 80, y: centerY, id: 1 }, { x: centerX + 80, y: centerY, id: 2 }] })
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  } else {
+    // WebKit no admite CDP; comprobamos el zoom con los controles de la misma vista.
+    await zoomDialog.getByRole('button', { name: 'Aumentar zoom' }).click()
+    await zoomDialog.getByRole('button', { name: 'Aumentar zoom' }).click()
+  }
   await expect(zoomDialog.getByRole('button', { name: 'Restablecer zoom' })).toHaveText('200 %')
   await expect(zoomDialog.getByRole('img', { name: 'Imagen de la convocatoria' })).toHaveCSS('width', `${Math.round(box!.width * 2)}px`)
 })

@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
+import { isAppAssetLoadError, reloadApp } from '../lib/appRecovery'
 
 export function SectionLoading() {
   return (
@@ -24,15 +25,11 @@ export function SectionError({ message, onRetry }: { message: string; onRetry: (
   )
 }
 
-export class ViewErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false }
+export class ViewErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean; assetError: boolean }> {
+  state = { failed: false, assetError: false }
 
-  static getDerivedStateFromError() {
-    return { failed: true }
-  }
-
-  componentDidCatch() {
-    // The recovery action deliberately reloads so a stale PWA can obtain the latest chunk map.
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, assetError: isAppAssetLoadError(error) }
   }
 
   render() {
@@ -40,9 +37,11 @@ export class ViewErrorBoundary extends Component<{ children: ReactNode }, { fail
       return (
         <div className="section-state error-state">
           <span><Icon name="warning" size={24} /></span>
-          <h2>La sección necesita actualizarse</h2>
-          <p>Puede haber una versión nueva de la aplicación disponible.</p>
-          <button className="primary-button" onClick={() => window.location.reload()} type="button">Actualizar y reintentar</button>
+          <h2>{this.state.assetError ? 'La sección necesita actualizarse' : 'No hemos podido abrir esta pantalla'}</h2>
+          <p>{this.state.assetError ? 'Comprueba tu conexión y actualiza para cargar la versión actual.' : 'Vuelve a intentarlo. Si el problema continúa, comprueba tu conexión.'}</p>
+          <button className="primary-button" onClick={() => this.state.assetError ? void reloadApp() : window.location.reload()} type="button">
+            {this.state.assetError ? 'Actualizar y reintentar' : 'Reintentar'}
+          </button>
         </div>
       )
     }

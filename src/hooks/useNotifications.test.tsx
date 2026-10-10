@@ -43,6 +43,19 @@ describe('useNotifications', () => {
     expect(reopened.result.current.notifications).toHaveLength(0)
   })
 
+  test.each(['QuotaExceededError', 'SecurityError'])('keeps notifications usable when storage throws %s', async (name) => {
+    const profile = makeProfile()
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('Almacenamiento no disponible', name) })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Almacenamiento no disponible', name) })
+    const notifications = renderHook(() => useNotifications(profile, profile.id))
+    await loadInitialFeed()
+
+    act(() => notifications.result.current.markRead(notifications.result.current.notifications[0]))
+    expect(notifications.result.current.unreadCount).toBe(0)
+    act(() => notifications.result.current.markAllRead())
+    expect(notifications.result.current.notifications).toHaveLength(0)
+  })
+
   test('does not repeat notification queries on every focus event', async () => {
     const profile = makeProfile()
     renderHook(() => useNotifications(profile, profile.id))
