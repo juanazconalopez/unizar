@@ -145,7 +145,8 @@ En Supabase, añade tanto la dirección local como la dirección desplegada a **
 El despliegue actual utiliza Workers Builds, conectado al repositorio de GitHub.
 La configuración se encuentra en **Workers & Pages → unizar → Settings → Build**:
 
-- Rama de producción: `main`
+- Rama de producción para el versionado automático: `release`
+- Builds para ramas que no son de producción: desactivados
 - Comando de compilación: `npm run build`
 - Comando de despliegue: `npx wrangler deploy`
 - Recursos generados por Vite: `dist`
@@ -171,6 +172,52 @@ Añade la dirección `https://<worker>.<cuenta>.workers.dev` y las direcciones d
 vista previa utilizadas a las URLs de redirección permitidas de Supabase. La URI
 autorizada de Google continúa siendo el callback de Supabase, no la URL de Cloudflare.
 
+### Versionado y publicación automática
+
+`.github/workflows/release.yml` se activa al hacer push a `main` y también permite
+una ejecución manual desde Actions, seleccionando `main`. Espera diez minutos;
+un nuevo push cancela la espera anterior y comienza otra. Al terminar, un único
+proceso prepara la siguiente versión y ejecuta pruebas, lint, build y revisión
+del diff antes de enviar el código a `release`. Las comprobaciones habituales de
+`quality.yml` siguen ejecutándose en cada push y PR.
+
+`scripts/automaticRelease.ts` incrementa el patch de la última versión preparada:
+1.0.0 → 1.0.1 → 1.0.2. La primera publicación parte del número de `main` y lo
+incrementa si todavía no existe `release`. Si se establece en `main` una versión
+superior, por ejemplo 1.1.0 o 2.0.0, esa pasa a ser la siguiente publicación.
+Actualiza conjuntamente `package.json` y `package-lock.json` únicamente en
+`release`; `main` conserva el número base. El commit generado registra el SHA de
+origen mediante `Unizar-Source-Commit` y conserva el historial de ambas ramas,
+sin forzar pushes ni fusionar `release` de vuelta a `main`.
+
+Antes de preparar la versión y justo antes de enviarla se comprueba que el SHA
+siga siendo el último de `main`. Si llegaron otros commits, la ejecución antigua
+termina sin publicar. Repetir el mismo SHA no crea otra versión. Si falla una
+comprobación, no se envía a `release`; si falla el despliegue posterior de
+Cloudflare, reintentar ese build en el panel conserva el mismo número.
+
+Para activar el flujo por primera vez:
+
+1. Si todavía no existe `release`, crearla a partir del último código de `main`
+   que ya esté publicado. Esto permite seleccionar la rama de producción antes
+   del primer push con la automatización. No incluir cambios locales ni forzar el push.
+2. En Cloudflare → Workers & Pages → unizar → Settings → Builds, seleccionar
+   **Production branch: release** y desmarcar **Builds for non-production branches**.
+   Conservar `npm run build`, `npx wrangler deploy` y las variables reales de Supabase.
+   La desactivación de builds de otras ramas evita que los pushes a `main` se
+   desplieguen antes de la espera, también en la configuración antigua de previews.
+3. Subir los cambios del workflow y los scripts a `main`. En Actions, comprobar
+   que **Publicación automática** prepara una única versión tras la espera y
+   las comprobaciones, y que Cloudflare despliega `release`. El workflow usa el token temporal
+   de GitHub con `contents: write` solo en el job de publicación; no necesita un
+   token de Cloudflare en GitHub. Si existen reglas de protección sobre `release`,
+   deben permitir el push de la automatización.
+
+Hasta seleccionar `release` en Cloudflare, la configuración anterior de `main`
+puede seguir desplegando cada push. Los builds de comprobación en GitHub usan
+valores ficticios de Supabase; el build real se realiza en Cloudflare con sus
+variables existentes. No guardar tokens o URLs de deploy hooks en el repositorio.
+
 ## Aplicación instalable (PWA)
 
 La compilación genera el manifest, el service worker y los iconos necesarios para
@@ -182,6 +229,19 @@ Vite ya incluyen hashes y se almacenan de forma segura.
 Cuando hay una versión nueva, la aplicación muestra el aviso **Nueva versión
 disponible**. La actualización solo se aplica al pulsar el botón para evitar perder
 un formulario que se esté rellenando y conserva la sesión de Supabase.
+
+**Datos de perfil** muestra la versión que está ejecutándose en ese dispositivo.
+Al abrir el perfil se consulta la última publicación y, si tiene una versión mayor,
+aparece **Actualizar a X.Y.Z**, también después de posponer el aviso automático.
+El número se incorpora al código durante la compilación y el build genera
+`version.json` para consultar la última versión, fuera de la caché de la PWA.
+No se registra en Supabase: cada dispositivo muestra su propia versión.
+
+El workflow de publicación incrementa automáticamente el patch en `release`.
+Para establecer un salto de versión en `main`, usar
+`npm version minor --no-git-tag-version` o `major` y mantener sincronizados
+`package.json` y `package-lock.json`. El build utiliza un único número para la
+interfaz y `version.json`; no incrementar la versión durante el build de Cloudflare.
 
 La caché es opcional, tanto en Safari como en la aplicación instalada. Si el
 navegador bloquea el almacenamiento o no queda espacio, las imágenes se descargan

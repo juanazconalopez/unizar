@@ -360,6 +360,9 @@ Reglas importantes:
 
 ## Rendimiento y caché
 
+- Datos de perfil propio muestra la versión del código que ejecuta ese dispositivo, definida en `package.json`. Al abrirlo consulta `version.json` sin caché y ofrece «Actualizar a X.Y.Z» si la publicada es mayor, incluso tras posponer el aviso PWA. No guardar versiones en Supabase ni mostrar la versión del dispositivo del owner como si fuera la de otra persona. `scripts/appVersionPlugin.ts` incorpora ese número al código y genera el archivo de consulta.
+- El versionado automático usa `.github/workflows/release.yml`: los pushes a `main` reinician una espera de diez minutos y después un job serializado valida y envía la siguiente versión a `release`. `scripts/automaticRelease.ts` incrementa el patch de la última publicación preparada y sincroniza ambos package files únicamente en `release`, sin modificar `main`, repetir el mismo SHA ni forzar pushes. No incrementar manualmente el patch en cambios habituales; para un salto minor/major establecer una versión superior en `main` con `npm version minor/major --no-git-tag-version`. No fusionar `release` de vuelta a `main`. Cloudflare debe publicar desde `release` y tener desactivados los builds de otras ramas; hasta hacer ese cambio en el panel, seguirá vigente su configuración anterior. No añadir tokens de Cloudflare ni deploy hooks al frontend o al repositorio.
+
 - La aplicación recarga datos al recuperar foco o conexión si están obsoletos.
 - Las vistas cargan ventanas de fechas y conservan rangos adicionales ya consultados.
 - No eliminar la protección frente a respuestas fuera de orden.

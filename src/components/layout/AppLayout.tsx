@@ -177,6 +177,7 @@ export function AppLayout({
       {profileDetailsOpen && onUpdateProfileDetails && (
         <ViewErrorBoundary><Suspense fallback={<Modal labelledBy="profile-loading-title" onClose={() => setProfileDetailsOpen(false)}><h2 id="profile-loading-title">Datos de perfil</h2><SectionLoading /></Modal>}>
         <ProfileDetailsDialog
+          showAppVersion
           licenseSummary={licenseSummary}
           currentBirthDate={profileDetails?.birth_date ?? ''}
           currentName={profile.display_name}

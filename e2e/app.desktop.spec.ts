@@ -473,6 +473,7 @@ test('player opens survey results from calendar and remains there after closing'
 })
 
 test('player can update an active survey from its calendar card', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-24T12:00:00+02:00') })
   await page.goto('/')
   await page.getByLabel('Ver como').selectOption('player')
   await page.getByRole('button', { name: 'Calendario' }).click()

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { isAppAssetLoadError, reloadApp } from './appRecovery'
+import { isAppAssetLoadError, reloadApp, updateApp } from './appRecovery'
 
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => {
@@ -14,6 +14,84 @@ function mockWorker(registration: unknown) {
 }
 
 describe('application recovery', () => {
+  test('checks the latest worker and waits for its installation before activating it', async () => {
+    const worker = Object.assign(new EventTarget(), { state: 'installing', scriptURL: new URL('/sw.js', location.origin).href })
+    const postMessage = vi.fn()
+    const registration = {
+      active: { scriptURL: worker.scriptURL },
+      installing: null as unknown,
+      waiting: null as unknown,
+      update: vi.fn().mockImplementation(async () => { registration.installing = worker }),
+    }
+    const container = mockWorker(registration)
+    const reload = vi.fn()
+    const pending = updateApp(reload)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(registration.update).toHaveBeenCalledOnce()
+    expect(reload).not.toHaveBeenCalled()
+    registration.installing = null
+    registration.waiting = { scriptURL: worker.scriptURL, postMessage }
+    worker.state = 'installed'
+    worker.dispatchEvent(new Event('statechange'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' })
+    container.dispatchEvent(new Event('controllerchange'))
+    await pending
+    expect(reload).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('does not reload after an unsuccessful worker installation', async () => {
+    const worker = Object.assign(new EventTarget(), { state: 'installing', scriptURL: new URL('/sw.js', location.origin).href })
+    mockWorker({ installing: worker, update: vi.fn().mockResolvedValue(undefined) })
+    const reload = vi.fn()
+    const pending = updateApp(reload)
+    const rejected = expect(pending).rejects.toThrow('No se pudo preparar')
+    await vi.advanceTimersByTimeAsync(0)
+    worker.state = 'redundant'
+    worker.dispatchEvent(new Event('statechange'))
+    await rejected
+    expect(reload).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('allows retrying a stalled installation instead of staying busy forever', async () => {
+    const worker = Object.assign(new EventTarget(), { state: 'installing', scriptURL: new URL('/sw.js', location.origin).href })
+    mockWorker({ installing: worker, update: vi.fn().mockResolvedValue(undefined) })
+    const reload = vi.fn()
+    const rejected = expect(updateApp(reload)).rejects.toThrow('tardando demasiado')
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejected
+    expect(reload).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('requires a connection to apply a profile update', async () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    const reload = vi.fn()
+    await expect(updateApp(reload)).rejects.toThrow('Recupera la conexión')
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  test('allows retrying when Safari leaves the registration lookup pending', async () => {
+    const container = mockWorker(undefined)
+    container.getRegistration.mockReturnValueOnce(new Promise(() => undefined))
+    const reload = vi.fn()
+    const rejected = expect(updateApp(reload)).rejects.toThrow('tardando demasiado')
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejected
+    expect(reload).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  test('updates a browser without a service worker through the existing recovery', async () => {
+    vi.stubGlobal('navigator', { onLine: true })
+    const reload = vi.fn()
+    await updateApp(reload)
+    expect(reload).toHaveBeenCalledOnce()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   test('recognizes Safari and Chromium asset failures without treating every error as an update', () => {
     expect(isAppAssetLoadError(new TypeError('Importing a module script failed.'))).toBe(true)
     expect(isAppAssetLoadError(new TypeError('Failed to fetch dynamically imported module: https://example.com/chunk.js'))).toBe(true)

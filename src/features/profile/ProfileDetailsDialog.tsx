@@ -7,8 +7,9 @@ import { isValidInternationalPhone } from '../../lib/phone'
 import type { ProfileDetailsValues } from '../../types'
 import { PhoneNumberField } from '../../components/ui/PhoneNumberField'
 import { ProfilePhotoField } from './ProfilePhotoField'
+import { AppVersionInfo } from './AppVersionInfo'
 
-export function ProfileDetailsDialog({ currentName, email, licenseSummary, currentPhone = '', currentBirthDate = '', avatarPath = null, eyebrow = 'MI PERFIL', highlightMissing = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
+export function ProfileDetailsDialog({ currentName, email, licenseSummary, currentPhone = '', currentBirthDate = '', avatarPath = null, eyebrow = 'MI PERFIL', highlightMissing = false, showAppVersion = false, helpText, title = 'Datos de perfil', onClose, onLoadPhoto, onSave }: {
   licenseSummary?: string
   currentName: string
   email: string
@@ -17,6 +18,7 @@ export function ProfileDetailsDialog({ currentName, email, licenseSummary, curre
   avatarPath?: string | null
   eyebrow?: string
   highlightMissing?: boolean
+  showAppVersion?: boolean
   helpText?: string
   title?: string
   onClose: () => void
@@ -102,6 +104,7 @@ export function ProfileDetailsDialog({ currentName, email, licenseSummary, curre
           {age !== null && <small className="profile-age-preview">Edad actual: {age} años.</small>}
         </label>
       </div>
+      {showAppVersion && <AppVersionInfo disabled={saving} hasUnsavedChanges={changed} />}
       {formError && <p className="form-error" role="alert">{formError}</p>}
       <div className="form-actions">
         <button className="secondary-button" disabled={saving} onClick={onClose} type="button">Cancelar</button>

@@ -106,6 +106,41 @@
   margin-top: 22px;
 }
 
+.profile-app-version {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.profile-app-version-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profile-app-version-row strong,
+.profile-app-version-row small {
+  display: block;
+}
+
+.profile-app-version-row strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.profile-app-version-row small {
+  margin-top: 3px;
+}
+
+.profile-app-version > small {
+  margin-top: 8px;
+  display: block;
+}
+
 /* Grupos del listado de Equipo */
 .team-member-groups {
   display: grid;

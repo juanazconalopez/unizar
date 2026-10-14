@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { appVersionPlugin } from './scripts/appVersionPlugin.ts'
 
 // https://vite.dev/config/
 export default defineConfig({
   build: { manifest: true },
   plugins: [
+    appVersionPlugin(),
     react(),
     VitePWA({
       registerType: 'prompt',
@@ -45,6 +47,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         globPatterns: ['index.html', 'assets/index-*.{js,css}', 'icons.svg'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/version\.json(?:\?|$)/],
         runtimeCaching: [
           {
             urlPattern: /\/assets\/.*\.(?:js|css|jpe?g|png|svg|webp)$/,

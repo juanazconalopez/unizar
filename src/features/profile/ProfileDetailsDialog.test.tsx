@@ -89,6 +89,7 @@ describe('ProfileDetailsDialog', () => {
     expect(within(dialog).getByText('ADMINISTRACIÓN DEL EQUIPO')).toBeInTheDocument()
     expect(within(dialog).getByText('El email procede de Google y no se puede modificar.')).toBeInTheDocument()
     expect(within(dialog).getByLabelText('Email de Google')).toHaveAttribute('readonly')
+    expect(within(dialog).queryByText(/Versión \d/)).not.toBeInTheDocument()
   })
 
   test('highlights only details that are still missing', () => {

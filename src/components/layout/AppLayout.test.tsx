@@ -185,6 +185,7 @@ describe('AppLayout', () => {
     await user.click(screen.getAllByRole('button', { name: 'Editar mis datos' })[0])
     await screen.findByLabelText('Nombre y apellidos')
     const dialog = screen.getByRole('dialog', { name: 'Datos de perfil' })
+    expect(within(dialog).getByText('Versión 1.0.0')).toBeInTheDocument()
     const input = within(dialog).getByLabelText('Nombre y apellidos')
     await user.clear(input)
     await user.type(input, 'María López')

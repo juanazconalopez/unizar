@@ -6,6 +6,8 @@ export default defineConfig({
   // Las pruebas deben poder ejecutarse sin la configuración del proyecto real.
   envDir: false,
   plugins: [react()],
+  // Versión fija de las pruebas: incrementar la publicación no cambia los escenarios.
+  define: { __APP_VERSION__: JSON.stringify('1.0.0') },
   resolve: {
     alias: {
       'virtual:pwa-register/react': fileURLToPath(new URL('./node_modules/vite-plugin-pwa/dist/client/build/react.js', import.meta.url)),

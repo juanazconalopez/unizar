@@ -9,15 +9,28 @@ vi.mock('virtual:pwa-register/react', () => ({
     return { needRefresh: [sw.needRefresh, sw.setNeedRefresh] }
   },
 }))
-vi.mock('../../lib/appRecovery', () => ({ reloadApp: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../../lib/appRecovery', () => ({ reloadApp: vi.fn().mockResolvedValue(undefined), updateApp: vi.fn().mockResolvedValue(undefined) }))
 
 import { PwaUpdatePrompt } from './PwaUpdatePrompt'
-import { reloadApp } from '../../lib/appRecovery'
+import { reloadApp, updateApp } from '../../lib/appRecovery'
+import { AppVersionInfo } from '../../features/profile/AppVersionInfo'
 
-beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks() })
+beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); sw.needRefresh = true })
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
 describe('optional PWA updates', () => {
+  test('keeps the profile update available after postponing the automatic prompt', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"version":"1.0.3"}')))
+    const content = <><PwaUpdatePrompt /><AppVersionInfo /></>
+    const { rerender } = render(content)
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Más tarde' })))
+    expect(sw.setNeedRefresh).toHaveBeenCalledWith(false)
+    sw.needRefresh = false
+    rerender(<><PwaUpdatePrompt /><AppVersionInfo /></>)
+    expect(screen.queryByText('Nueva versión disponible')).not.toBeInTheDocument()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Actualizar a 1.0.3' })))
+    expect(updateApp).toHaveBeenCalledOnce()
+  })
   test('updates only after the user clicks the button', async () => {
     render(<PwaUpdatePrompt />)
     expect(reloadApp).not.toHaveBeenCalled()
