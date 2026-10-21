@@ -42,3 +42,13 @@ export async function saveMatchReport(match: Match, values: MatchReportValues) {
   })
   if (error) throw error
 }
+
+export async function saveInternalMatchReport(home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) {
+  const { error } = await supabase.rpc('save_internal_match_report', {
+    checked_home_match_id: home.id, checked_away_match_id: away.id,
+    checked_home_score: homeValues.scores.team, checked_away_score: homeValues.scores.opponent,
+    checked_duration: homeValues.duration, checked_home_events: homeValues.events,
+    checked_away_events: awayValues.events,
+  })
+  if (error) throw error
+}

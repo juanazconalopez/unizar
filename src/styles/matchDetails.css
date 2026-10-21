@@ -487,6 +487,21 @@
   min-width: 0;
 }
 
+.match-report-team-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  border-bottom: 1px solid #d1d9d5;
+  padding-bottom: 10px;
+}
+
+.match-report-team-tabs [aria-selected="true"] {
+  border-color: #176849;
+  color: #176849;
+  background: #e8f3ed;
+  font-weight: 700;
+}
+
 .match-report-scores {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

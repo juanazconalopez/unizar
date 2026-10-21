@@ -4,7 +4,7 @@ import type { MatchReportValues } from '../lib/matchMinutes'
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), storageFrom: vi.fn(), order: vi.fn(), eq: vi.fn(), select: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from, storage: { from: mocks.storageFrom } } }))
-import { loadMatchReportEvents, saveMatchReport } from './matchReportService'
+import { loadMatchReportEvents, saveInternalMatchReport, saveMatchReport } from './matchReportService'
 
 const values: MatchReportValues = { scores: { team: 46, opponent: 7 }, duration: 80, events: [{ event_type: 'substitution', event_minute: 55, player_id: 'player-1', replacement_player_id: 'player-2', return_minute: null }] }
 
@@ -20,6 +20,15 @@ describe('match report data persistence', () => {
     mocks.rpc.mockResolvedValue({ error: new Error('Sin conexión') })
     await expect(saveMatchReport(makeMatch(), values)).rejects.toThrow('Sin conexión')
     expect(mocks.storageFrom).not.toHaveBeenCalled()
+  })
+  test('saves both derby sides through one atomic RPC with home-oriented score', async () => {
+    const home = makeMatch({ id: 'home', internal_fixture_id: 'fixture', is_home: true })
+    const away = makeMatch({ id: 'away', internal_fixture_id: 'fixture', is_home: false })
+    await saveInternalMatchReport(home, away, values, { ...values, scores: { team: 7, opponent: 46 }, events: [] })
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith('save_internal_match_report', {
+      checked_home_match_id: 'home', checked_away_match_id: 'away', checked_home_score: 46,
+      checked_away_score: 7, checked_duration: 80, checked_home_events: values.events, checked_away_events: [],
+    })
   })
   test('loads only event fields in chronological order, retaining order at the same minute', async () => {
     mocks.from.mockReturnValue({ select: mocks.select })

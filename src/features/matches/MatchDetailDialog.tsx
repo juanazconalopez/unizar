@@ -37,6 +37,7 @@ export function MatchDetailDialog({
   onReviewInternal,
   onSaveAvailability,
   onSaveReport,
+  onSaveInternalReport,
   onLoadReportEvents,
   onViewAvailability,
 }: {
@@ -62,6 +63,7 @@ export function MatchDetailDialog({
   onReviewInternal?: () => void
   onSaveAvailability?: (match: Match, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onSaveInternalReport?: (home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) => Promise<void>
   onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onViewAvailability: () => void
 }) {
@@ -90,7 +92,7 @@ export function MatchDetailDialog({
     }
   }
 
-  if (reportOpen && onSaveReport) return <MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={() => setReportOpen(false)} onLoadEvents={onLoadReportEvents} onSave={(values) => onSaveReport(match, values)} />
+  if (reportOpen && onSaveReport) return <MatchReportDialog match={match} pairedMatch={pairedMatch?.internal_fixture_id === match.internal_fixture_id ? pairedMatch : undefined} lineup={lineup} pairedLineup={pairedLineup} profiles={profiles} onClose={() => setReportOpen(false)} onLoadEvents={onLoadReportEvents} onSave={(values) => onSaveReport(match, values)} onSaveDerby={onSaveInternalReport} />
   if (graphicOpen) return <LineupGraphicDialog canLoadPhotos={canGraphicExport} demo={demo} demoCoaches={demoCoaches} entries={selectedLineup} match={selectedPublishedMatch} onClose={() => setGraphicOpen(false)} onLoadPhoto={onLoadGraphicPhoto} profiles={profiles} />
 
   return <Modal className="match-detail-dialog" labelledBy={titleId} onClose={onClose}>

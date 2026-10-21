@@ -1,5 +1,5 @@
 begin;
-select plan(554);
+select plan(558);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1247,6 +1247,11 @@ select throws_ok($$select public.save_training_group_draft('00000000-0000-4000-8
 select throws_ok($$select public.publish_training_group_block('00000000-0000-4000-8000-000000000001'::uuid,1)$$,'P0001','No tienes permiso para publicar grupos','una sesión sin permisos no publica grupos');
 select throws_ok($$select public.get_training_group_summary('00000000-0000-4000-8000-000000000001'::uuid)$$,'P0001','No tienes permiso para consultar estos grupos','no se consulta otra temporada sin autorización');
 reset role;
+
+select ok(to_regprocedure('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)') is not null,'existe save_internal_match_report');
+select ok(not has_function_privilege('anon','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'anon no ejecuta save_internal_match_report');
+select ok(has_function_privilege('authenticated','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'authenticated puede llamar save_internal_match_report con validación interna');
+select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','save_internal_match_report fija search_path');
 
 select * from finish();
 rollback;

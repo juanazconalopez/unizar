@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { makeMatch, makeProfile } from '../../test/fixtures'
-import type { MatchLineup } from '../../types'
+import type { Match, MatchLineup } from '../../types'
 import { MatchReportDialog } from './MatchReportDialog'
 import { loadMatchReportEvents, readMatchReportPdf } from '../../services/matchReportService'
 import type { ParsedMatchReport } from '../../lib/matchReportParser'
@@ -42,6 +42,24 @@ describe('MatchReportDialog', () => {
     confirm()
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledExactlyOnceWith({ scores: { team: 46, opponent: 7 }, duration: 80, events: [{ event_type: 'substitution', event_minute: 40, player_id: 'player-1', replacement_player_id: 'player-2', return_minute: null }] }))
+  })
+  test('imports both derby sides into tabs and submits each side with its own lineup', async () => {
+    const home = { ...match, id: 'home-match', internal_fixture_id: 'fixture', team_id: 'team-a', is_home: true, season_teams: { id: 'team-a', name: 'Unizar A', is_mixed: false, is_default: true } } as Match
+    const away = { ...match, id: 'away-match', internal_fixture_id: 'fixture', team_id: 'team-b', is_home: false, season_teams: { id: 'team-b', name: 'Unizar B', is_mixed: false, is_default: false } } as Match
+    const awayLineup = lineup.map((entry) => ({ ...entry, match_id: away.id, player_id: `away-${entry.player_id}` })) as MatchLineup[]
+    const awayParsed: ParsedMatchReport = { ...parsed, events: { home: parsed.events.home, away: [{ type: 'substitution', dorsal: 1, replacementDorsal: 16, minute: 50 }] } }
+    vi.mocked(readMatchReportPdf).mockResolvedValue(awayParsed)
+    const onSaveDerby = vi.fn().mockResolvedValue(undefined)
+    render(<MatchReportDialog match={home} pairedMatch={away} lineup={lineup} pairedLineup={awayLineup} profiles={profiles} onClose={vi.fn()} onSave={vi.fn()} onSaveDerby={onSaveDerby} />)
+    expect(screen.getByRole('tab', { name: 'Unizar A' })).toHaveAttribute('aria-selected', 'true')
+    fireEvent.change(screen.getByLabelText('Importar acta PDF (opcional)'), { target: { files: [pdf()] } })
+    await screen.findByText(/Revisa ambas pestañas/)
+    fireEvent.click(screen.getByRole('tab', { name: 'Unizar B' }))
+    expect(screen.getByLabelText('Jugadora del evento 1')).toHaveValue('away-player-1')
+    expect(screen.getByLabelText('Jugadora que entra en el evento 1')).toHaveValue('away-player-2')
+    confirm()
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(onSaveDerby).toHaveBeenCalledExactlyOnceWith(home, away, expect.objectContaining({ scores: { team: 46, opponent: 7 }, events: [expect.objectContaining({ player_id: 'player-1' })] }), expect.objectContaining({ scores: { team: 7, opponent: 46 }, events: [expect.objectContaining({ player_id: 'away-player-1' })] })))
   })
   test('records manual changes and reentries without selecting a PDF', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)

@@ -96,6 +96,7 @@ type CalendarViewProps = {
   onSaveLineup: (match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
   onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onSaveInternalReport?: (home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) => Promise<void>
   onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onUnlockLineup: (match: Match) => Promise<void>
   onFinalizeInternal?: (match: Match) => Promise<void>
@@ -400,6 +401,7 @@ export function CalendarView(props: CalendarViewProps) {
       onManageLineup={() => { setDetailMatch(null); setLineupMatch({ match: detailMatch, editable: true }) }}
       onReviewInternal={props.isOwner && detailMatch.internal_fixture_id ? () => { setReviewFixtureId(detailMatch.internal_fixture_id ?? null); setDetailMatch(null) } : undefined}
       onSaveReport={props.onSaveReport ? async (...args) => { await props.onSaveReport?.(...args); setDetailMatch(null); await props.onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`, { force: true }) } : undefined}
+      onSaveInternalReport={props.onSaveInternalReport ? async (...args) => { await props.onSaveInternalReport?.(...args); setDetailMatch(null); await props.onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`, { force: true }) } : undefined}
       onLoadReportEvents={props.onLoadReportEvents}
       onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
     />}

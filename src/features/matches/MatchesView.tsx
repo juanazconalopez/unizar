@@ -69,6 +69,7 @@ type MatchesViewProps = {
   ) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
   onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
+  onSaveInternalReport?: (home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) => Promise<void>
   onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
   onUnlockLineup?: (match: Match) => Promise<void>
   onFinalizeInternal?: (match: Match) => Promise<void>
@@ -106,6 +107,7 @@ export function MatchesView({
   onSaveLineup,
   onSaveMatch,
   onSaveReport,
+  onSaveInternalReport,
   onLoadReportEvents,
   onUnlockLineup,
   onFinalizeInternal,
@@ -321,6 +323,7 @@ export function MatchesView({
           await refreshMatchMonth(detailMatch.match_date)
         }}
         onSaveReport={onSaveReport ? async (...args) => { await onSaveReport(...args); setDetailMatch(null); await refreshMatchMonth(detailMatch.match_date) } : undefined}
+        onSaveInternalReport={onSaveInternalReport ? async (...args) => { await onSaveInternalReport(...args); setDetailMatch(null); await refreshMatchMonth(detailMatch.match_date) } : undefined}
         onLoadReportEvents={onLoadReportEvents}
         onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
       />}

@@ -175,6 +175,7 @@ export function AppViewRouter({
         onSaveLineup={actions.matches.saveLineup}
         onSavePlayerPositions={canManagePlayerPositions(profile, permissionKeys) ? actions.club.savePlayerPositions : undefined}
         onSaveReport={actions.matches.saveReport}
+        onSaveInternalReport={actions.matches.saveInternalReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
         onTaskStatusChange={actions.tasks.changeStatus}
@@ -254,6 +255,7 @@ export function AppViewRouter({
         onSaveLineup={actions.matches.saveLineup}
         onSavePlayerPositions={canManagePlayerPositions(profile, permissionKeys) ? actions.club.savePlayerPositions : undefined}
         onSaveReport={actions.matches.saveReport}
+        onSaveInternalReport={actions.matches.saveInternalReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
         onUnlockLineup={actions.matches.unlockLineup}

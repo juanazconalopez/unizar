@@ -1,4 +1,4 @@
-import { saveMatchReport, type MatchReportValues } from '../../services/matchReportService'
+import { saveInternalMatchReport, saveMatchReport, type MatchReportValues } from '../../services/matchReportService'
 import { createMatch, deleteInternalMatch, deleteMatch, finalizeInternalMatch, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateInternalMatch, updateMatch } from '../../services/matchesService'
 import type { AvailabilityStatus, Match, MatchLineup, MatchValues } from '../../types'
 import type { ActionContext } from './actionContext'
@@ -50,6 +50,13 @@ export function createMatchActions(context: ActionContext) {
       await saveMatchReport(match, values)
       context.invalidateMatchMonths(match.match_date)
       context.notify('Resultado y minutos guardados.')
+      await context.reloadData()
+    },
+    saveInternalReport: async (home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) => {
+      context.requireConnection()
+      await saveInternalMatchReport(home, away, homeValues, awayValues)
+      context.invalidateMatchMonths(home.match_date, away.match_date)
+      context.notify('Resultado y eventos de los dos equipos guardados.')
       await context.reloadData()
     },
     finalizeInternal: async (match: Match) => {

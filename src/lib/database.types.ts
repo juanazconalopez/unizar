@@ -1497,6 +1497,7 @@ export type Database = {
       discharge_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
       save_match_events: { Args: { checked_events: Json; checked_match_id: string }; Returns: undefined }
       save_match_report: { Args: { checked_match_id: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json }; Returns: undefined }
+      save_internal_match_report: { Args: { checked_home_match_id: string; checked_away_match_id: string; checked_home_score: number; checked_away_score: number; checked_duration: number; checked_home_events: Json; checked_away_events: Json }; Returns: undefined }
       /** Helper interno de SQL; la migración 081 revoca EXECUTE a los clientes. */
       player_has_absence_on: { Args: { checked_date: string; checked_player_id: string }; Returns: boolean }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
