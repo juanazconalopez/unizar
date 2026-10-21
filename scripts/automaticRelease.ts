@@ -106,16 +106,18 @@ export function publishRelease(directory: string, candidate: ReleaseCandidate): 
   }
   git(directory, ['add', '--', ...PACKAGE_FILES])
   const tree = git(directory, ['write-tree'])
-  const parents = ['-p', candidate.sourceSha]
-  if (candidate.previousReleaseSha && candidate.previousReleaseSha !== candidate.sourceSha) parents.push('-p', candidate.previousReleaseSha)
-  const commit = git(directory, ['-c', 'commit.gpgsign=false', 'commit-tree', tree, ...parents],
-    `chore(release): v${candidate.version}\n\nUnizar-Source-Commit: ${candidate.sourceSha}\n`)
+  const mainCommit = git(directory, ['-c', 'commit.gpgsign=false', 'commit-tree', tree, '-p', candidate.sourceSha],
+    `chore(version): v${candidate.version}\n\nUnizar-Source-Commit: ${candidate.sourceSha}\n`)
+  const releaseParents = ['-p', mainCommit]
+  if (candidate.previousReleaseSha) releaseParents.push('-p', candidate.previousReleaseSha)
+  const releaseCommit = git(directory, ['-c', 'commit.gpgsign=false', 'commit-tree', tree, ...releaseParents],
+    `chore(release): v${candidate.version}\n\nUnizar-Source-Commit: ${mainCommit}\n`)
   const latest = remoteHeads(directory)
   if (latest.main !== candidate.sourceSha) return { published: false, reason: 'Ha llegado otro commit a main; se publicará el más reciente.' }
   if (latest.release !== candidate.previousReleaseSha) throw new Error('Otra publicación ha cambiado release antes del envío.')
-  // El commit conserva el historial de release y el origen de main. Nunca se fuerza el push.
-  git(directory, ['push', '--quiet', 'origin', `${commit}:refs/heads/release`])
-  return { published: true, reason: `Versión ${candidate.version} enviada a release; Cloudflare preparará el despliegue.` }
+  // Ambas ramas avanzan juntas; si main o release cambian durante la publicación, Git rechaza el push atómico.
+  git(directory, ['push', '--quiet', '--atomic', 'origin', `${mainCommit}:refs/heads/main`, `${releaseCommit}:refs/heads/release`])
+  return { published: true, reason: `Versión ${candidate.version} guardada en main y release; Cloudflare preparará el despliegue.` }
 }
 
 function writeOutputs(status: ReleaseStatus) {

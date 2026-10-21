@@ -238,10 +238,12 @@ del diff antes de enviar el código a `release`. Las comprobaciones habituales d
 1.0.0 → 1.0.1 → 1.0.2. La primera publicación parte del número de `main` y lo
 incrementa si todavía no existe `release`. Si se establece en `main` una versión
 superior, por ejemplo 1.1.0 o 2.0.0, esa pasa a ser la siguiente publicación.
-Actualiza conjuntamente `package.json` y `package-lock.json` únicamente en
-`release`; `main` conserva el número base. El commit generado registra el SHA de
-origen mediante `Unizar-Source-Commit` y conserva el historial de ambas ramas,
-sin forzar pushes ni fusionar `release` de vuelta a `main`.
+Actualiza conjuntamente `package.json` y `package-lock.json` y publica el mismo
+commit de versión en `main` y `release`. Así, `git pull` en `main` descarga el
+número que se está desplegando. El commit generado registra su origen mediante
+`Unizar-Source-Commit` y conserva el historial de ambas ramas. Los dos refs se
+envían atómicamente: si cualquiera cambió durante la publicación, no se actualiza
+ninguno.
 
 Antes de preparar la versión y justo antes de enviarla se comprueba que el SHA
 siga siendo el último de `main`. Si llegaron otros commits, la ejecución antigua
@@ -290,8 +292,8 @@ El número se incorpora al código durante la compilación y el build genera
 `version.json` para consultar la última versión, fuera de la caché de la PWA.
 No se registra en Supabase: cada dispositivo muestra su propia versión.
 
-El workflow de publicación incrementa automáticamente el patch en `release`.
-Para establecer un salto de versión en `main`, usar
+El workflow de publicación incrementa automáticamente el patch en ambas ramas.
+Para establecer un salto de versión en `main` antes de la próxima publicación, usar
 `npm version minor --no-git-tag-version` o `major` y mantener sincronizados
 `package.json` y `package-lock.json`. El build utiliza un único número para la
 interfaz y `version.json`; no incrementar la versión durante el build de Cloudflare.

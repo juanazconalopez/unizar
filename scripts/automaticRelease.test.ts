@@ -33,8 +33,9 @@ function repository() {
   return { remote, work, sourceSha: git(work, 'rev-parse', 'HEAD') }
 }
 
-function changeMain(work: string, sourceSha: string) {
-  git(work, 'reset', '--hard', sourceSha)
+function changeMain(work: string) {
+  git(work, 'fetch', '--quiet', 'origin', 'main')
+  git(work, 'reset', '--hard', 'origin/main')
   writeFileSync(join(work, 'app.txt'), 'new app\n')
   git(work, 'add', 'app.txt')
   git(work, 'commit', '--quiet', '-m', 'Next main change')
@@ -60,22 +61,25 @@ describe('automatic release numbering', () => {
 })
 
 describe('automatic release against a real Git repository', () => {
-  test('creates release with synchronized versions, preserving main unchanged', () => {
+  test('creates release with synchronized versions in main and release', () => {
     const repo = repository()
     expect(checkRelease(repo.work, repo.sourceSha).ready).toBe(true)
     const status = prepareRelease(repo.work, repo.sourceSha)
     expect(status.ready).toBe(true)
     if (!status.ready) throw new Error('Missing release candidate')
     expect(status.candidate.version).toBe('1.0.1')
-    expect(git(repo.remote, 'rev-parse', 'main')).toBe(repo.sourceSha)
+    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.0"')
     expect(git(repo.remote, 'ls-remote', '.', 'refs/heads/release')).toBe('')
     expect(publishRelease(repo.work, status.candidate).published).toBe(true)
+    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.1"')
+    expect(git(repo.remote, 'show', 'main:package-lock.json')).toContain('"version": "1.0.1"')
+    expect(git(repo.remote, 'show', 'main:app.txt')).toBe('initial app')
+    expect(git(repo.remote, 'rev-parse', 'main^')).toBe(repo.sourceSha)
     const pkg = JSON.parse(git(repo.remote, 'show', 'release:package.json'))
     const lock = JSON.parse(git(repo.remote, 'show', 'release:package-lock.json'))
     expect([pkg.version, lock.version, lock.packages[''].version]).toEqual(['1.0.1', '1.0.1', '1.0.1'])
     expect(git(repo.remote, 'show', 'release:app.txt')).toBe('initial app')
-    expect(git(repo.remote, 'rev-parse', 'main')).toBe(repo.sourceSha)
-    expect(git(repo.remote, 'show', '-s', '--format=%B', 'release')).toContain(`Unizar-Source-Commit: ${repo.sourceSha}`)
+    expect(git(repo.remote, 'show', '-s', '--format=%B', 'release')).toContain(`Unizar-Source-Commit: ${git(repo.remote, 'rev-parse', 'main')}`)
   })
 
   test('retries the same source without creating another release or incrementing its version', () => {
@@ -97,14 +101,15 @@ describe('automatic release against a real Git repository', () => {
     if (!first.ready) throw new Error('Missing first candidate')
     publishRelease(repo.work, first.candidate)
     const firstRelease = git(repo.remote, 'rev-parse', 'release')
-    const nextSource = changeMain(repo.work, repo.sourceSha)
+    const nextSource = changeMain(repo.work)
     const next = prepareRelease(repo.work, nextSource)
     if (!next.ready) throw new Error('Missing next candidate')
     expect(next.candidate.version).toBe('1.0.2')
     expect(publishRelease(repo.work, next.candidate).published).toBe(true)
     expect(git(repo.remote, 'merge-base', '--is-ancestor', firstRelease, 'release')).toBe('')
     expect(git(repo.remote, 'show', 'release:app.txt')).toBe('new app')
-    expect(git(repo.remote, 'rev-parse', 'main')).toBe(nextSource)
+    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.2"')
+    expect(git(repo.remote, 'show', 'main:app.txt')).toBe('new app')
   })
 
   test('does not publish a prepared version if newer commits arrive on main', () => {
@@ -130,7 +135,7 @@ describe('automatic release against a real Git repository', () => {
     const first = prepareRelease(repo.work, repo.sourceSha)
     if (!first.ready) throw new Error('Missing first candidate')
     publishRelease(repo.work, first.candidate)
-    const nextSource = changeMain(repo.work, repo.sourceSha)
+    const nextSource = changeMain(repo.work)
     const next = prepareRelease(repo.work, nextSource)
     if (!next.ready) throw new Error('Missing next candidate')
     const other = join(repo.work, '..', 'other')
@@ -193,6 +198,7 @@ describe('automatic release against a real Git repository', () => {
     expect(readFileSync(output, 'utf8')).toContain('version=1.0.1\nprevious_release_sha=\n')
     expect(run('publish', { UNIZAR_RELEASE_VERSION: '1.0.1', UNIZAR_PREVIOUS_RELEASE_SHA: '' }).status).toBe(0)
     expect(JSON.parse(git(repo.remote, 'show', 'release:package.json')).version).toBe('1.0.1')
-    expect(git(repo.remote, 'rev-parse', 'main')).toBe(repo.sourceSha)
+    expect(JSON.parse(git(repo.remote, 'show', 'main:package.json')).version).toBe('1.0.1')
+    expect(git(repo.remote, 'show', 'main:app.txt')).toBe('initial app')
   })
 })
