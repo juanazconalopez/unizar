@@ -140,6 +140,7 @@ Reglas importantes:
 - El catálogo configurable vive en `permission_definitions`; `role_permissions` guarda la matriz vigente, `role_permission_defaults` permite restaurarla y `permission_audit_log` conserva los cambios.
 - Las claves se declaran también de forma tipada en `src/lib/permissions.ts`. Toda funcionalidad protegida nueva debe añadirse mediante una migración, asociarse a su ruta o acción en React y comprobarse en RLS/RPC. La pantalla de Ajustes → Permisos se genera desde el catálogo y no contiene una lista manual.
 - `current_user_has_permission(text)` es la autoridad SQL. Los permisos hijos requieren su permiso padre; al retirar un padre se retiran sus descendientes. El owner mantiene siempre acceso completo y no forma parte de la matriz editable.
+- El helper histórico `current_user_is_owner()` también exige `is_active`. `player_has_absence_on` es interno de SQL y no tiene EXECUTE para clientes; las RPC deportivas lo utilizan con sus propios controles. Aplicar `081_private_helpers_and_active_owners.sql` manualmente en Supabase web y volver a desplegar `sync-competition`, que también exige un owner activo.
 
 ## Temporadas y vinculaciones
 
@@ -209,6 +210,20 @@ Reglas importantes:
 - En el editor, la única acción “Añadir ejercicio” aparece debajo del último ejercicio. Los ejercicios nuevos se incorporan al final y se reordenan con los controles existentes.
 - `demo.local` monta esta sección con datos en memoria mediante la propiedad `demo`; no debe consultar Supabase.
 - El detalle ofrece “Guardar PDF” mediante el diálogo de impresión nativo y una hoja de estilos de impresión, sin añadir una dependencia de generación de PDF.
+
+### Grupos de entrenamiento
+
+- Gestión → Grupos de entrenamiento permite al owner y a entrenadores con `training_groups.manage` generar, ajustar y guardar un reparto Rojo/Blanco. Publicar requiere además `training_groups.publish`; jugadoras y Dirección solo consultan con `training_groups.view`.
+- Solo entran jugadoras aprobadas, activas, no archivadas y vinculadas en la fecha del reparto. Regional/Nacional requiere equipo asignado; Solo entrenamientos se incluye sin equipo; Sin ficha queda excluida. Las bajas deportivas también reciben grupo.
+- El reparto usa el equipo real de temporada y la posición principal: Delanteras, Línea o Sin posición. Cada categoría y el total difieren como máximo en una jugadora al generar; la revisión manual muestra los desequilibrios. Los nuevos repartos intentan reducir compañeras repetidas.
+- Cada columna Rojo/Blanco muestra un único listado alfabético de nombres, sin secciones por posición ni etiquetas de equipo. La jugadora conserva su fila resaltada y la marca «Tú». Encima de los listados aparece un aviso personal blanco o rojo con su grupo y recordatorio de camiseta; si el último reparto publicado empieza en una fecha futura, se aclara cuándo comienza. El borrador nunca sustituye el grupo publicado en ese aviso. El equipo y la posición se conservan para el cálculo y el resumen de equilibrio del borrador.
+- Se selecciona automáticamente la temporada que cubre hoy o, si ninguna está vigente, la más reciente. Dentro de ella se muestra un único reparto: el último publicado por fecha de inicio, aunque ya supere las tres semanas. No hay selectores de temporada o reparto ni datos de creación/publicación; la fecha de inicio ocupa una sola línea. El staff puede consultar un borrador guardado, que no sustituye la vista publicada para las jugadoras.
+- Los grupos son independientes de la pertenencia al A, B o mixto. Un borrador nunca cambia el reparto visible para las jugadoras. Se puede revisar el publicado, guardar su borrador y publicarlo después; cada publicación renueva el aviso de todas las jugadoras.
+- La renovación es manual cada 21 días desde el inicio, con aviso en la tercera semana. El último publicado sigue vigente si la renovación se retrasa; un reparto futuro no lo sustituye antes de su fecha. Los bloques anteriores conservan su histórico.
+- Las jugadoras consultan su grupo en Grupos de entrenamiento y reciben un aviso en la campana cada vez que se publica un reparto. No se muestra el grupo personal en Inicio ni en las tarjetas del Calendario. El staff ve el recordatorio de renovación en Calendario.
+- Altas tardías: Revisar reparto incorpora pendientes sin mover a las demás. Antes de publicar se valida de nuevo toda la plantilla. Guardados y publicaciones tienen control de versión y bloqueo por temporada.
+- Aplicar `082_training_groups.sql` manualmente después de `081` y `083_notify_all_training_group_publications.sql` después de `082`. Cada publicación renueva el aviso para todas las jugadoras, también cuando se mantiene su color. Las tablas tienen RLS y no conceden acceso directo a clientes: las RPC exponen únicamente metadatos públicos y ocultan los borradores. No incluyen contactos, fotografías ni datos médicos.
+- `features/trainingGroups` contiene componentes y lógica compartidos con la demo. `demo.local` añade una plantilla ampliada únicamente para este escenario y mantiene las publicaciones al cambiar de rol, sin consultar Supabase.
 
 ### Tareas
 
@@ -369,11 +384,15 @@ Reglas importantes:
 - Las listas habituales tienen decenas de personas; priorizar consultas claras y payloads mínimos antes que tablas precalculadas.
 - Al añadir una consulta a Inicio, evitar cargar datos privados o colecciones completas si basta con un resumen RPC.
 - No invalidar toda la caché del navegador salvo que el cambio afecte realmente a esos datos.
+- Las colecciones que deben estar completas usan `services/queryPagination.ts`, con páginas de 500 filas y una clave única al final del orden. No presentar datos parciales si falla una página ni sustituir la paginación por aumentar el límite de Supabase.
+- Las cachés de cumpleaños e imágenes de contenido se aíslan por usuario desde `useAuth`; los cambios de sesión invalidan también las respuestas pendientes. La campana identifica sus datos por cuenta, estado, roles y permisos y utiliza la disponibilidad compartida de los derbis.
+- El texto plano no carga el parser de Markdown; `FormattedContent` conserva el saneado para HTML y formato. El detalle imprimible de entrenamientos lo carga de inmediato para conservar la impresión completa. El arranque más Inicio tiene además un presupuesto de 700 kB / 200 kB gzip.
 - Inicio y Datos de perfil se cargan bajo demanda. El build comprueba el presupuesto de JavaScript estático del arranque con `scripts/check-startup-size.mjs` (600 kB sin comprimir / 180 kB gzip); no subirlo para ocultar una regresión de carga. `npm run check:bundle` muestra además el tamaño incluyendo Inicio. Las consultas independientes de Inicio se ejecutan en paralelo y el panel del staff no necesita asistencia personal.
 
 ## Notificaciones
 
 - La campana combina avisos funcionales y recordatorios del perfil.
+- No volver a consultar tareas o resultados para la campana mientras no generen ninguna notificación. Los avisos solo relacionan `seasons`, sin una relación directa con `season_competitions`.
 - Los cumpleaños no generan elementos persistentes en la campana; se muestran como una línea en Inicio y, para el owner, en el calendario de Resumen.
 - Los mensajes de éxito compartidos utilizan `useOperationFeedback`.
 - Si llega un mensaje nuevo antes de ocultar el anterior, debe reiniciarse el temporizador para que el nuevo mensaje permanezca visible el tiempo completo.

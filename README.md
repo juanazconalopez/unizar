@@ -11,6 +11,7 @@ Aplicación responsive para planificar y registrar los entrenamientos de un equi
 - Resultados con texto, fecha de realización y fatiga de 1 a 5.
 - Panel semanal del jugador.
 - Registro de asistencia a entrenamientos de campo por fecha.
+- Grupos de entrenamiento Rojo/Blanco con reparto equilibrado, revisión y publicación manual cada tres semanas.
 - Estadística personal de asistencia con mensajes motivadores.
 - Gestión de usuarios, permisos y temporadas para owners.
 - Histórico de competición sincronizado desde la publicación pública de MatchReady.
@@ -27,6 +28,55 @@ normalización de nombres, partidos, disponibilidad y alineaciones, consultas in
 histórico de competición y las restricciones de integridad transaccional, además de la
 actualización automática de `updated_at`.
 Deben aplicarse todas antes de publicar.
+
+### Protección de bajas y cuentas inactivas
+
+Después de `080_weekend_player_opportunities.sql`, copiar y ejecutar
+`081_private_helpers_and_active_owners.sql` en el editor SQL de Supabase.
+Esta migración impide llamar directamente por API al helper de bajas de otras
+jugadoras y exige que el owner esté activo en los controles administrativos
+históricos. Las RPC deportivas conservan sus comprobaciones internas de bajas.
+Las firmas de las funciones no cambian. Las pruebas pgTAP se validan en Supabase;
+no requieren ni se ejecutan con PostgreSQL local en este entorno.
+
+Volver a desplegar también `sync-competition` con el comando de la siguiente
+sección para que su autorización rechace a los owners inactivos.
+
+### Grupos de entrenamiento Rojo/Blanco
+
+Después de `081`, copiar y ejecutar completas `supabase/migrations/082_training_groups.sql` y `supabase/migrations/083_notify_all_training_group_publications.sql`
+en el editor SQL de Supabase y publicar el frontend. No requiere otra Edge Function.
+Los tipos y las pruebas pgTAP incluyen sus tablas, permisos y RPC; las comprobaciones
+SQL se validan en Supabase web, sin una base de datos local.
+
+Owner y entrenadores acceden desde **Gestión → Grupos de entrenamiento**. Pueden
+generar un reparto, mover jugadoras, guardar el borrador y confirmar su publicación.
+Los borradores son privados. Incluye Regional/Nacional con equipo y Solo entrenamientos
+sin equipo; excluye Sin ficha. Mantiene a las jugadoras de baja deportiva. El reparto
+equilibra cada equipo por posición principal y mantiene diferencias máximas de una
+jugadora por categoría y en el total. Los ajustes manuales muestran advertencias.
+
+La vista selecciona automáticamente el último reparto publicado de la temporada activa
+(o la temporada más reciente si ninguna está vigente), aunque el reparto supere las tres
+semanas. Muestra una sola fecha de inicio y no presenta selectores de temporada/reparto
+ni las fechas de auditoría. Las jugadoras consultan su grupo en Grupos de entrenamiento
+y reciben un aviso en la campana cada vez que se publica un reparto, con el recordatorio de camiseta/peto. El
+aviso aparece al actualizar la campana; no envía push cuando la aplicación está cerrada.
+A los 21 días aparece el aviso de renovación; el reparto anterior se mantiene hasta la
+fecha efectiva del siguiente. No hay publicación automática.
+
+La demo local usa los mismos componentes y un adaptador en memoria con una plantilla
+ampliada de A, B, mixto y Solo entrenamientos. Para abrirla:
+
+```bash
+source /home/jazcona/.nvm/nvm.sh
+nvm use
+npm run dev -- --config demo.local/vite.config.ts --host 127.0.0.1 --port 4174
+```
+
+En `http://127.0.0.1:4174`, abrir **Gestionar grupos** y después cambiar **Ver como**
+a Jugadora para comprobar el grupo y su aviso. Los cambios se conservan entre roles
+y se reinician al recargar. La carpeta `demo.local` sigue siendo local e ignorada por Git.
 
 ### Sincronización de competición
 
@@ -296,6 +346,31 @@ incluidos el almacenamiento lleno o bloqueado y una fotografía inicial pendient
 Para preparar los navegadores de pruebas: `npx playwright install chromium webkit`.
 
 ## Migración a Node 24 y mantenimiento
+
+Las consultas que necesitan colecciones completas (Librería, resultados,
+asistencia, convocatorias y vista previa de jugadora) utilizan páginas de
+500 filas con un orden que termina en una clave única. Un fallo en una página
+propaga el error en lugar de presentar un informe parcial. Las ventanas de
+fechas y los permisos de Supabase siguen limitando los datos consultados.
+
+Las cachés de cumpleaños e imágenes de contenido se separan por cuenta y se
+limpian en los cambios de sesión, incluidos los iniciados desde otra pestaña.
+Las respuestas pendientes no pueden volver a escribir la caché de una sesión
+anterior. La campana también invalida sus datos al cambiar de cuenta, estado,
+roles o permisos; reutiliza la disponibilidad compartida de los derbis y evita
+consultar tareas y resultados que no utiliza.
+
+El texto plano se muestra sin cargar el parser de Markdown. El contenido con
+formato conserva HTML saneado, enlaces y listas; su parser y los modales de
+Inicio se cargan cuando hacen falta. El detalle imprimible de entrenamientos
+mantiene el renderizado inmediato del formato. El build conserva el presupuesto
+de arranque de 600 kB / 180 kB gzip y añade uno de 700 kB / 200 kB gzip para
+el arranque más Inicio.
+
+En la comprobación local de estos cambios, el JavaScript estático del arranque
+más Inicio pasa de 938,5 kB / 275,5 kB gzip a 605,0 kB / 174,2 kB gzip.
+Esta medida excluye CSS, imágenes, respuestas de Supabase y los módulos que se
+cargan después si el contenido necesita formato; no mide el tiempo total de carga.
 
 La migración local utiliza **Node 24.21.0 LTS** y su npm **11.19.0**. Desarrollo y
 el build de Cloudflare fijan la versión mediante `.nvmrc` y `.node-version`;

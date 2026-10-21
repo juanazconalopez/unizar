@@ -3,6 +3,8 @@ import type { Session } from '@supabase/supabase-js'
 import { errorText } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 import { clearProfilePhotoCache, setProfilePhotoCacheUser } from '../services/profilePhotoService'
+import { setBirthdayCacheUser } from '../services/birthdayService'
+import { setContentImageCacheUser } from '../services/contentImagesService'
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
@@ -11,16 +13,19 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false
+    let authEventReceived = false
     void supabase.auth.getSession()
       .then(({ data, error }) => {
-        if (cancelled) return
+        if (cancelled || authEventReceived) return
         if (error) setErrorMessage(error.message)
         if (data.session) setProfilePhotoCacheUser(data.session.user.id)
         else void clearProfilePhotoCache()
+        setBirthdayCacheUser(data.session?.user.id ?? null)
+        setContentImageCacheUser(data.session?.user.id ?? null)
         setSession(data.session)
       })
       .catch((error: unknown) => {
-        if (!cancelled) setErrorMessage(errorText(error))
+        if (!cancelled && !authEventReceived) setErrorMessage(errorText(error))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -29,8 +34,11 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, nextSession) => {
         if (!cancelled) {
+          authEventReceived = true
           if (nextSession) setProfilePhotoCacheUser(nextSession.user.id)
           else void clearProfilePhotoCache()
+          setBirthdayCacheUser(nextSession?.user.id ?? null)
+          setContentImageCacheUser(nextSession?.user.id ?? null)
           setSession(nextSession)
           setLoading(false)
         }

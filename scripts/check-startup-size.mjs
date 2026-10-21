@@ -32,11 +32,17 @@ const startup = staticGraph([entryKey])
 report('Arranque antes de cargar una sección', startup)
 const homeKey = 'src/features/dashboard/Dashboard.tsx'
 if (!manifest[homeKey]) throw new Error('Inicio debe seguir siendo una sección cargada bajo demanda.')
-report('Arranque más Inicio y sus dependencias', staticGraph([entryKey, homeKey]))
+const home = staticGraph([entryKey, homeKey])
+report('Arranque más Inicio y sus dependencias', home)
 
 // Presupuesto del arranque: no cuenta los fragmentos dinámicos, CSS, imágenes,
 // respuestas de Supabase ni la compresión que finalmente aplique el servidor.
 if (startup.raw > 600_000 || startup.gzip > 180_000) {
   process.stderr.write('El JavaScript de arranque supera el presupuesto de 600 kB / 180 kB gzip.\n')
+  process.exitCode = 1
+}
+// Evita volver a cargar el parser de formato y los modales con toda la portada.
+if (home.raw > 700_000 || home.gzip > 200_000) {
+  process.stderr.write('Inicio supera el presupuesto de 700 kB / 200 kB gzip.\n')
   process.exitCode = 1
 }

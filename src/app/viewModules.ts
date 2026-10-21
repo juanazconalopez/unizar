@@ -10,6 +10,7 @@ const modules = {
   matches: () => import('../features/matches/MatchesView'),
   calendar: () => import('../features/calendar/CalendarView'),
   playerCalendar: () => import('../features/calendar/PlayerCalendarView'),
+  'training-groups': () => import('../features/trainingGroups/TrainingGroupsView'),
   training: () => import('../features/trainingPlans/TrainingPlansView'),
   competition: () => import('../features/competition/CompetitionView'),
   library: () => import('../features/library/LibraryView'),
@@ -26,6 +27,8 @@ export const TasksView = lazy(() => modules.tasks().then(({ TasksView }) => ({ d
 export const MatchesView = lazy(() => modules.matches().then(({ MatchesView }) => ({ default: MatchesView })))
 export const CalendarView = lazy(() => modules.calendar().then(({ CalendarView }) => ({ default: CalendarView })))
 export const PlayerCalendarView = lazy(() => modules.playerCalendar().then(({ PlayerCalendarView }) => ({ default: PlayerCalendarView })))
+export const TrainingGroupsView = lazy(() => modules['training-groups']().then(({ TrainingGroupsView }) => ({ default: TrainingGroupsView })))
+export const TrainingGroupCard = lazy(() => import('../features/trainingGroups/TrainingGroupCard').then(({ TrainingGroupCard }) => ({ default: TrainingGroupCard })))
 export const TrainingPlansView = lazy(() => modules.training().then(({ TrainingPlansView }) => ({ default: TrainingPlansView })))
 export const CompetitionView = lazy(() => modules.competition().then(({ CompetitionView }) => ({ default: CompetitionView })))
 export const LibraryView = lazy(() => modules.library().then(({ LibraryView }) => ({ default: LibraryView })))

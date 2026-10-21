@@ -189,7 +189,7 @@ describe('Dashboard', () => {
     const card = await screen.findByRole('button', { name: /Mi temporada/ })
     expect(card).toHaveTextContent('4 oficiales · 2 amistosas')
     await user.click(card)
-    expect(screen.getByRole('dialog', { name: 'Marta Jugadora' })).toHaveTextContent('8/9 respuestas')
+    expect(await screen.findByRole('dialog', { name: 'Marta Jugadora' })).toHaveTextContent('8/9 respuestas')
     expect(onLoadSeasonSummary).toHaveBeenCalledTimes(1)
   })
 

@@ -155,4 +155,19 @@ describe('buildNotifications', () => {
     expect(ineligible.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
     expect(closed.some((item) => item.id.startsWith('availability-missing:'))).toBe(false)
   })
+  test('group notifications retain stable read IDs and respect read permissions', () => {
+    const group = { block_id: 'group-1', starts_on: '2026-10-26', color: 'red' as const, notified_at: '2026-10-21T10:00:00Z' }
+    const data = feed({ matches: [], lineups: [], announcements: [], trainingGroups: [group] })
+    const notice = buildNotifications(data, makeProfile(), '2026-10-21').find((item) => item.kind === 'training-group')!
+    expect(notice.title).toContain('ROJO')
+    expect(notice.text).toContain('camiseta roja')
+    expect(notice.view).toBe('training-groups')
+    expect(buildNotifications(data, makeProfile(), '2026-10-22').find((item) => item.kind === 'training-group')?.id).toBe(notice.id)
+    expect(buildNotifications(data, makeProfile(), '2026-10-21', undefined, []).some((item) => item.kind === 'training-group')).toBe(false)
+    expect(buildNotifications(data, makeProfile({ is_player: false, is_coach: true }), '2026-10-21').some((item) => item.kind === 'training-group')).toBe(false)
+    const changed = buildNotifications({ ...data, trainingGroups: [{ ...group, color: 'white', notified_at: '2026-10-22T10:00:00Z' }] }, makeProfile(), '2026-10-22').find((item) => item.kind === 'training-group')!
+    expect(changed.id).not.toBe(notice.id)
+    expect(changed.text).toContain('camiseta blanca')
+  })
+
 })

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { fetchMatchAvailability } from './matchAvailabilityService'
+import { fetchAllPages } from './queryPagination'
 import type { Match, MatchAvailability, MatchLineup, Profile, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask } from '../types'
 import type { SurveyClosure } from './surveysService'
 
@@ -33,20 +34,20 @@ export async function fetchPlayerPreview(playerId: string): Promise<PlayerPrevie
   const memberships = membershipsResponse.data ?? []
   const seasonIds = memberships.map((membership) => membership.season_id)
   const [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse] = await Promise.all([
-    seasonIds.length ? supabase.from('seasons').select('*').in('id', seasonIds).order('start_date', { ascending: false }) : Promise.resolve({ data: [], error: null }),
-    supabase.from('profiles').select(profileFields).eq('is_approved', true).eq('is_active', true).eq('is_archived', false).order('display_name'),
-    seasonIds.length ? supabase.from('tasks').select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
-    supabase.from('task_results').select('*').eq('player_id', playerId),
-    seasonIds.length ? supabase.from('team_announcements').select('*, seasons(name)').in('season_id', seasonIds).eq('status', 'published') : Promise.resolve({ data: [], error: null }),
-    seasonIds.length ? supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date') : Promise.resolve({ data: [], error: null }),
-    seasonIds.length ? supabase.from('season_holidays').select('holiday_date').in('season_id', seasonIds) : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? fetchAllPages((from, to) => supabase.from('seasons').select('*').in('id', seasonIds).order('start_date', { ascending: false }).order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
+    fetchAllPages((from, to) => supabase.from('profiles').select(profileFields).eq('is_approved', true).eq('is_active', true).eq('is_archived', false).order('display_name').order('id').range(from, to)),
+    seasonIds.length ? fetchAllPages((from, to) => supabase.from('tasks').select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)').in('season_id', seasonIds).eq('status', 'published').order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
+    fetchAllPages((from, to) => supabase.from('task_results').select('*').eq('player_id', playerId).order('task_id').range(from, to)),
+    seasonIds.length ? fetchAllPages((from, to) => supabase.from('team_announcements').select('*, seasons(name)').in('season_id', seasonIds).eq('status', 'published').order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? fetchAllPages((from, to) => supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').in('season_id', seasonIds).in('status', ['published', 'completed']).order('match_date').order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
+    seasonIds.length ? fetchAllPages((from, to) => supabase.from('season_holidays').select('holiday_date').in('season_id', seasonIds).order('holiday_date').order('season_id').range(from, to)) : Promise.resolve({ data: [], error: null }),
   ])
   for (const response of [seasonsResponse, profilesResponse, tasksResponse, resultsResponse, announcementsResponse, matchesResponse, holidaysResponse]) if (response.error) throw response.error
   const matches = matchesResponse.data ?? []
   const matchIds = matches.map((match) => match.id)
   const [availability, lineupsResponse] = await Promise.all([
     fetchMatchAvailability(matchIds, playerId),
-    matchIds.length ? supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order') : Promise.resolve({ data: [], error: null }),
+    matchIds.length ? fetchAllPages((from, to) => supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order').order('match_id').order('player_id').range(from, to)) : Promise.resolve({ data: [], error: null }),
   ])
   if (lineupsResponse.error) throw lineupsResponse.error
   return {

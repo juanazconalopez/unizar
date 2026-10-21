@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      training_group_blocks: {
+        Row: { id: string; season_id: string; starts_on: string; status: string; draft_members: Json | null; version: number; created_by: string; created_at: string; published_by: string | null; published_at: string | null }
+        Insert: { id?: string; season_id: string; starts_on: string; status?: string; draft_members?: Json | null; version?: number; created_by: string; created_at?: string; published_by?: string | null; published_at?: string | null }
+        Update: { id?: string; season_id?: string; starts_on?: string; status?: string; draft_members?: Json | null; version?: number; created_by?: string; created_at?: string; published_by?: string | null; published_at?: string | null }
+        Relationships: [ { foreignKeyName: "training_group_blocks_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] } ]
+      }
+      training_group_members: {
+        Row: { block_id: string; player_id: string; color: string; team_id: string | null; team_name: string; position_group: string; notified_at: string }
+        Insert: { block_id: string; player_id: string; color: string; team_id?: string | null; team_name: string; position_group: string; notified_at?: string }
+        Update: { block_id?: string; player_id?: string; color?: string; team_id?: string | null; team_name?: string; position_group?: string; notified_at?: string }
+        Relationships: [ { foreignKeyName: "training_group_members_block_id_fkey"; columns: ["block_id"]; isOneToOne: false; referencedRelation: "training_group_blocks"; referencedColumns: ["id"] } ]
+      }
       permission_audit_log: {
         Row: { changed_at: string; changed_by: string; id: number; new_permissions: Json; previous_permissions: Json; role: string }
         Insert: { changed_at?: string; changed_by: string; id?: never; new_permissions: Json; previous_permissions: Json; role: string }
@@ -1423,6 +1435,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      // Helpers internos, sin EXECUTE para clientes.
+      training_group_can_manage: { Args: never; Returns: boolean }
+      training_group_can_view: { Args: { checked_season_id: string }; Returns: boolean }
+      training_group_roster: { Args: { checked_season_id: string; roster_date: string }; Returns: { player_id: string; display_name: string; team_id: string | null; team_name: string; position_group: string }[] }
+      get_training_group_summary: { Args: { checked_season_id: string }; Returns: Json }
+      get_training_group_workspace: { Args: { checked_season_id: string; checked_block_id?: string; roster_date?: string }; Returns: Json }
+      save_training_group_draft: { Args: { checked_season_id: string; starts_on: string; members: Json; checked_block_id?: string; expected_version?: number }; Returns: string }
+      publish_training_group_block: { Args: { checked_block_id: string; expected_version: number }; Returns: undefined }
+      discard_training_group_draft: { Args: { checked_block_id: string; expected_version: number }; Returns: undefined }
       set_player_positions: { Args: { checked_player_id: string; checked_positions: string[]; checked_primary_position: string | null }; Returns: undefined }
       valid_player_positions: { Args: { positions: string[]; principal: string | null }; Returns: boolean }
       get_player_season_memberships: {
@@ -1476,6 +1497,7 @@ export type Database = {
       discharge_player_absence: { Args: { checked_absence_id: string }; Returns: undefined }
       save_match_events: { Args: { checked_events: Json; checked_match_id: string }; Returns: undefined }
       save_match_report: { Args: { checked_match_id: string; checked_team_score: number; checked_opponent_score: number; checked_duration: number; checked_events: Json }; Returns: undefined }
+      /** Helper interno de SQL; la migración 081 revoca EXECUTE a los clientes. */
       player_has_absence_on: { Args: { checked_date: string; checked_player_id: string }; Returns: boolean }
       delete_season_competition: { Args: { checked_competition_id: string }; Returns: number }
       get_my_permissions: { Args: never; Returns: string[] }

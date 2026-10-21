@@ -1,16 +1,19 @@
 import { supabase } from '../lib/supabase'
+import { fetchAllPages } from './queryPagination'
 import type { LibraryItem, LibrarySettings } from '../types'
 
 const libraryItemSelect = 'drive_file_id, parent_drive_id, name, mime_type, size_bytes, modified_at, web_view_link, web_content_link, resource_key, is_folder, synced_at'
 const librarySettingsSelect = 'id, root_folder_id, root_folder_url, root_resource_key, sync_status, sync_error, item_count, last_synced_at, updated_at, updated_by'
 
 export async function fetchLibraryItems(): Promise<LibraryItem[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllPages((from, to) => supabase
     .from('library_items')
     .select(libraryItemSelect)
     .order('parent_drive_id', { ascending: true, nullsFirst: true })
     .order('is_folder', { ascending: false })
     .order('name', { ascending: true })
+    .order('drive_file_id')
+    .range(from, to))
   if (error) throw error
   return (data ?? []) as LibraryItem[]
 }

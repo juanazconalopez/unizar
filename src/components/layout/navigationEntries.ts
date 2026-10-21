@@ -1,5 +1,5 @@
 import type { IconName } from '../Icon'
-import { hasPermission, PERMISSIONS, type PermissionKey } from '../../lib/permissions'
+import { canManageTrainingGroups, hasPermission, PERMISSIONS, type PermissionKey } from '../../lib/permissions'
 import type { NavigationTarget } from '../../lib/navigation'
 import type { Profile, ViewName } from '../../types'
 
@@ -26,16 +26,18 @@ export function navigationEntries(profile: Profile, permissionKeys?: PermissionK
           ...(can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
         ],
       }] : []),
-    ...((can(PERMISSIONS.training.view) || can(PERMISSIONS.matches.teamAvailability) || can(PERMISSIONS.surveys.manage)) ? [{
+    ...((canManageTrainingGroups(profile, permissionKeys) || can(PERMISSIONS.training.view) || can(PERMISSIONS.matches.teamAvailability) || can(PERMISSIONS.surveys.manage)) ? [{
       id: 'management' as const,
       label: 'Gestión',
       icon: 'settings' as const,
       children: [
         ...(can(PERMISSIONS.matches.teamAvailability) ? [{ id: 'matches' as const, label: 'Partidos', icon: 'calendar' as const }] : []),
         ...(can(PERMISSIONS.training.view) ? [{ id: 'training' as const, label: 'Entrenamientos', icon: 'strategy' as const }] : []),
+        ...(canManageTrainingGroups(profile, permissionKeys) ? [{ id: 'training-groups' as const, label: 'Grupos de entrenamiento', icon: 'users' as const }] : []),
         ...(can(PERMISSIONS.surveys.manage) ? [{ id: 'surveys' as const, label: 'Encuestas', icon: 'statistics' as const }] : []),
       ],
     }] : []),
+    ...(can(PERMISSIONS.trainingGroups.view) && !canManageTrainingGroups(profile, permissionKeys) ? [{ id: 'training-groups' as const, label: 'Grupos de entrenamiento', icon: 'users' as const }] : []),
     ...(!can(PERMISSIONS.attendance.view) && can(PERMISSIONS.statistics.view) ? [{ id: 'statistics' as const, label: 'Resumen', icon: 'statistics' as const }] : []),
     ...(can(PERMISSIONS.competition.view) ? [{ id: 'competition' as const, label: 'Competición', icon: 'trophy' as const }] : []),
     ...(can(PERMISSIONS.library.view) ? [{ id: 'library' as const, label: 'Librería', icon: 'folder' as const }] : []),

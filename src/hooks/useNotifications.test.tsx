@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { fetchNotificationFeed } from '../services/notificationsService'
 import { makeAnnouncement, makeProfile, makeProfilePrivateDetails } from '../test/fixtures'
 import { NOTIFICATION_REFRESH_INTERVAL_MS, useNotifications } from './useNotifications'
+import type { PermissionKey } from '../lib/permissions'
 
 vi.mock('../services/notificationsService', () => ({ fetchNotificationFeed: vi.fn() }))
 
@@ -77,7 +78,7 @@ describe('useNotifications', () => {
     renderHook(() => useNotifications(profile, profile.id))
     await loadInitialFeed()
 
-    expect(fetchNotificationFeed).toHaveBeenCalledWith(profile.id, true)
+    expect(fetchNotificationFeed).toHaveBeenCalledWith(profile.id, true, false)
   })
 
   test('does not clear the profile reminder until the details are complete', async () => {
@@ -90,5 +91,63 @@ describe('useNotifications', () => {
     act(() => reminder.result.current.markAllRead())
     expect(reminder.result.current.notifications).toHaveLength(1)
     expect(reminder.result.current.notifications[0].kind).toBe('profile')
+  })
+
+  test('hides the previous account immediately and reloads without inheriting its refresh delay', async () => {
+    const first = makeProfile()
+    const second = makeProfile({ id: 'player-2' })
+    const { result, rerender } = renderHook(({ profile, userId }) => useNotifications(profile, userId), {
+      initialProps: { profile: first, userId: first.id },
+    })
+    await loadInitialFeed()
+    expect(result.current.notifications).toHaveLength(1)
+    rerender({ profile: first, userId: second.id })
+    expect(result.current.notifications).toEqual([])
+    await loadInitialFeed()
+    expect(fetchNotificationFeed).toHaveBeenCalledTimes(1)
+    vi.mocked(fetchNotificationFeed).mockResolvedValue({ tasks: [], results: [], memberships: [], matches: [], availability: [], lineups: [] })
+    rerender({ profile: second, userId: second.id })
+    await loadInitialFeed()
+    expect(fetchNotificationFeed).toHaveBeenCalledTimes(2)
+    expect(result.current.notifications).toEqual([])
+  })
+
+  test('ignores a previous account request that finishes after the new feed', async () => {
+    let finishOldFeed!: (value: Awaited<ReturnType<typeof fetchNotificationFeed>>) => void
+    vi.mocked(fetchNotificationFeed).mockReturnValueOnce(new Promise((resolve) => { finishOldFeed = resolve }))
+    const first = makeProfile()
+    const second = makeProfile({ id: 'player-2' })
+    const { result, rerender } = renderHook(({ profile }) => useNotifications(profile, profile.id), { initialProps: { profile: first } })
+    await loadInitialFeed()
+    rerender({ profile: second })
+    await loadInitialFeed()
+    expect(result.current.notifications).toHaveLength(1)
+    await act(async () => finishOldFeed({ tasks: [], results: [], memberships: [], matches: [], availability: [], lineups: [] }))
+    expect(result.current.notifications).toHaveLength(1)
+  })
+
+  test('removes notifications and cancels pending results when access is revoked', async () => {
+    const profile = makeProfile()
+    const { result, rerender } = renderHook(({ profile }) => useNotifications(profile, profile.id), { initialProps: { profile } })
+    await loadInitialFeed()
+    rerender({ profile: { ...profile, is_active: false } })
+    expect(result.current.notifications).toEqual([])
+    await loadInitialFeed()
+    expect(fetchNotificationFeed).toHaveBeenCalledOnce()
+  })
+
+  test('invalidates the team feed when configurable permissions change without changing roles', async () => {
+    const profile = makeProfile({ is_coach: true })
+    const { result, rerender } = renderHook(({ permissions }: { permissions: PermissionKey[] }) => useNotifications(profile, profile.id, undefined, permissions), {
+      initialProps: { permissions: ['calendar.view_manage', 'tasks.view_team'] },
+    })
+    await loadInitialFeed()
+    expect(result.current.notifications).toHaveLength(1)
+    expect(fetchNotificationFeed).toHaveBeenLastCalledWith(profile.id, true, false)
+    rerender({ permissions: [] })
+    expect(result.current.notifications).toEqual([])
+    await loadInitialFeed()
+    expect(fetchNotificationFeed).toHaveBeenLastCalledWith(profile.id, false, false)
+    expect(result.current.notifications).toEqual([])
   })
 })

@@ -14,6 +14,7 @@ import type { PermissionConfiguration } from './permissionsService'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchSeasonCompetitions } from './seasonCompetitionsService'
 import { fetchSeasonTeamCoaches, fetchSeasonTeams } from './seasonTeamsService'
+import { fetchAllPages } from './queryPagination'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -65,7 +66,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     announcements: [], todayBirthdays: [], seasonBirthdays: [], calendarBirthdays: [], libraryItems: [], librarySettings: null,
     permissionKeys: [], permissionConfiguration: { definitions: [], grants: [] },
   }
-  if (!profile.is_approved || profile.is_archived) return emptyData
+  if (!profile.is_approved || !profile.is_active || profile.is_archived) return emptyData
 
   const permissionKeys = await fetchMyPermissions()
 
@@ -106,12 +107,10 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       hasPermission(profile, PERMISSIONS.matches.create, permissionKeys)
       || hasPermission(profile, PERMISSIONS.matches.edit, permissionKeys)
     ))
-  const seasonCompetitions = needsCompetitionCatalog
-    ? await fetchSeasonCompetitions(seasons.map((season) => season.id))
-    : []
-  const seasonTeams = ['settings', 'calendar', 'matches'].includes(scope)
-    ? await fetchSeasonTeams(seasons.map((season) => season.id))
-    : []
+  const [seasonCompetitions, seasonTeams] = await Promise.all([
+    needsCompetitionCatalog ? fetchSeasonCompetitions(seasons.map((season) => season.id)) : Promise.resolve([]),
+    ['settings', 'calendar', 'matches'].includes(scope) ? fetchSeasonTeams(seasons.map((season) => season.id)) : Promise.resolve([]),
+  ])
   const seasonTeamCoaches = scope === 'settings'
     ? await fetchSeasonTeamCoaches(seasonTeams.map((team) => team.id))
     : []
@@ -146,15 +145,16 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     const calendarTaskTo = mondayFor(monthEnd(todayIso()))
     const taskFrom = scope === 'calendar' ? calendarTaskFrom : addDays(currentWeek, -14)
     const taskTo = scope === 'calendar' ? calendarTaskTo : canManageTasks ? managerEnd : currentWeek
-    taskData = await fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo)
-    if (scope === 'calendar') {
-      matchData = await fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))
-      if (canManageTasks && activeSeason) {
-        seasonBirthdays = await fetchActiveSeasonBirthdays(activeSeason.id, todayIso())
-      } else if (!canManageTasks && profile.is_player && activeSeason) {
-        calendarBirthdays = await fetchPlayerCalendarBirthdays(userId, activeSeason.id, todayIso())
-      }
-    }
+    const [loadedTasks, loadedMatches, loadedBirthdays, loadedCalendarBirthdays] = await Promise.all([
+      fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo),
+      scope === 'calendar' ? fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso())) : Promise.resolve(emptyMatchWindow),
+      scope === 'calendar' && canManageTasks && activeSeason ? fetchActiveSeasonBirthdays(userId, activeSeason.id, todayIso()) : Promise.resolve([]),
+      scope === 'calendar' && !canManageTasks && profile.is_player && activeSeason ? fetchPlayerCalendarBirthdays(userId, activeSeason.id, todayIso()) : Promise.resolve([]),
+    ])
+    taskData = loadedTasks
+    matchData = loadedMatches
+    seasonBirthdays = loadedBirthdays
+    calendarBirthdays = loadedCalendarBirthdays
   } else if (scope === 'statistics' && canViewTeam) {
     const statistics = await fetchStatisticsWindow(monthStart(todayIso()), {
       tasks: hasPermission(profile, PERMISSIONS.statistics.tasks, permissionKeys),
@@ -163,7 +163,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     taskData = statistics
     attendanceData = statistics
     const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
-    if (profile.is_owner && activeSeason) seasonBirthdays = await fetchActiveSeasonBirthdays(activeSeason.id, todayIso())
+    if (profile.is_owner && activeSeason) seasonBirthdays = await fetchActiveSeasonBirthdays(userId, activeSeason.id, todayIso())
   } else if (scope === 'attendance' && hasPermission(profile, PERMISSIONS.attendance.view, permissionKeys)) {
     attendanceData = await fetchRecentAttendance()
   } else if (scope === 'matches') {
@@ -183,9 +183,9 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
 
 async function fetchHomeAttendance(season: Season, userId: string) {
   const until = season.end_date < todayIso() ? season.end_date : todayIso()
-  const { data, error } = await supabase.from('training_sessions').select('*')
+  const { data, error } = await fetchAllPages((from, to) => supabase.from('training_sessions').select('*')
     .gte('session_date', season.start_date).lte('session_date', until)
-    .order('session_date', { ascending: false })
+    .order('session_date', { ascending: false }).order('id').range(from, to))
   if (error) throw error
   return fetchAttendanceForSessions(data ?? [], userId)
 }

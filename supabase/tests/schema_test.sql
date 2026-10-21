@@ -1,5 +1,5 @@
 begin;
-select plan(500);
+select plan(554);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1178,6 +1178,75 @@ select like(pg_get_functiondef('public.guard_match_calendar_participation()'::re
   '%new.match_date,new.season_id,new.status,new.lineup_published%lock_match_participation_window%', 'el cambio de fecha o estado vuelve a comprobar las reservas');
 select like(pg_get_functiondef('public.finalize_internal_match(uuid)'::regprocedure),
   '%lock_match_participation_window%match_participation_window(other_match.match_date)%', 'el derbi se publica respetando reservas de todo el fin de semana');
+
+-- 081: las bajas no se consultan mediante helpers públicos y un owner inactivo
+-- pierde los accesos administrativos que todavía utilizan el helper histórico.
+select ok(not has_function_privilege('authenticated','public.player_has_absence_on(uuid,date)','EXECUTE'), 'los clientes no consultan bajas ajenas mediante el helper');
+select ok(not has_function_privilege('anon','public.player_has_absence_on(uuid,date)','EXECUTE'), 'anon no consulta bajas mediante el helper');
+select ok(has_function_privilege('authenticated','public.current_user_is_owner()','EXECUTE'), 'las políticas pueden comprobar al owner autenticado');
+select ok(not has_function_privilege('anon','public.current_user_is_owner()','EXECUTE'), 'el helper de owner no está expuesto a anon');
+select like(pg_get_functiondef('public.current_user_is_owner()'::regprocedure), '%profile.is_owner%profile.is_approved%profile.is_active%not profile.is_archived%', 'owner requiere aprobación, actividad y no estar archivado');
+select like(pg_get_functiondef('public.current_user_is_owner()'::regprocedure), '%auth.uid()%', 'owner comprueba al usuario de la sesión');
+select ok(not has_function_privilege('anon','public.current_user_can_edit_match(uuid)','EXECUTE'), 'anon no ejecuta el helper de edición de partidos');
+select ok(not has_function_privilege('anon','public.current_user_can_manage_season_team(uuid)','EXECUTE'), 'anon no ejecuta el helper de gestión de equipos');
+select ok(has_function_privilege('authenticated','public.current_user_can_edit_match(uuid)','EXECUTE'), 'las políticas autenticadas conservan el helper de partidos');
+
+set local role authenticated;
+select throws_ok($$select public.player_has_absence_on('00000000-0000-4000-8000-000000000001'::uuid,date '2026-10-20')$$,
+  '42501', 'permission denied for function player_has_absence_on', 'una llamada autenticada directa al helper de bajas se rechaza');
+reset role;
+set local role anon;
+select throws_ok($$select public.player_has_absence_on('00000000-0000-4000-8000-000000000001'::uuid,date '2026-10-20')$$,
+  '42501', 'permission denied for function player_has_absence_on', 'una llamada anónima directa al helper de bajas se rechaza');
+reset role;
+
+
+-- 082: permisos mínimos y publicación de grupos Rojo/Blanco.
+select has_table('public','training_group_blocks','training_group_blocks conserva el reparto');
+select ok((select relrowsecurity from pg_class where oid = 'public.training_group_blocks'::regclass),'training_group_blocks tiene RLS');
+select ok(not has_table_privilege('authenticated','public.training_group_blocks','SELECT'),'training_group_blocks no expone columnas de borrador directamente');
+select has_table('public','training_group_members','training_group_members conserva el reparto');
+select ok((select relrowsecurity from pg_class where oid = 'public.training_group_members'::regclass),'training_group_members tiene RLS');
+select ok(not has_table_privilege('authenticated','public.training_group_members','SELECT'),'training_group_members no expone columnas de borrador directamente');
+select ok(to_regprocedure('public.get_training_group_summary(uuid)') is not null,'existe get_training_group_summary');
+select ok(not has_function_privilege('anon','public.get_training_group_summary(uuid)','EXECUTE'),'anon no ejecuta get_training_group_summary');
+select ok(has_function_privilege('authenticated','public.get_training_group_summary(uuid)','EXECUTE'),'authenticated puede solicitar get_training_group_summary con validación interna');
+select like(pg_get_functiondef('public.get_training_group_summary(uuid)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','get_training_group_summary fija search_path en su contexto definer');
+select ok(to_regprocedure('public.get_training_group_workspace(uuid,uuid,date)') is not null,'existe get_training_group_workspace');
+select ok(not has_function_privilege('anon','public.get_training_group_workspace(uuid,uuid,date)','EXECUTE'),'anon no ejecuta get_training_group_workspace');
+select ok(has_function_privilege('authenticated','public.get_training_group_workspace(uuid,uuid,date)','EXECUTE'),'authenticated puede solicitar get_training_group_workspace con validación interna');
+select like(pg_get_functiondef('public.get_training_group_workspace(uuid,uuid,date)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','get_training_group_workspace fija search_path en su contexto definer');
+select ok(to_regprocedure('public.save_training_group_draft(uuid,date,jsonb,uuid,integer)') is not null,'existe save_training_group_draft');
+select ok(not has_function_privilege('anon','public.save_training_group_draft(uuid,date,jsonb,uuid,integer)','EXECUTE'),'anon no ejecuta save_training_group_draft');
+select ok(has_function_privilege('authenticated','public.save_training_group_draft(uuid,date,jsonb,uuid,integer)','EXECUTE'),'authenticated puede solicitar save_training_group_draft con validación interna');
+select like(pg_get_functiondef('public.save_training_group_draft(uuid,date,jsonb,uuid,integer)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','save_training_group_draft fija search_path en su contexto definer');
+select ok(to_regprocedure('public.publish_training_group_block(uuid,integer)') is not null,'existe publish_training_group_block');
+select ok(not has_function_privilege('anon','public.publish_training_group_block(uuid,integer)','EXECUTE'),'anon no ejecuta publish_training_group_block');
+select ok(has_function_privilege('authenticated','public.publish_training_group_block(uuid,integer)','EXECUTE'),'authenticated puede solicitar publish_training_group_block con validación interna');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','publish_training_group_block fija search_path en su contexto definer');
+select ok(to_regprocedure('public.discard_training_group_draft(uuid,integer)') is not null,'existe discard_training_group_draft');
+select ok(not has_function_privilege('anon','public.discard_training_group_draft(uuid,integer)','EXECUTE'),'anon no ejecuta discard_training_group_draft');
+select ok(has_function_privilege('authenticated','public.discard_training_group_draft(uuid,integer)','EXECUTE'),'authenticated puede solicitar discard_training_group_draft con validación interna');
+select like(pg_get_functiondef('public.discard_training_group_draft(uuid,integer)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','discard_training_group_draft fija search_path en su contexto definer');
+select ok(not has_function_privilege('authenticated','public.training_group_can_manage()','EXECUTE'),'helper interno training_group_can_manage() restringido');
+select ok(not has_function_privilege('authenticated','public.training_group_can_view(uuid)','EXECUTE'),'helper interno training_group_can_view(uuid) restringido');
+select ok(not has_function_privilege('authenticated','public.training_group_roster(uuid,date)','EXECUTE'),'helper interno training_group_roster(uuid,date) restringido');
+select has_index('public','training_group_blocks','training_group_one_new_draft','solo un borrador nuevo por temporada');
+select has_pk('public','training_group_members','una asignación por jugadora y bloque');
+select has_trigger('public','seasons','seasons_guard_training_groups','las fechas de temporada protegen los grupos');
+select like(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%license.license_type = ''training''%license.license_type in (''regional'',''national'')%team.id is not null%','Solo entrenamientos entra sin equipo y Sin ficha no entra');
+select like(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%player.is_player%player.is_approved%player.is_active%not player.is_archived%membership.active_from <= roster_date%','la plantilla respeta actividad y vinculación');
+select unlike(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%player_absences%','las bajas deportivas no excluyen a jugadoras');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%expected_version is distinct from block.version%except%except%','la publicación comprueba versión e igualdad de la plantilla');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%notified_at = excluded.notified_at%','cada publicación renueva el aviso para toda la plantilla');
+select like(pg_get_functiondef('public.get_training_group_workspace(uuid,uuid,date)'::regprocedure),'%case when can_manage and checked_block_id is not null then block.draft_members else null end%','la consulta publicada oculta los borradores');
+select like(pg_get_functiondef('public.training_group_can_manage()'::regprocedure),'%training_groups.manage%actor.is_owner or actor.is_coach%','Dirección no adquiere escritura deportiva aunque se conceda una clave');
+select is((select count(*)::integer from public.role_permission_defaults where role = 'player' and permission_key like 'training_groups.%'),1,'jugadoras solo consultan grupos');
+set local role authenticated;
+select throws_ok($$select public.save_training_group_draft('00000000-0000-4000-8000-000000000001'::uuid,current_date,'[]'::jsonb)$$,'P0001','No tienes permiso para preparar grupos','una sesión sin permisos no prepara grupos');
+select throws_ok($$select public.publish_training_group_block('00000000-0000-4000-8000-000000000001'::uuid,1)$$,'P0001','No tienes permiso para publicar grupos','una sesión sin permisos no publica grupos');
+select throws_ok($$select public.get_training_group_summary('00000000-0000-4000-8000-000000000001'::uuid)$$,'P0001','No tienes permiso para consultar estos grupos','no se consulta otra temporada sin autorización');
+reset role;
 
 select * from finish();
 rollback;

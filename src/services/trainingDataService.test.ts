@@ -23,12 +23,12 @@ const sessions = [makeSession({ session_date: '2026-09-03' })]
 function query(data: unknown, profile = makeProfile()) {
   const response = { data, error: null }
   const builder = {
-    select: vi.fn(), eq: vi.fn(), gte: vi.fn(), lte: vi.fn(), order: vi.fn(),
+    select: vi.fn(), eq: vi.fn(), gte: vi.fn(), lte: vi.fn(), order: vi.fn(), range: vi.fn(),
     single: vi.fn(() => Promise.resolve({ data: profile, error: null })),
     maybeSingle: vi.fn(() => Promise.resolve({ data: makeProfilePrivateDetails(), error: null })),
     then: (resolve: (value: typeof response) => unknown) => Promise.resolve(response).then(resolve),
   }
-  for (const method of ['select', 'eq', 'gte', 'lte', 'order'] as const) builder[method].mockReturnValue(builder)
+  for (const method of ['select', 'eq', 'gte', 'lte', 'order', 'range'] as const) builder[method].mockReturnValue(builder)
   return builder
 }
 
@@ -112,5 +112,28 @@ describe('home data loading', () => {
   test('propagates a failed query so home still offers its existing retry', async () => {
     mocks.attention.mockRejectedValue(new Error('Sin conexión'))
     await expect(fetchTrainingData('player-1')).rejects.toThrow('Sin conexión')
+  })
+
+  test('does not load team data for an inactive owner', async () => {
+    const profile = makeProfile({ is_owner: true, is_active: false })
+    mocks.from.mockImplementation(() => query([], profile))
+    const result = await fetchTrainingData(profile.id, 'settings')
+    expect(result.profile).toEqual(profile)
+    expect(result.profilePrivateDetails).toEqual([])
+    expect(result.seasons).toEqual([])
+    expect(mocks.permissions).not.toHaveBeenCalled()
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  test('starts team and competition catalogs in parallel for the calendar', async () => {
+    const profile = makeProfile({ is_owner: true })
+    mocks.from.mockImplementation((table) => query(table === 'seasons' ? [season] : [], profile))
+    let finishCompetitions!: (value: []) => void
+    mocks.competitions.mockReturnValue(new Promise((resolve) => { finishCompetitions = resolve }))
+    mocks.teams.mockResolvedValue([])
+    const request = fetchTrainingData(profile.id, 'calendar')
+    await vi.waitFor(() => expect(mocks.teams).toHaveBeenCalledOnce())
+    finishCompetitions([])
+    expect((await request).seasonTeams).toEqual([])
   })
 })

@@ -3,7 +3,8 @@ import { contentImageIds } from '../lib/contentImageTokens'
 import { supabase } from '../lib/supabase'
 
 const BUCKET = 'content-images'
-const CACHE_NAME = 'unizar-content-images-v1'
+const LEGACY_CACHE_NAME = 'unizar-content-images-v1'
+const CACHE_PREFIX = 'unizar-content-images-v2-'
 const MAX_SOURCE_BYTES = 15 * 1024 * 1024
 const MAX_OUTPUT_BYTES = 600 * 1024
 const MAX_DIMENSION = 1600
@@ -20,6 +21,43 @@ const stagedImages = new Map<string, PreparedImage>()
 const volatileStagedImages = new Set<string>()
 const metadataCache = new Map<string, Promise<ContentImage>>()
 let abandonedCleanupStarted = false
+let cacheUserId: string | null | undefined
+let cacheEpoch = 0
+
+function cacheName() {
+  return `${CACHE_PREFIX}${cacheUserId ?? 'demo'}`
+}
+
+function resetMemoryCache() {
+  cacheEpoch += 1
+  metadataCache.clear()
+  stagedImages.clear()
+  volatileStagedImages.clear()
+  abandonedCleanupStarted = false
+}
+
+function requireCacheEpoch(epoch: number) {
+  if (epoch !== cacheEpoch) throw new Error('La sesión ha cambiado durante la carga de la imagen.')
+}
+
+async function clearOtherStoredCaches() {
+  if (!cacheAvailable()) return
+  try {
+    const names = await caches.keys()
+    await Promise.all(names.filter((name) => name === LEGACY_CACHE_NAME
+      || (name.startsWith(CACHE_PREFIX) && (!cacheUserId || name !== cacheName())))
+      .map((name) => caches.delete(name)))
+  } catch {
+    // El almacenamiento es opcional; las cuentas también se separan en memoria.
+  }
+}
+
+export function setContentImageCacheUser(userId: string | null) {
+  if (cacheUserId === userId) return
+  cacheUserId = userId
+  resetMemoryCache()
+  void clearOtherStoredCaches()
+}
 
 function cacheAvailable() {
   try { return typeof caches !== 'undefined' && typeof location !== 'undefined' } catch { return false }
@@ -29,11 +67,13 @@ function cacheRequest(id: string, state: 'pending' | 'stored') {
   return new Request(new URL(`/__content-image-cache/${state}/${id}`, location.origin).toString())
 }
 
-async function writeBlobToCache(id: string, state: 'pending' | 'stored', prepared: PreparedImage) {
+async function writeBlobToCache(id: string, state: 'pending' | 'stored', prepared: PreparedImage, epoch = cacheEpoch) {
   try {
-    if (!cacheAvailable()) return false
-    const cache = await caches.open(CACHE_NAME)
-    await cache.put(cacheRequest(id, state), new Response(prepared.blob, {
+    if (!cacheAvailable() || epoch !== cacheEpoch) return false
+    const cache = await caches.open(cacheName())
+    if (epoch !== cacheEpoch) return false
+    const request = cacheRequest(id, state)
+    await cache.put(request, new Response(prepared.blob, {
       headers: {
         'content-type': 'image/webp',
         'content-length': String(prepared.blob.size),
@@ -42,6 +82,10 @@ async function writeBlobToCache(id: string, state: 'pending' | 'stored', prepare
         'x-cached-at': String(Date.now()),
       },
     }))
+    if (epoch !== cacheEpoch) {
+      await cache.delete(request)
+      return false
+    }
     await pruneImageCache(cache)
     return true
   } catch {
@@ -53,7 +97,7 @@ async function writeBlobToCache(id: string, state: 'pending' | 'stored', prepare
 async function readBlobFromCache(id: string, state: 'pending' | 'stored'): Promise<PreparedImage | null> {
   try {
     if (!cacheAvailable()) return null
-    const response = await (await caches.open(CACHE_NAME)).match(cacheRequest(id, state))
+    const response = await (await caches.open(cacheName())).match(cacheRequest(id, state))
     if (!response) return null
     return {
       blob: await response.blob(),
@@ -67,7 +111,7 @@ async function readBlobFromCache(id: string, state: 'pending' | 'stored'): Promi
 
 async function deleteCachedBlob(id: string, state: 'pending' | 'stored') {
   try {
-    if (cacheAvailable()) await (await caches.open(CACHE_NAME)).delete(cacheRequest(id, state))
+    if (cacheAvailable()) await (await caches.open(cacheName())).delete(cacheRequest(id, state))
   } catch {
     // La eliminación de la imagen en memoria y en Supabase sigue adelante.
   }
@@ -102,10 +146,14 @@ function newImageId() {
 }
 
 export async function stageContentImage(file: File) {
+  const epoch = cacheEpoch
   const prepared = await prepareContentImage(file)
+  requireCacheEpoch(epoch)
   const id = newImageId()
   stagedImages.set(id, prepared)
-  if (!await writeBlobToCache(id, 'pending', prepared)) volatileStagedImages.add(id)
+  const stored = await writeBlobToCache(id, 'pending', prepared, epoch)
+  requireCacheEpoch(epoch)
+  if (!stored) volatileStagedImages.add(id)
   return id
 }
 
@@ -124,16 +172,19 @@ async function loadStagedContentImage(id: string) {
 }
 
 export async function ensureContentImages(texts: Array<string | null | undefined>, userId: string) {
+  const epoch = cacheEpoch
   if (!abandonedCleanupStarted) {
     abandonedCleanupStarted = true
     await cleanupAbandonedContentImages().catch(() => undefined)
   }
+  requireCacheEpoch(epoch)
   const ids = contentImageIds(texts.filter(Boolean).join('\n'))
   if (ids.length > MAX_ENTITY_IMAGES) throw new Error(`No se pueden guardar más de ${MAX_ENTITY_IMAGES} imágenes en el mismo contenido.`)
   if (!ids.length) return []
 
   const { data, error } = await supabase.from('content_images').select('id').in('id', ids)
   if (error) throw error
+  requireCacheEpoch(epoch)
   const existing = new Set((data ?? []).map((image) => image.id))
   const uploadedIds: string[] = []
 
@@ -141,6 +192,7 @@ export async function ensureContentImages(texts: Array<string | null | undefined
     for (const id of ids) {
       if (existing.has(id)) continue
       const prepared = await loadStagedContentImage(id)
+      requireCacheEpoch(epoch)
       if (!prepared) throw new Error('Una imagen pegada ya no está disponible en este dispositivo. Quítala y vuelve a pegarla.')
       const path = `${userId}/${id}.webp`
       const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, prepared.blob, {
@@ -149,6 +201,7 @@ export async function ensureContentImages(texts: Array<string | null | undefined
         upsert: false,
       })
       if (uploadError) throw uploadError
+      requireCacheEpoch(epoch)
 
       const { error: metadataError } = await supabase.from('content_images').insert({
         id,
@@ -160,18 +213,20 @@ export async function ensureContentImages(texts: Array<string | null | undefined
         created_by: userId,
       })
       if (metadataError) {
-        await supabase.storage.from(BUCKET).remove([path])
+        if (epoch === cacheEpoch) await supabase.storage.from(BUCKET).remove([path])
         throw metadataError
       }
+      requireCacheEpoch(epoch)
 
       uploadedIds.push(id)
-      await writeBlobToCache(id, 'stored', prepared)
+      await writeBlobToCache(id, 'stored', prepared, epoch)
+      requireCacheEpoch(epoch)
       await discardStagedContentImage(id)
       metadataCache.delete(id)
     }
     return uploadedIds
   } catch (error) {
-    await cleanupContentImages(uploadedIds)
+    if (epoch === cacheEpoch) await cleanupContentImages(uploadedIds)
     throw error
   }
 }
@@ -212,6 +267,7 @@ async function cleanupAbandonedContentImages() {
 }
 
 export async function loadContentImage(id: string) {
+  const epoch = cacheEpoch
   let metadata = metadataCache.get(id)
   if (!metadata) {
     metadata = (async () => {
@@ -225,33 +281,38 @@ export async function loadContentImage(id: string) {
   try {
     image = await metadata
   } catch (error) {
-    metadataCache.delete(id)
+    if (metadataCache.get(id) === metadata) metadataCache.delete(id)
     throw error
   }
+  requireCacheEpoch(epoch)
   const pending = stagedImages.get(id) ?? await readBlobFromCache(id, 'pending')
+  requireCacheEpoch(epoch)
   if (pending) return { image, blob: pending.blob }
   const cached = await readBlobFromCache(id, 'stored')
+  requireCacheEpoch(epoch)
   if (cached) return { image, blob: cached.blob }
 
   const { data, error } = await supabase.storage.from(BUCKET).download(image.storage_path)
   if (error) throw error
-  await writeBlobToCache(id, 'stored', { blob: data, width: image.width, height: image.height })
+  requireCacheEpoch(epoch)
+  await writeBlobToCache(id, 'stored', { blob: data, width: image.width, height: image.height }, epoch)
+  requireCacheEpoch(epoch)
   return { image, blob: data }
 }
 
 export async function loadContentImageBlob(id: string) {
+  const epoch = cacheEpoch
   const staged = stagedImages.get(id) ?? await readBlobFromCache(id, 'pending')
+  requireCacheEpoch(epoch)
   if (staged) return staged.blob
   return (await loadContentImage(id)).blob
 }
 
 export async function clearContentImageCache() {
-  metadataCache.clear()
-  stagedImages.clear()
-  volatileStagedImages.clear()
-  abandonedCleanupStarted = false
+  resetMemoryCache()
   try {
-    if (cacheAvailable()) await caches.delete(CACHE_NAME)
+    if (cacheAvailable()) await caches.delete(cacheName())
+    await clearOtherStoredCaches()
   } catch {
     // La memoria ya está vacía; una caché bloqueada no impide cerrar sesión.
   }

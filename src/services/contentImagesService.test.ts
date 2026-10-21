@@ -13,7 +13,7 @@ vi.mock('../lib/supabase', () => ({
   },
 }))
 
-import { clearContentImageCache, cleanupContentImages, discardStagedContentImage, ensureContentImages, isStagedContentImageVolatile, loadContentImageBlob, stageContentImage } from './contentImagesService'
+import { clearContentImageCache, cleanupContentImages, discardStagedContentImage, ensureContentImages, isStagedContentImageVolatile, loadContentImageBlob, setContentImageCacheUser, stageContentImage } from './contentImagesService'
 
 const imageId = '00000000-0000-4000-8000-000000000001'
 const image = { id: imageId, storage_path: `owner/${imageId}.webp`, width: 120, height: 80 }
@@ -110,5 +110,29 @@ describe('optional content image cache', () => {
     cacheStorage.open.mockRejectedValue(new DOMException('Sin espacio', 'QuotaExceededError'))
     mocks.download.mockResolvedValue({ data: null, error: new Error('No hay conexión') })
     await expect(loadContentImageBlob(imageId)).rejects.toThrow('No hay conexión')
+  })
+
+  test('checks image permissions again after switching accounts instead of reusing metadata', async () => {
+    setContentImageCacheUser('owner-1')
+    await loadContentImageBlob(imageId)
+    expect(cacheStorage.open).toHaveBeenCalledWith('unizar-content-images-v2-owner-1')
+    mocks.single.mockResolvedValue({ data: null, error: new Error('Sin permiso') })
+    setContentImageCacheUser('player-2')
+    await expect(loadContentImageBlob(imageId)).rejects.toThrow('Sin permiso')
+    expect(mocks.single).toHaveBeenCalledTimes(2)
+    expect(mocks.download).toHaveBeenCalledOnce()
+    expect(cacheStorage.open).toHaveBeenCalledWith('unizar-content-images-v2-player-2')
+  })
+
+  test('does not return or cache a download that finishes after the session changes', async () => {
+    let finish!: (value: unknown) => void
+    mocks.download.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    setContentImageCacheUser('owner-1')
+    const request = loadContentImageBlob(imageId)
+    await vi.waitFor(() => expect(mocks.download).toHaveBeenCalledOnce())
+    setContentImageCacheUser(null)
+    finish({ data: blob, error: null })
+    await expect(request).rejects.toThrow('La sesión ha cambiado')
+    expect(cache.put).not.toHaveBeenCalled()
   })
 })

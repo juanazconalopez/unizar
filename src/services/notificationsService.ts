@@ -1,66 +1,62 @@
-import { addDays, mondayFor, todayIso } from '../lib/dates'
+import { membershipCoversDate } from '../lib/selectors'
+import type { SeasonPlayer } from '../types'
+import { trainingGroupsApi } from './trainingGroupsService'
+import { addDays, todayIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import type { NotificationFeedData } from '../features/notifications/notifications'
+import { fetchAllPages } from './queryPagination'
+import { fetchMatchAvailability } from './matchAvailabilityService'
 
-export async function fetchNotificationFeed(userId: string, canManageAvailability = false): Promise<NotificationFeedData> {
+export async function fetchNotificationFeed(userId: string, canManageAvailability = false, includeTrainingGroups = false): Promise<NotificationFeedData> {
   const today = todayIso()
-  const currentWeek = mondayFor(today)
-  const [tasksResponse, membershipsResponse, matchesResponse, announcementsResponse] = await Promise.all([
-    supabase
-      .from('tasks')
-      .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, updated_at, seasons(name)')
-      .eq('status', 'published')
-      .gte('week_start', currentWeek)
-      .lte('week_start', addDays(currentWeek, 28)),
+  const [membershipsResponse, matchesResponse, announcementsResponse] = await Promise.all([
     supabase.rpc('get_player_season_memberships', { checked_player_id: userId }),
-    supabase
+    fetchAllPages((from, to) => supabase
       .from('matches')
       .select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
       .eq('status', 'published')
       .gte('match_date', today)
       .lte('match_date', addDays(today, 84))
-      .order('match_date', { ascending: true }),
-    supabase
+      .order('match_date', { ascending: true }).order('id').range(from, to)),
+    fetchAllPages((from, to) => supabase
       .from('team_announcements')
-      .select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
+      .select('*, seasons(name)')
       .eq('status', 'published')
       .gte('announcement_date', today)
       .lte('announcement_date', addDays(today, 84))
-      .order('announcement_date', { ascending: true }),
+      .order('announcement_date', { ascending: true }).order('id').range(from, to)),
   ])
-  if (tasksResponse.error) throw tasksResponse.error
   if (membershipsResponse.error) throw membershipsResponse.error
   if (matchesResponse.error) throw matchesResponse.error
   if (announcementsResponse.error) throw announcementsResponse.error
 
-  const tasks = tasksResponse.data ?? []
   const matches = matchesResponse.data ?? []
-  const availabilityRequest = matches.length
-    ? (() => {
-      const query = supabase.from('match_availability').select('*').in('match_id', matches.map((match) => match.id))
-      return canManageAvailability ? query : query.eq('player_id', userId)
-    })()
-    : Promise.resolve({ data: [], error: null })
-  const [resultsResponse, availabilityResponse, lineupsResponse] = await Promise.all([
-    tasks.length
-      ? supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id)).eq('player_id', userId)
-      : Promise.resolve({ data: [], error: null }),
-    availabilityRequest,
+  const [availability, lineupsResponse, trainingGroups] = await Promise.all([
+    fetchMatchAvailability(matches.map((match) => match.id), canManageAvailability ? undefined : userId),
     matches.length
-      ? supabase.from('match_lineup').select('*').in('match_id', matches.map((match) => match.id))
+      ? fetchAllPages((from, to) => supabase.from('match_lineup').select('*').in('match_id', matches.map((match) => match.id)).order('match_id').order('player_id').range(from, to))
       : Promise.resolve({ data: [], error: null }),
+    includeTrainingGroups ? fetchOwnTrainingGroupNotifications(today, userId, membershipsResponse.data ?? []) : Promise.resolve([]),
   ])
-  if (resultsResponse.error) throw resultsResponse.error
-  if (availabilityResponse.error) throw availabilityResponse.error
   if (lineupsResponse.error) throw lineupsResponse.error
 
   return {
-    tasks,
+    // La campana utiliza avisos, partidos, convocatorias y perfil. No necesita
+    // volver a descargar las tareas y sus resultados que ya carga cada vista.
+    tasks: [],
+    trainingGroups,
     memberships: membershipsResponse.data ?? [],
     matches,
-    results: resultsResponse.data ?? [],
-    availability: availabilityResponse.data ?? [],
+    results: [],
+    availability,
     lineups: lineupsResponse.data ?? [],
     announcements: announcementsResponse.data ?? [],
   }
+}
+
+async function fetchOwnTrainingGroupNotifications(today: string, userId: string, memberships: SeasonPlayer[]) {
+  const { data, error } = await supabase.from('seasons').select('id').lte('start_date', today).gte('end_date', today).maybeSingle()
+  if (error) throw error
+  if (!data || !memberships.some((membership) => membership.player_id === userId && membership.season_id === data.id && membershipCoversDate(membership, today))) return []
+  return (await trainingGroupsApi.summary(data.id)).own_groups
 }

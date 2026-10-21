@@ -1,18 +1,14 @@
-import type { ReactNode } from 'react'
-import ReactMarkdown from 'react-markdown'
-import rehypeRaw from 'rehype-raw'
-import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
-import remarkBreaks from 'remark-breaks'
-import remarkGfm from 'remark-gfm'
+import { Fragment, lazy, memo, Suspense } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { contentParts } from '../lib/contentImageTokens'
 import { ContentImage } from './ContentImage'
 
 const URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<]+/gi
 const TRAILING_URL_PUNCTUATION = /[),.;!?]$/
-const MARKDOWN_SCHEMA = {
-  ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), 'u'],
-}
+const FormattedContent = lazy(() => import('./FormattedContent'))
+// Si hay sintaxis, HTML, entidades, enlaces o código indentado, conservar el
+// parser completo y su saneado. El texto plano no necesita descargarlo.
+const FORMATTED_TEXT = /[\\`*_~[\]<>#|&@]|https?:\/\/|www\.|^[ \t]*(?:[-+=]|\d+[.)](?:\s|$))|^(?: {4}|\t)/m
 
 export function LinkedText({ text }: { text: string }) {
   const parts: ReactNode[] = []
@@ -34,25 +30,15 @@ export function LinkedText({ text }: { text: string }) {
   return <>{parts}</>
 }
 
-export function RichContent({ text, fallback, eagerImages = false, renderImages = true }: { text: string | null | undefined; fallback?: string; eagerImages?: boolean; renderImages?: boolean }) {
+export const RichContent = memo(function RichContent({ text, fallback, eagerImages = false, renderImages = true, formatter: Formatter = FormattedContent }: { text: string | null | undefined; fallback?: string; eagerImages?: boolean; renderImages?: boolean; formatter?: ComponentType<{ text: string }> }) {
   if (!text) return fallback ? <div className="rich-content"><span>{fallback}</span></div> : null
   return <div className="rich-content">{contentParts(text).map((part, index) => part.type === 'image'
     ? renderImages
     ? <ContentImage eager={eagerImages} id={part.id} key={`${part.id}-${index}`} />
     : null
     : part.value && <div className="rich-content-text" key={index}>
-      <ReactMarkdown
-        components={{
-          a: ({ children, href }) => {
-            const safeHref = typeof href === 'string' && href.startsWith('www.') ? `https://${href}` : href
-            return <a className="task-description-link" href={safeHref} rel="noopener noreferrer" target="_blank">{children}</a>
-          },
-          img: () => null,
-        }}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, MARKDOWN_SCHEMA]]}
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-      >
-        {part.value}
-      </ReactMarkdown>
+      {FORMATTED_TEXT.test(part.value)
+        ? <Suspense fallback={<span aria-label="Cargando contenido" role="status">Cargando contenido…</span>}><Formatter text={part.value} /></Suspense>
+        : part.value.trim().split(/\r?\n[ \t]*\r?\n/).map((paragraph, paragraphIndex) => <Fragment key={paragraphIndex}>{paragraphIndex > 0 && '\n'}<p>{paragraph.split(/\r?\n/).map((line, lineIndex) => <Fragment key={lineIndex}>{lineIndex > 0 && <><br />{'\n'}</>}{line}</Fragment>)}</p></Fragment>)}
     </div>)}</div>
-}
+})

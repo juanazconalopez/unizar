@@ -8,7 +8,7 @@ export function hasWorkingSeason(profile: Profile, seasons: Season[], membership
   const activeSeasons = seasons.filter((season) => season.start_date <= today && season.end_date >= today)
   const hasTeamScope = [
     PERMISSIONS.dashboard.team, PERMISSIONS.statistics.view, PERMISSIONS.calendar.manage, PERMISSIONS.training.view,
-    PERMISSIONS.attendance.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.settings.view,
+    PERMISSIONS.trainingGroups.manage, PERMISSIONS.attendance.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.settings.view,
   ].some((permission) => hasPermission(profile, permission, permissionKeys))
   if (hasTeamScope) return activeSeasons.length > 0
   return activeSeasons.some((season) => memberships.some((membership) => (
@@ -21,6 +21,7 @@ export function hasWorkingSeason(profile: Profile, seasons: Season[], membership
 export function canAccessView(profile: Profile, view: ViewName, permissionKeys?: readonly string[]) {
   if (view === 'home') return hasPermission(profile, PERMISSIONS.dashboard.personal, permissionKeys) || hasPermission(profile, PERMISSIONS.dashboard.team, permissionKeys)
   if (view === 'calendar') return hasPermission(profile, PERMISSIONS.calendar.manage, permissionKeys) || hasPermission(profile, PERMISSIONS.calendar.personal, permissionKeys)
+  if (view === 'training-groups') return hasPermission(profile, PERMISSIONS.trainingGroups.view, permissionKeys)
   if (view === 'training') return hasPermission(profile, PERMISSIONS.training.view, permissionKeys)
   if (view === 'surveys') return hasPermission(profile, PERMISSIONS.surveys.manage, permissionKeys)
   if (view === 'survey') return hasPermission(profile, PERMISSIONS.surveys.respondOwn, permissionKeys)

@@ -6,6 +6,7 @@ type QueryBuilder = {
   in: ReturnType<typeof vi.fn>
   lte: ReturnType<typeof vi.fn>
   order: ReturnType<typeof vi.fn>
+  range: ReturnType<typeof vi.fn>
   select: ReturnType<typeof vi.fn>
   then: (resolve: (value: { data: unknown[]; error: null }) => unknown) => Promise<unknown>
 }
@@ -17,13 +18,16 @@ import { fetchAttendanceDate, fetchAttendanceForSessions, fetchMatchWindow, fetc
 
 function query(data: unknown[]): QueryBuilder {
   const builder = {} as QueryBuilder
+  let from = 0
+  let to = Infinity
   builder.eq = vi.fn(() => builder)
   builder.gte = vi.fn(() => builder)
   builder.in = vi.fn(() => builder)
   builder.lte = vi.fn(() => builder)
   builder.order = vi.fn(() => builder)
+  builder.range = vi.fn((start: number, end: number) => { from = start; to = end; return builder })
   builder.select = vi.fn(() => builder)
-  builder.then = (resolve) => Promise.resolve({ data, error: null }).then(resolve)
+  builder.then = (resolve) => Promise.resolve({ data: data.slice(from, to + 1), error: null }).then(resolve)
   return builder
 }
 
@@ -71,7 +75,7 @@ describe('training data queries', () => {
       match_kind: 'official', rugby_format: 'xv', lineup_published: false, created_by: 'owner-1',
       created_at: '2026-08-01T10:00:00Z', updated_at: '2026-08-01T10:00:00Z', seasons: { name: '2026' },
     }])
-    mocks.rpc.mockResolvedValue({ data: [], error: null })
+    mocks.rpc.mockReturnValue(query([]))
     const lineup = query([])
     mocks.from.mockImplementation((table: string) => {
       if (table === 'matches') return matches
@@ -91,7 +95,7 @@ describe('training data queries', () => {
     const sharedResponse = { match_id: 'away', player_id: 'player-b', status: 'available', comment: null, updated_at: '2026-10-01T10:00:00Z' }
     const matches = query([away])
     mocks.from.mockImplementation((table: string) => table === 'matches' ? matches : query([]))
-    mocks.rpc.mockResolvedValue({ data: [sharedResponse], error: null })
+    mocks.rpc.mockReturnValue(query([sharedResponse]))
     const result = await fetchMatchWindow('2026-10-01', '2026-10-31')
     expect(result.matchAvailability).toEqual([sharedResponse])
     expect(mocks.rpc).toHaveBeenCalledWith('get_match_availability', { checked_match_ids: ['away'] })
@@ -137,5 +141,21 @@ describe('training data queries', () => {
     expect(mocks.from).toHaveBeenCalledWith('training_attendance')
     expect(attendance.eq).toHaveBeenCalledWith('player_id', 'player-1')
     expect(data.provisionalAttendance).toEqual([])
+  })
+
+  test('keeps every task result and attendance row when the report exceeds 1000 rows', async () => {
+    const rows = Array.from({ length: 1201 }, (_, index) => ({ task_id: 'task-1', player_id: `player-${index}` }))
+    const resultQuery = query(rows)
+    mocks.from.mockImplementation((table: string) => table === 'tasks' ? query([{ id: 'task-1' }])
+      : table === 'task_results' ? resultQuery : query([]))
+    expect((await fetchTaskWindow('owner-1', true, '2026-08-03', '2026-08-10')).results).toHaveLength(1201)
+    expect(resultQuery.range).toHaveBeenCalledTimes(3)
+    expect(resultQuery.order).toHaveBeenCalledWith('task_id')
+    expect(resultQuery.order).toHaveBeenCalledWith('player_id')
+
+    const attendanceQuery = query(rows.map((row) => ({ session_id: 'session-1', player_id: row.player_id, attended: true })))
+    mocks.from.mockImplementation((table: string) => table === 'training_attendance' ? attendanceQuery : query([]))
+    const session = { id: 'session-1', season_id: 'season-1', session_date: '2026-08-05', created_by: 'owner-1', created_at: '', updated_at: '' }
+    expect((await fetchAttendanceForSessions([session])).attendance).toHaveLength(1201)
   })
 })

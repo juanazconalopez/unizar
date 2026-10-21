@@ -20,7 +20,6 @@ import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOperationFeedback } from './hooks/useOperationFeedback'
 import { useTrainingData } from './hooks/useTrainingData'
 import { canManageSport, canViewTeamData, isPlayer } from './lib/permissions'
-import { clearContentImageCache } from './services/contentImagesService'
 import './App.css'
 
 function App() {
@@ -29,7 +28,7 @@ function App() {
   const auth = useAuth()
   const online = useOnlineStatus()
   const data = useTrainingData(auth.session, view)
-  const notifications = useNotifications(data.profile, auth.session?.user.id, data.ownProfileDetails)
+  const notifications = useNotifications(data.profile, auth.session?.user.id, data.ownProfileDetails, data.permissionKeys)
   const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
   const userId = auth.session?.user.id
 
@@ -70,7 +69,6 @@ function App() {
 
   async function handleSignOut() {
     navigate('home', true)
-    await clearContentImageCache().catch(() => undefined)
     await auth.signOut()
   }
 
@@ -82,7 +80,7 @@ function App() {
     }
     return <LoadingScreen />
   }
-  if (data.profile.is_archived) return <DisabledScreen name={data.profile.display_name} onSignOut={handleSignOut} />
+  if (data.profile.is_archived || (data.profile.is_approved && !data.profile.is_active)) return <DisabledScreen name={data.profile.display_name} onSignOut={handleSignOut} />
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
 
   const profile = data.profile
@@ -130,6 +128,7 @@ function App() {
       navigation={navigation}
       navigate={navigate}
       notify={feedback.notify}
+      onTrainingGroupsChanged={() => void reloadData()}
       online={online}
       profile={profile}
       permissionKeys={data.permissionKeys}

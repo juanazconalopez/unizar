@@ -1,0 +1,61 @@
+.training-groups-view { display: grid; gap: 1.25rem; }
+.training-group-date-line { min-width: 0; margin: -.25rem 0 0; color: var(--muted); font-size: .9rem; }
+.training-group-date-line p { margin: 0; }
+.training-group-date-line label { display: inline-flex; align-items: center; gap: .75rem; font-weight: 650; }
+.training-group-date-line input { width: 10rem; min-width: 0; }
+.training-group-card, .training-group-renewal { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 1.3rem; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.training-group-card { width: min(1016px, calc(100% - 104px)); margin: 2rem auto 0; }
+.training-group-card p, .training-group-renewal p { margin: .4rem 0 0; color: var(--muted); line-height: 1.5; }
+.training-group-card button, .training-group-renewal button { flex-shrink: 0; }
+.training-group-renewal { background: #f3f7f5; border-color: #cfdfd6; }
+.training-group-renewal.overdue { background: #fff8ea; border-color: #e9cd93; }
+.training-group-review { padding: 1.2rem; border: 1px dashed #abbcb2; background: #f7faf8; border-radius: 14px; }
+.training-group-review p { color: var(--muted); line-height: 1.5; }
+.training-group-actions { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+.training-group-actions > span { color: var(--muted); }
+.training-group-balance { border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem; overflow-x: auto; }
+.training-group-balance h2 { font-size: 1rem; margin-top: 0; }
+.training-group-balance p { color: var(--muted); font-size: .9rem; }
+.training-group-balance table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.training-group-balance th, .training-group-balance td { padding: .5rem; border-bottom: 1px solid var(--line); text-align: center; }
+.training-group-balance th:first-child { text-align: left; }
+.training-group-balance tfoot { font-weight: 700; }
+.training-group-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
+.training-group-column { border: 1px solid #cbd2d0; border-radius: 16px; overflow: hidden; background: #fff; }
+.training-group-column > header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; gap: .5rem; background: #f3f3f0; border-bottom: 1px solid #d1d3d0; border-top: 5px solid #b5bbb8; }
+.training-group-column.red > header { background: #fff1f0; color: #992f2b; border-color: #e7b6b3; border-top-color: #b53c36; }
+.training-group-column h2 { margin: 0; font-size: 1.08rem; }
+.training-group-column header > span { font-size: .85rem; white-space: nowrap; }
+.training-group-roster { list-style: none; padding: .25rem 1rem .75rem; margin: 0; }
+.training-group-roster li { display: flex; align-items: center; justify-content: space-between; gap: .65rem; padding: .7rem 0; border-bottom: 1px solid #edf0ed; }
+.training-group-roster li:last-child { border-bottom: 0; }
+.training-group-roster li > span { min-width: 0; }
+.training-group-roster strong { display: block; font-size: .9rem; overflow-wrap: anywhere; }
+.training-group-roster button { font-size: .75rem; max-width: 7rem; flex-shrink: 0; }
+.training-group-roster .own-group-player { background: #eff6f1; border-radius: 8px; padding-left: .5rem; padding-right: .5rem; }
+.training-group-badge { display: inline-block; font-weight: 750; font-size: 1rem; border-radius: 8px; padding: .45rem .7rem; border: 1px solid #bdc5c0; background: #f5f5f1; color: #36453a; }
+.training-group-badge.red { color: #992f2b; background: #fff1f0; border-color: #e7b6b3; }
+.training-group-empty { padding: 1rem; color: var(--muted); }
+.training-group-message { padding: .85rem; border-radius: 10px; background: #eef7ef; color: #28643e; }
+@media (max-width: 700px) {
+  .training-group-columns { grid-template-columns: minmax(0, 1fr); }
+  .training-group-card, .training-group-renewal { align-items: stretch; flex-direction: column; padding: 1rem; }
+  .training-group-card button { align-self: flex-start; }
+  .training-group-date-line label { gap: .5rem; }
+  .training-group-card { width: calc(100% - 32px); margin-top: 1rem; }
+  .training-group-actions > button { flex: 1 1 auto; }
+}
+
+@media (min-width: 701px) and (max-width: 1100px) { .training-group-card { width: calc(100% - 50px); } }
+.training-groups-page { min-width: 0; }
+.training-groups-page .page-header > div { min-width: 0; }
+.training-groups-page .page-header h1 { overflow-wrap: anywhere; }
+
+.training-group-personal-banner { display: flex; align-items: center; gap: .9rem; padding: 1rem 1.15rem; border: 1px solid #bec9c3; border-left: 6px solid #b5bfba; border-radius: 14px; background: #fff; color: #18312c; }
+.training-group-personal-banner > div { min-width: 0; }
+.training-group-personal-banner strong { display: block; font-size: 1.05rem; font-weight: 750; line-height: 1.4; }
+.training-group-personal-banner p { margin: .25rem 0 0; font-size: .88rem; line-height: 1.5; color: #40594e; }
+.training-group-personal-icon { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid #b5bfba; background: #fff; }
+.training-group-personal-banner.red { border-color: #e7b6b3; border-left-color: #b53c36; background: #fff1f0; color: #992f2b; }
+.training-group-personal-banner.red p { color: #783d37; }
+.training-group-personal-banner.red .training-group-personal-icon { background: #b53c36; border-color: #b53c36; color: #fff; }

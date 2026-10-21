@@ -11,7 +11,7 @@ export type NavigationTarget = {
   settingsSection?: 'team' | 'seasons' | 'library' | 'permissions'
 }
 
-const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library', 'surveys', 'survey', 'player-preview'])
+const views = new Set<ViewName>(['home', 'statistics', 'calendar', 'training', 'training-groups', 'tasks', 'matches', 'competition', 'attendance', 'settings', 'library', 'surveys', 'survey', 'player-preview'])
 const settingsSections = new Set<NonNullable<NavigationTarget['settingsSection']>>(['team', 'seasons', 'library', 'permissions'])
 
 export function navigationFromLocation(location: Pick<Location, 'search'> = window.location): NavigationTarget {

@@ -16,7 +16,9 @@ export function LibraryView({ items = [] }: { items?: LibraryItem[] }) {
     const map = new Map<string, LibraryItem[]>()
     for (const item of items) {
       const parent = item.parent_drive_id ?? '__root__'
-      map.set(parent, [...(map.get(parent) ?? []), item])
+      const siblings = map.get(parent)
+      if (siblings) siblings.push(item)
+      else map.set(parent, [item])
     }
     return map
   }, [items])

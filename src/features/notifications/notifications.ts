@@ -1,11 +1,14 @@
+import type { OwnTrainingGroup } from '../trainingGroups/types'
+import { groupColorLabel, groupShirtLabel } from '../trainingGroups/trainingGroupSelectors'
 import { addDays, mondayFor } from '../../lib/dates'
-import { canAccessTasks, canManageSport, isPlayer } from '../../lib/permissions'
+import { canAccessTasks, canManageSport, hasPermission, isPlayer, PERMISSIONS } from '../../lib/permissions'
+import type { PermissionKey } from '../../lib/permissions'
 import { matchAvailabilityRestriction } from '../../lib/playerLicenses'
 import type { Match, MatchAvailability, MatchLineup, Profile, ProfilePrivateDetails, SeasonPlayer, TaskResult, TeamAnnouncement, TrainingTask, ViewName } from '../../types'
 
 export type AppNotification = {
   id: string
-  kind: 'task' | 'match' | 'availability' | 'lineup' | 'announcement' | 'profile'
+  kind: 'task' | 'match' | 'availability' | 'lineup' | 'announcement' | 'profile' | 'training-group'
   title: string
   text: string
   view: ViewName
@@ -22,14 +25,23 @@ export type NotificationFeedData = {
   matches: Match[]
   availability: MatchAvailability[]
   lineups: MatchLineup[]
+  trainingGroups?: OwnTrainingGroup[]
   announcements?: TeamAnnouncement[]
 }
 
-export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string, profileDetails?: ProfilePrivateDetails | null): AppNotification[] {
+export function buildNotifications(data: NotificationFeedData, profile: Profile, today: string, profileDetails?: ProfilePrivateDetails | null, permissionKeys?: readonly PermissionKey[]): AppNotification[] {
   const recentFrom = addDays(today, -7)
   const playerRole = isPlayer(profile)
-  const managesAvailability = canManageSport(profile)
+  const managesAvailability = canManageSport(profile, permissionKeys)
   const items: AppNotification[] = []
+  if (playerRole && hasPermission(profile, PERMISSIONS.trainingGroups.view, permissionKeys)) for (const group of data.trainingGroups ?? []) {
+    items.push({
+      id: `training-group:${group.block_id}:${profile.id}:${group.notified_at}`,
+      kind: 'training-group', title: `Tu grupo de entrenamiento: ${groupColorLabel(group.color)}`,
+      text: `Desde el ${group.starts_on}, lleva peto o camiseta ${groupShirtLabel(group.color)}.`,
+      view: 'training-groups', occurredAt: group.notified_at,
+    })
+  }
 
   if (playerRole && profileDetails !== undefined) {
     const missingFields = [
@@ -49,7 +61,7 @@ export function buildNotifications(data: NotificationFeedData, profile: Profile,
     }
   }
 
-  for (const announcement of (data.announcements ?? []).filter((item) => canAccessTasks(profile) && item.status === 'published')) {
+  for (const announcement of (data.announcements ?? []).filter((item) => canAccessTasks(profile, permissionKeys) && item.status === 'published')) {
     if (announcement.updated_at.slice(0, 10) < recentFrom) continue
     items.push({
       id: `announcement-published:${announcement.id}:${announcement.updated_at}`,

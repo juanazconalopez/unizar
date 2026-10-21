@@ -194,7 +194,11 @@ test('match availability and lineup flows work on mobile', async ({ page }) => {
   await page.getByLabel('Respuesta').selectOption('doubt')
   await page.getByLabel('Comentario opcional').fill('Pendiente de revisión')
   await page.getByRole('button', { name: 'Guardar respuesta' }).click()
-  await expect(page.getByText('Disponibilidad mock guardada.')).toBeVisible()
+  // Comprobar el dato guardado: el aviso temporal puede desaparecer mientras
+  // otras pruebas ocupan los navegadores y avanza el reloj de la página.
+  await expect(page.locator('.selected-day-matches')).toContainText('Pendiente de revisión')
+  await page.locator('.selected-day-matches').getByRole('button', { name: 'Modificar respuesta' }).click()
+  await expect(page.getByLabel('Comentario opcional')).toHaveValue('Pendiente de revisión')
 })
 
 test('owner reviews the accumulated callup report on mobile', async ({ page }) => {

@@ -82,7 +82,7 @@ describe('TaskCard', () => {
     const task = makeTask({ description: 'Mira el partido en https://youtu.be/abc123?si=test.' })
     render(<TaskCard task={task} />)
 
-    const cardLink = screen.getByRole('link', { name: 'https://youtu.be/abc123?si=test' })
+    const cardLink = await screen.findByRole('link', { name: 'https://youtu.be/abc123?si=test' })
     expect(cardLink).toHaveAttribute('href', 'https://youtu.be/abc123?si=test')
     expect(cardLink).toHaveAttribute('target', '_blank')
     expect(cardLink).toHaveAttribute('rel', 'noopener noreferrer')

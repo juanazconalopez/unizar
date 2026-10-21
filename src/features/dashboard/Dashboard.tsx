@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -7,12 +7,13 @@ import { formatDate, todayIso } from '../../lib/dates'
 import { canViewTeamData, isPlayer } from '../../lib/permissions'
 import { canUserCompleteTask } from '../../lib/tasks'
 import type { AttendanceRecord, Match, PlayerSeasonSummary, Profile, ResultValues, Season, SeasonPlayer, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask } from '../../types'
-import { PlayerSeasonSummaryDialog } from '../matches/PlayerSeasonSummaryDialog'
 import { TaskCard } from '../tasks/TaskCard'
 import { TaskResultsSummary } from '../tasks/TaskResultsSummary'
 import type { PendingSurvey } from '../../services/surveysService'
-import { SurveyResponseDialog } from '../surveys/SurveyResponseDialog'
 import { selectDashboardSummary } from './dashboardSelectors'
+
+const PlayerSeasonSummaryDialog = lazy(() => import('../matches/PlayerSeasonSummaryDialog').then(({ PlayerSeasonSummaryDialog }) => ({ default: PlayerSeasonSummaryDialog })))
+const SurveyResponseDialog = lazy(() => import('../surveys/SurveyResponseDialog').then(({ SurveyResponseDialog }) => ({ default: SurveyResponseDialog })))
 
 const EMPTY_ITEMS: never[] = []
 
@@ -104,13 +105,13 @@ export function Dashboard({ profile, profiles = EMPTY_ITEMS, memberships, tasks,
           {seasonSummary && <em>Ver resumen <Icon name="arrow" size={14} /></em>}
         </button>}
       </section>
-      {showSeasonSummary && season && onLoadSeasonSummary && seasonSummary && <PlayerSeasonSummaryDialog initialSummary={seasonSummary} onClose={() => setShowSeasonSummary(false)} onLoad={onLoadSeasonSummary} playerId={userId} season={season} />}
+      {showSeasonSummary && season && onLoadSeasonSummary && seasonSummary && <Suspense fallback={<p role="status">Cargando resumen…</p>}><PlayerSeasonSummaryDialog initialSummary={seasonSummary} onClose={() => setShowSeasonSummary(false)} onLoad={onLoadSeasonSummary} playerId={userId} season={season} /></Suspense>}
       {showPendingSurveys && !respondingSurvey && <Modal labelledBy="pending-surveys-title" onClose={() => setShowPendingSurveys(false)}>
         <div className="panel-form-heading"><div><span className="eyebrow">ENCUESTAS PENDIENTES</span><h2 id="pending-surveys-title">Tu opinión cuenta</h2></div><div className="modal-later-actions"><button aria-label="Responder más tarde y cerrar encuestas pendientes" className="primary-button compact" onClick={() => setShowPendingSurveys(false)} type="button">Responder más tarde</button></div></div>
         <p>Responde las encuestas activas antes de su fecha límite.</p>
           <div className="dashboard-next-list">{pendingSurveys.filter((survey) => !survey.responded).map((survey) => <button key={survey.id} onClick={() => setRespondingSurvey(survey)} type="button"><span className="dashboard-next-icon survey">Q</span><span><strong>{survey.title}</strong><small>{survey.description ? `${survey.description} · ` : ''}Hasta el {formatDate(survey.endsOn, { day: 'numeric', month: 'long' })}</small></span><span className="secondary-button compact">Responder</span></button>)}</div>
       </Modal>}
-      {respondingSurvey && <SurveyResponseDialog onClose={() => { setRespondingSurvey(null); setShowPendingSurveys(false) }} onDone={async () => { const surveys = await onLoadPendingSurveys?.() ?? []; const unanswered = surveys.filter((survey) => !survey.responded); setPendingSurveys(surveys); setRespondingSurvey(null); setShowPendingSurveys(unanswered.length > 0) }} surveyId={respondingSurvey.id} />}
+      {respondingSurvey && <Suspense fallback={<p role="status">Cargando encuesta…</p>}><SurveyResponseDialog onClose={() => { setRespondingSurvey(null); setShowPendingSurveys(false) }} onDone={async () => { const surveys = await onLoadPendingSurveys?.() ?? []; const unanswered = surveys.filter((survey) => !survey.responded); setPendingSurveys(surveys); setRespondingSurvey(null); setShowPendingSurveys(unanswered.length > 0) }} surveyId={respondingSurvey.id} /></Suspense>}
       <section className={`motivation-card${isTeamDashboard ? ' team-insight-card' : ''}`}>
         <span><Icon name="spark" size={22} /></span>
         <div><strong>{team?.insight.title ?? motivation?.title}</strong><p>{team?.insight.text ?? motivation?.text}</p></div>

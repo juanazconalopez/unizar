@@ -1,6 +1,7 @@
 import { addDays, mondayFor, monthEnd, monthStart, offsetMonth } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import { fetchMatchAvailability } from './matchAvailabilityService'
+import { fetchAllPages } from './queryPagination'
 import type {
   AttendanceRecord,
   Match,
@@ -28,7 +29,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean, canVi
   return {
     tasks,
     results: tasks,
-    memberships: ['home', 'calendar', 'tasks', 'matches', 'statistics', 'attendance', 'settings'].includes(scope),
+    memberships: ['home', 'calendar', 'tasks', 'matches', 'statistics', 'attendance', 'settings', 'training-groups'].includes(scope),
     profiles: scope === 'calendar'
       || scope === 'matches'
       || scope === 'statistics'
@@ -45,31 +46,27 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean, canVi
 
 export async function fetchTaskWindow(userId: string, canManageTasks: boolean, fromWeek: string, toWeek: string, options: { includeAnnouncements?: boolean } = {}): Promise<TaskWindowData> {
   const [tasksResponse, announcements] = await Promise.all([
-    supabase
+    fetchAllPages((from, to) => supabase
       .from('tasks')
       .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)')
       .gte('week_start', fromWeek)
       .lte('week_start', toWeek)
-      .order('week_start', { ascending: false }),
+      .order('week_start', { ascending: false }).order('id').range(from, to)),
     options.includeAnnouncements === false ? Promise.resolve([]) : fetchAnnouncementWindow(fromWeek, addDays(toWeek, 6)),
   ])
   if (tasksResponse.error) throw tasksResponse.error
   const tasks = tasksResponse.data ?? []
   if (!tasks.length) return { ...emptyTaskWindow, announcements }
-  let resultsQuery = supabase.from('task_results').select('*').in('task_id', tasks.map((task) => task.id))
-  if (!canManageTasks) resultsQuery = resultsQuery.eq('player_id', userId)
-  const { data, error } = await resultsQuery
-  if (error) throw error
-  return { tasks, results: data ?? [], announcements }
+  return { ...await fetchTaskResults(tasks, canManageTasks ? undefined : userId), announcements }
 }
 
 export async function fetchAnnouncementWindow(fromDate: string, toDate: string): Promise<TeamAnnouncement[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAllPages((from, to) => supabase
     .from('team_announcements')
     .select('*, seasons(name)')
     .gte('announcement_date', fromDate)
     .lte('announcement_date', toDate)
-    .order('announcement_date', { ascending: true })
+    .order('announcement_date', { ascending: true }).order('id').range(from, to))
   if (error) throw error
   return data ?? []
 }
@@ -92,20 +89,23 @@ export function homeAgendaEnd(today: string, seasonEnd: string) {
 
 export async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
   if (!sessionRows.length) return emptyAttendanceWindow
-  let attendanceQuery = supabase
-    .from('training_attendance')
-    .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
-    .in('session_id', sessionRows.map((session) => session.id))
-    .order('updated_at', { ascending: false })
-  if (playerId) attendanceQuery = attendanceQuery.eq('player_id', playerId)
+  const attendancePromise = fetchAllPages((from, to) => {
+    let query = supabase
+      .from('training_attendance')
+      .select('session_id, player_id, attended, marked_by, updated_at, training_sessions(session_date)')
+      .in('session_id', sessionRows.map((session) => session.id))
+      .order('updated_at', { ascending: false }).order('session_id').order('player_id')
+    if (playerId) query = query.eq('player_id', playerId)
+    return query.range(from, to)
+  })
   const provisionalPromise = playerId
     ? Promise.resolve({ data: [] as ProvisionalAttendanceRecord[], error: null })
-    : supabase
+    : fetchAllPages((from, to) => supabase
       .from('provisional_training_attendance')
       .select('session_id, provisional_player_id, marked_by, updated_at, training_sessions(session_date), provisional_players(display_name)')
       .in('session_id', sessionRows.map((session) => session.id))
-      .order('updated_at', { ascending: false })
-  const [attendanceResponse, provisionalResponse] = await Promise.all([attendanceQuery, provisionalPromise])
+      .order('updated_at', { ascending: false }).order('session_id').order('provisional_player_id').range(from, to))
+  const [attendanceResponse, provisionalResponse] = await Promise.all([attendancePromise, provisionalPromise])
   if (attendanceResponse.error) throw attendanceResponse.error
   if (provisionalResponse.error) throw provisionalResponse.error
   return {
@@ -120,7 +120,7 @@ export async function fetchStatisticsWindow(month: string, include: { tasks: boo
   const toDate = monthEnd(month)
   const [taskData, sessionsResponse] = await Promise.all([
     include.tasks ? fetchTaskWindow('', true, mondayFor(fromDate), mondayFor(toDate)) : Promise.resolve(emptyTaskWindow),
-    include.attendance ? supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate).order('session_date', { ascending: false }) : Promise.resolve({ data: [], error: null }),
+    include.attendance ? fetchAllPages((from, to) => supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate).order('session_date', { ascending: false }).order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
   ])
   if (sessionsResponse.error) throw sessionsResponse.error
   return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
@@ -129,22 +129,22 @@ export async function fetchStatisticsWindow(month: string, include: { tasks: boo
 export async function fetchStatisticsSeason(seasonId: string, fromDate: string, toDate: string, include: { tasks: boolean; attendance: boolean } = { tasks: true, attendance: true }): Promise<StatisticsSeasonData> {
   const [tasksResponse, sessionsResponse] = await Promise.all([
     include.tasks
-      ? supabase
+      ? fetchAllPages((from, to) => supabase
         .from('tasks')
         .select('id, season_id, week_start, title, description, training_type, sort_order, status, created_by, created_at, seasons(name)')
         .eq('season_id', seasonId)
         .gte('week_start', mondayFor(fromDate))
         .lte('week_start', mondayFor(toDate))
-        .order('week_start', { ascending: false })
+        .order('week_start', { ascending: false }).order('id').range(from, to))
       : Promise.resolve({ data: [], error: null }),
     include.attendance
-      ? supabase
+      ? fetchAllPages((from, to) => supabase
         .from('training_sessions')
         .select('*')
         .eq('season_id', seasonId)
         .gte('session_date', fromDate)
         .lte('session_date', toDate)
-        .order('session_date', { ascending: false })
+        .order('session_date', { ascending: false }).order('id').range(from, to))
       : Promise.resolve({ data: [], error: null }),
   ])
   if (tasksResponse.error) throw tasksResponse.error
@@ -157,11 +157,15 @@ export async function fetchStatisticsSeason(seasonId: string, fromDate: string, 
   return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
 }
 
-async function fetchTaskResults(tasks: TrainingTask[]): Promise<TaskWindowData> {
-  const { data, error } = await supabase
-    .from('task_results')
-    .select('*')
-    .in('task_id', tasks.map((task) => task.id))
+async function fetchTaskResults(tasks: TrainingTask[], playerId?: string): Promise<TaskWindowData> {
+  const { data, error } = await fetchAllPages((from, to) => {
+    let query = supabase
+      .from('task_results')
+      .select('*')
+      .in('task_id', tasks.map((task) => task.id))
+    if (playerId !== undefined) query = query.eq('player_id', playerId)
+    return query.order('task_id').order('player_id').range(from, to)
+  })
   if (error) throw error
   return { tasks, results: data ?? [], announcements: [] }
 }
@@ -179,16 +183,18 @@ export async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
 }
 
 export async function fetchMatchWindow(fromDate: string, toDate?: string): Promise<MatchWindowData> {
-  let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').gte('match_date', fromDate).order('match_date', { ascending: true })
-  if (toDate) query = query.lte('match_date', toDate)
-  const { data, error } = await query
+  const { data, error } = await fetchAllPages((from, to) => {
+    let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').gte('match_date', fromDate).order('match_date', { ascending: true }).order('id')
+    if (toDate) query = query.lte('match_date', toDate)
+    return query.range(from, to)
+  })
   if (error) throw error
   const matches = data ?? []
   if (!matches.length) return emptyMatchWindow
   const matchIds = matches.map((match) => match.id)
   const [matchAvailability, lineupsResponse] = await Promise.all([
     fetchMatchAvailability(matchIds),
-    supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order'),
+    fetchAllPages((from, to) => supabase.from('match_lineup').select('*').in('match_id', matchIds).order('sort_order').order('match_id').order('player_id').range(from, to)),
   ])
   if (lineupsResponse.error) throw lineupsResponse.error
   return { matches, matchAvailability, matchLineups: lineupsResponse.data ?? [] }

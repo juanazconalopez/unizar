@@ -16,11 +16,11 @@ export function removeLocalStorageItem(key: string) {
   try { localStorage.removeItem(key) } catch { /* La pantalla sigue funcionando sin caché. */ }
 }
 
-export function removeLocalStorageByPrefix(prefix: string) {
+export function removeLocalStorageByPrefix(prefix: string, keepPrefix?: string) {
   try {
     for (let index = localStorage.length - 1; index >= 0; index -= 1) {
       const key = localStorage.key(index)
-      if (key?.startsWith(prefix)) localStorage.removeItem(key)
+      if (key?.startsWith(prefix) && (!keepPrefix || !key.startsWith(keepPrefix))) localStorage.removeItem(key)
     }
   } catch {
     // Solo se eliminan claves con este prefijo; la sesión se conserva.

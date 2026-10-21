@@ -29,9 +29,10 @@ Deno.serve(async (request) => {
     const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } })
     const { data: { user }, error: userError } = await userClient.auth.getUser()
     if (userError || !user) return json({ error: 'Sesión no válida.' }, 401)
-    const { data: profile } = await userClient.from('profiles').select('is_owner, is_approved, is_archived').eq('id', user.id).single()
-    if (!profile?.is_owner || !profile.is_approved || profile.is_archived) {
-      return json({ error: 'Solo el owner puede sincronizar la competición.' }, 403)
+    const { data: profile, error: profileError } = await userClient.from('profiles').select('is_owner, is_approved, is_active, is_archived').eq('id', user.id).single()
+    if (profileError) throw profileError
+    if (!profile?.is_owner || !profile.is_approved || !profile.is_active || profile.is_archived) {
+      return json({ error: 'Solo un owner activo puede sincronizar la competición.' }, 403)
     }
 
     admin = createClient(supabaseUrl, serviceKey)

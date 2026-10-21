@@ -1,0 +1,180 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { SectionError, SectionLoading } from '../../components/AsyncViewState'
+import { Icon } from '../../components/Icon'
+import { Modal } from '../../components/ui/Modal'
+import { PageHeader } from '../../components/ui/PageHeader'
+import { addDays, formatDate, mondayFor, todayInMadridIso } from '../../lib/dates'
+import { errorText } from '../../lib/errors'
+import { trainingGroupsApi } from '../../services/trainingGroupsService'
+import type { Season } from '../../types'
+import { generateTrainingGroups, reconcileTrainingGroups } from './generateTrainingGroups'
+import { TrainingGroupColumns } from './TrainingGroupColumns'
+import { currentTrainingGroupBlock, groupColorLabel, groupShirtLabel, trainingGroupBalance, trainingGroupRenewal } from './trainingGroupSelectors'
+import type { TrainingGroupAssignment, TrainingGroupsApi, TrainingGroupSummary, TrainingGroupWorkspace } from './types'
+
+type GroupState = { summary: TrainingGroupSummary; workspace: TrainingGroupWorkspace; selectedId?: string; rosterDate: string; assignments: TrainingGroupAssignment[]; editing: boolean }
+
+async function fetchGroupState(api: TrainingGroupsApi, season: Season, canManage: boolean, date?: string, newProposal = false): Promise<GroupState> {
+  const today = todayInMadridIso()
+  const nextMonday = mondayFor(today) === today ? today : addDays(mondayFor(today), 7)
+  const firstDate = nextMonday > season.start_date ? nextMonday : season.start_date
+  const defaultDate = firstDate > season.end_date ? season.end_date : firstDate
+  const summary = await api.summary(season.id)
+  const newestFirst = [...summary.blocks].sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at))
+  const selected = newProposal ? undefined
+    : canManage ? newestFirst.find((item) => item.status === 'draft') ?? newestFirst.find((item) => item.has_draft) ?? newestFirst.find((item) => item.status === 'published')
+      : newestFirst.find((item) => item.status === 'published')
+  const rosterDate = date ?? (selected ? selected.starts_on : defaultDate)
+  const workspace = await api.workspace(season.id, selected?.id, rosterDate)
+  const editing = canManage && season.end_date >= today && (newProposal || !selected || selected.has_draft || selected.status === 'draft')
+  const assignments = selected ? workspace.draft ?? workspace.members.map(({ player_id, color }) => ({ player_id, color }))
+    : newProposal ? generateTrainingGroups(workspace.candidates, workspace.members) : []
+  return { summary, workspace, selectedId: selected?.id, rosterDate, assignments, editing }
+}
+
+export function TrainingGroupsView({ seasons, userId, canManage, canPublish, onChanged, api = trainingGroupsApi }: {
+  seasons: Season[]; userId: string; canManage: boolean; canPublish: boolean; onChanged?: () => void; api?: TrainingGroupsApi
+}) {
+  const today = todayInMadridIso()
+  const season = seasons.find((item) => item.start_date <= today && item.end_date >= today)
+    ?? [...seasons].sort((a, b) => b.start_date.localeCompare(a.start_date))[0]
+  return <div className="page training-groups-page">
+    <PageHeader eyebrow="EQUIPO" title="Grupos de entrenamiento" subtitle="Dos grupos para entrenar juntas. Un nuevo reparto cada tres semanas." />
+    {season ? <TrainingGroupSeason key={`${season.id}:${userId}:${canManage}:${canPublish}`} season={season} userId={userId} canManage={canManage} canPublish={canPublish} api={api} onChanged={onChanged} /> : <p>No hay temporadas disponibles.</p>}
+  </div>
+}
+
+function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onChanged }: {
+  season: Season; userId: string; canManage: boolean; canPublish: boolean; api: TrainingGroupsApi; onChanged?: () => void
+}) {
+  const today = todayInMadridIso()
+  const [state, setState] = useState<GroupState>()
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [dirty, setDirty] = useState(false)
+  const [confirm, setConfirm] = useState<'publish' | 'discard' | 'regenerate' | null>(null)
+  const requestId = useRef(0)
+  const block = state?.summary.blocks.find((item) => item.id === state.selectedId)
+  const current = state && currentTrainingGroupBlock(state.summary.blocks, today)
+  const renewal = current ? trainingGroupRenewal(current, today) : null
+  const players = state?.editing ? state.workspace.candidates : state?.workspace.members ?? []
+  const balance = trainingGroupBalance(players, state?.assignments ?? [])
+  const pending = state?.workspace.candidates.filter((player) => !state.assignments.some((entry) => entry.player_id === player.player_id)) ?? []
+  const invalid = state?.editing ? state.assignments.filter((entry) => !players.some((player) => player.player_id === entry.player_id)).length : 0
+  const ended = season.end_date < today
+
+  const load = useCallback(async (date?: string, newProposal = false) => {
+    const request = ++requestId.current
+    setLoading(true)
+    setError('')
+    try {
+      const next = await fetchGroupState(api, season, canManage, date, newProposal)
+      if (request !== requestId.current) return
+      setState(next)
+      setDirty(newProposal)
+    } catch (cause) { if (request === requestId.current) setError(errorText(cause)) }
+    finally { if (request === requestId.current) setLoading(false) }
+  }, [api, canManage, season])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0)
+    return () => { window.clearTimeout(timer); requestId.current += 1 }
+  }, [load])
+
+  // No se reemplaza una revisión en curso al recuperar el foco.
+  useEffect(() => {
+    const refresh = () => { if (!dirty && !busy && !state?.editing && document.visibilityState === 'visible') void load() }
+    window.addEventListener('focus', refresh)
+    window.addEventListener('online', refresh)
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh) }
+  }, [busy, dirty, load, state?.editing, state?.selectedId])
+
+  async function save() {
+    if (!state) return
+    setBusy(true); setError(''); setMessage('')
+    try {
+      await api.saveDraft({ seasonId: season.id, startsOn: state.rosterDate, members: state.assignments, blockId: block?.id, expectedVersion: block?.version })
+      await load()
+      setMessage('Borrador guardado. Las jugadoras siguen viendo el reparto publicado.')
+    } catch (cause) { setError(errorText(cause)) }
+    finally { setBusy(false) }
+  }
+
+  async function applyConfirmation() {
+    if (!state) return
+    if (confirm === 'regenerate') {
+      setState({ ...state, assignments: generateTrainingGroups(state.workspace.candidates, state.workspace.members) })
+      setDirty(true); setConfirm(null); return
+    }
+    if (!block) return
+    setBusy(true); setError(''); setMessage('')
+    try {
+      if (confirm === 'publish') await api.publish(block.id, block.version)
+      else await api.discardDraft(block.id, block.version)
+      await load()
+      setMessage(confirm === 'publish' ? 'Grupos publicados. Cada jugadora verá el aviso de su grupo en la campana.' : 'Borrador descartado.')
+      onChanged?.()
+      setConfirm(null)
+    } catch (cause) { setConfirm(null); setError(errorText(cause)) }
+    finally { setBusy(false) }
+  }
+
+  if (!state && loading) return <SectionLoading />
+  if (!state) return <SectionError message={error || 'No se han podido cargar los grupos.'} onRetry={() => void load()} />
+  const upcoming = state.summary.blocks.filter((item) => item.status === 'published' && item.starts_on > today).sort((a, b) => a.starts_on.localeCompare(b.starts_on))[0]
+    const historical = block?.status === 'published' && ended
+  const ownMember = block?.status === 'published' ? state.workspace.members.find((member) => member.player_id === userId) : undefined
+  const ownGroupTitle = ownMember && block ? historical
+    ? `En este reparto pertenecías al grupo ${groupColorLabel(ownMember.color)}`
+    : block.starts_on > today
+      ? `Desde el ${formatDate(block.starts_on)} pertenecerás al grupo ${groupColorLabel(ownMember.color)}`
+      : state.editing
+        ? `Tu grupo publicado es el ${groupColorLabel(ownMember.color)}`
+        : `Perteneces al grupo ${groupColorLabel(ownMember.color)}`
+    : ''
+  return <section className="training-groups-view" aria-busy={loading || busy}>
+    {!loading && ownMember && block && <section className={`training-group-personal-banner ${ownMember.color}`} role="status" aria-label="Tu grupo en este reparto">
+      <span className="training-group-personal-icon" aria-hidden="true"><Icon name="users" size={23} /></span>
+      <div><strong>{ownGroupTitle}</strong><p>{historical ? `Estás consultando el reparto histórico del ${formatDate(block.starts_on)}.` : `Recuerda llevar peto o camiseta ${groupShirtLabel(ownMember.color)} a los entrenamientos.`}</p></div>
+    </section>}
+    {canManage && <div className={`training-group-renewal${renewal?.overdue && !upcoming ? ' overdue' : ''}`}>
+      <div><strong>{renewal?.overdue && !upcoming ? 'Toca rehacer los grupos' : renewal?.soon && !upcoming ? 'Esta semana toca renovar los grupos' : 'Renovación cada tres semanas'}</strong><p>{current ? `Llevamos ${renewal!.weeks} semanas con el reparto actual. Próxima revisión: ${formatDate(renewal!.renewOn)}.` : 'Genera una propuesta y revísala antes de publicarla.'} {upcoming ? `Hay un reparto programado para el ${formatDate(upcoming.starts_on)}.` : renewal?.overdue ? 'El reparto actual se mantiene hasta publicar el siguiente.' : ''}</p></div>
+      {!ended && <button className="primary-button" disabled={busy || loading || dirty || state.editing && !!block?.has_draft} onClick={() => void load(undefined, true)}>Generar nuevos grupos</button>}
+    </div>}
+    <div className="training-group-date-line">
+      {(block || state.editing) && (state.editing && block?.status !== 'published'
+        ? <label>Fecha de inicio<input type="date" value={state.rosterDate} min={today > season.start_date ? today : season.start_date} max={season.end_date} disabled={busy || loading} onChange={(event) => { if (event.target.value) void load(event.target.value, !block) }} /></label>
+        : <p><strong>Fecha de inicio:</strong> <time dateTime={block?.starts_on ?? state.rosterDate}>{formatDate(block?.starts_on ?? state.rosterDate, { day: 'numeric', month: 'short', year: 'numeric' })}</time></p>)}
+    </div>
+    {error && <p role="alert" className="form-error">{error}</p>}
+    {message && <p role="status" className="training-group-message">{message}</p>}
+    {loading ? <SectionLoading /> : <>
+      {state.editing && <div className="training-group-review"><strong>Borrador · Solo visible para el staff</strong><p>Revisa el reparto y usa «Pasar a» para ajustarlo. Las jugadoras de baja deportiva también tienen grupo. Sin ficha queda excluida.</p>
+        {pending.length > 0 && <p>{pending.length} jugadoras pendientes de asignar.</p>}
+        {invalid > 0 && <p>{invalid} asignaciones ya no cumplen los requisitos.</p>}
+        {(pending.length > 0 || invalid > 0) && <button className="secondary-button" disabled={busy} onClick={() => { setState({ ...state, assignments: reconcileTrainingGroups(state.workspace.candidates, state.assignments) }); setDirty(true) }}>Actualizar plantilla sin rehacer el reparto</button>}
+        <div className="training-group-actions"><button className="secondary-button" disabled={busy} onClick={() => setConfirm('regenerate')}>Volver a repartir</button><button className="primary-button" disabled={busy || !dirty || !state.assignments.length || pending.length > 0 || invalid > 0} onClick={() => void save()}>Guardar borrador</button>
+          {block?.has_draft && <button className="text-button" disabled={busy} onClick={() => setConfirm('discard')}>Descartar borrador</button>}
+          {canPublish && block?.has_draft && <button className="primary-button" disabled={busy || dirty || pending.length > 0 || invalid > 0 || !state.assignments.length} onClick={() => setConfirm('publish')}>Publicar grupos</button>}
+          {dirty && <button className="text-button" disabled={busy} onClick={() => void load()}>Cancelar cambios</button>}
+        </div>
+      </div>}
+      {!state.editing && canManage && !ended && !historical && block && <div className="training-group-actions"><button className="secondary-button" onClick={() => { setState({ ...state, editing: true, assignments: reconcileTrainingGroups(state.workspace.candidates, state.assignments) }); setDirty(true) }}>Revisar reparto</button>{pending.length > 0 && <span>{pending.length} nuevas jugadoras pendientes. Revisa para incorporarlas sin rehacer los grupos.</span>}</div>}
+      {state.assignments.length > 0 && <>
+        {state.editing && <div className="training-group-balance"><h2>Equilibrio del reparto</h2><p>{balance.balanced ? 'Reparto equilibrado: diferencia máxima de una jugadora por categoría y en el total.' : 'Hay diferencias de más de una jugadora. Puedes ajustar el reparto antes de publicar.'}</p>
+          <table><thead><tr><th>Equipo y posición</th><th>Rojo</th><th>Blanco</th></tr></thead><tbody>{balance.rows.map((row) => <tr key={row.key}><th scope="row">{row.label}</th><td>{row.red}</td><td>{row.white}</td></tr>)}</tbody><tfoot><tr><th>Total</th><td>{balance.red}</td><td>{balance.white}</td></tr></tfoot></table>
+          {players.some((player) => player.position_group === 'unassigned') && <p>Las jugadoras sin posición principal se equilibran por separado.</p>}
+        </div>}
+        <TrainingGroupColumns players={players} assignments={state.assignments} userId={userId} disabled={busy} onMove={state.editing ? (playerId) => { setState({ ...state, assignments: state.assignments.map((entry) => entry.player_id === playerId ? { ...entry, color: entry.color === 'red' ? 'white' : 'red' } : entry) }); setDirty(true) } : undefined} />
+      </>}
+      {!state.assignments.length && <p className="training-group-empty">{state.editing ? state.workspace.candidates.length ? 'Pulsa «Generar nuevos grupos» para preparar el primer reparto.' : 'No hay jugadoras elegibles en esta fecha. Revisa fichas, equipos y vinculaciones.' : 'Todavía no hay grupos publicados para esta temporada.'}</p>}
+    </>}
+    {confirm && <Modal labelledBy="training-groups-confirm" disabled={busy} onClose={() => setConfirm(null)}><h2 id="training-groups-confirm">{confirm === 'publish' ? 'Publicar grupos de entrenamiento' : confirm === 'discard' ? 'Descartar borrador' : 'Generar otro reparto'}</h2>
+      <p>{confirm === 'publish' ? `El reparto comenzará el ${formatDate(state.rosterDate)}. Cada jugadora recibirá un aviso en la campana al entrar o actualizar la aplicación. Las correcciones solo avisan a quienes cambien de grupo.` : confirm === 'discard' ? 'Se eliminará esta propuesta. El reparto publicado se conserva.' : 'Se sustituirán los ajustes de esta propuesta por un nuevo reparto equilibrado.'}</p>
+      {confirm === 'publish' && !balance.balanced && <p role="alert">El reparto tiene diferencias de más de una jugadora. Al confirmar publicarás estos ajustes manuales.</p>}
+      <div className="training-group-actions"><button className="secondary-button" disabled={busy} onClick={() => setConfirm(null)}>Cancelar</button><button className="primary-button" disabled={busy} onClick={() => void applyConfirmation()}>{busy ? 'Guardando…' : confirm === 'publish' ? 'Confirmar publicación' : confirm === 'discard' ? 'Descartar' : 'Generar reparto'}</button></div>
+    </Modal>}
+  </section>
+}

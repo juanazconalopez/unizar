@@ -1,8 +1,17 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
+import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageTrainingGroups, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
+  test('training groups preserve read-only access for players and Dirección even if a write key is configured', () => {
+    expect(canManageTrainingGroups(makeProfile({ is_owner: true }), [])).toBe(true)
+    expect(canManageTrainingGroups(makeProfile({ is_coach: true }))).toBe(true)
+    expect(canManageTrainingGroups(makeProfile({ is_coach: true }), [])).toBe(false)
+    expect(canManageTrainingGroups(makeProfile({ is_viewer: true }), [PERMISSIONS.trainingGroups.view, PERMISSIONS.trainingGroups.manage])).toBe(false)
+    expect(canManageTrainingGroups(makeProfile(), [PERMISSIONS.trainingGroups.view, PERMISSIONS.trainingGroups.manage])).toBe(false)
+    expect(canManageTrainingGroups(makeProfile({ is_owner: true, is_active: false }))).toBe(false)
+    expect(hasPermission(makeProfile(), PERMISSIONS.trainingGroups.view)).toBe(true)
+  })
   test('only enabled owners and coaches may edit positions, respecting the configured permission', () => {
     expect(canManagePlayerPositions(makeProfile({ is_owner: true }), [])).toBe(true)
     expect(canManagePlayerPositions(makeProfile({ is_coach: true }))).toBe(true)
