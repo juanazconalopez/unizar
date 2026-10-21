@@ -2,7 +2,7 @@ import { todayIso } from './lib/dates'
 import { licenseLabel, membershipLicense } from './lib/playerLicenses'
 import { Suspense, useEffect } from 'react'
 import { AppViewRouter } from './app/AppViewRouter'
-import { PlayerPreviewView, preloadView } from './app/viewModules'
+import { PlayerPreviewView, preloadAccessibleViews, preloadView } from './app/viewModules'
 import { createAnnouncementActions } from './app/actions/announcementActions'
 import type { AppActions } from './app/actions/appActions'
 import { createClubActions } from './app/actions/clubActions'
@@ -33,8 +33,17 @@ function App() {
   const userId = auth.session?.user.id
 
   useEffect(() => {
-    if (userId) preloadView(view)
-  }, [userId, view])
+    if (userId && data.profile) void preloadView(view, data.profile, data.permissionKeys)
+  }, [data.permissionKeys, data.profile, userId, view])
+
+  useEffect(() => {
+    if (!data.profile || data.loadedUserId !== userId) return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void preloadAccessibleViews(data.profile!, data.permissionKeys, () => cancelled)
+    }, 0)
+    return () => { cancelled = true; window.clearTimeout(timer) }
+  }, [data.loadedUserId, data.permissionKeys, data.profile, userId])
 
   async function reloadData() {
     await Promise.all([data.reload(), notifications.reload()])

@@ -316,11 +316,20 @@ Los datos no se guardan en la caché del service worker. Se consultan al iniciar
 aplicación y se refrescan silenciosamente al volver a primer plano o recuperar la
 conexión, siempre que haya pasado al menos un minuto desde la última carga.
 
-Las secciones secundarias se descargan bajo demanda. La precaché contiene solo la
+Tras entrar se prepara el código de las secciones permitidas en lotes de dos,
+priorizando Calendario, Partidos, Asistencia y Grupos. También se preparan sus
+datos principales según permisos. Los datos comunes se reutilizan durante un
+minuto y las secciones visitadas conservan una instantánea en memoria: al volver
+se muestran de inmediato y se refrescan en segundo plano si están obsoletas.
+Guardar cambios invalida las instantáneas; cambiar de cuenta o permisos invalida
+también las respuestas pendientes. Nada de esto persiste datos privados fuera
+de la sesión. El lector PDF sigue cargándose únicamente al importar un acta.
+
+La precaché del service worker contiene solo la
 estructura inicial, estilos e iconos de instalación; los fragmentos versionados,
-los escudos y las fuentes se guardan después de su primer uso. Las consultas de
-Supabase también se separan por sección para que Inicio no descargue resultados,
-partidos o asistencias de gestión que no necesita.
+los escudos y las fuentes se guardan después de descargarse. Las consultas de
+Supabase se separan por sección y comparten perfil, permisos y catálogos para
+evitar repetirlos durante la preparación y navegación.
 
 Inicio y Datos de perfil también se cargan bajo demanda: la pantalla de acceso no
 descarga el renderizador de contenido con formato ni el campo internacional de

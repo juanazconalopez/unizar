@@ -1,5 +1,8 @@
 import { lazy } from 'react'
-import type { ViewName } from '../types'
+import type { Profile, ViewName } from '../types'
+import { preloadableView } from '../lib/preloadableView'
+import { canAccessView } from './appAccess'
+import { canManageSport } from '../lib/permissions'
 
 const modules = {
   home: () => import('../features/dashboard/Dashboard'),
@@ -19,24 +22,54 @@ const modules = {
   playerPreview: () => import('../features/playerPreview/PlayerPreviewView'),
 }
 
-export const Dashboard = lazy(() => modules.home().then(({ Dashboard }) => ({ default: Dashboard })))
-export const AttendanceView = lazy(() => modules.attendance().then(({ AttendanceView }) => ({ default: AttendanceView })))
-export const SettingsView = lazy(() => modules.settings().then(({ SettingsView }) => ({ default: SettingsView })))
-export const StatisticsView = lazy(() => modules.statistics().then(({ StatisticsView }) => ({ default: StatisticsView })))
-export const TasksView = lazy(() => modules.tasks().then(({ TasksView }) => ({ default: TasksView })))
-export const MatchesView = lazy(() => modules.matches().then(({ MatchesView }) => ({ default: MatchesView })))
-export const CalendarView = lazy(() => modules.calendar().then(({ CalendarView }) => ({ default: CalendarView })))
-export const PlayerCalendarView = lazy(() => modules.playerCalendar().then(({ PlayerCalendarView }) => ({ default: PlayerCalendarView })))
-export const TrainingGroupsView = lazy(() => modules['training-groups']().then(({ TrainingGroupsView }) => ({ default: TrainingGroupsView })))
-export const TrainingGroupCard = lazy(() => import('../features/trainingGroups/TrainingGroupCard').then(({ TrainingGroupCard }) => ({ default: TrainingGroupCard })))
-export const TrainingPlansView = lazy(() => modules.training().then(({ TrainingPlansView }) => ({ default: TrainingPlansView })))
-export const CompetitionView = lazy(() => modules.competition().then(({ CompetitionView }) => ({ default: CompetitionView })))
-export const LibraryView = lazy(() => modules.library().then(({ LibraryView }) => ({ default: LibraryView })))
-export const SurveysView = lazy(() => modules.surveys().then(({ SurveysView }) => ({ default: SurveysView })))
-export const SurveyResponseView = lazy(() => modules.survey().then(({ SurveyResponseView }) => ({ default: SurveyResponseView })))
-export const PlayerPreviewView = lazy(() => modules.playerPreview().then(({ PlayerPreviewView }) => ({ default: PlayerPreviewView })))
+const views = {
+  'home': preloadableView(async () => ({ default: (await modules.home()).Dashboard })),
+  'attendance': preloadableView(async () => ({ default: (await modules.attendance()).AttendanceView })),
+  'settings': preloadableView(async () => ({ default: (await modules.settings()).SettingsView })),
+  'statistics': preloadableView(async () => ({ default: (await modules.statistics()).StatisticsView })),
+  'tasks': preloadableView(async () => ({ default: (await modules.tasks()).TasksView })),
+  'matches': preloadableView(async () => ({ default: (await modules.matches()).MatchesView })),
+  'calendar': preloadableView(async () => ({ default: (await modules.calendar()).CalendarView })),
+  'playerCalendar': preloadableView(async () => ({ default: (await modules.playerCalendar()).PlayerCalendarView })),
+  'training-groups': preloadableView(async () => ({ default: (await modules['training-groups']()).TrainingGroupsView })),
+  'training': preloadableView(async () => ({ default: (await modules.training()).TrainingPlansView })),
+  'competition': preloadableView(async () => ({ default: (await modules.competition()).CompetitionView })),
+  'library': preloadableView(async () => ({ default: (await modules.library()).LibraryView })),
+  'surveys': preloadableView(async () => ({ default: (await modules.surveys()).SurveysView })),
+  'survey': preloadableView(async () => ({ default: (await modules.survey()).SurveyResponseView })),
+  'playerPreview': preloadableView(async () => ({ default: (await modules.playerPreview()).PlayerPreviewView })),
+}
 
-export function preloadView(view: ViewName) {
-  if (view in modules) void modules[view as keyof typeof modules]().catch(() => undefined)
-  if (view === 'calendar') void modules.playerCalendar().catch(() => undefined)
+export const Dashboard = views['home'].View
+export const AttendanceView = views['attendance'].View
+export const SettingsView = views['settings'].View
+export const StatisticsView = views['statistics'].View
+export const TasksView = views['tasks'].View
+export const MatchesView = views['matches'].View
+export const CalendarView = views['calendar'].View
+export const PlayerCalendarView = views['playerCalendar'].View
+export const TrainingGroupsView = views['training-groups'].View
+export const TrainingGroupCard = lazy(() => import('../features/trainingGroups/TrainingGroupCard').then(({ TrainingGroupCard }) => ({ default: TrainingGroupCard })))
+export const TrainingPlansView = views['training'].View
+export const CompetitionView = views['competition'].View
+export const LibraryView = views['library'].View
+export const SurveysView = views['surveys'].View
+export const SurveyResponseView = views['survey'].View
+export const PlayerPreviewView = views['playerPreview'].View
+
+export function preloadView(view: ViewName, profile?: Profile, permissionKeys?: readonly string[]): Promise<unknown> {
+  // Navigation alone does not know which calendar this account can open.
+  if (view === 'calendar') {
+    if (!profile) return Promise.resolve()
+    return (canManageSport(profile, permissionKeys) ? views.calendar.preload() : views.playerCalendar.preload()).catch(() => undefined)
+  }
+  return view in views ? views[view as keyof typeof views].preload().catch(() => undefined) : Promise.resolve()
+}
+
+export async function preloadAccessibleViews(profile: Profile, permissionKeys: readonly string[], cancelled: () => boolean) {
+  const priority: ViewName[] = ['calendar', 'matches', 'attendance', 'training-groups', 'home', 'training', 'statistics', 'library', 'competition', 'surveys', 'settings']
+  const allowed = priority.filter((view) => canAccessView(profile, view, permissionKeys))
+  for (let index = 0; index < allowed.length && !cancelled(); index += 2) {
+    await Promise.all(allowed.slice(index, index + 2).map((view) => preloadView(view, profile, permissionKeys)))
+  }
 }

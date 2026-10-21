@@ -16,6 +16,7 @@ vi.mock('./trainingQueriesService', async (original) => ({
 }))
 
 import { fetchTrainingData } from './trainingDataService'
+import { SessionQueryCache } from './sessionQueryCache'
 
 const season = makeSeason({ start_date: '2026-08-01', end_date: '2027-06-30' })
 const sessions = [makeSession({ session_date: '2026-09-03' })]
@@ -135,5 +136,23 @@ describe('home data loading', () => {
     await vi.waitFor(() => expect(mocks.teams).toHaveBeenCalledOnce())
     finishCompetitions([])
     expect((await request).seasonTeams).toEqual([])
+  })
+
+  test('shares identity, permissions and common catalogs across concurrent sections', async () => {
+    mocks.teams.mockResolvedValue([])
+    const cache = new SessionQueryCache()
+    await Promise.all([
+      fetchTrainingData('player-1', 'home', cache),
+      fetchTrainingData('player-1', 'calendar', cache),
+    ])
+    const tables = mocks.from.mock.calls.map(([table]) => table)
+    expect(tables.filter((table) => table === 'seasons')).toHaveLength(1)
+    expect(tables.filter((table) => table === 'profiles')).toHaveLength(2) // Own profile and public roster.
+    expect(tables.filter((table) => table === 'profile_private_details')).toHaveLength(1)
+    expect(mocks.permissions).toHaveBeenCalledOnce()
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'get_player_season_memberships')).toHaveLength(1)
+    cache.clear()
+    await fetchTrainingData('player-1', 'home', cache)
+    expect(mocks.permissions).toHaveBeenCalledTimes(2)
   })
 })

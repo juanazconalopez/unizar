@@ -15,6 +15,7 @@ import type { PermissionKey } from '../lib/permissions'
 import { fetchSeasonCompetitions } from './seasonCompetitionsService'
 import { fetchSeasonTeamCoaches, fetchSeasonTeams } from './seasonTeamsService'
 import { fetchAllPages } from './queryPagination'
+import type { SessionQueryCache } from './sessionQueryCache'
 import {
   dataRequirementsFor, emptyAttendanceWindow, emptyMatchWindow, emptyTaskWindow,
   fetchAttendanceForSessions, fetchHomeAttention, fetchMatchWindow, fetchRecentAttendance,
@@ -52,10 +53,13 @@ export type TrainingData = {
   permissionConfiguration: PermissionConfiguration
 }
 
-export async function fetchTrainingData(userId: string, scope: ViewName = 'home'): Promise<TrainingData> {
+export async function fetchTrainingData(userId: string, scope: ViewName = 'home', cache?: SessionQueryCache): Promise<TrainingData> {
+  const shared = <T,>(key: string, fetcher: () => PromiseLike<T>): Promise<T> => cache
+    ? cache.load(`${userId}:${key}`, fetcher)
+    : Promise.resolve(fetcher())
   const [profileResponse, ownDetailsResponse] = await Promise.all([
-    supabase.from('profiles').select('id, display_name, avatar_path, playing_positions, primary_position, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').eq('id', userId).single(),
-    supabase.from('profile_private_details').select('profile_id, email, phone, birth_date').eq('profile_id', userId).maybeSingle(),
+    shared('profile', () => supabase.from('profiles').select('id, display_name, avatar_path, playing_positions, primary_position, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').eq('id', userId).single()),
+    shared('own-details', () => supabase.from('profile_private_details').select('profile_id, email, phone, birth_date').eq('profile_id', userId).maybeSingle()),
   ])
   if (profileResponse.error) throw profileResponse.error
   if (ownDetailsResponse.error) throw ownDetailsResponse.error
@@ -68,7 +72,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   }
   if (!profile.is_approved || !profile.is_active || profile.is_archived) return emptyData
 
-  const permissionKeys = await fetchMyPermissions()
+  const permissionKeys = await shared('permissions', fetchMyPermissions)
 
   const canManageTasks = canManageSport(profile, permissionKeys)
   const canViewTeam = canViewTeamData(profile, permissionKeys)
@@ -80,15 +84,15 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   const currentWeek = mondayFor(new Date())
   const emptyResponse = Promise.resolve({ data: [], error: null })
   const [seasonsResponse, membershipsResponse, profilesResponse, privateDetailsResponse, absencesResponse, absenceNotesResponse, provisionalPlayers, settingsProvisionalAttendance, libraryItems, librarySettings, permissionConfiguration] = await Promise.all([
-    requirements.seasons ? supabase.from('seasons').select('*').order('start_date', { ascending: false }) : emptyResponse,
-    requirements.memberships ? supabase.rpc('get_player_season_memberships') : emptyResponse,
+    requirements.seasons ? shared('seasons', () => supabase.from('seasons').select('*').order('start_date', { ascending: false })) : emptyResponse,
+    requirements.memberships ? shared('memberships', () => supabase.rpc('get_player_season_memberships')) : emptyResponse,
     requirements.profiles
-      ? supabase.from('profiles').select('id, display_name, avatar_path, playing_positions, primary_position, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').order('display_name')
+      ? shared('profiles', () => supabase.from('profiles').select('id, display_name, avatar_path, playing_positions, primary_position, is_approved, is_active, is_player, is_coach, is_viewer, is_owner, is_archived, created_at').order('display_name'))
       : emptyResponse,
     scope === 'settings' ? supabase.from('profile_private_details').select('profile_id, email, phone, birth_date').order('profile_id') : emptyResponse,
     scope === 'settings' ? supabase.from('player_absences').select('*').order('starts_on', { ascending: false }) : emptyResponse,
     scope === 'settings' && profile.is_owner ? supabase.from('player_absence_private_notes').select('*').order('updated_at', { ascending: false }) : emptyResponse,
-    requirements.provisionalPlayers ? fetchUnlinkedProvisionalPlayers() : Promise.resolve([]),
+    requirements.provisionalPlayers ? shared('guests', fetchUnlinkedProvisionalPlayers) : Promise.resolve([]),
     scope === 'settings' ? fetchAllProvisionalAttendance() : Promise.resolve([]),
     scope === 'library' ? fetchLibraryItems() : Promise.resolve([] as LibraryItem[]),
     scope === 'settings' ? fetchLibrarySettings() : Promise.resolve(null as LibrarySettings | null),
@@ -108,8 +112,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
       || hasPermission(profile, PERMISSIONS.matches.edit, permissionKeys)
     ))
   const [seasonCompetitions, seasonTeams] = await Promise.all([
-    needsCompetitionCatalog ? fetchSeasonCompetitions(seasons.map((season) => season.id)) : Promise.resolve([]),
-    ['settings', 'calendar', 'matches'].includes(scope) ? fetchSeasonTeams(seasons.map((season) => season.id)) : Promise.resolve([]),
+    needsCompetitionCatalog ? shared('competitions', () => fetchSeasonCompetitions(seasons.map((season) => season.id))) : Promise.resolve([]),
+    ['settings', 'calendar', 'matches'].includes(scope) ? shared('teams', () => fetchSeasonTeams(seasons.map((season) => season.id))) : Promise.resolve([]),
   ])
   const seasonTeamCoaches = scope === 'settings'
     ? await fetchSeasonTeamCoaches(seasonTeams.map((team) => team.id))
@@ -147,7 +151,7 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
     const taskTo = scope === 'calendar' ? calendarTaskTo : canManageTasks ? managerEnd : currentWeek
     const [loadedTasks, loadedMatches, loadedBirthdays, loadedCalendarBirthdays] = await Promise.all([
       fetchTaskWindow(userId, canManageTasks, taskFrom, taskTo),
-      scope === 'calendar' ? fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso())) : Promise.resolve(emptyMatchWindow),
+      scope === 'calendar' ? shared(`matches:${monthStart(todayIso())}`, () => fetchMatchWindow(monthStart(todayIso()), monthEnd(todayIso()))) : Promise.resolve(emptyMatchWindow),
       scope === 'calendar' && canManageTasks && activeSeason ? fetchActiveSeasonBirthdays(userId, activeSeason.id, todayIso()) : Promise.resolve([]),
       scope === 'calendar' && !canManageTasks && profile.is_player && activeSeason ? fetchPlayerCalendarBirthdays(userId, activeSeason.id, todayIso()) : Promise.resolve([]),
     ])
@@ -167,7 +171,8 @@ export async function fetchTrainingData(userId: string, scope: ViewName = 'home'
   } else if (scope === 'attendance' && hasPermission(profile, PERMISSIONS.attendance.view, permissionKeys)) {
     attendanceData = await fetchRecentAttendance()
   } else if (scope === 'matches') {
-    matchData = await fetchMatchWindow(monthStart(todayIso()))
+    // The match list also shows upcoming months; preserve that wider window.
+    matchData = await shared(`upcoming-matches:${monthStart(todayIso())}`, () => fetchMatchWindow(monthStart(todayIso())))
   }
 
   return {

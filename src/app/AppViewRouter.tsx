@@ -69,7 +69,7 @@ export function AppViewRouter({
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
       {view === 'calendar' && activeSeason && hasWorkingSeason(profile, data.seasons, data.memberships, userId, permissionKeys) && canManageTrainingGroups(profile, permissionKeys) && <Suspense fallback={null}><TrainingGroupCard seasonId={activeSeason.id} userId={userId} canManage onOpen={() => navigate('training-groups')} /></Suspense>}
-      {view === 'training-groups' && can(PERMISSIONS.trainingGroups.view) && <TrainingGroupsView seasons={data.seasons} userId={userId} canManage={canManageTrainingGroups(profile, permissionKeys)} canPublish={canManageTrainingGroups(profile, permissionKeys) && can(PERMISSIONS.trainingGroups.publish)} onChanged={onTrainingGroupsChanged} />}
+      {view === 'training-groups' && can(PERMISSIONS.trainingGroups.view) && <TrainingGroupsView api={data.trainingGroupsApi} seasons={data.seasons} userId={userId} canManage={canManageTrainingGroups(profile, permissionKeys)} canPublish={canManageTrainingGroups(profile, permissionKeys) && can(PERMISSIONS.trainingGroups.publish)} onChanged={onTrainingGroupsChanged} />}
       {view === 'home' && <Dashboard
         announcements={data.announcements}
         attendance={data.attendance}
