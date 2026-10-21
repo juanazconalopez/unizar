@@ -66,8 +66,7 @@ export function generateTrainingGroups(players: TrainingGroupPlayer[], previous:
 
 // Altas tardías: conserva el reparto existente y añade únicamente las pendientes.
 export function reconcileTrainingGroups(players: TrainingGroupPlayer[], assignments: TrainingGroupAssignment[]): TrainingGroupAssignment[] {
-  const eligible = new Set(players.map((player) => player.player_id))
-  const next = assignments.filter((entry) => eligible.has(entry.player_id))
+  const next = retainTrainingGroupAssignments(players, assignments)
   const assigned = new Set(next.map((entry) => entry.player_id))
   for (const player of players.filter((item) => !assigned.has(item.player_id))) {
     const cost = (color: TrainingGroupColor) => next.reduce((sum, entry) => {
@@ -77,4 +76,10 @@ export function reconcileTrainingGroups(players: TrainingGroupPlayer[], assignme
     next.push({ player_id: player.player_id, color: cost('red') <= cost('white') ? 'red' : 'white' })
   }
   return next
+}
+
+// Revisar integrantes conserva sus colores y deja las altas pendientes de decidir.
+export function retainTrainingGroupAssignments(players: TrainingGroupPlayer[], assignments: TrainingGroupAssignment[]): TrainingGroupAssignment[] {
+  const eligible = new Set(players.map((player) => player.player_id))
+  return assignments.filter((entry) => eligible.has(entry.player_id))
 }

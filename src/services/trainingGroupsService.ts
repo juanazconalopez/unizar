@@ -5,7 +5,10 @@ import type { SessionQueryCache } from './sessionQueryCache'
 export function cachedTrainingGroupsApi(cache: SessionQueryCache): TrainingGroupsApi {
   return {
     summary: (seasonId) => cache.load(`group-summary:${seasonId}`, () => trainingGroupsApi.summary(seasonId)),
-    workspace: (seasonId, blockId, date) => cache.load(`group-workspace:${seasonId}:${blockId}:${date}`, () => trainingGroupsApi.workspace(seasonId, blockId, date)),
+    workspace: (seasonId, blockId, date, refresh = false) => {
+      if (refresh) cache.clear()
+      return cache.load(`group-workspace:${seasonId}:${blockId}:${date}`, () => trainingGroupsApi.workspace(seasonId, blockId, date))
+    },
     saveDraft: async (values) => { const result = await trainingGroupsApi.saveDraft(values); cache.clear(); return result },
     publish: async (id, version) => { await trainingGroupsApi.publish(id, version); cache.clear() },
     discardDraft: async (id, version) => { await trainingGroupsApi.discardDraft(id, version); cache.clear() },

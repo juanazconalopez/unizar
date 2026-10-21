@@ -1,5 +1,5 @@
 begin;
-select plan(594);
+select plan(602);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1237,7 +1237,7 @@ select has_trigger('public','seasons','seasons_guard_training_groups','las fecha
 select like(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%license.license_type = ''training''%license.license_type in (''regional'',''national'')%team.id is not null%','Solo entrenamientos entra sin equipo y Sin ficha no entra');
 select like(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%player.is_player%player.is_approved%player.is_active%not player.is_archived%membership.active_from <= roster_date%','la plantilla respeta actividad y vinculación');
 select unlike(pg_get_functiondef('public.training_group_roster(uuid,date)'::regprocedure),'%player_absences%','las bajas deportivas no excluyen a jugadoras');
-select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%expected_version is distinct from block.version%except%except%','la publicación comprueba versión e igualdad de la plantilla');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%expected_version is distinct from block.version%except%','la publicación comprueba versión y elegibilidad de las asignadas');
 select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),'%notified_at = excluded.notified_at%','cada publicación renueva el aviso para toda la plantilla');
 select like(pg_get_functiondef('public.get_training_group_workspace(uuid,uuid,date)'::regprocedure),'%case when can_manage and checked_block_id is not null then block.draft_members else null end%','la consulta publicada oculta los borradores');
 select like(pg_get_functiondef('public.training_group_can_manage()'::regprocedure),'%training_groups.manage%actor.is_owner or actor.is_coach%','Dirección no adquiere escritura deportiva aunque se conceda una clave');
@@ -1293,6 +1293,25 @@ select throws_ok($$select public.get_work_group_workspace('00000000-0000-4000-80
 select throws_ok($$select public.save_work_group_members('00000000-0000-4000-8000-000000000001'::uuid,0,'[]'::jsonb)$$,'P0001','Solo el owner puede organizar los grupos de trabajo','una sesión sin owner no cambia integrantes');
 select throws_ok($$select public.save_video_analysis_assignments('00000000-0000-4000-8000-000000000001'::uuid,0,'[]'::jsonb)$$,'P0001','Solo el owner puede asignar el vídeo análisis','una sesión sin owner no asigna partidos');
 reset role;
+
+
+-- 086: la revisión individual conserva pendientes y retiradas sin forzar un reparto completo.
+select like(pg_get_functiondef('public.save_training_group_draft(uuid,date,jsonb,uuid,integer)'::regprocedure),
+  '%coalesce(jsonb_agg%''[]''::jsonb)%into canonical%', 'un borrador vacío se conserva como array y no se confunde con ausencia de borrador');
+select unlike(pg_get_functiondef('public.save_training_group_draft(uuid,date,jsonb,uuid,integer)'::regprocedure),
+  '%jsonb_array_length(members) = 0%', 'se puede guardar la retirada de la última jugadora');
+select unlike(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%jsonb_array_length(block.draft_members) = 0%', 'se puede publicar un reparto vacío');
+select unlike(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%select eligible.player_id%except select (entry->>''player_id'')::uuid%', 'no se obliga a incluir a toda la plantilla elegible');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%select (entry->>''player_id'')::uuid%except select eligible.player_id%training_group_roster%', 'las jugadoras asignadas siguen requiriendo ficha, equipo y vinculación válidos');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%count(distinct (entry->>''player_id'')::uuid)%<> jsonb_array_length%', 'la publicación rechaza jugadoras duplicadas');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%coalesce(entry->>''color'','''') not in (''red'',''white'')%', 'la publicación rechaza colores inválidos');
+select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
+  '%El reparto es histórico y no se puede modificar%delete from public.training_group_members member where member.block_id = block.id%', 'las retiradas se aplican únicamente al reparto editable y conservan los anteriores');
 
 select * from finish();
 rollback;

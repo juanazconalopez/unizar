@@ -1,4 +1,3 @@
-import { lazy } from 'react'
 import type { Profile, ViewName } from '../types'
 import { preloadableView } from '../lib/preloadableView'
 import { canAccessView } from './appAccess'
@@ -54,7 +53,6 @@ export const MatchesView = views['matches'].View
 export const CalendarView = views['calendar'].View
 export const PlayerCalendarView = views['playerCalendar'].View
 export const TrainingGroupsView = views['training-groups'].View
-export const TrainingGroupCard = lazy(() => import('../features/trainingGroups/TrainingGroupCard').then(({ TrainingGroupCard }) => ({ default: TrainingGroupCard })))
 export const GroupsHub = views.groups.View
 export const WorkGroupsView = views['work-groups'].View
 export const TrainingPlansView = views['training'].View

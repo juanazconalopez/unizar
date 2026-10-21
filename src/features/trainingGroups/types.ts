@@ -41,7 +41,7 @@ export type SaveTrainingGroupDraft = {
 }
 export type TrainingGroupsApi = {
   summary: (seasonId: string) => Promise<TrainingGroupSummary>
-  workspace: (seasonId: string, blockId: string | undefined, rosterDate: string) => Promise<TrainingGroupWorkspace>
+  workspace: (seasonId: string, blockId: string | undefined, rosterDate: string, refresh?: boolean) => Promise<TrainingGroupWorkspace>
   saveDraft: (values: SaveTrainingGroupDraft) => Promise<string>
   publish: (blockId: string, expectedVersion: number) => Promise<void>
   discardDraft: (blockId: string, expectedVersion: number) => Promise<void>

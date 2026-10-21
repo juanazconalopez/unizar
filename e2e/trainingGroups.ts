@@ -7,6 +7,11 @@ export async function checkTrainingGroups(page: Page, testInfo: TestInfo) {
   const backendCalls: string[] = []
   page.on('request', (request) => { if (/supabase.*\/(rest|functions)\//.test(request.url())) backendCalls.push(request.url()) })
   await page.goto('/')
+  await page.getByRole('button', { name: 'Calendario', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Renovación de grupos' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Gestionar grupos', exact: true })).toHaveCount(0)
+  await page.screenshot({ path: `/tmp/unizar-calendario-sin-grupos-${testInfo.project.name}.png`, fullPage: true })
   await page.getByRole('button', { name: 'Gestión', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Grupos', exact: true }).click()
   await page.getByRole('button', { name: /EL EQUIPO EN EL CAMPO/ }).click()
@@ -77,6 +82,84 @@ export async function checkTrainingGroups(page: Page, testInfo: TestInfo) {
   expect(startDate!.x + startDate!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   expect(overflow).toBe(false)
+  expect(errors).toEqual([])
+  expect(backendCalls).toEqual([])
+}
+
+export async function checkIndividualTrainingGroupChanges(page: Page, testInfo: TestInfo) {
+  await page.clock.setFixedTime(new Date('2026-10-21T12:00:00+02:00'))
+  const errors: string[] = []
+  const backendCalls: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('request', (request) => { if (/supabase.*\/(rest|functions)\//.test(request.url())) backendCalls.push(request.url()) })
+  async function openAsOwner() {
+    await page.getByRole('button', { name: 'Gestión', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Grupos', exact: true }).click()
+    await page.getByRole('button', { name: /EL EQUIPO EN EL CAMPO/ }).click()
+    await expect(page.getByRole('region', { name: 'Grupo ROJO' })).toBeVisible()
+  }
+  async function openAsPlayer() {
+    await page.getByRole('button', { name: 'Grupos', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Grupos de entrenamiento', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Grupo ROJO' })).toBeVisible()
+  }
+  const readAssignments = () => page.locator('.training-group-column').evaluateAll((columns) => Object.fromEntries(columns.flatMap((column) => [...column.querySelectorAll('li strong')].map((name) => [name.textContent!.replace(' · Tú', ''), column.classList.contains('red') ? 'ROJO' : 'BLANCO']))))
+  await page.goto('/')
+  await openAsOwner()
+  const original = await readAssignments()
+  const nextColor = original['Marta Sánchez'] === 'ROJO' ? 'BLANCO' : 'ROJO'
+  await page.getByRole('button', { name: 'Revisar reparto' }).click()
+  await page.getByRole('button', { name: 'Quitar a Marta Sánchez del reparto' }).click()
+  const unassigned = page.getByRole('region', { name: 'Jugadoras sin grupo' })
+  await expect(unassigned).toContainText('Marta Sánchez')
+  await unassigned.getByRole('button', { name: `Añadir a Marta Sánchez al grupo ${nextColor}` }).click()
+  await page.getByRole('button', { name: 'Quitar a Alba Navarro del reparto' }).click()
+  await page.getByRole('button', { name: 'Actualizar plantilla' }).click()
+  await expect(unassigned).toContainText('Alba Navarro')
+  await expect(page.getByRole('region', { name: `Grupo ${nextColor}` })).toContainText('Marta Sánchez')
+  await page.screenshot({ path: `/tmp/unizar-grupos-individuales-${testInfo.project.name}-edicion.png`, fullPage: true })
+  await page.getByRole('button', { name: 'Guardar borrador' }).click()
+  await expect(page.getByText(/Borrador guardado/)).toBeVisible()
+  await expect(unassigned).toContainText('Alba Navarro')
+  await expect(page.getByRole('button', { name: 'Publicar grupos' })).toBeEnabled()
+
+  await page.getByLabel('Ver como').selectOption('player')
+  await openAsPlayer()
+  await expect(page.getByRole('region', { name: `Grupo ${original['Marta Sánchez']}` })).toContainText('Marta Sánchez · Tú')
+  await expect(page.locator('.training-group-column').getByRole('listitem').filter({ hasText: 'Alba Navarro' })).toHaveCount(1)
+  await expect(page.getByRole('button', { name: /^Quitar a |^Añadir a / })).toHaveCount(0)
+
+  await page.getByLabel('Ver como').selectOption('owner')
+  await openAsOwner()
+  await expect(unassigned).toContainText('Alba Navarro')
+  await page.getByRole('button', { name: 'Publicar grupos' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirmar publicación' }).click()
+  await expect(page.getByText(/Grupos publicados/)).toBeVisible()
+  await expect(page.locator('.training-group-date-line')).toContainText('29 sept 2026')
+  const expected: Record<string, string> = { ...original, 'Marta Sánchez': nextColor }
+  delete expected['Alba Navarro']
+  expect(await readAssignments()).toEqual(expected)
+  await expect(unassigned).toContainText('Alba Navarro')
+  expect(await unassigned.evaluate((element) => element.previousElementSibling?.classList.contains('training-group-renewal'))).toBe(true)
+  await expect(page.getByRole('button', { name: 'Guardar borrador' })).toHaveCount(0)
+  await page.locator('.training-group-renewal').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: `/tmp/unizar-grupos-sin-asignar-${testInfo.project.name}.png`, fullPage: true })
+
+  await page.getByLabel('Ver como').selectOption('player')
+  await openAsPlayer()
+  await expect(page.getByRole('region', { name: `Grupo ${nextColor}` })).toContainText('Marta Sánchez · Tú')
+  await expect(page.getByRole('region', { name: 'Jugadoras sin grupo' })).toHaveCount(0)
+  expect(await readAssignments()).toEqual(expected)
+  await page.screenshot({ path: `/tmp/unizar-grupos-individuales-${testInfo.project.name}-publicado.png`, fullPage: true })
+  expect(await page.locator('.training-groups-page').evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true)
+
+  await page.getByLabel('Ver como').selectOption('owner')
+  await openAsOwner()
+  await unassigned.getByRole('button', { name: 'Añadir a Alba Navarro al grupo BLANCO' }).click()
+  await expect(page.getByRole('button', { name: 'Guardar borrador' })).toBeEnabled()
+  await expect(unassigned).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Grupo BLANCO' })).toContainText('Alba Navarro')
+  expect(await readAssignments()).toEqual({ ...expected, 'Alba Navarro': 'BLANCO' })
   expect(errors).toEqual([])
   expect(backendCalls).toEqual([])
 }

@@ -59,3 +59,22 @@
 .training-group-personal-banner.red { border-color: #e7b6b3; border-left-color: #b53c36; background: #fff1f0; color: #992f2b; }
 .training-group-personal-banner.red p { color: #783d37; }
 .training-group-personal-banner.red .training-group-personal-icon { background: #b53c36; border-color: #b53c36; color: #fff; }
+
+.training-group-member-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .25rem .75rem; }
+.training-group-member-actions .training-group-remove { color: #9b4438; }
+.training-group-unassigned { border: 1px solid #d9e0d7; border-radius: 16px; padding: 1.1rem; background: #fafbf8; }
+.training-group-unassigned > header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.training-group-unassigned h2 { margin: 0; font-size: 1.05rem; }
+.training-group-unassigned header > span { color: #5d6e61; font-size: .85rem; white-space: nowrap; }
+.training-group-unassigned > p { color: #617267; font-size: .88rem; line-height: 1.6; }
+.training-group-unassigned > small { display: block; margin-top: .75rem; color: #617267; line-height: 1.6; }
+.training-group-unassigned .training-group-roster { padding: 0; }
+.training-group-add-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.training-group-add-actions .training-group-add { max-width: none; font-size: .78rem; padding: .55rem .8rem; }
+.training-group-add.red { color: #992f2b; background: #fff1f0; border-color: #e7b6b3; }
+.training-group-add.white { color: #36453a; background: white; }
+@media (max-width: 700px) {
+  .training-group-unassigned .training-group-roster li { align-items: stretch; flex-direction: column; }
+  .training-group-add-actions > button { flex: 1; justify-content: center; }
+  .training-group-member-actions { flex-direction: column; align-items: flex-end; flex-shrink: 0; }
+}

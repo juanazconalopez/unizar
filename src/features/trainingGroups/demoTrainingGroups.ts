@@ -70,6 +70,7 @@ export function createDemoTrainingGroupsApi({ store, playersOn, userId, canManag
       if (!block && store.blocks.some((item) => item.season_id === values.seasonId && item.status === 'draft')) throw new Error('Ya hay un borrador pendiente.')
       if (store.blocks.some((item) => item.id !== block?.id && item.season_id === values.seasonId && item.starts_on === values.startsOn)) throw new Error('Ya existe un reparto para esa fecha.')
       const eligible = new Set(playersOn(values.seasonId, values.startsOn > today ? values.startsOn : today).map((player) => player.player_id))
+      if (values.members.length > 2000 || new Set(values.members.map((entry) => entry.player_id)).size !== values.members.length || values.members.some((entry) => !['red', 'white'].includes(entry.color))) throw new Error('Revisa las jugadoras y los colores del reparto.')
       if (values.members.some((entry) => !eligible.has(entry.player_id))) throw new Error('La plantilla ha cambiado. Actualiza las jugadoras elegibles.')
       if (block) { block.draft = structuredClone(values.members); block.version += 1; block.has_draft = true; block.starts_on = values.startsOn; return block.id }
       const id = crypto.randomUUID()
@@ -80,7 +81,7 @@ export function createDemoTrainingGroupsApi({ store, playersOn, userId, canManag
       if (!canPublish) throw new Error('No tienes permiso para publicar grupos.')
       const block = checkedBlock(id, version)
       const candidates = playersOn(block.season_id, block.starts_on > today ? block.starts_on : today)
-      if (!block.draft || block.draft.length !== candidates.length || candidates.some((player) => !block.draft!.some((entry) => entry.player_id === player.player_id))) throw new Error('La plantilla ha cambiado. Actualiza el borrador antes de publicar.')
+      if (!block.draft || block.draft.length > 2000 || new Set(block.draft.map((entry) => entry.player_id)).size !== block.draft.length || block.draft.some((entry) => !['red', 'white'].includes(entry.color) || !candidates.some((player) => player.player_id === entry.player_id))) throw new Error('La plantilla ha cambiado. Actualiza el borrador antes de publicar.')
       const lastNotification = Object.values(store.members).flat().reduce((latest, member) => Math.max(latest, Date.parse(member.notified_at)), 0)
       const now = new Date(Math.max(Date.now(), lastNotification + 1)).toISOString()
       store.members[id] = block.draft.map((entry) => ({ ...candidates.find((player) => player.player_id === entry.player_id)!, ...entry, notified_at: now }))
