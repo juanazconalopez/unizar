@@ -200,6 +200,9 @@ La configuración se encuentra en **Workers & Pages → unizar → Settings → 
 - Comando de compilación: `npm run build`
 - Comando de despliegue: `npx wrangler deploy`
 - Recursos generados por Vite: `dist`
+- La configuración versionada de Wrangler está en `wrangler.jsonc`; declara los
+  recursos estáticos y el fallback de rutas de la SPA para que el despliegue no
+  dependa del asistente interactivo de detección de Vite.
 - Versión de Node: **24.21.0**, indicada en `.node-version` y `.nvmrc`.
   Si existe `NODE_VERSION` en **Build Variables and Secrets**, debe tener ese mismo
   valor en todos los builds. Véase la [configuración oficial del build de Workers](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/#overriding-default-versions).
