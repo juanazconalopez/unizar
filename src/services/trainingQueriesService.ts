@@ -29,7 +29,7 @@ export function dataRequirementsFor(scope: ViewName, canViewTeam: boolean, canVi
   return {
     tasks,
     results: tasks,
-    memberships: ['home', 'calendar', 'tasks', 'matches', 'statistics', 'attendance', 'settings', 'training-groups'].includes(scope),
+    memberships: ['home', 'calendar', 'tasks', 'matches', 'statistics', 'attendance', 'settings', 'training-groups', 'groups', 'work-groups', 'video-analysis'].includes(scope),
     profiles: scope === 'calendar'
       || scope === 'matches'
       || scope === 'statistics'

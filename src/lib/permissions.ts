@@ -17,6 +17,8 @@ export const PERMISSIONS = {
   attendance: { view: 'attendance.view', record: 'attendance.record', report: 'attendance.report', guests: 'attendance.guests' },
   training: { view: 'training.view', create: 'training.create', edit: 'training.edit', delete: 'training.delete', publish: 'training.publish' },
   trainingGroups: { view: 'training_groups.view', manage: 'training_groups.manage', publish: 'training_groups.publish' },
+  workGroups: { view: 'work_groups.view', manage: 'work_groups.manage' },
+  videoAnalysis: { view: 'video_analysis.view', manage: 'video_analysis.manage' },
   exercises: { view: 'exercises.view', create: 'exercises.create', edit: 'exercises.edit', delete: 'exercises.delete' },
   surveys: { own: 'surveys.view_own', respondOwn: 'surveys.respond_own', manage: 'surveys.view_manage', create: 'surveys.create', edit: 'surveys.edit', publish: 'surveys.publish', cancelOwn: 'surveys.cancel_own', results: 'surveys.results_manage', export: 'surveys.export' },
   competition: { view: 'competition.view', sync: 'competition.sync' },
@@ -60,20 +62,20 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.attendance.view, PERMISSIONS.attendance.record, PERMISSIONS.attendance.report, PERMISSIONS.attendance.guests,
     PERMISSIONS.training.view, PERMISSIONS.training.create, PERMISSIONS.training.edit, PERMISSIONS.training.delete,
     PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
-    PERMISSIONS.team.positions, PERMISSIONS.trainingGroups.view, PERMISSIONS.trainingGroups.manage, PERMISSIONS.trainingGroups.publish,
+    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.team.positions, PERMISSIONS.trainingGroups.view, PERMISSIONS.trainingGroups.manage, PERMISSIONS.trainingGroups.publish,
     PERMISSIONS.exercises.delete, PERMISSIONS.competition.view, PERMISSIONS.library.view,
     PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   viewer: new Set([
     PERMISSIONS.dashboard.team, PERMISSIONS.statistics.view, PERMISSIONS.statistics.attendance, PERMISSIONS.statistics.tasks,
-    PERMISSIONS.trainingGroups.view, PERMISSIONS.matches.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.matches.lineup, PERMISSIONS.attendance.report,
+    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.matches.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.matches.lineup, PERMISSIONS.attendance.report,
     PERMISSIONS.competition.view, PERMISSIONS.library.view,
     PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   player: new Set([
-    PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
+    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
     PERMISSIONS.announcements.view, PERMISSIONS.matches.view, PERMISSIONS.matches.ownAvailability, PERMISSIONS.matches.lineup,
     PERMISSIONS.competition.view, PERMISSIONS.library.view, PERMISSIONS.surveys.own, PERMISSIONS.surveys.respondOwn,
   ]),
@@ -141,4 +143,8 @@ function flattenPermissionKeys(value: unknown): PermissionKey[] {
 
 export function canManageTrainingGroups(profile: Profile, loadedKeys?: readonly string[]) {
   return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.trainingGroups.manage, loadedKeys)
+}
+
+export function canManageWorkGroups(profile: Profile, permission: 'members' | 'video', loadedKeys?: readonly string[]) {
+  return profile.is_owner && hasPermission(profile, permission === 'members' ? PERMISSIONS.workGroups.manage : PERMISSIONS.videoAnalysis.manage, loadedKeys)
 }

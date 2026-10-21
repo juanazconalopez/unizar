@@ -225,6 +225,15 @@ Reglas importantes:
 - Aplicar `082_training_groups.sql` manualmente después de `081` y `083_notify_all_training_group_publications.sql` después de `082`. Cada publicación renueva el aviso para todas las jugadoras, también cuando se mantiene su color. Las tablas tienen RLS y no conceden acceso directo a clientes: las RPC exponen únicamente metadatos públicos y ocultan los borradores. No incluyen contactos, fotografías ni datos médicos.
 - `features/trainingGroups` contiene componentes y lógica compartidos con la demo. `demo.local` añade una plantilla ampliada únicamente para este escenario y mantiene las publicaciones al cambiar de rol, sin consultar Supabase.
 
+### Grupos de trabajo y vídeo análisis
+
+- Las jugadoras abren Grupos como menú desplegable con Grupos de entrenamiento, Grupos de trabajo y Asignación de vídeo análisis. Gestión → Grupos abre para el owner una pantalla puente con las tres tarjetas; entrenadores con gestión de entrenamiento usan también esa pantalla.
+- Los nueve grupos de trabajo conservan los colores y la distribución facilitada: Botiquín, Equipaciones, 3º tiempos, Eventos, Material, Merchan, Cámara, Fichas y Entrenadores. Solo el owner añade, retira, mueve o vincula integrantes. Los nombres sin cuenta se conservan; solo se enlazan automáticamente coincidencias exactas y únicas, sin inferir identidades por similitud.
+- Cada integrante pertenece a un único grupo por temporada. Las cuentas disponibles respetan aprobación, actividad y vinculación; entrenadores activos pueden figurar sin ser jugadoras. No se incluyen contactos, fotografías ni datos médicos.
+- Vídeo análisis se asigna por identificador de partido, con su fecha vigente; las jornadas pueden estar repartidas entre varios fines de semana. Cada derbi aparece una vez, usando su ficha local. Cámara, Fichas y Entrenadores forman un único grupo de análisis. El derbi inicial queda reservado a Merchan.
+- El reparto inicial incluye los partidos publicados/finalizados de la temporada que cubre el 17/10/2026. Participan todos los grupos y las repeticiones favorecen a los de mayor tamaño. Repartir pendientes conserva las asignaciones guardadas. Cambiar integrantes no redistribuye partidos; cancelar conserva la asignación y eliminar el partido la borra en cascada.
+- `features/workGroups` comparte las vistas y el algoritmo con `demo.local`. Los guardados usan versión y bloqueo por temporada. Aplicar `085_work_groups_and_video_analysis.sql` manualmente después de `084` en Supabase web; crea RLS, RPC y permisos `work_groups.*`/`video_analysis.*`, y carga las 43 integrantes de la imagen. Las siguientes temporadas comienzan con grupos vacíos para que el owner los organice.
+
 ### Tareas
 
 - Las jugadoras ven y completan desde Calendario las tareas publicadas que les corresponden; la ruta histórica de Tareas redirige a Calendario.

@@ -1,4 +1,4 @@
-import { canManagePlayerPositions, canManageTrainingGroups } from '../lib/permissions'
+import { canManagePlayerPositions, canManageTrainingGroups, canManageWorkGroups } from '../lib/permissions'
 import { lazy, Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
 import type { useCompetitionData } from '../hooks/useCompetitionData'
@@ -13,9 +13,9 @@ import { fetchCalendarTrainingPlans } from '../services/trainingPlansService'
 import { fetchMyCalendarSurveys, fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
-import { hasWorkingSeason } from './appAccess'
+import { canAccessView, hasWorkingSeason } from './appAccess'
 import { SeasonContextNotice } from './SeasonContextNotice'
-import { AttendanceView, CalendarView, CompetitionView, Dashboard, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingGroupCard, TrainingGroupsView, TrainingPlansView } from './viewModules'
+import { GroupsHub, WorkGroupsView, AttendanceView, CalendarView, CompetitionView, Dashboard, LibraryView, MatchesView, PlayerCalendarView, SettingsView, StatisticsView, SurveyResponseView, SurveysView, TasksView, TrainingGroupCard, TrainingGroupsView, TrainingPlansView } from './viewModules'
 
 const SurveyCalendarResultsDialog = lazy(() => import('../features/surveys/SurveyCalendarResultsDialog').then(({ SurveyCalendarResultsDialog }) => ({ default: SurveyCalendarResultsDialog })))
 
@@ -56,6 +56,7 @@ export function AppViewRouter({
   const personalResults = data.results.filter((result) => result.player_id === userId)
   const activeSeason = data.seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso())
   const can = (permission: PermissionKey) => hasPermission(profile, permission, permissionKeys)
+  const matchTarget = canAccessView(profile, 'calendar', permissionKeys) ? 'calendar' : canAccessView(profile, 'matches', permissionKeys) ? 'matches' : undefined
 
   if (data.loadedView !== view) {
     return data.errorMessage && !data.loading
@@ -69,6 +70,8 @@ export function AppViewRouter({
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
       {view === 'calendar' && activeSeason && hasWorkingSeason(profile, data.seasons, data.memberships, userId, permissionKeys) && canManageTrainingGroups(profile, permissionKeys) && <Suspense fallback={null}><TrainingGroupCard seasonId={activeSeason.id} userId={userId} canManage onOpen={() => navigate('training-groups')} /></Suspense>}
+      {view === 'groups' && <GroupsHub onNavigate={navigate} training={can(PERMISSIONS.trainingGroups.view)} work={can(PERMISSIONS.workGroups.view)} video={can(PERMISSIONS.videoAnalysis.view)} />}
+      {((view === 'work-groups' && can(PERMISSIONS.workGroups.view)) || (view === 'video-analysis' && can(PERMISSIONS.videoAnalysis.view))) && <WorkGroupsView seasons={data.seasons} userId={userId} mode={view === 'video-analysis' ? 'video' : 'work'} canManage={canManageWorkGroups(profile, view === 'video-analysis' ? 'video' : 'members', permissionKeys)} onBack={profile.is_owner ? () => navigate('groups') : undefined} onOpenMatch={matchTarget ? (date) => navigate({ view: matchTarget, date }) : undefined} />}
       {view === 'training-groups' && can(PERMISSIONS.trainingGroups.view) && <TrainingGroupsView api={data.trainingGroupsApi} seasons={data.seasons} userId={userId} canManage={canManageTrainingGroups(profile, permissionKeys)} canPublish={canManageTrainingGroups(profile, permissionKeys) && can(PERMISSIONS.trainingGroups.publish)} onChanged={onTrainingGroupsChanged} />}
       {view === 'home' && <Dashboard
         announcements={data.announcements}

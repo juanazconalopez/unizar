@@ -21,6 +21,9 @@ export function hasWorkingSeason(profile: Profile, seasons: Season[], membership
 export function canAccessView(profile: Profile, view: ViewName, permissionKeys?: readonly string[]) {
   if (view === 'home') return hasPermission(profile, PERMISSIONS.dashboard.personal, permissionKeys) || hasPermission(profile, PERMISSIONS.dashboard.team, permissionKeys)
   if (view === 'calendar') return hasPermission(profile, PERMISSIONS.calendar.manage, permissionKeys) || hasPermission(profile, PERMISSIONS.calendar.personal, permissionKeys)
+  if (view === 'groups') return [PERMISSIONS.trainingGroups.view, PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view].some((permission) => hasPermission(profile, permission, permissionKeys))
+  if (view === 'work-groups') return hasPermission(profile, PERMISSIONS.workGroups.view, permissionKeys)
+  if (view === 'video-analysis') return hasPermission(profile, PERMISSIONS.videoAnalysis.view, permissionKeys)
   if (view === 'training-groups') return hasPermission(profile, PERMISSIONS.trainingGroups.view, permissionKeys)
   if (view === 'training') return hasPermission(profile, PERMISSIONS.training.view, permissionKeys)
   if (view === 'surveys') return hasPermission(profile, PERMISSIONS.surveys.manage, permissionKeys)

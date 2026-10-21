@@ -47,6 +47,11 @@ describe('contextual navigation', () => {
     expect(urlForNavigation({ view: 'settings', settingsSection: 'seasons' })).toContain('?view=settings&section=seasons')
   })
 
+  test.each(['groups', 'work-groups', 'video-analysis'] as const)('conserva la ruta %s al recargar', (view) => {
+    expect(navigationFromLocation({ search: `?view=${view}` } as Location)).toEqual({ view })
+    expect(urlForNavigation({ view })).toContain(`?view=${view}`)
+  })
+
   test('accepts the library route', () => {
     expect(navigationFromLocation({ search: '?view=library' } as Location)).toEqual({ view: 'library' })
   })

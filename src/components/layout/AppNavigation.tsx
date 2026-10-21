@@ -35,7 +35,7 @@ export function AppNavigation({ items, settingsSection, view, mobile = false, on
     <nav ref={navRef} aria-label={mobile ? 'Navegación móvil' : 'Navegación principal'} className={mobile ? 'mobile-nav' : undefined}>
       {items.map((item) => {
         const grouped = isNavigationGroup(item)
-        const active = grouped ? item.children.some((child) => child.id === view) : view === item.id
+        const active = grouped ? item.children.some((child) => child.id === view || child.id === 'groups' && ['training-groups', 'work-groups', 'video-analysis'].includes(view)) : view === item.id
         const itemClassName = mobile ? (active ? 'active' : '') : (active ? 'nav-item active' : 'nav-item')
         if (!grouped) {
           return <button className={itemClassName} key={item.id} onClick={() => { setOpenGroup(null); onNavigate(item.target ?? item.id) }} type="button">

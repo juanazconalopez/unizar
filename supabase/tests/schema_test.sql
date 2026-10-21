@@ -1,5 +1,5 @@
 begin;
-select plan(558);
+select plan(594);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1252,6 +1252,47 @@ select ok(to_regprocedure('public.save_internal_match_report(uuid,uuid,integer,i
 select ok(not has_function_privilege('anon','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'anon no ejecuta save_internal_match_report');
 select ok(has_function_privilege('authenticated','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'authenticated puede llamar save_internal_match_report con validación interna');
 select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','save_internal_match_report fija search_path');
+
+
+-- 085: grupos de trabajo y responsabilidades por partido.
+select has_trigger('public','matches','matches_guard_video_analysis_season','cambiar de temporada retira la asignación anterior');
+select ok(not has_function_privilege('authenticated','public.guard_video_analysis_match_season()','EXECUTE'),'la limpieza por temporada es interna');
+select has_table('public','work_group_seasons','se conserva el reparto por temporada');
+select has_table('public','video_analysis_assignments','las responsabilidades se vinculan a partidos');
+select ok((select relrowsecurity from pg_class where oid = 'public.work_group_seasons'::regclass),'el reparto tiene RLS');
+select ok((select relrowsecurity from pg_class where oid = 'public.video_analysis_assignments'::regclass),'las asignaciones tienen RLS');
+select ok(not has_table_privilege('authenticated','public.work_group_seasons','SELECT'),'los clientes no leen directamente el reparto');
+select ok(not has_table_privilege('authenticated','public.video_analysis_assignments','INSERT,UPDATE,DELETE'),'las asignaciones solo se escriben mediante RPC');
+select has_function('public','get_work_group_workspace',array['uuid'],'existe la consulta del reparto');
+select has_function('public','save_work_group_members',array['uuid','integer','jsonb'],'existe el guardado atómico de integrantes');
+select has_function('public','save_video_analysis_assignments',array['uuid','integer','jsonb'],'existe el guardado atómico por partido');
+select ok(not has_function_privilege('anon','public.get_work_group_workspace(uuid)','EXECUTE'),'anon no consulta los grupos');
+select ok(not has_function_privilege('anon','public.save_work_group_members(uuid,integer,jsonb)','EXECUTE'),'anon no modifica integrantes');
+select ok(not has_function_privilege('anon','public.save_video_analysis_assignments(uuid,integer,jsonb)','EXECUTE'),'anon no asigna partidos');
+select ok(has_function_privilege('authenticated','public.get_work_group_workspace(uuid)','EXECUTE'),'las sesiones consultan mediante validación interna');
+select ok(not has_function_privilege('authenticated','public.work_group_can_view(uuid,text)','EXECUTE'),'el acceso de temporada es interno');
+select ok(not has_function_privilege('authenticated','public.work_group_candidates(uuid)','EXECUTE'),'no se consulta la plantilla por el helper');
+select ok(not has_function_privilege('authenticated','public.video_analysis_matches(uuid)','EXECUTE'),'no se consultan partidos por el helper');
+select ok(not has_function_privilege('authenticated','public.work_group_normalized_name(text)','EXECUTE'),'la normalización es interna');
+select like(pg_get_functiondef('public.get_work_group_workspace(uuid)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','la consulta fija search_path');
+select like(pg_get_functiondef('public.save_work_group_members(uuid,integer,jsonb)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','el guardado de integrantes fija search_path');
+select like(pg_get_functiondef('public.save_video_analysis_assignments(uuid,integer,jsonb)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','el guardado de asignaciones fija search_path');
+select like(pg_get_functiondef('public.work_group_can_view(uuid,text)'::regprocedure),'%is_approved%is_active%not actor.is_archived%active_from%active_until%','el acceso respeta actividad y vinculación de temporada');
+select like(pg_get_functiondef('public.get_work_group_workspace(uuid)'::regprocedure),'%membership.active_from <= match.match_date%membership.active_until >= match.match_date%','la jugadora solo recibe partidos dentro de su vinculación');
+select unlike(pg_get_functiondef('public.get_work_group_workspace(uuid)'::regprocedure),'%profile_private_details%','los grupos no consultan contactos ni fechas de nacimiento');
+select like(pg_get_functiondef('public.video_analysis_matches(uuid)'::regprocedure),'%distinct on%internal_fixture_id%is_home desc%','el derbi usa una ficha estable y un único análisis');
+select like(pg_get_functiondef('public.save_work_group_members(uuid,integer,jsonb)'::regprocedure),'%current_user_is_owner()%work_groups.manage%for update%is distinct from expected_version%','solo el owner guarda con control de concurrencia');
+select like(pg_get_functiondef('public.save_work_group_members(uuid,integer,jsonb)'::regprocedure),'%group by member.profile_id having count(*) > 1%','una cuenta solo pertenece a un grupo');
+select like(pg_get_functiondef('public.save_video_analysis_assignments(uuid,integer,jsonb)'::regprocedure),'%current_user_is_owner()%video_analysis.manage%for update%is distinct from expected_version%','solo el owner asigna partidos con control de versión');
+select like(pg_get_functiondef('public.save_video_analysis_assignments(uuid,integer,jsonb)'::regprocedure),'%El derbi inicial debe seguir asignado a Merchan%','la reserva inicial se valida también en SQL');
+select has_index('public','video_analysis_assignments','video_analysis_initial_derby','hay una única reserva inicial por temporada');
+select is((select count(*)::integer from public.role_permission_defaults where permission_key in ('work_groups.manage','video_analysis.manage')),0,'ningún rol editable recibe escritura de estos grupos');
+select is((select count(*)::integer from public.role_permission_defaults where role = 'player' and permission_key in ('work_groups.view','video_analysis.view')),2,'las jugadoras reciben consulta de ambas secciones');
+set local role authenticated;
+select throws_ok($$select public.get_work_group_workspace('00000000-0000-4000-8000-000000000001'::uuid)$$,'P0001','No tienes permiso para consultar estos grupos','una sesión sin permisos no lee el reparto');
+select throws_ok($$select public.save_work_group_members('00000000-0000-4000-8000-000000000001'::uuid,0,'[]'::jsonb)$$,'P0001','Solo el owner puede organizar los grupos de trabajo','una sesión sin owner no cambia integrantes');
+select throws_ok($$select public.save_video_analysis_assignments('00000000-0000-4000-8000-000000000001'::uuid,0,'[]'::jsonb)$$,'P0001','Solo el owner puede asignar el vídeo análisis','una sesión sin owner no asigna partidos');
+reset role;
 
 select * from finish();
 rollback;

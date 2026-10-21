@@ -39,7 +39,8 @@ test('prepared sections open without a blocking loader or repeat identity reques
     const started = Date.now()
     if (section === 'Partidos' || section === 'Grupos de entrenamiento') {
       await nav.getByRole('button', { name: 'Gestión', exact: true }).click()
-      await nav.getByRole('menuitem', { name: section, exact: true }).click()
+      await nav.getByRole('menuitem', { name: section === 'Grupos de entrenamiento' ? 'Grupos' : section, exact: true }).click()
+      if (section === 'Grupos de entrenamiento') await page.getByRole('button', { name: /EL EQUIPO EN EL CAMPO/ }).click()
     } else if (section === 'Asistencia de hoy') {
       await nav.getByRole('button', { name: 'Asistencia', exact: true }).click()
       await nav.getByRole('menuitem', { name: 'Registrar asistencia', exact: true }).click()

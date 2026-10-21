@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 
 export type IconName =
+  | 'video'
   | 'home'
   | 'tasks'
   | 'statistics'
@@ -31,6 +32,7 @@ export type IconName =
   | 'medicalCross'
 
 const paths: Record<IconName, ReactNode> = {
+  video: <><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>,
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9v11h13V9M9 20v-6h6v6"/></>,
   tasks: <><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></>,
   statistics: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>,

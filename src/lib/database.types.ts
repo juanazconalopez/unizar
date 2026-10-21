@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      work_group_seasons: {
+        Row: { season_id: string; members: Json; version: number; updated_by: string | null; updated_at: string }
+        Insert: { season_id: string; members?: Json; version?: number; updated_by?: string | null; updated_at?: string }
+        Update: { season_id?: string; members?: Json; version?: number; updated_by?: string | null; updated_at?: string }
+        Relationships: [ { foreignKeyName: "work_group_seasons_season_id_fkey"; columns: ["season_id"]; isOneToOne: true; referencedRelation: "seasons"; referencedColumns: ["id"] }, { foreignKeyName: "work_group_seasons_updated_by_fkey"; columns: ["updated_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] } ]
+      }
+      video_analysis_assignments: {
+        Row: { match_id: string; season_id: string; pool_key: string; locked: boolean }
+        Insert: { match_id: string; season_id: string; pool_key: string; locked?: boolean }
+        Update: { match_id?: string; season_id?: string; pool_key?: string; locked?: boolean }
+        Relationships: [ { foreignKeyName: "video_analysis_assignments_match_id_fkey"; columns: ["match_id"]; isOneToOne: true; referencedRelation: "matches"; referencedColumns: ["id"] }, { foreignKeyName: "video_analysis_assignments_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "work_group_seasons"; referencedColumns: ["season_id"] } ]
+      }
       training_group_blocks: {
         Row: { id: string; season_id: string; starts_on: string; status: string; draft_members: Json | null; version: number; created_by: string; created_at: string; published_by: string | null; published_at: string | null }
         Insert: { id?: string; season_id: string; starts_on: string; status?: string; draft_members?: Json | null; version?: number; created_by: string; created_at?: string; published_by?: string | null; published_at?: string | null }
@@ -1435,6 +1447,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      guard_video_analysis_match_season: { Args: never; Returns: unknown }
+      work_group_can_view: { Args: { checked_season_id: string; checked_permission: string }; Returns: boolean }
+      work_group_candidates: { Args: { checked_season_id: string }; Returns: { id: string; display_name: string }[] }
+      video_analysis_matches: { Args: { checked_season_id: string }; Returns: { id: string; match_date: string; kickoff_time: string | null; title: string; competition: string; notes: string | null; internal_fixture_id: string | null; status: string }[] }
+      work_group_normalized_name: { Args: { checked_name: string }; Returns: string }
+      get_work_group_workspace: { Args: { checked_season_id: string }; Returns: Json }
+      save_work_group_members: { Args: { checked_season_id: string; expected_version: number; checked_members: Json }; Returns: undefined }
+      save_video_analysis_assignments: { Args: { checked_season_id: string; expected_version: number; checked_assignments: Json }; Returns: undefined }
       // Helpers internos, sin EXECUTE para clientes.
       training_group_can_manage: { Args: never; Returns: boolean }
       training_group_can_view: { Args: { checked_season_id: string }; Returns: boolean }
