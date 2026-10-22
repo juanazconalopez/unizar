@@ -513,6 +513,24 @@
     padding: 17px 14px;
   }
 
+  .match-card-with-date {
+    --match-date-size: 56px;
+    --match-date-gap: 12px;
+  }
+
+  .match-card-date {
+    min-height: 72px;
+    padding: 10px 5px;
+  }
+
+  .match-card-date span {
+    font-size: 10px;
+  }
+
+  .match-card-date strong {
+    font-size: 28px;
+  }
+
   .match-card-heading {
     flex-direction: column;
     gap: 9px;

@@ -188,6 +188,7 @@ export function MatchesView({
         isPlayer={isPlayer}
         key={match.id}
         match={match}
+        showDate={managementView === 'list'}
         ownAvailability={availability.find(
           (item) => item.match_id === match.id && item.player_id === userId,
         )}

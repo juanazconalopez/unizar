@@ -23,6 +23,59 @@
   border-radius: 8px;
 }
 
+.match-card-with-date {
+  --match-date-size: 88px;
+  --match-date-gap: 20px;
+  display: grid;
+  grid-template-columns: var(--match-date-size) minmax(0, 1fr);
+  column-gap: var(--match-date-gap);
+}
+
+.match-card-with-date .match-card-summary {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: var(--match-date-size) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--match-date-gap);
+}
+
+.match-card-with-date > .availability-summary,
+.match-card-with-date > .availability-response,
+.match-card-with-date > .form-hint {
+  grid-column: 2;
+}
+
+.match-card-copy {
+  min-width: 0;
+}
+
+.match-card-date {
+  min-height: 88px;
+  padding: 12px 8px;
+  border: 1px solid var(--match-border, var(--line));
+  border-radius: 10px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  color: var(--ink);
+  background: white;
+  text-align: center;
+}
+
+.match-card-date span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+}
+
+.match-card-date strong {
+  font-family: 'Manrope', system-ui, sans-serif;
+  font-size: 32px;
+  line-height: 1;
+}
+
 .match-card-heading {
   display: flex;
   align-items: flex-start;
