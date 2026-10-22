@@ -5,7 +5,7 @@ import { calculateMatchMinutes, yellowCardSuspension } from '../../lib/matchMinu
 import { loadMatchReportEvents, readMatchReportPdf, type MatchReportValues, type SavedReportEvent } from '../../services/matchReportService'
 import type { Match, MatchLineup, Profile } from '../../types'
 
-type DraftEvent = Omit<SavedReportEvent, 'event_minute' | 'return_minute'> & { event_minute: number | ''; return_minute: number | '' | null; key: string; source: string }
+type DraftEvent = Omit<SavedReportEvent, 'event_minute' | 'return_minute'> & { event_minute: number | ''; return_minute: number | '' | null; key: string; source: string; sourceDorsal?: number; sourceReplacementDorsal?: number }
 
 export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [], profiles, onClose, onSave, onSaveDerby, onLoadEvents = loadMatchReportEvents }: {
   match: Match
@@ -53,14 +53,14 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
   useEffect(() => {
     let current = true
     if (needsLoading) {
-      const targets = isDerby && pairedMatch ? [match, pairedMatch] : [match]
-      void Promise.all(targets.map(async (target) => [target.id, await onLoadEvents(target.id)] as const)).then((loaded) => {
+      const targets = isDerby && pairedMatch?.id ? [match.id, pairedMatch.id] : [match.id]
+      void Promise.all(targets.map(async (targetId) => [targetId, await onLoadEvents(targetId)] as const)).then((loaded) => {
         if (current) setEventsByMatch(Object.fromEntries(loaded.map(([id, saved]) => [id, saved.map((event) => ({ ...event, key: crypto.randomUUID(), source: 'Guardado' }))])))
       }).catch((error) => { if (current) setLoadError(errorText(error)) })
         .finally(() => { if (current) setLoading(false) })
     }
     return () => { current = false; readSequence.current += 1 }
-  }, [match, pairedMatch, isDerby, needsLoading, onLoadEvents, retry])
+  }, [match.id, pairedMatch?.id, isDerby, needsLoading, onLoadEvents, retry])
 
   let preview = new Map<string, number>()
   let validationError = ''
@@ -72,16 +72,20 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
     try { preview = calculateMatchMinutes(activeLineup, Number(duration), savedEvents, activeMatch.rugby_format) }
     catch (error) { validationError = errorText(error) }
   }
-  let otherSideInvalid = false
-  if (isDerby && !loading && !loadError && homeMatch && awayMatch) {
+  let otherSideError = ''
+  const otherMatch = activeMatch.id === homeMatch?.id ? awayMatch : homeMatch
+  if (isDerby && !loading && !loadError && otherMatch) {
+    const otherLineup = otherMatch.id === match.id ? lineup : pairedLineup
     try {
-      calculateMatchMinutes(homeLineup, Number(duration), (eventsByMatch[homeMatch.id] ?? []).map(({ event_type, event_minute, player_id, replacement_player_id, return_minute }) => ({ event_type, event_minute: event_minute === '' ? NaN : Number(event_minute), player_id, replacement_player_id, return_minute: return_minute === '' ? null : return_minute })), homeMatch.rugby_format)
-      calculateMatchMinutes(awayLineup, Number(duration), (eventsByMatch[awayMatch.id] ?? []).map(({ event_type, event_minute, player_id, replacement_player_id, return_minute }) => ({ event_type, event_minute: event_minute === '' ? NaN : Number(event_minute), player_id, replacement_player_id, return_minute: return_minute === '' ? null : return_minute })), awayMatch.rugby_format)
-    } catch { otherSideInvalid = true }
+      calculateMatchMinutes(otherLineup, Number(duration), (eventsByMatch[otherMatch.id] ?? []).map(({ event_type, event_minute, player_id, replacement_player_id, return_minute }) => ({ event_type, event_minute: event_minute === '' ? NaN : Number(event_minute), player_id, replacement_player_id, return_minute: return_minute === '' ? NaN : return_minute })), otherMatch.rugby_format)
+    } catch (error) { otherSideError = errorText(error) }
   }
+  const unresolved = [match, ...(isDerby && pairedMatch ? [pairedMatch] : [])].flatMap((target) =>
+    (eventsByMatch[target.id] ?? []).flatMap((event, index) => !event.player_id || (event.event_type === 'substitution' && !event.replacement_player_id)
+      ? [`${target.season_teams?.name ?? (target.is_home ? 'Equipo local' : 'Equipo visitante')}, evento ${index + 1}: ${event.source}. Falta relacionar ${!event.player_id && event.sourceDorsal ? `el dorsal ${event.sourceDorsal}` : !event.replacement_player_id && event.sourceReplacementDorsal ? `el dorsal ${event.sourceReplacementDorsal}` : 'una jugadora'} con la convocatoria.`] : []))
   const validScores = /^\d{1,3}$/.test(teamScore) && /^\d{1,3}$/.test(opponentScore) && Number(teamScore) <= 250 && Number(opponentScore) <= 250
   const validDuration = /^\d{1,3}$/.test(duration) && Number(duration) >= 1 && Number(duration) <= 240
-  const canSave = !disabled && !officialWithoutLineup && validScores && validDuration && !validationError && !otherSideInvalid && reviewed
+  const canSave = !disabled && !officialWithoutLineup && validScores && validDuration && !validationError && !otherSideError && reviewed
     && (!isDerby || Boolean(homeMatch?.lineup_published && awayMatch?.lineup_published && homeLineup.length > 0 && awayLineup.length > 0))
 
   async function selectFile(selected: File | undefined) {
@@ -103,7 +107,7 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
       }
       const mapEvents = (sideEvents: typeof parsed.events.home, sideLineup: MatchLineup[], sideMatch: Match) => sideEvents.map((event) => ({
         key: crypto.randomUUID(), source: `Dorsal ${event.dorsal}${event.replacementDorsal ? ` → ${event.replacementDorsal}` : ''}`,
-        event_type: event.type, event_minute: event.minute,
+        event_type: event.type, event_minute: event.minute, sourceDorsal: event.dorsal, sourceReplacementDorsal: event.replacementDorsal,
         player_id: sideLineup.find((entry) => entry.slot_number === event.dorsal)?.player_id ?? '',
         replacement_player_id: event.replacementDorsal ? sideLineup.find((entry) => entry.slot_number === event.replacementDorsal)?.player_id ?? '' : null,
         return_minute: event.type === 'yellow_card' ? Math.min(Number(duration), event.minute + yellowCardSuspension(sideMatch.rugby_format)) : null,
@@ -119,10 +123,7 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
         parsed.recognized ? '' : 'No se ha reconocido el formato del acta. Completa los datos manualmente.',
         parsed.date && parsed.date !== match.match_date ? `La fecha del PDF (${parsed.date}) no coincide con la del partido. Comprueba que sea el acta correcta.` : '',
         reportedOpponent && expectedOpponent && !reportedOpponent.includes(expectedOpponent) && !expectedOpponent.includes(reportedOpponent) ? 'El rival del PDF no coincide con el partido.' : '',
-        (isDerby ? [...parsed.events.home, ...parsed.events.away].some((event) => {
-          const sideLineup = event === undefined ? [] : parsed.events.home.includes(event) ? homeLineup : awayLineup
-          return !sideLineup.some((entry) => entry.slot_number === event.dorsal) || Boolean(event.replacementDorsal && !sideLineup.some((entry) => entry.slot_number === event.replacementDorsal))
-        }) : sideEvents.some((event) => !lineup.some((entry) => entry.slot_number === event.dorsal) || (event.replacementDorsal && !lineup.some((entry) => entry.slot_number === event.replacementDorsal)))) ? 'Hay dorsales sin correspondencia. Asígnales una jugadora antes de guardar.' : '',
+
       ].filter(Boolean)
       setMessage([...warnings, isDerby ? `Detectados ${parsed.events.home.length} eventos del local y ${parsed.events.away.length} del visitante. Revisa ambas pestañas.` : `${sideEvents.length} cambios o tarjetas detectados. Comprueba que no falte ninguno y revisa el regreso tras las amarillas.`].join(' '))
     } catch (error) {
@@ -164,7 +165,7 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
         <p>Usa otro cambio si una jugadora vuelve a entrar. En las amarillas, comprueba el minuto real de regreso ({yellowCardSuspension(activeMatch.rugby_format)} minutos de suspensión).</p>
         {events.length === 0 && <p>No hay eventos añadidos. Confirma que no hubo cambios ni tarjetas antes de guardar.</p>}
         {events.map((event, index) => <div className="match-report-event" key={event.key}>
-          <span className="match-report-event-number">Evento {index + 1}</span>
+          <span className="match-report-event-number">Evento {index + 1}{event.source.startsWith('Dorsal') && <small> · {event.source}</small>}</span>
           <select aria-label={`Tipo de evento ${index + 1}`} onChange={(input) => updateEvent(event.key, { event_type: input.target.value as DraftEvent['event_type'], replacement_player_id: input.target.value === 'substitution' ? '' : null, return_minute: input.target.value === 'yellow_card' && event.event_minute !== '' ? Math.min(Number(duration), event.event_minute + yellowCardSuspension(activeMatch.rugby_format)) : input.target.value === 'yellow_card' ? '' : null })} value={event.event_type}><option value="substitution">Cambio</option><option value="yellow_card">Tarjeta amarilla</option><option value="red_card">Tarjeta roja</option></select>
           <select aria-label={`Jugadora del evento ${index + 1}`} onChange={(input) => updateEvent(event.key, { player_id: input.target.value })} value={event.player_id}><option value="">Jugadora que sale / recibe tarjeta</option>{players.map((entry) => <option key={entry.player_id} value={entry.player_id}>{playerLabel(entry)}</option>)}</select>
           {event.event_type === 'substitution' && <select aria-label={`Jugadora que entra en el evento ${index + 1}`} onChange={(input) => updateEvent(event.key, { replacement_player_id: input.target.value })} value={event.replacement_player_id ?? ''}><option value="">Jugadora que entra</option>{players.map((entry) => <option key={entry.player_id} value={entry.player_id}>{playerLabel(entry)}</option>)}</select>}
@@ -178,11 +179,15 @@ export function MatchReportDialog({ match, pairedMatch, lineup, pairedLineup = [
           </>}
           <button aria-label={`Quitar evento ${index + 1}`} className="secondary-button compact" onClick={() => { setReviewed(false); setEventsByMatch((current) => ({ ...current, [activeMatch.id]: (current[activeMatch.id] ?? []).filter((item) => item.key !== event.key) })) }} type="button">Quitar</button>
         </div>)}
-        {!loading && !loadError && (validationError ? <p className="form-error" role="alert">{validationError}</p> : <section className="match-report-minutes" aria-label="Vista previa de minutos"><h3>Minutos por jugadora</h3><dl>{players.map((entry) => <div key={entry.player_id}><dt>{playerLabel(entry)}</dt><dd>{preview.get(entry.player_id) ?? 0} min</dd></div>)}</dl></section>)}
+        {!loading && !loadError && <>
+          {validationError && <p className="form-error" role="alert">{validationError}</p>}
+          <section className="match-report-minutes" aria-label="Vista previa de minutos"><h3>Minutos por jugadora</h3>{validationError && <p>Los minutos están pendientes de corregir los eventos.</p>}<dl>{players.map((entry) => <div key={entry.player_id}><dt>{playerLabel(entry)}</dt><dd>{validationError ? 'Pendiente' : `${preview.get(entry.player_id) ?? 0} min`}</dd></div>)}</dl></section>
+        </>}
       </section>}
       {officialWithoutLineup && <p className="form-error">Publica primero la convocatoria para registrar los minutos del partido.</p>}
       {isDerby && (!homeMatch?.lineup_published || !awayMatch?.lineup_published || !homeLineup.length || !awayLineup.length) && <p className="form-error">Publica las dos convocatorias para poder guardar los minutos del derbi.</p>}
-      {isDerby && otherSideInvalid && <p className="form-error" role="alert">Hay errores en los eventos. Revisa también la otra pestaña antes de guardar.</p>}
+      {isDerby && otherSideError && <p className="form-error" role="alert">Revisa la pestaña {otherMatch?.season_teams?.name ?? (otherMatch?.is_home ? 'Equipo local' : 'Equipo visitante')}: {otherSideError}</p>}
+      {unresolved.length > 0 && <div className="form-error">{unresolved.map((warning) => <p key={warning}>{warning}</p>)}</div>}
       {!officialWithoutLineup && <label className="match-report-review"><input checked={reviewed} onChange={(event) => setReviewed(event.target.checked)} type="checkbox" /> Confirmo que el partido ha terminado y he revisado el resultado{canReview ? isDerby ? ' y los cambios, tarjetas y minutos de los dos equipos' : ', todos los cambios, las tarjetas y los minutos de juego' : ''}.</label>}
     </fieldset>
     {message && <p aria-live="polite" className="match-report-message">{message}</p>}

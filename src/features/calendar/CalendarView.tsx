@@ -1,7 +1,7 @@
 import { crossTeamCallupReference } from '../../lib/crossTeamCallups'
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
-import { matchAvailabilityRestriction, lineupLicenseWarnings } from '../../lib/playerLicenses'
+import { matchAvailabilityRestriction, lineupLicenseWarnings, hasTrainingMatchException, trainingExceptionCandidates, membershipLicense } from '../../lib/playerLicenses'
 import { useCallback, useEffect, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -92,6 +92,7 @@ type CalendarViewProps = {
   onAnnouncementStatusChange: (id: string, status: TaskStatus) => Promise<void>
   onDeleteMatch: (match: Match) => Promise<void>
   onLoadMatchMonth: (month: string, options?: { force?: boolean }) => Promise<void>
+  onAddTrainingPlayer?: (match: Match, playerId: string, reason: string, slotNumber?: number) => Promise<void>
   onSavePlayerAvailability: (match: Match, playerId: string, status: AvailabilityStatus, comment: string) => Promise<void>
   onSaveLineup: (match: Match, entries: Omit<MatchLineup, 'match_id' | 'updated_at'>[], published: boolean) => Promise<void>
   onSaveMatch: (match: Match | undefined, values: MatchValues) => Promise<void>
@@ -131,7 +132,8 @@ export function CalendarView(props: CalendarViewProps) {
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const pairedDetailMatch = detailMatch?.internal_fixture_id ? props.matches.find((item) => item.id !== detailMatch.id && item.internal_fixture_id === detailMatch.internal_fixture_id) : undefined
   const [reviewFixtureId, setReviewFixtureId] = useState<string | null>(null)
-  const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
+  const [selectedAvailabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
+  const availabilityMatch = props.matches.find((item) => item.id === selectedAvailabilityMatch?.id) ?? selectedAvailabilityMatch
   const [trainingPlans, setTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const holidays = useSeasonHolidayDates(props.seasons.map((season) => season.id), props.holidays)
@@ -403,7 +405,7 @@ export function CalendarView(props: CalendarViewProps) {
       onSaveReport={props.onSaveReport ? async (...args) => { await props.onSaveReport?.(...args); setDetailMatch(null); await props.onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`, { force: true }) } : undefined}
       onSaveInternalReport={props.onSaveInternalReport ? async (...args) => { await props.onSaveInternalReport?.(...args); setDetailMatch(null); await props.onLoadMatchMonth(`${detailMatch.match_date.slice(0, 7)}-01`, { force: true }) } : undefined}
       onLoadReportEvents={props.onLoadReportEvents}
-      onViewAvailability={() => { setDetailMatch(null); setAvailabilityMatch(detailMatch) }}
+      onViewAvailability={(selected) => { setDetailMatch(null); setAvailabilityMatch(selected ?? detailMatch) }}
     />}
     {reviewFixtureId && props.isOwner && props.onFinalizeInternal && (() => {
       const fixtureMatches = props.matches.filter((match) => match.internal_fixture_id === reviewFixtureId).sort((a, b) => Number(b.is_home) - Number(a.is_home))
@@ -413,8 +415,16 @@ export function CalendarView(props: CalendarViewProps) {
     {availabilityMatch && <MatchAvailabilityDialog
       availability={props.availability.filter((item) => item.match_id === availabilityMatch.id)}
       canEdit={access.availabilityEdit}
-      eligibleProfiles={activePlayers(props.profiles).filter((profile) => !matchAvailabilityRestriction(availabilityMatch, props.memberships, profile.id) && props.memberships.some((membership) => membership.player_id === profile.id && membership.season_id === availabilityMatch.season_id && membershipCoversDate(membership, availabilityMatch.match_date) && (props.isOwner || (availabilityMatch.match_kind === 'friendly' && !membership.season_team_id) || membership.season_team_id === availabilityMatch.team_id || props.seasonTeams?.some((team) => team.id === membership.season_team_id && team.is_mixed))))}
+      eligibleProfiles={activePlayers(props.profiles).filter((profile) => !matchAvailabilityRestriction(availabilityMatch, props.memberships, profile.id) && props.memberships.some((membership) => membership.player_id === profile.id && membership.season_id === availabilityMatch.season_id && membershipCoversDate(membership, availabilityMatch.match_date) && (props.isOwner || (membershipLicense(membership) === 'training' && hasTrainingMatchException(availabilityMatch, profile.id)) || (availabilityMatch.match_kind === 'friendly' && !membership.season_team_id) || membership.season_team_id === availabilityMatch.team_id || props.seasonTeams?.some((team) => team.id === membership.season_team_id && team.is_mixed))))}
       match={availabilityMatch}
+      lineup={props.lineups.filter((entry) => entry.match_id === availabilityMatch.id)}
+      trainingProfiles={trainingExceptionCandidates(availabilityMatch, props.memberships, props.profiles)}
+      pairedMatch={availabilityMatch.internal_fixture_id ? props.matches.find((item) => item.id !== availabilityMatch.id && item.internal_fixture_id === availabilityMatch.internal_fixture_id) : undefined}
+      onSelectMatch={setAvailabilityMatch}
+      onAddTrainingPlayer={props.onAddTrainingPlayer ? async (playerId, reason, slotNumber) => {
+        await props.onAddTrainingPlayer?.(availabilityMatch, playerId, reason, slotNumber)
+        await props.onLoadMatchMonth(`${availabilityMatch.match_date.slice(0, 7)}-01`)
+      } : undefined}
       profiles={props.profiles}
       onClose={() => setAvailabilityMatch(null)}
       onSave={async (playerId, status, comment) => { await props.onSavePlayerAvailability(availabilityMatch, playerId, status, comment); await props.onLoadMatchMonth(`${availabilityMatch.match_date.slice(0, 7)}-01`) }}

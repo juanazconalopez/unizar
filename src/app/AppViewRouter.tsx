@@ -1,4 +1,4 @@
-import { canManagePlayerPositions, canManageTrainingGroups, canManageWorkGroups } from '../lib/permissions'
+import { canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageWorkGroups } from '../lib/permissions'
 import { lazy, Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
 import type { useCompetitionData } from '../hooks/useCompetitionData'
@@ -69,8 +69,8 @@ export function AppViewRouter({
         <SeasonContextNotice profile={profile} onOpenSettings={() => navigate('settings')} view={view} />
       )}
       {view === 'groups' && <GroupsHub onNavigate={navigate} training={can(PERMISSIONS.trainingGroups.view)} work={can(PERMISSIONS.workGroups.view)} video={can(PERMISSIONS.videoAnalysis.view)} />}
-      {((view === 'work-groups' && can(PERMISSIONS.workGroups.view)) || (view === 'video-analysis' && can(PERMISSIONS.videoAnalysis.view))) && <WorkGroupsView seasons={data.seasons} userId={userId} mode={view === 'video-analysis' ? 'video' : 'work'} canManage={canManageWorkGroups(profile, view === 'video-analysis' ? 'video' : 'members', permissionKeys)} onBack={profile.is_owner ? () => navigate('groups') : undefined} onOpenMatch={matchTarget ? (date) => navigate({ view: matchTarget, date }) : undefined} />}
-      {view === 'training-groups' && can(PERMISSIONS.trainingGroups.view) && <TrainingGroupsView api={data.trainingGroupsApi} seasons={data.seasons} userId={userId} canManage={canManageTrainingGroups(profile, permissionKeys)} canPublish={canManageTrainingGroups(profile, permissionKeys) && can(PERMISSIONS.trainingGroups.publish)} onChanged={onTrainingGroupsChanged} />}
+      {((view === 'work-groups' && can(PERMISSIONS.workGroups.view)) || (view === 'video-analysis' && can(PERMISSIONS.videoAnalysis.view))) && <WorkGroupsView resources={data.resources} seasons={data.seasons} userId={userId} mode={view === 'video-analysis' ? 'video' : 'work'} canManage={canManageWorkGroups(profile, view === 'video-analysis' ? 'video' : 'members', permissionKeys)} onBack={profile.is_owner ? () => navigate('groups') : undefined} onOpenMatch={matchTarget ? (date) => navigate({ view: matchTarget, date }) : undefined} />}
+      {view === 'training-groups' && can(PERMISSIONS.trainingGroups.view) && <TrainingGroupsView resources={data.resources} api={data.trainingGroupsApi} seasons={data.seasons} userId={userId} canManage={canManageTrainingGroups(profile, permissionKeys)} canPublish={canManageTrainingGroups(profile, permissionKeys) && can(PERMISSIONS.trainingGroups.publish)} onChanged={onTrainingGroupsChanged} />}
       {view === 'home' && <Dashboard
         announcements={data.announcements}
         attendance={data.attendance}
@@ -130,7 +130,7 @@ export function AppViewRouter({
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
-      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} onEditPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' })} onReturnToList={() => navigate('training')} permissions={{
+      {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView resources={data.resources} focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} onEditPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' })} onReturnToList={() => navigate('training')} permissions={{
         create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
         viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
       }} />}
@@ -179,6 +179,7 @@ export function AppViewRouter({
         onSaveInternalReport={actions.matches.saveInternalReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
+        onAddTrainingPlayer={canManageTrainingExceptions(profile, permissionKeys) ? actions.matches.addTrainingPlayer : undefined}
         onTaskStatusChange={actions.tasks.changeStatus}
         onUnlockLineup={actions.matches.unlockLineup}
         onFinalizeInternal={actions.matches.finalizeInternal}
@@ -259,6 +260,7 @@ export function AppViewRouter({
         onSaveInternalReport={actions.matches.saveInternalReport}
         onSaveMatch={actions.matches.save}
         onSavePlayerAvailability={actions.matches.savePlayerAvailability}
+        onAddTrainingPlayer={canManageTrainingExceptions(profile, permissionKeys) ? actions.matches.addTrainingPlayer : undefined}
         onUnlockLineup={actions.matches.unlockLineup}
         onFinalizeInternal={actions.matches.finalizeInternal}
       />}
@@ -275,7 +277,7 @@ export function AppViewRouter({
         onSync={competition.synchronize}
       />}
       {view === 'library' && <LibraryView items={data.libraryItems} />}
-      {view === 'surveys' && can(PERMISSIONS.surveys.manage) && <SurveysView initialSurveyId={navigation.surveyId} isOwner={profile.is_owner} seasons={data.seasons} />}
+      {view === 'surveys' && can(PERMISSIONS.surveys.manage) && <SurveysView resources={data.resources} initialSurveyId={navigation.surveyId} isOwner={profile.is_owner} seasons={data.seasons} />}
       {view === 'survey' && navigation.surveyId && can(PERMISSIONS.surveys.respondOwn) && <SurveyResponseView surveyId={navigation.surveyId} onDone={() => { notify('Encuesta enviada. ¡Gracias por tu respuesta!'); navigate('home') }} />}
       {view === 'settings' && hasPermission(profile, PERMISSIONS.settings.view, permissionKeys) && <SettingsView
         currentUserId={userId}

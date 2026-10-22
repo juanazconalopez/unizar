@@ -65,7 +65,7 @@ export function MatchDetailDialog({
   onSaveReport?: (match: Match, values: MatchReportValues) => Promise<void>
   onSaveInternalReport?: (home: Match, away: Match, homeValues: MatchReportValues, awayValues: MatchReportValues) => Promise<void>
   onLoadReportEvents?: (matchId: string) => Promise<SavedReportEvent[]>
-  onViewAvailability: () => void
+  onViewAvailability: (match?: Match) => void
 }) {
   const titleId = useId()
   const [copied, setCopied] = useState(false)
@@ -127,7 +127,7 @@ export function MatchDetailDialog({
       <div className="match-detail-section-heading">
         <div><span className="eyebrow">CONVOCATORIA</span><h3>{hasPublishedLineup ? 'Convocatoria publicada' : canManageLineup && lineup.length ? 'Borrador de convocatoria' : 'Próximamente'}</h3></div>
         <div className="match-detail-section-actions">
-          {canViewAvailability && <button className="secondary-button compact match-detail-availability-button" onClick={onViewAvailability} type="button">Ver disponibilidades</button>}
+          {canViewAvailability && <button className="secondary-button compact match-detail-availability-button" onClick={() => onViewAvailability(selectedPublishedMatch)} type="button">Ver disponibilidades</button>}
           {hasPublishedLineup && <button className="secondary-button compact match-lineup-view-toggle" onClick={() => setLineupView((view) => view === 'image' ? 'list' : 'image')} type="button"><Icon name="swap" size={16} />{lineupView === 'image' ? 'Ver lista' : 'Ver imagen'}</button>}
           {hasPublishedLineup && <button aria-label={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} className="icon-button match-copy-button" onClick={() => void copyLineup()} title={copied ? 'Convocatoria copiada' : 'Copiar convocatoria'} type="button"><Icon name={copied ? 'check' : 'copy'} size={16} /></button>}
         </div>

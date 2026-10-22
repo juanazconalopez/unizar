@@ -43,16 +43,17 @@ describe('MatchesView', () => {
     expect(onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }), 'available', '')
   })
 
-  test('asks for detail when a player rejects attendance', async () => {
+  test('lets a player respond in doubt directly with a comment', async () => {
     const user = userEvent.setup(); const onSaveAvailability = vi.fn().mockResolvedValue(undefined)
     render(<MatchesView {...common} onSaveAvailability={onSaveAvailability} />)
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }))
-    await user.click(screen.getByRole('button', { name: 'Rechazar' }))
+    await user.click(screen.getByRole('button', { name: 'En duda' }))
     const dialog = screen.getByRole('dialog', { name: /Unizar Fem\. vs/ })
-    await user.selectOptions(within(dialog).getByLabelText('Respuesta'), 'doubt')
+    expect(within(dialog).getByLabelText('Respuesta')).toHaveValue('doubt')
     await user.type(within(dialog).getByLabelText('Comentario opcional'), 'Molestias leves')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar respuesta' }))
     expect(onSaveAvailability).toHaveBeenCalledWith(expect.objectContaining({ id: 'match-1' }), 'doubt', 'Molestias leves')
+    expect(onSaveAvailability).toHaveBeenCalledOnce()
   })
 
   test('hides drafts from players in calendar and list views', async () => {

@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, test, vi } from 'vitest'
 import { makeSeason } from '../../test/fixtures'
@@ -77,4 +79,31 @@ test('si falla la recarga después de guardar, mantiene visible el error', async
   expect(await screen.findByRole('alert')).toHaveTextContent('No se ha podido actualizar el listado.')
   expect(screen.queryByText(/Grupo actualizado/)).not.toBeInTheDocument()
   expect(store.members.find((member) => member.display_name === 'Claudia Calvo')?.group_key).toBe('botiquin')
+})
+
+test('keeps the prepared groups visible while reopening triggers a slow refresh', async () => {
+  const api = createDemoWorkGroupsApi(createDemoWorkGroupStore(), true, [])
+  const resources = new SessionQueryCache(0)
+  await resources.load(navigationResourceKeys.workGroups(season.id), () => api.load(season.id))
+  vi.spyOn(api, 'load').mockImplementation(() => new Promise(() => undefined))
+  render(<WorkGroupsView resources={resources} seasons={[season]} userId="player-1" canManage api={api} />)
+  expect(screen.getByRole('region', { name: 'Grupo de trabajo Botiquín' })).toBeInTheDocument()
+  expect(screen.queryByRole('status', { name: 'Cargando sección' })).not.toBeInTheDocument()
+})
+
+test('a late refresh preserves the version of the workspace being edited', async () => {
+  const api = createDemoWorkGroupsApi(createDemoWorkGroupStore(), true, [])
+  const resources = new SessionQueryCache(0)
+  const prepared = await api.load(season.id)
+  await resources.load(navigationResourceKeys.workGroups(season.id), () => Promise.resolve(prepared))
+  let finishRefresh!: (workspace: typeof prepared) => void
+  vi.spyOn(api, 'load').mockImplementationOnce(() => new Promise((resolve) => { finishRefresh = resolve }))
+  const save = vi.spyOn(api, 'saveMembers')
+  render(<WorkGroupsView resources={resources} seasons={[season]} userId="player-1" canManage api={api} />)
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Editar Material' }))
+  await user.selectOptions(screen.getByLabelText('Grupo de Claudia Calvo'), 'botiquin')
+  await act(async () => { finishRefresh({ ...prepared, version: prepared.version + 1 }) })
+  await user.click(screen.getByRole('button', { name: 'Guardar grupo' }))
+  expect(save).toHaveBeenCalledWith(season.id, prepared.version, expect.any(Array))
 })

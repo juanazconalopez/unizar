@@ -13,7 +13,7 @@ export async function fetchNotificationFeed(userId: string, canManageAvailabilit
     supabase.rpc('get_player_season_memberships', { checked_player_id: userId }),
     fetchAllPages((from, to) => supabase
       .from('matches')
-      .select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
+      .select('*, training_exceptions:match_training_exceptions(player_id), seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league)')
       .eq('status', 'published')
       .gte('match_date', today)
       .lte('match_date', addDays(today, 84))

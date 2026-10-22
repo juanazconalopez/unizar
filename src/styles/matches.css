@@ -672,6 +672,25 @@
   width: min(520px, 100%);
 }
 
+.availability-exception-action {
+  margin: 12px 0;
+}
+
+.availability-exception-action p {
+  margin: 8px 0;
+}
+
+.availability-dialog fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.availability-group article small {
+  display: block;
+}
+
 .availability-dialog label {
   margin-top: 16px;
 }

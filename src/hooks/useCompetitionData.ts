@@ -1,3 +1,5 @@
+import type { SessionQueryCache } from '../services/sessionQueryCache'
+import { navigationResourceKeys } from '../services/navigationResources'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { errorText } from '../lib/errors'
 import { fetchCompetitionSeasonData, fetchCompetitionSeasons, syncCompetition } from '../services/competitionService'
@@ -5,7 +7,7 @@ import type { CompetitionFixture, CompetitionPlayerStat, CompetitionSeason, Comp
 
 const AUTO_SYNC_AGE_MS = 12 * 60 * 60 * 1000
 
-export function useCompetitionData(enabled: boolean, isOwner: boolean) {
+export function useCompetitionData(enabled: boolean, isOwner: boolean, resources?: SessionQueryCache) {
   const [seasons, setSeasons] = useState<CompetitionSeason[]>([])
   const [fixtures, setFixtures] = useState<CompetitionFixture[]>([])
   const [standings, setStandings] = useState<CompetitionStanding[]>([])
@@ -15,13 +17,16 @@ export function useCompetitionData(enabled: boolean, isOwner: boolean) {
   const [errorMessage, setErrorMessage] = useState('')
   const loadedSeasons = useRef(new Set<string>())
   const autoSyncAttempted = useRef(false)
+  const lastLoaded = useRef(0)
+  const seasonsRef = useRef<CompetitionSeason[]>([])
+  const pendingReload = useRef<Promise<CompetitionSeason[]> | null>(null)
 
   const loadSeason = useCallback(async (seasonId: string, force = false) => {
     if (!seasonId || (!force && loadedSeasons.current.has(seasonId))) return
     setLoading(true)
     setErrorMessage('')
     try {
-      const data = await fetchCompetitionSeasonData(seasonId)
+      const data = await (resources ? resources.load(navigationResourceKeys.competitionSeason(seasonId), () => fetchCompetitionSeasonData(seasonId), { force }) : fetchCompetitionSeasonData(seasonId))
       setFixtures((current) => replaceSeason(current, data.fixtures, seasonId))
       setStandings((current) => replaceSeason(current, data.standings, seasonId))
       setPlayerStats((current) => replaceSeason(current, data.playerStats, seasonId))
@@ -32,24 +37,33 @@ export function useCompetitionData(enabled: boolean, isOwner: boolean) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [resources])
 
-  const reload = useCallback(async () => {
-    if (!enabled) return [] as CompetitionSeason[]
-    setLoading(true)
-    setErrorMessage('')
-    try {
-      const nextSeasons = await fetchCompetitionSeasons()
-      setSeasons(nextSeasons)
-      if (nextSeasons[0]) await loadSeason(nextSeasons[0].id, true)
-      return nextSeasons
-    } catch (error) {
-      setErrorMessage(errorText(error))
-      return [] as CompetitionSeason[]
-    } finally {
-      setLoading(false)
-    }
-  }, [enabled, loadSeason])
+  const reload = useCallback((force = false): Promise<CompetitionSeason[]> => {
+    if (!enabled) return Promise.resolve([])
+    if (pendingReload.current) return pendingReload.current
+    if (!force && lastLoaded.current && Date.now() - lastLoaded.current < 60_000) return Promise.resolve(seasonsRef.current)
+    const request = (async () => {
+      setLoading(true)
+      setErrorMessage('')
+      try {
+        const nextSeasons = await (resources ? resources.load(navigationResourceKeys.competitionSeasons, fetchCompetitionSeasons, { force }) : fetchCompetitionSeasons())
+        setSeasons(nextSeasons)
+        seasonsRef.current = nextSeasons
+        if (nextSeasons[0]) await loadSeason(nextSeasons[0].id, force)
+        lastLoaded.current = Date.now()
+        return nextSeasons
+      } catch (error) {
+        setErrorMessage(errorText(error))
+        return [] as CompetitionSeason[]
+      } finally {
+        setLoading(false)
+      }
+    })()
+    pendingReload.current = request
+    void request.finally(() => { if (pendingReload.current === request) pendingReload.current = null })
+    return request
+  }, [enabled, loadSeason, resources])
 
   const synchronize = useCallback(async () => {
     if (!isOwner) return
@@ -57,8 +71,9 @@ export function useCompetitionData(enabled: boolean, isOwner: boolean) {
     setErrorMessage('')
     try {
       await syncCompetition()
+      await pendingReload.current
       loadedSeasons.current.clear()
-      await reload()
+      await reload(true)
     } catch (error) {
       setErrorMessage(errorText(error))
       throw error

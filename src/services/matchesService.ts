@@ -85,6 +85,14 @@ export async function saveMatchLineup(match: Match, entries: Omit<MatchLineup, '
   if (error) throw error
 }
 
+export async function addMatchTrainingPlayer(matchId: string, playerId: string, reason: string, slotNumber?: number) {
+  const { error } = await supabase.rpc('add_match_training_player', {
+    checked_match_id: matchId, checked_player_id: playerId, checked_reason: reason,
+    checked_slot_number: slotNumber ?? null,
+  })
+  if (error) throw error
+}
+
 export async function unlockMatchLineup(matchId: string) {
   const { error } = await supabase.rpc('unlock_match_lineup', { checked_match_id: matchId })
   if (error) throw error

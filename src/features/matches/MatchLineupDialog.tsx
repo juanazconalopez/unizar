@@ -9,7 +9,7 @@ import { groupPlayersByPosition } from '../../lib/playerPositions'
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import { PlayerPositionSummary } from '../../components/PlayerPositionSummary'
 import { TeamMemberDialog } from '../team/TeamMemberDialog'
-import { matchLicenseRestriction } from '../../lib/playerLicenses'
+import { hasTrainingMatchException, matchLicenseRestriction } from '../../lib/playerLicenses'
 import { Fragment, useEffect, useId, useState } from 'react'
 import type { DragEvent } from 'react'
 import { Icon } from '../../components/Icon'
@@ -86,13 +86,13 @@ export function MatchLineupDialog({ availability, canExport = true, canGraphicEx
   const derbyReservedIds = new Set([...reservedPlayerIds, ...allReservations.filter((entry) => entry.is_derby).map((entry) => entry.player_id)])
   const reservedIds = new Set([...reservedPlayerIds, ...allReservations.map((entry) => entry.player_id)])
   const candidates = orderedLineupCandidates(eligible, memberships, seasonTeams, match.season_id, match.team_id, match.match_date)
-    .filter((player) => !reservationsBlocked && availableIds.has(player.id) && !selectedIds.has(player.id) && !derbyReservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2 || (match.match_kind === 'friendly' && player.teamName === 'Sin equipo')))
+    .filter((player) => !reservationsBlocked && availableIds.has(player.id) && !selectedIds.has(player.id) && !derbyReservedIds.has(player.id) && (canBorrowFromOtherTeams || player.priority < 2 || (player.teamName === 'Sin equipo' && (match.match_kind === 'friendly' || hasTrainingMatchException(match, player.id)))))
   const selectable = candidates.filter((player) => !reservedIds.has(player.id))
   const selectableTeams = [...new Set(candidates.map((player) => player.teamName))].map((name) => ({ name, players: candidates.filter((player) => player.teamName === name) }))
   const hasReservedSelection = [...selectedIds].some((id) => reservedIds.has(id))
   const containsBorrowedPlayer = !canBorrowFromOtherTeams && Object.values(slots).some((playerId) => {
     const membership = memberships.find((item) => item.season_id === match.season_id && item.player_id === playerId && membershipCoversDate(item, match.match_date))
-    return membership && !(match.match_kind === 'friendly' && !membership.season_team_id) && membership.season_team_id !== match.team_id && !seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed)
+    return membership && !(!membership.season_team_id && (match.match_kind === 'friendly' || hasTrainingMatchException(match, playerId))) && membership.season_team_id !== match.team_id && !seasonTeams.some((team) => team.id === membership.season_team_id && team.is_mixed)
   })
 
   useEffect(() => {

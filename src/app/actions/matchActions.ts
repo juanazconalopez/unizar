@@ -1,10 +1,18 @@
 import { saveInternalMatchReport, saveMatchReport, type MatchReportValues } from '../../services/matchReportService'
+import { addMatchTrainingPlayer } from '../../services/matchesService'
 import { createMatch, deleteInternalMatch, deleteMatch, finalizeInternalMatch, saveMatchAvailability, saveMatchLineup, setPlayerMatchAvailability, unlockMatchLineup, updateInternalMatch, updateMatch } from '../../services/matchesService'
 import type { AvailabilityStatus, Match, MatchLineup, MatchValues } from '../../types'
 import type { ActionContext } from './actionContext'
 
 export function createMatchActions(context: ActionContext) {
   return {
+    addTrainingPlayer: async (match: Match, playerId: string, reason: string, slotNumber?: number) => {
+      context.requireConnection()
+      await addMatchTrainingPlayer(match.id, playerId, reason, slotNumber)
+      context.invalidateMatchMonths(match.match_date)
+      context.notify('Jugadora de solo entrenamientos autorizada para este partido.')
+      await context.reloadData()
+    },
     save: async (match: Match | undefined, values: MatchValues) => {
       context.requireConnection()
       if (!context.userId) return

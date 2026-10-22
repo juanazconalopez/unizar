@@ -74,7 +74,7 @@ export async function fetchAnnouncementWindow(fromDate: string, toDate: string):
 export async function fetchHomeAttention(today: string, seasonEnd: string) {
   const announcementEnd = homeAgendaEnd(today, seasonEnd)
   const [matchesResponse, announcementsResponse] = await Promise.all([
-    supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
+    supabase.from('matches').select('*, training_exceptions:match_training_exceptions(player_id), seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').eq('status', 'published').gte('match_date', today).order('match_date', { ascending: true }).limit(1),
     supabase.from('team_announcements').select('*, seasons(name)').eq('status', 'published').gte('announcement_date', today).lte('announcement_date', announcementEnd).order('announcement_date', { ascending: true }).limit(4),
   ])
   if (matchesResponse.error) throw matchesResponse.error
@@ -184,7 +184,7 @@ export async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
 
 export async function fetchMatchWindow(fromDate: string, toDate?: string): Promise<MatchWindowData> {
   const { data, error } = await fetchAllPages((from, to) => {
-    let query = supabase.from('matches').select('*, seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').gte('match_date', fromDate).order('match_date', { ascending: true }).order('id')
+    let query = supabase.from('matches').select('*, training_exceptions:match_training_exceptions(player_id), seasons(name), season_competitions(id,name,color,is_default,competition_level,is_league,restrict_cross_team_callups), season_teams(id,name,is_mixed,is_default,color)').gte('match_date', fromDate).order('match_date', { ascending: true }).order('id')
     if (toDate) query = query.lte('match_date', toDate)
     return query.range(from, to)
   })

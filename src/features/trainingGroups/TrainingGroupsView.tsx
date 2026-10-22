@@ -1,3 +1,5 @@
+import type { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SectionError, SectionLoading } from '../../components/AsyncViewState'
 import { Icon } from '../../components/Icon'
@@ -14,24 +16,25 @@ import { TrainingGroupUnassigned } from './TrainingGroupUnassigned'
 import { currentTrainingGroupBlock, groupColorLabel, groupShirtLabel, trainingGroupBalance, trainingGroupRenewal } from './trainingGroupSelectors'
 import type { TrainingGroupsApi } from './types'
 
-export function TrainingGroupsView({ seasons, userId, canManage, canPublish, onChanged, api = trainingGroupsApi }: {
-  seasons: Season[]; userId: string; canManage: boolean; canPublish: boolean; onChanged?: () => void; api?: TrainingGroupsApi
+export function TrainingGroupsView({ resources, seasons, userId, canManage, canPublish, onChanged, api = trainingGroupsApi }: {
+  resources?: SessionQueryCache; seasons: Season[]; userId: string; canManage: boolean; canPublish: boolean; onChanged?: () => void; api?: TrainingGroupsApi
 }) {
   const today = todayInMadridIso()
   const season = seasons.find((item) => item.start_date <= today && item.end_date >= today)
     ?? [...seasons].sort((a, b) => b.start_date.localeCompare(a.start_date))[0]
   return <div className="page training-groups-page">
     <PageHeader eyebrow="EQUIPO" title="Grupos de entrenamiento" subtitle="Dos grupos para entrenar juntas. Un nuevo reparto cada tres semanas." />
-    {season ? <TrainingGroupSeason key={`${season.id}:${userId}:${canManage}:${canPublish}`} season={season} userId={userId} canManage={canManage} canPublish={canPublish} api={api} onChanged={onChanged} /> : <p>No hay temporadas disponibles.</p>}
+    {season ? <TrainingGroupSeason resources={resources} key={`${season.id}:${userId}:${canManage}:${canPublish}`} season={season} userId={userId} canManage={canManage} canPublish={canPublish} api={api} onChanged={onChanged} /> : <p>No hay temporadas disponibles.</p>}
   </div>
 }
 
-function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onChanged }: {
-  season: Season; userId: string; canManage: boolean; canPublish: boolean; api: TrainingGroupsApi; onChanged?: () => void
+function TrainingGroupSeason({ resources, season, userId, canManage, canPublish, api, onChanged }: {
+  resources?: SessionQueryCache; season: Season; userId: string; canManage: boolean; canPublish: boolean; api: TrainingGroupsApi; onChanged?: () => void
 }) {
   const today = todayInMadridIso()
-  const [state, setState] = useState<GroupState>()
-  const [loading, setLoading] = useState(true)
+  const resourceKey = navigationResourceKeys.trainingGroups(season.id, canManage)
+  const [state, setState] = useState<GroupState | undefined>(() => resources?.peek(resourceKey))
+  const [loading, setLoading] = useState(!resources?.peek(resourceKey))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -47,21 +50,22 @@ function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onCha
   const invalid = state?.editing ? state.assignments.filter((entry) => !players.some((player) => player.player_id === entry.player_id)).length : 0
   const ended = season.end_date < today
 
-  const load = useCallback(async (date?: string, newProposal = false) => {
+  const load = useCallback(async (date?: string, newProposal = false, force = true) => {
     const request = ++requestId.current
-    setLoading(true)
+    setLoading(!resources?.peek(resourceKey) || date !== undefined || newProposal)
     setError('')
     try {
-      const next = await fetchGroupState(api, season, canManage, date, newProposal)
+      const fetcher = () => fetchGroupState(api, season, canManage, date, newProposal)
+      const next = await (resources && date === undefined && !newProposal ? resources.load(resourceKey, fetcher, { force }) : fetcher())
       if (request !== requestId.current) return
       setState(next)
       setDirty(newProposal)
     } catch (cause) { if (request === requestId.current) setError(errorText(cause)) }
     finally { if (request === requestId.current) setLoading(false) }
-  }, [api, canManage, season])
+  }, [api, canManage, resourceKey, resources, season])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
+    const timer = window.setTimeout(() => void load(undefined, false, false), 0)
     return () => { window.clearTimeout(timer); requestId.current += 1 }
   }, [load])
 
@@ -72,6 +76,14 @@ function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onCha
     window.addEventListener('online', refresh)
     return () => { window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh) }
   }, [busy, dirty, load, state?.editing, state?.selectedId])
+
+  function updateDraft(next: GroupState) {
+    // Una respuesta iniciada antes de editar no puede sustituir el borrador.
+    requestId.current += 1
+    setLoading(false)
+    setState(next)
+    setDirty(true)
+  }
 
   async function refreshRoster() {
     if (!state) return
@@ -100,8 +112,8 @@ function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onCha
   async function applyConfirmation() {
     if (!state) return
     if (confirm === 'regenerate') {
-      setState({ ...state, assignments: generateTrainingGroups(state.workspace.candidates, state.workspace.members) })
-      setDirty(true); setConfirm(null); return
+      updateDraft({ ...state, assignments: generateTrainingGroups(state.workspace.candidates, state.workspace.members) })
+      setConfirm(null); return
     }
     if (!block) return
     setBusy(true); setError(''); setMessage('')
@@ -140,8 +152,7 @@ function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onCha
     </div>}
     {!loading && canManage && !ended && pending.length > 0 && <TrainingGroupUnassigned players={pending} disabled={busy} onAdd={(playerId, color) => {
       const assignments = state.editing ? state.assignments : retainTrainingGroupAssignments(state.workspace.candidates, state.assignments)
-      setState({ ...state, editing: true, assignments: [...assignments.filter((entry) => entry.player_id !== playerId), { player_id: playerId, color }] })
-      setDirty(true)
+      updateDraft({ ...state, editing: true, assignments: [...assignments.filter((entry) => entry.player_id !== playerId), { player_id: playerId, color }] })
       setMessage('')
     }} />}
     <div className="training-group-date-line">
@@ -155,20 +166,20 @@ function TrainingGroupSeason({ season, userId, canManage, canPublish, api, onCha
       {state.editing && <div className="training-group-review"><strong>Borrador · Solo visible para el staff</strong><p>Añade, quita o cambia de grupo a cada jugadora. Guardar y publicar estos ajustes conserva el resto del reparto. Las bajas deportivas pueden mantenerse en su grupo o retirarse manualmente.</p>
         {invalid > 0 && <p>{invalid} {invalid === 1 ? 'asignación ya no cumple los requisitos.' : 'asignaciones ya no cumplen los requisitos.'}</p>}
         <button className="secondary-button" disabled={busy} onClick={() => void refreshRoster()}><Icon name="refresh" size={16} /> Actualizar plantilla</button>
-        {invalid > 0 && <button className="text-button" disabled={busy} onClick={() => { setState({ ...state, assignments: retainTrainingGroupAssignments(state.workspace.candidates, state.assignments) }); setDirty(true) }}>Retirar jugadoras que ya no cumplen los requisitos</button>}
+        {invalid > 0 && <button className="text-button" disabled={busy} onClick={() => updateDraft({ ...state, assignments: retainTrainingGroupAssignments(state.workspace.candidates, state.assignments) })}>Retirar jugadoras que ya no cumplen los requisitos</button>}
         <div className="training-group-actions"><button className="secondary-button" disabled={busy} onClick={() => setConfirm('regenerate')}>Volver a repartir</button><button className="primary-button" disabled={busy || !dirty || invalid > 0} onClick={() => void save()}>Guardar borrador</button>
           {block?.has_draft && <button className="text-button" disabled={busy} onClick={() => setConfirm('discard')}>Descartar borrador</button>}
           {canPublish && block?.has_draft && <button className="primary-button" disabled={busy || dirty || invalid > 0} onClick={() => setConfirm('publish')}>Publicar grupos</button>}
           {dirty && <button className="text-button" disabled={busy} onClick={() => void load()}>Cancelar cambios</button>}
         </div>
       </div>}
-      {!state.editing && canManage && !ended && !historical && block && <div className="training-group-actions"><button className="secondary-button" onClick={() => { setState({ ...state, editing: true, assignments: retainTrainingGroupAssignments(state.workspace.candidates, state.assignments) }); setDirty(true) }}>Revisar reparto</button></div>}
+      {!state.editing && canManage && !ended && !historical && block && <div className="training-group-actions"><button className="secondary-button" onClick={() => updateDraft({ ...state, editing: true, assignments: retainTrainingGroupAssignments(state.workspace.candidates, state.assignments) })}>Revisar reparto</button></div>}
       {(state.assignments.length > 0 || state.editing) && <>
         {state.editing && <div className="training-group-balance"><h2>Equilibrio del reparto</h2><p>{balance.balanced ? 'Reparto equilibrado: diferencia máxima de una jugadora por categoría y en el total.' : 'Hay diferencias de más de una jugadora. Puedes ajustar el reparto antes de publicar.'}</p>
           <table><thead><tr><th>Equipo y posición</th><th>Rojo</th><th>Blanco</th></tr></thead><tbody>{balance.rows.map((row) => <tr key={row.key}><th scope="row">{row.label}</th><td>{row.red}</td><td>{row.white}</td></tr>)}</tbody><tfoot><tr><th>Total</th><td>{balance.red}</td><td>{balance.white}</td></tr></tfoot></table>
           {players.some((player) => player.position_group === 'unassigned') && <p>Las jugadoras sin posición principal se equilibran por separado.</p>}
         </div>}
-        <TrainingGroupColumns onRemove={state.editing ? (playerId) => { setState({ ...state, assignments: state.assignments.filter((entry) => entry.player_id !== playerId) }); setDirty(true) } : undefined} players={players} assignments={state.assignments} userId={userId} disabled={busy} onMove={state.editing ? (playerId) => { setState({ ...state, assignments: state.assignments.map((entry) => entry.player_id === playerId ? { ...entry, color: entry.color === 'red' ? 'white' : 'red' } : entry) }); setDirty(true) } : undefined} />
+        <TrainingGroupColumns onRemove={state.editing ? (playerId) => updateDraft({ ...state, assignments: state.assignments.filter((entry) => entry.player_id !== playerId) }) : undefined} players={players} assignments={state.assignments} userId={userId} disabled={busy} onMove={state.editing ? (playerId) => updateDraft({ ...state, assignments: state.assignments.map((entry) => entry.player_id === playerId ? { ...entry, color: entry.color === 'red' ? 'white' : 'red' } : entry) }) : undefined} />
       </>}
       {!state.assignments.length && !state.editing && <p className="training-group-empty">{block?.status === 'published' ? 'No hay jugadoras asignadas en este reparto.' : 'Todavía no hay grupos publicados para esta temporada.'}</p>}
     </>}

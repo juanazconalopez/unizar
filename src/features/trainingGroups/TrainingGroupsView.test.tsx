@@ -1,3 +1,6 @@
+import { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import { fetchGroupState } from './trainingGroupState'
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
@@ -23,6 +26,33 @@ beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new 
 afterEach(() => vi.useRealTimers())
 
 describe('TrainingGroupsView', () => {
+  test('shows the prepared distribution immediately while its expired data refreshes', async () => {
+    const { api } = setupApi()
+    const resources = new SessionQueryCache(0)
+    const prepared = await fetchGroupState(api, season, true)
+    await resources.load(navigationResourceKeys.trainingGroups(season.id, true), () => Promise.resolve(prepared))
+    vi.spyOn(api, 'summary').mockImplementation(() => new Promise(() => undefined))
+    render(<TrainingGroupsView resources={resources} api={api} seasons={[season]} userId="demo-group-player-0" canManage canPublish />)
+    expect(screen.getByText('Toca rehacer los grupos')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Cargando sección' })).not.toBeInTheDocument()
+  })
+
+  test('a pending background refresh cannot close a review started from the prepared distribution', async () => {
+    const { api } = setupApi()
+    const resources = new SessionQueryCache(0)
+    const prepared = await fetchGroupState(api, season, true)
+    await resources.load(navigationResourceKeys.trainingGroups(season.id, true), () => Promise.resolve(prepared))
+    let finishRefresh!: (summary: typeof prepared.summary) => void
+    vi.spyOn(api, 'summary').mockImplementationOnce(() => new Promise((resolve) => { finishRefresh = resolve }))
+    render(<TrainingGroupsView resources={resources} api={api} seasons={[season]} userId="demo-group-player-0" canManage canPublish />)
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Revisar reparto' }))
+    await user.click(screen.getAllByRole('button', { name: /^Mover a / })[0])
+    await act(async () => { finishRefresh(prepared.summary) })
+    expect(screen.getByRole('button', { name: 'Guardar borrador' })).toBeEnabled()
+    expect(screen.getByText('Borrador · Solo visible para el staff')).toBeInTheDocument()
+  })
+
   test('generates a balanced draft, allows manual changes, saves and confirms publication', async () => {
     const user = userEvent.setup()
     const { api, store } = setupApi()

@@ -13,6 +13,7 @@ export const PERMISSIONS = {
     view: 'matches.view', create: 'matches.create', edit: 'matches.edit', delete: 'matches.delete', ownAvailability: 'matches.availability_own',
     teamAvailability: 'matches.availability_team', editAvailability: 'matches.availability_edit', lineup: 'matches.lineup_view',
     editLineup: 'matches.lineup_edit', publishLineup: 'matches.lineup_publish', unlockLineup: 'matches.lineup_unlock', report: 'matches.report',
+    trainingExceptions: 'matches.training_exceptions',
   },
   attendance: { view: 'attendance.view', record: 'attendance.record', report: 'attendance.report', guests: 'attendance.guests' },
   training: { view: 'training.view', create: 'training.create', edit: 'training.edit', delete: 'training.delete', publish: 'training.publish' },
@@ -59,6 +60,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.announcements.publish, PERMISSIONS.matches.view, PERMISSIONS.matches.create, PERMISSIONS.matches.edit,
     PERMISSIONS.matches.delete, PERMISSIONS.matches.teamAvailability, PERMISSIONS.matches.editAvailability, PERMISSIONS.matches.lineup,
     PERMISSIONS.matches.editLineup, PERMISSIONS.matches.publishLineup, PERMISSIONS.matches.unlockLineup, PERMISSIONS.matches.report,
+    PERMISSIONS.matches.trainingExceptions,
     PERMISSIONS.attendance.view, PERMISSIONS.attendance.record, PERMISSIONS.attendance.report, PERMISSIONS.attendance.guests,
     PERMISSIONS.training.view, PERMISSIONS.training.create, PERMISSIONS.training.edit, PERMISSIONS.training.delete,
     PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
@@ -106,6 +108,10 @@ export function isPlayer(profile: Profile) { return profile.is_player }
 
 export function canManagePlayerPositions(profile: Profile, loadedKeys?: readonly string[]) {
   return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.team.positions, loadedKeys)
+}
+
+export function canManageTrainingExceptions(profile: Profile, loadedKeys?: readonly string[]) {
+  return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.matches.trainingExceptions, loadedKeys)
 }
 
 export function canBeSeasonTeamCoach(profile: Profile) {

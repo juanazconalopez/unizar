@@ -7,11 +7,16 @@ import { PERMISSIONS } from '../lib/permissions'
 import { fetchTrainingData, type TrainingData } from '../services/trainingDataService'
 import { fetchMatchWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { ViewName } from '../types'
+import { INITIAL_NAVIGATION_WAIT_MS } from '../app/navigationPreparation'
+import { preloadAccessibleViews } from '../app/viewModules'
 import { AUTO_REFRESH_INTERVAL_MS, useTrainingData } from './useTrainingData'
 
 vi.mock('../services/trainingDataService', () => ({
   fetchTrainingData: vi.fn(),
 }))
+
+vi.mock('../services/navigationResources', () => ({ prepareNavigationResources: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../app/viewModules', () => ({ preloadAccessibleViews: vi.fn().mockResolvedValue(undefined) }))
 
 vi.mock('../services/trainingQueriesService', () => ({
   fetchTaskWindow: vi.fn(),
@@ -56,7 +61,7 @@ const trainingData: TrainingData = {
 
 async function flushInitialLoad() {
   await act(async () => {
-    vi.runOnlyPendingTimers()
+    vi.advanceTimersByTime(0)
     await Promise.resolve()
   })
 }
@@ -69,6 +74,7 @@ describe('useTrainingData', () => {
     vi.mocked(fetchTrainingData).mockResolvedValue(trainingData)
     vi.mocked(fetchTaskWindow).mockReset()
     vi.mocked(fetchMatchWindow).mockReset()
+    vi.mocked(preloadAccessibleViews).mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => vi.useRealTimers())
@@ -180,6 +186,61 @@ describe('useTrainingData', () => {
     expect(fetchTrainingData).toHaveBeenCalledTimes(2)
     await act(async () => { calendar.resolve(allowed) })
     expect(result.current.loadedView).toBe('calendar')
+  })
+
+  test('keeps prepared navigation after twenty minutes and focus, even while both refreshes are pending', async () => {
+    const allowed = { ...trainingData, permissionKeys: [PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal] }
+    let slow = false
+    const home = deferred<TrainingData>(), calendar = deferred<TrainingData>()
+    vi.mocked(fetchTrainingData).mockImplementation((_id, target) => slow ? target === 'calendar' ? calendar.promise : home.promise : Promise.resolve(allowed))
+    const { result, rerender } = renderHook(({ view }) => useTrainingData(session, view), { initialProps: { view: 'home' as ViewName } })
+    await flushInitialLoad(); await flushInitialLoad()
+    expect(result.current.navigationReady).toBe(true)
+    slow = true
+    act(() => vi.advanceTimersByTime(20 * 60_000))
+    await act(async () => { window.dispatchEvent(new Event('focus')); await Promise.resolve() })
+    rerender({ view: 'calendar' })
+    expect(result.current.loadedView).toBe('calendar')
+    expect(result.current.navigationReady).toBe(true)
+    await flushInitialLoad()
+    expect(fetchTrainingData).toHaveBeenCalledTimes(4)
+    await act(async () => { home.resolve(allowed); calendar.resolve(allowed) })
+    expect(result.current.loadedView).toBe('calendar')
+  })
+
+  test('a failed focus refresh does not discard other visited sections', async () => {
+    const { result, rerender } = renderHook(({ view }) => useTrainingData(session, view), { initialProps: { view: 'home' as ViewName } })
+    await flushInitialLoad()
+    rerender({ view: 'library' }); await flushInitialLoad()
+    act(() => vi.advanceTimersByTime(AUTO_REFRESH_INTERVAL_MS))
+    vi.mocked(fetchTrainingData).mockRejectedValue(new Error('Sin conexión'))
+    await act(async () => { window.dispatchEvent(new Event('focus')); await Promise.resolve() })
+    rerender({ view: 'home' })
+    expect(result.current.loadedView).toBe('home')
+    expect(result.current.errorMessage).toBe('')
+  })
+
+  test('a stalled section cannot hold initial navigation beyond fifteen seconds', async () => {
+    const owner = { ...trainingData, profile: makeProfile({ is_owner: true }) }
+    const stalled = deferred<TrainingData>()
+    vi.mocked(fetchTrainingData).mockImplementation((_id, target) => target === 'calendar' ? stalled.promise : Promise.resolve(owner))
+    const { result } = renderHook(() => useTrainingData(session))
+    await flushInitialLoad(); await flushInitialLoad()
+    expect(result.current.navigationReady).toBe(false)
+    expect(vi.mocked(fetchTrainingData).mock.calls.map((call) => call[1])).toContain('settings')
+    act(() => vi.advanceTimersByTime(INITIAL_NAVIGATION_WAIT_MS))
+    expect(result.current.navigationReady).toBe(true)
+    await act(async () => { stalled.resolve(owner) })
+  })
+
+  test('initial preparation waits for section code as well as data', async () => {
+    const code = deferred<void>()
+    vi.mocked(preloadAccessibleViews).mockReturnValue(code.promise)
+    const { result } = renderHook(() => useTrainingData(session))
+    await flushInitialLoad(); await flushInitialLoad()
+    expect(result.current.navigationReady).toBe(false)
+    await act(async () => { code.resolve() })
+    expect(result.current.navigationReady).toBe(true)
   })
 
   test('a slow previous section does not block navigation or replace the visible section', async () => {

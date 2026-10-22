@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { addDays, monthEnd, monthStart, todayIso } from '../lib/dates'
+import { addDays, monthEnd, monthStart } from '../lib/dates'
 import { withAuthRecovery } from '../lib/authRecovery'
 import { errorText } from '../lib/errors'
-import { canManageSport, canManageTrainingGroups } from '../lib/permissions'
+import { canManageSport } from '../lib/permissions'
 import type { PermissionConfiguration } from '../services/permissionsService'
 import type { PermissionKey } from '../lib/permissions'
 import { fetchTrainingData, type TrainingData } from '../services/trainingDataService'
 import { SessionQueryCache } from '../services/sessionQueryCache'
 import { cachedTrainingGroupsApi } from '../services/trainingGroupsService'
 import { canAccessView } from '../app/appAccess'
+import { INITIAL_NAVIGATION_WAIT_MS, navigationPreloadTargets, prepareNavigationQueue } from '../app/navigationPreparation'
+import { preloadAccessibleViews } from '../app/viewModules'
+import { prepareNavigationResources } from '../services/navigationResources'
 import { fetchAttendanceDate, fetchMatchWindow, fetchStatisticsWindow, fetchTaskWindow } from '../services/trainingQueriesService'
 import type { MatchWindowData } from '../services/trainingQueriesService'
 import type { AttendanceRecord, CalendarBirthday, LibraryItem, LibrarySettings, Match, MatchAvailability, MatchLineup, PlayerAbsence, PlayerAbsencePrivateNote, Profile, ProfilePrivateDetails, ProvisionalAttendanceRecord, ProvisionalPlayer, Season, SeasonBirthday, SeasonCompetition, SeasonPlayer, SeasonTeam, SeasonTeamCoach, TaskResult, TeamAnnouncement, TodayBirthday, TrainingSession, TrainingTask, ViewName } from '../types'
@@ -54,6 +57,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const [loadedView, setLoadedView] = useState<ViewName | null>(null)
   const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
   const [accessRevision, setAccessRevision] = useState(0)
+  const [preparedNavigation, setPreparedNavigation] = useState<{ account: SessionQueryCache; accessKey: string } | null>(null)
   const tasksRef = useRef<TrainingTask[]>([])
   const sectionCache = useRef(new Map<ViewName, { data: TrainingData; loadedAt: number }>())
   const sectionRequests = useRef(new Map<ViewName, Promise<void>>())
@@ -73,6 +77,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
   const rangesUserId = useRef<string | undefined>(undefined)
   const userId = session?.user.id
   const groupQueries = useMemo(() => ({ userId, cache: new SessionQueryCache() }), [userId])
+  const resourceScope = useMemo(() => ({ userId, revision: accessRevision, cache: new SessionQueryCache() }), [userId, accessRevision])
+  const resources = resourceScope.cache
   const trainingGroupsApi = useMemo(() => cachedTrainingGroupsApi(groupQueries.cache), [groupQueries])
 
   const beginRangeLoad = useCallback(() => {
@@ -289,19 +295,15 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
           sectionRequests.current.clear()
           sharedCache.current = new SessionQueryCache()
           groupQueries.cache.clear()
+          resources.clear()
           matchWindowCache.current.clear()
           setAccessRevision((revision) => revision + 1)
           if (!isVisible()) { setProfile(identity); setPermissionKeys(data.permissionKeys) }
         }
         accessSignature.current = signature
-        if (target === 'training-groups' && canAccessView(data.profile, target, data.permissionKeys)) {
-          const today = todayIso()
-          const season = data.seasons.find((item) => item.start_date <= today && item.end_date >= today)
-            ?? [...data.seasons].sort((a, b) => b.start_date.localeCompare(a.start_date))[0]
-          if (season) {
-            const { fetchGroupState } = await import('../features/trainingGroups/trainingGroupState')
-            await fetchGroupState(trainingGroupsApi, season, canManageTrainingGroups(data.profile, data.permissionKeys))
-          }
+        if (canAccessView(data.profile, target, data.permissionKeys)) {
+          // A failed optional list must not discard the section's usable data.
+          await prepareNavigationResources(target, data, resources, trainingGroupsApi).catch(() => undefined)
         }
         // Only the visible section restores extra ranges; preloading stays small.
         if (isVisible()) data = await restoreLoadedRanges(data, target, userId, {
@@ -324,9 +326,9 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       if (isCurrent() && sectionRequests.current.get(target) === request) sectionRequests.current.delete(target)
     })
     return request
-  }, [applyData, groupQueries, trainingGroupsApi, userId])
+  }, [applyData, groupQueries, resources, trainingGroupsApi, userId])
 
-  // Explicit reload follows a write or a stale focus event: invalidate other
+  // Explicit reload follows a write: invalidate other
   // sections too, so an older snapshot cannot undo a saved result or permission.
   const reload = useCallback(async () => {
     generation.current += 1
@@ -334,6 +336,8 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     sectionRequests.current.clear()
     sharedCache.current = new SessionQueryCache()
     groupQueries.cache.clear()
+    resources.clear()
+    setAccessRevision((revision) => revision + 1)
     matchWindowCache.current.clear()
     rangeRequestIds.current.tasks += 1
     rangeRequestIds.current.statistics += 1
@@ -341,7 +345,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     matchRequestIds.current.clear()
     if (!userId) { setProfile(null); return }
     await loadSection(view)
-  }, [groupQueries, loadSection, userId, view])
+  }, [groupQueries, loadSection, resources, userId, view])
 
   // Restore before painting: revisiting a prepared section does not flash a
   // full-page skeleton. Its refresh can run behind the already visible data.
@@ -372,23 +376,32 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
 
   useEffect(() => {
     if (!profile || loadedUserId !== userId) return
-    const targets: ViewName[] = ['home', 'calendar', 'matches', 'attendance', 'training-groups']
-    // Prepare only accessible common sections, two at a time. No Supabase
-    // queries for settings/private management or whole-season histories.
+    const key = JSON.stringify([userId, profile.is_approved, profile.is_active, profile.is_archived,
+      profile.is_owner, profile.is_coach, profile.is_viewer, profile.is_player, [...permissionKeys].sort()])
+    const requestGeneration = generation.current
     let cancelled = false
+    // Prefer preparing navigation once at entry over waiting on every click.
+    // A slow or unavailable request cannot hold the initial screen indefinitely.
+    const deadline = window.setTimeout(() => {
+      if (!cancelled && generation.current === requestGeneration) setPreparedNavigation({ account: groupQueries.cache, accessKey: key })
+    }, INITIAL_NAVIGATION_WAIT_MS)
     const timer = window.setTimeout(() => {
       void (async () => {
-        const allowed = targets.filter((target) => target !== view && canAccessView(profile, target, permissionKeys))
-        for (let index = 0; index < allowed.length && !cancelled; index += 2) {
-          await Promise.all(allowed.slice(index, index + 2).map((target) => {
-            const cached = sectionCache.current.get(target)
-            return cached && Date.now() - cached.loadedAt < AUTO_REFRESH_INTERVAL_MS ? undefined : loadSection(target)
-          }))
+        const allowed = navigationPreloadTargets(profile, permissionKeys)
+        const isCancelled = () => cancelled || generation.current !== requestGeneration
+        await Promise.all([
+          preloadAccessibleViews(profile, permissionKeys, isCancelled),
+          prepareNavigationQueue(allowed, (target) =>
+            sectionCache.current.has(target) ? Promise.resolve() : loadSection(target), isCancelled),
+        ])
+        if (!cancelled && generation.current === requestGeneration) {
+          window.clearTimeout(deadline)
+          setPreparedNavigation({ account: groupQueries.cache, accessKey: key })
         }
       })()
     }, 0)
-    return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [loadSection, loadedUserId, permissionKeys, profile, userId, view])
+    return () => { cancelled = true; window.clearTimeout(timer); window.clearTimeout(deadline) }
+  }, [accessRevision, groupQueries, loadSection, loadedUserId, permissionKeys, profile, userId])
 
   useEffect(() => {
     if (!userId) return
@@ -396,7 +409,7 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
     function refreshIfStale() {
       if (document.visibilityState !== 'visible' || sectionRequests.current.has(view)) return
       if (Date.now() - lastReloadAttempt.current < AUTO_REFRESH_INTERVAL_MS) return
-      void reload()
+      void loadSection(view)
     }
 
     function refreshWhenVisible() {
@@ -411,9 +424,14 @@ export function useTrainingData(session: Session | null, view: ViewName = 'home'
       window.removeEventListener('online', refreshIfStale)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
     }
-  }, [reload, userId, view])
+  }, [loadSection, userId, view])
+
+  const currentAccessKey = profile && loadedUserId === userId ? JSON.stringify([userId, profile.is_approved,
+    profile.is_active, profile.is_archived, profile.is_owner, profile.is_coach, profile.is_viewer, profile.is_player, [...permissionKeys].sort()]) : null
 
   return {
+    navigationReady: currentAccessKey !== null && preparedNavigation?.account === groupQueries.cache && preparedNavigation.accessKey === currentAccessKey,
+    resources: resources,
     profile,
     ownProfileDetails,
     profilePrivateDetails,

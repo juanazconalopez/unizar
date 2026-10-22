@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import type { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
 import { RichContent } from '../../components/RichContent'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -41,7 +43,8 @@ type EditorSource =
   | { mode: 'edit'; plan: TrainingPlan }
   | { mode: 'duplicate'; template: TrainingPlan }
 
-export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, seasons, userId, onNotify, onEditPlan, onReturnToList, permissions }: {
+export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, resources, seasons, userId, onNotify, onEditPlan, onReturnToList, permissions }: {
+  resources?: SessionQueryCache
   demo?: boolean
   focusedPlanId?: string
   focusedPlanMode?: 'edit'
@@ -56,8 +59,8 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   }
 }) {
   const access = permissions ?? { create: true, edit: true, delete: true, publish: true, viewExercises: true, createExercises: true, editExercises: true, deleteExercises: true }
-  const [plans, setPlans] = useState<TrainingPlan[]>([])
-  const [loading, setLoading] = useState(true)
+  const [plans, setPlans] = useState<TrainingPlan[]>(() => resources?.peek<TrainingPlan[]>(navigationResourceKeys.trainingPlans()) ?? [])
+  const [loading, setLoading] = useState(!resources?.peek(navigationResourceKeys.trainingPlans()))
   const [loadError, setLoadError] = useState('')
   const [demoMode, setDemoMode] = useState(false)
   const [editor, setEditor] = useState<EditorSource | null>(null)
@@ -68,10 +71,12 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   const [libraryLoading, setLibraryLoading] = useState(false)
   const [libraryError, setLibraryError] = useState('')
   const [presetEditor, setPresetEditor] = useState<'new' | TrainingExercisePreset | null>(null)
+  const listRequest = useRef(0)
   const visiblePlans = upcomingTrainingPlans(plans, todayIso())
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (force = true) => {
+    const request = ++listRequest.current
+    setLoading(!resources?.peek(navigationResourceKeys.trainingPlans()))
     setLoadError('')
     try {
       if (demo) {
@@ -86,15 +91,18 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
         setDemoMode(true)
         return
       }
-      const loadedPlans = await fetchTrainingPlans()
+      const loadedPlans = await (resources ? resources.load(navigationResourceKeys.trainingPlans(), fetchTrainingPlans, { force }) : fetchTrainingPlans())
+      if (request !== listRequest.current) return
       setPlans(loadedPlans)
       if (focusedPlanId) {
         const focusedPlan = loadedPlans.find((plan) => plan.id === focusedPlanId) ?? await fetchTrainingPlan(focusedPlanId)
+        if (request !== listRequest.current) return
         if (focusedPlanMode === 'edit' && access.edit) setEditor({ mode: 'edit', plan: focusedPlan })
         else setViewingPlan(focusedPlan)
       }
       setDemoMode(false)
     } catch (error) {
+      if (request !== listRequest.current) return
       if (import.meta.env.DEV && isTrainingPlansSchemaMissing(error)) {
         setPlans(demoTrainingPlans(seasons))
         setDemoPresets((current) => current.length ? current : demoExercisePresets(seasons, userId))
@@ -103,13 +111,13 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
       }
       setLoadError(errorText(error))
     } finally {
-      setLoading(false)
+      if (request === listRequest.current) setLoading(false)
     }
-  }, [access.edit, demo, focusedPlanId, focusedPlanMode, seasons, userId])
+  }, [access.edit, demo, focusedPlanId, focusedPlanMode, resources, seasons, userId])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
+    const timer = window.setTimeout(() => void load(false), 0)
+    return () => { window.clearTimeout(timer); listRequest.current += 1 }
   }, [load])
 
   function editPlan(plan: TrainingPlan) {

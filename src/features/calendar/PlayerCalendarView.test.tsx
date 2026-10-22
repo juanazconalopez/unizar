@@ -100,13 +100,14 @@ describe('PlayerCalendarView', () => {
 
     expect(screen.getByText('Información del equipo A')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Asistiré' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Rechazar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'En duda' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'No asistiré' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Ver detalle de Unizar Fem.*Rival Rugby/ }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Convocatoria publicada' })).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Ver lista' }))
     expect(within(dialog).getByText('Ana Martín', { selector: '.lineup-roster span' })).toBeVisible()
-    expect(within(dialog).queryByRole('button', { name: /Asistiré|Rechazar|Cambiar respuesta|Modificar respuesta/ })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: /Asistiré|En duda|No asistiré|Cambiar respuesta|Modificar respuesta/ })).not.toBeInTheDocument()
     expect(common.onSaveAvailability).not.toHaveBeenCalled()
   })
 

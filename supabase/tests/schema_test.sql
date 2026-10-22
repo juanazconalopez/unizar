@@ -1,5 +1,5 @@
 begin;
-select plan(602);
+select plan(629);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1312,6 +1312,38 @@ select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer
   '%coalesce(entry->>''color'','''') not in (''red'',''white'')%', 'la publicación rechaza colores inválidos');
 select like(pg_get_functiondef('public.publish_training_group_block(uuid,integer)'::regprocedure),
   '%El reparto es histórico y no se puede modificar%delete from public.training_group_members member where member.block_id = block.id%', 'las retiradas se aplican únicamente al reparto editable y conservan los anteriores');
+
+-- 087: autorización acotada de jugadoras con ficha Solo entrenamientos.
+select has_table('public','match_training_exceptions','autorizaciones excepcionales por partido');
+select ok((select relrowsecurity from pg_class where oid = 'public.match_training_exceptions'::regclass),'las autorizaciones tienen RLS');
+select ok(not has_table_privilege('authenticated','public.match_training_exceptions','INSERT,UPDATE,DELETE'),'los clientes no pueden falsificar autorizaciones');
+select ok(has_column_privilege('authenticated','public.match_training_exceptions','player_id','SELECT'),'el cliente recibe identificadores deportivos autorizados');
+select ok(not has_column_privilege('authenticated','public.match_training_exceptions','authorized_by','SELECT'),'la carga general no recibe responsables de auditoría');
+select ok(not has_column_privilege('authenticated','public.match_training_exceptions','reason','SELECT'),'la carga general no recibe motivos de auditoría');
+select ok(not has_table_privilege('anon','public.match_training_exceptions','SELECT'),'anon no consulta autorizaciones');
+select has_function('public','add_match_training_player',array['uuid','uuid','text','integer'],'RPC de incorporación excepcional');
+select ok(not has_function_privilege('anon','public.add_match_training_player(uuid,uuid,text,integer)','EXECUTE'),'anon no autoriza participaciones');
+select ok(has_function_privilege('authenticated','public.add_match_training_player(uuid,uuid,text,integer)','EXECUTE'),'la RPC valida la sesión autenticada');
+select ok(not has_function_privilege('authenticated','public.player_has_match_training_exception(uuid,uuid)','EXECUTE'),'el helper de fichas es privado');
+select ok(not has_function_privilege('authenticated','public.is_historical_training_exception_write(uuid,uuid)','EXECUTE'),'el contexto de corrección es privado');
+select ok(exists(select 1 from pg_constraint where conrelid = 'public.match_training_exceptions'::regclass and confrelid = 'public.matches'::regclass and confdeltype = 'c'),'borrar el partido borra su excepción');
+select ok(exists(select 1 from public.permission_definitions where key = 'matches.training_exceptions' and parent_key = 'matches.availability_edit'),'la autorización requiere el permiso padre de disponibilidad');
+select ok(exists(select 1 from public.role_permission_defaults where role = 'coach' and permission_key = 'matches.training_exceptions'),'los entrenadores tienen el permiso predeterminado');
+select ok(not exists(select 1 from public.role_permission_defaults where role in ('player','viewer') and permission_key = 'matches.training_exceptions'),'jugadoras y Dirección no reciben autorización');
+select like(pg_get_functiondef('public.add_match_training_player(uuid,uuid,text,integer)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','la incorporación fija search_path');
+select like(pg_get_functiondef('public.add_match_training_player(uuid,uuid,text,integer)'::regprocedure),'%actor.is_owner or actor.is_coach%current_user_can_edit_match%','la RPC exige rol deportivo y ámbito del partido');
+select like(pg_get_functiondef('public.add_match_training_player(uuid,uuid,text,integer)'::regprocedure),'%license.license_type = ''training''%membership.active_from <= target.match_date%','no admite Sin ficha ni otra fecha de vinculación');
+select like(pg_get_functiondef('public.add_match_training_player(uuid,uuid,text,integer)'::regprocedure),'%lock_match_participation_window%player_has_absence_on%match_participation_player_ids%','respeta bajas y serializa reservas del fin de semana');
+select like(pg_get_functiondef('public.add_match_training_player(uuid,uuid,text,integer)'::regprocedure),'%checked_slot_number%slot_number = checked_slot_number%','una corrección histórica no sustituye un dorsal ocupado');
+select like(pg_get_functiondef('public.player_license_allows_match(uuid,uuid)'::regprocedure),'%effective.license_type = ''training''%player_has_match_training_exception%national_league_starts%','la excepción conserva el límite de seis titularidades');
+select like(pg_get_functiondef('public.guard_match_availability()'::regprocedure),'%new.status = ''available''%is_historical_training_exception_write%related.lineup_published%','solo el contexto acotado incorpora disponibles a una convocatoria cerrada');
+select ok(not public.player_has_match_training_exception('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002'),'no existe autorización implícita para otra ficha o jugadora');
+select ok(not coalesce(public.is_historical_training_exception_write('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002'),false),'fuera de la RPC no se abre una corrección histórica');
+set local role authenticated;
+select throws_ok($$select public.add_match_training_player('00000000-0000-4000-8000-000000000001','00000000-0000-4000-8000-000000000002','Prueba',null)$$,'P0001','Solo el owner o los entrenadores autorizados pueden añadir jugadoras de solo entrenamientos','sin permisos no se concede una excepción');
+reset role;
+
+select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),'%player_has_match_training_exception(match.id,checked_player_id)%','una autorización sin equipo cuenta solo su oportunidad concreta');
 
 select * from finish();
 rollback;

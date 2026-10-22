@@ -14,6 +14,16 @@ export type Database = {
   }
   public: {
     Tables: {
+      match_training_exceptions: {
+        Row: { match_id: string; player_id: string; authorized_by: string; authorized_at: string; reason: string }
+        Insert: { match_id: string; player_id: string; authorized_by: string; authorized_at?: string; reason: string }
+        Update: { match_id?: string; player_id?: string; authorized_by?: string; authorized_at?: string; reason?: string }
+        Relationships: [
+          { foreignKeyName: "match_training_exceptions_match_id_fkey"; columns: ["match_id"]; isOneToOne: false; referencedRelation: "matches"; referencedColumns: ["id"] },
+          { foreignKeyName: "match_training_exceptions_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "match_training_exceptions_authorized_by_fkey"; columns: ["authorized_by"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       work_group_seasons: {
         Row: { season_id: string; members: Json; version: number; updated_by: string | null; updated_at: string }
         Insert: { season_id: string; members?: Json; version?: number; updated_by?: string | null; updated_at?: string }
@@ -1447,6 +1457,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_match_training_player: {
+        Args: { checked_match_id: string; checked_player_id: string; checked_reason: string; checked_slot_number?: number | null }
+        Returns: undefined
+      }
+      player_has_match_training_exception: { Args: { checked_match_id: string; checked_player_id: string }; Returns: boolean }
+      is_historical_training_exception_write: { Args: { checked_match_id: string; checked_player_id: string }; Returns: boolean }
       guard_video_analysis_match_season: { Args: never; Returns: unknown }
       work_group_can_view: { Args: { checked_season_id: string; checked_permission: string }; Returns: boolean }
       work_group_candidates: { Args: { checked_season_id: string }; Returns: { id: string; display_name: string }[] }

@@ -42,3 +42,32 @@ test('does not cache a resolved PostgREST error, allowing JWT recovery and retri
   expect(await cache.load('key', fetcher)).toEqual({ data: ['actual'], error: null })
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
+
+test('retains the last successful value during and after a failed refresh, without suppressing retries', async () => {
+  const cache = new SessionQueryCache(0)
+  await cache.load('section', () => Promise.resolve(['guardado']))
+  const fetcher = vi.fn().mockRejectedValueOnce(new Error('Sin conexión')).mockResolvedValue(['nuevo'])
+  const refresh = cache.load('section', fetcher)
+  expect(cache.peek('section')).toEqual(['guardado'])
+  await expect(refresh).rejects.toThrow('Sin conexión')
+  expect(cache.peek('section')).toEqual(['guardado'])
+  await cache.load('section', fetcher)
+  expect(cache.peek('section')).toEqual(['nuevo'])
+  cache.clear()
+  expect(cache.peek('section')).toBeUndefined()
+})
+
+test('does not duplicate a request that remains pending beyond the freshness interval', async () => {
+  vi.useFakeTimers()
+  const cache = new SessionQueryCache()
+  let resolve!: (value: string[]) => void
+  const fetcher = vi.fn(() => new Promise<string[]>((done) => { resolve = done }))
+  const request = cache.load('section', fetcher)
+  await Promise.resolve()
+  vi.advanceTimersByTime(5 * 60_000)
+  expect(cache.load('section', fetcher)).toBe(request)
+  expect(fetcher).toHaveBeenCalledOnce()
+  resolve(['dato'])
+  await request
+  expect(cache.peek('section')).toEqual(['dato'])
+})

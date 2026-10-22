@@ -67,6 +67,14 @@ describe('MatchLineupDialog', () => {
     expect(screen.queryByText(/prestada de otro equipo/)).not.toBeInTheDocument()
   })
 
+  test('un entrenador convoca a una autorizada de solo entrenamientos sin tratarla como préstamo', () => {
+    const onSave = vi.fn()
+    render(<MatchLineupDialog demo canBorrowFromOtherTeams={false} availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match({ team_id: 'team-1', training_exceptions: [{ player_id: 'player-1' }] })} memberships={[makeMembership({ license_type: 'training', season_team_id: null })]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={onSave} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir' }))
+    expect(screen.getByRole('button', { name: 'Guardar alineación' })).toBeEnabled()
+    expect(screen.queryByText(/prestada de otro equipo/)).not.toBeInTheDocument()
+  })
+
   test('an old available response does not make a training-only player eligible for an official lineup', () => {
     render(<MatchLineupDialog demo availability={[{ match_id: 'match-1', player_id: 'player-1', status: 'available', comment: null, updated_at: new Date().toISOString() }]} entries={[]} match={match()} memberships={[makeMembership({ license_type: 'training', season_team_id: null })]} profiles={[makeProfile()]} onClose={vi.fn()} onSave={vi.fn()} />)
     expect(screen.queryByRole('button', { name: 'Añadir' })).not.toBeInTheDocument()

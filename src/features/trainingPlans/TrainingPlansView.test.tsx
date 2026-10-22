@@ -1,4 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { addDays, formatDate, todayIso } from '../../lib/dates'
@@ -55,6 +57,32 @@ describe('training plan reading view', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  test('keeps a prepared list visible while a stale refresh is pending', async () => {
+    const resources = new SessionQueryCache(0)
+    await resources.load(navigationResourceKeys.trainingPlans(), () => Promise.resolve([plan]))
+    mocks.fetchTrainingPlans.mockImplementation(() => new Promise(() => undefined))
+    render(<TrainingPlansView resources={resources} seasons={[season]} userId="owner-1" onNotify={vi.fn()} />)
+    expect(screen.getByText(plan.title)).toBeInTheDocument()
+    expect(screen.queryByText('Cargando entrenamientos…')).not.toBeInTheDocument()
+  })
+
+  test('a late background response cannot restore a training plan deleted while it was refreshing', async () => {
+    const resources = new SessionQueryCache(0)
+    await resources.load(navigationResourceKeys.trainingPlans(), () => Promise.resolve([plan]))
+    let finishRefresh!: (plans: TrainingPlan[]) => void
+    mocks.fetchTrainingPlans.mockImplementationOnce(() => new Promise<TrainingPlan[]>((resolve) => { finishRefresh = resolve })).mockResolvedValue([])
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+    render(<TrainingPlansView resources={resources} seasons={[season]} userId="owner-1" onNotify={vi.fn()} />)
+    await waitFor(() => expect(mocks.fetchTrainingPlans).toHaveBeenCalledOnce())
+    await user.click(screen.getByRole('button', { name: `Editar entrenamiento ${plan.title}` }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar entrenamiento' }))
+    expect(await screen.findByText('No hay próximos entrenamientos')).toBeInTheDocument()
+    await act(async () => { finishRefresh([plan]) })
+    expect(screen.getByText('No hay próximos entrenamientos')).toBeInTheDocument()
+    expect(resources.peek(navigationResourceKeys.trainingPlans())).toEqual([])
   })
 
   test('loads the local demo plans without querying Supabase', async () => {

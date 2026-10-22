@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageTrainingGroups, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
+import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
   test('training groups preserve read-only access for players and Dirección even if a write key is configured', () => {
@@ -77,5 +77,16 @@ describe('role permissions', () => {
   test('removes every effective permission from disabled profiles', () => {
     const inactiveOwner = makeProfile({ is_owner: true, is_player: false, is_active: false })
     expect(effectivePermissions(inactiveOwner).size).toBe(0)
+  })
+})
+
+describe('autorizaciones de solo entrenamientos', () => {
+  test('solo owner y entrenadores activos con permiso autorizan participaciones', () => {
+    expect(canManageTrainingExceptions(makeProfile({ is_owner: true }))).toBe(true)
+    expect(canManageTrainingExceptions(makeProfile({ is_coach: true }))).toBe(true)
+    expect(canManageTrainingExceptions(makeProfile({ is_coach: true }), [])).toBe(false)
+    expect(canManageTrainingExceptions(makeProfile({ is_coach: true, is_active: false }))).toBe(false)
+    expect(canManageTrainingExceptions(makeProfile({ is_viewer: true }), [PERMISSIONS.matches.trainingExceptions])).toBe(false)
+    expect(canManageTrainingExceptions(makeProfile(), [PERMISSIONS.matches.trainingExceptions])).toBe(false)
   })
 })

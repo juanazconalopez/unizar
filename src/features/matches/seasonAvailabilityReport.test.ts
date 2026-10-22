@@ -13,6 +13,16 @@ const report = (matches: ReturnType<typeof match>[], answers: MatchAvailability[
   seasonAvailabilityReport(matches, answers, member.player_id, [membership], [makeSeasonTeam({ id: 'team-a', is_mixed: mixed })], entries)
 
 describe('disponibilidad por equipo y fin de semana', () => {
+  test('una autorización de solo entrenamientos cuenta solo el partido elegido, también antes de convocar', () => {
+    const a = { ...match('a'), internal_fixture_id: 'derby' }
+    const b = { ...match('b', a.match_date, 'team-b'), internal_fixture_id: 'derby', is_home: false, training_exceptions: [{ player_id: member.player_id }] }
+    const membership = { ...member, season_team_id: null, license_type: 'training' as const }
+    const result = report([a, b], [response(b.id)], [], membership)
+    expect(result.matches).toEqual([b])
+    expect(result.totals).toMatchObject({ eligibleMatches: 1, responded: 1, available: 1 })
+    expect(report([a], [], [], membership).totals.eligibleMatches).toBe(0)
+  })
+
   test('cuenta solo su equipo y no exige responder al otro, aunque lo haya respondido', () => {
     const a = match('a'), b = match('b', '2026-10-18', 'team-b')
     expect(report([a, b], [response(a.id), response(b.id)]).totals).toMatchObject({ eligibleMatches: 1, responded: 1, available: 1, percentage: 100 })

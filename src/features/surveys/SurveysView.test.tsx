@@ -1,9 +1,36 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { SurveysView } from './SurveysView'
+import { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import * as surveysService from '../../services/surveysService'
+import { makeSeason } from '../../test/fixtures'
+import { todayIso } from '../../lib/dates'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('SurveysView draft editor', () => {
+  test('a delayed list refresh cannot hide a newly saved survey', async () => {
+    const resources = new SessionQueryCache(0)
+    const season = makeSeason({ start_date: '2020-01-01', end_date: '2099-12-31' })
+    const saved: surveysService.ManagedSurvey = { id: 'new', seasonId: season.id, title: 'Encuesta recién guardada', description: null, startsOn: todayIso(), endsOn: todayIso(), visibility: 'private', status: 'draft', responses: 0, recipients: 0 }
+    await resources.load(navigationResourceKeys.surveys, () => Promise.resolve([]))
+    let finishRefresh!: (surveys: surveysService.ManagedSurvey[]) => void
+    vi.spyOn(surveysService, 'fetchManageSurveys').mockImplementationOnce(() => new Promise((resolve) => { finishRefresh = resolve })).mockResolvedValue([saved])
+    vi.spyOn(surveysService, 'saveSurveyDraft').mockResolvedValue(saved.id)
+    const user = userEvent.setup()
+    render(<SurveysView resources={resources} isOwner seasons={[season]} />)
+    expect(screen.queryByText('Cargando encuestas…')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Crear encuesta' }))
+    await user.type(screen.getByLabelText('Título'), saved.title)
+    await user.type(screen.getByLabelText('Pregunta 1'), '¿Cómo estás?')
+    await user.click(screen.getByRole('button', { name: 'Guardar borrador' }))
+    expect(await screen.findByRole('button', { name: new RegExp(saved.title) })).toBeInTheDocument()
+    await act(async () => { finishRefresh([]) })
+    expect(screen.getByRole('button', { name: new RegExp(saved.title) })).toBeInTheDocument()
+  })
+
   test('starts every new question as a single-choice question and permits unlimited options', async () => {
     const user = userEvent.setup()
     render(<SurveysView demo isOwner />)

@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react'
+import type { SessionQueryCache } from '../../services/sessionQueryCache'
+import { navigationResourceKeys } from '../../services/navigationResources'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -34,21 +36,23 @@ const demoSurveys: DisplaySurvey[] = [
 const demoPlayers = [{ name: 'Laura Martín', responded: true }, { name: 'Lucía Moreno', responded: false }, { name: 'Marta Pérez', responded: true }]
 const initialQuestions: DraftQuestion[] = [{ id: 1, type: 'single', text: '', options: ['', ''] }]
 
-export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = [] }: { demo?: boolean; initialSurveyId?: string; isOwner: boolean; seasons?: Season[] }) {
-  const initialSurveys = demo ? demoSurveys.filter((survey) => isOwner || survey.visibility !== 'Privada') : []
+export function SurveysView({ resources, demo = false, initialSurveyId, isOwner, seasons = [] }: { resources?: SessionQueryCache; demo?: boolean; initialSurveyId?: string; isOwner: boolean; seasons?: Season[] }) {
+  const prepared = resources?.peek<ManagedSurvey[]>(navigationResourceKeys.surveys)
+  const initialSurveys = demo ? demoSurveys.filter((survey) => isOwner || survey.visibility !== 'Privada') : prepared?.map((survey, index) => toDisplaySurvey(survey, index + 1)) ?? []
   const [surveys, setSurveys] = useState<DisplaySurvey[]>(initialSurveys)
   const [selected, setSelected] = useState<DisplaySurvey | null>(() => initialSurveys.find((survey) => survey.id === initialSurveyId) ?? null)
   const [editor, setEditor] = useState<'create' | 'edit' | null>(null)
   const [editingSurvey, setEditingSurvey] = useState<DisplaySurvey | null>(null)
   const [questions, setQuestions] = useState<DraftQuestion[]>(initialQuestions)
   const [playerQuery, setPlayerQuery] = useState('')
-  const [loading, setLoading] = useState(!demo)
+  const [loading, setLoading] = useState(!demo && !prepared)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [results, setResults] = useState<SurveyResults | null>(null)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
   const [selectedPlayerResults, setSelectedPlayerResults] = useState<SurveyResults | null>(null)
   const [loadingPlayerResults, setLoadingPlayerResults] = useState(false)
+  const listRequest = useRef(0)
   const activeSeason = seasons.find((season) => season.start_date <= todayIso() && season.end_date >= todayIso()) ?? seasons[0]
   const defaultSurveyDate = activeSeason
     ? todayIso() < activeSeason.start_date ? activeSeason.start_date : todayIso() > activeSeason.end_date ? activeSeason.end_date : todayIso()
@@ -61,30 +65,34 @@ export function SurveysView({ demo = false, initialSurveyId, isOwner, seasons = 
 
   async function loadSurveys() {
     if (demo) return
+    const request = ++listRequest.current
     setLoading(true)
     try {
-      const loaded = await fetchManageSurveys()
+      const loaded = await (resources ? resources.load(navigationResourceKeys.surveys, fetchManageSurveys, { force: true }) : fetchManageSurveys())
+      if (request !== listRequest.current) return
       const visible = loaded.map((survey, index) => toDisplaySurvey(survey, index + 1))
       setSurveys(visible)
-      setSelected(visible.find((survey) => survey.id === initialSurveyId) ?? null)
+      setSelected((current) => visible.find((survey) => survey.id === (initialSurveyId ?? current?.id)) ?? null)
     } catch (cause) {
-      setError(errorText(cause))
+      if (request === listRequest.current) setError(errorText(cause))
     } finally {
-      setLoading(false)
+      if (request === listRequest.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     let active = true
     if (demo) return () => { active = false }
-    void fetchManageSurveys().then((loaded) => {
-      if (!active) return
+    const request = ++listRequest.current
+    const isCurrent = () => active && request === listRequest.current
+    void (resources ? resources.load(navigationResourceKeys.surveys, fetchManageSurveys) : fetchManageSurveys()).then((loaded) => {
+      if (!isCurrent()) return
       const visible = loaded.map((survey, index) => toDisplaySurvey(survey, index + 1))
       setSurveys(visible)
-      setSelected(visible.find((survey) => survey.id === initialSurveyId) ?? null)
-    }).catch((cause) => { if (active) setError(errorText(cause)) }).finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [demo, initialSurveyId])
+      setSelected((current) => visible.find((survey) => survey.id === (initialSurveyId ?? current?.id)) ?? null)
+    }).catch((cause) => { if (isCurrent()) setError(errorText(cause)) }).finally(() => { if (isCurrent()) setLoading(false) })
+    return () => { active = false; listRequest.current += 1 }
+  }, [demo, initialSurveyId, resources])
 
   useEffect(() => {
     let active = true

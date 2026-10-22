@@ -154,6 +154,7 @@ export type Match = Omit<Tables<'matches'>, 'completed_at' | 'competition_id' | 
   team_score?: number | null
   opponent_score?: number | null
   report_events_reviewed?: boolean
+  training_exceptions?: { player_id: string }[]
   seasons: { name: string } | null
   season_competitions?: { id: string; name: string; color: string; is_default: boolean; competition_level?: CompetitionLevel; is_league?: boolean; restrict_cross_team_callups?: boolean } | null
   season_teams?: { id: string; name: string; is_mixed: boolean; is_default: boolean; color?: string } | null

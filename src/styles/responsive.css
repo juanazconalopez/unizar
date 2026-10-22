@@ -557,6 +557,14 @@
     width: 100%;
   }
 
+  .availability-response-actions-initial {
+    grid-template-columns: 1fr;
+  }
+
+  .availability-response-actions-initial button.compact {
+    min-height: 46px;
+  }
+
   .availability-groups {
     grid-template-columns: 1fr;
   }

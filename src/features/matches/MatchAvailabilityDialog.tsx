@@ -3,7 +3,10 @@ import type { FormEvent } from 'react'
 import { Avatar } from '../../components/ui/Avatar'
 import { Modal } from '../../components/ui/Modal'
 import { errorText } from '../../lib/errors'
-import type { AvailabilityStatus, Match, MatchAvailability, Profile } from '../../types'
+import type { AvailabilityStatus, Match, MatchAvailability, MatchLineup, Profile } from '../../types'
+import { todayInMadridIso } from '../../lib/dates'
+import { hasTrainingMatchException } from '../../lib/playerLicenses'
+import { TrainingPlayerExceptionDialog } from './TrainingPlayerExceptionDialog'
 import { matchTitle } from './matchPresentation'
 
 const groups: { status: AvailabilityStatus | 'unanswered'; title: string; empty: string }[] = [
@@ -13,23 +16,35 @@ const groups: { status: AvailabilityStatus | 'unanswered'; title: string; empty:
   { status: 'unanswered', title: 'Sin responder', empty: 'Todas las jugadoras han respondido.' },
 ]
 
-export function MatchAvailabilityDialog({ availability, canEdit = false, eligibleProfiles, match, profiles, onClose, onSave }: {
+export function MatchAvailabilityDialog({ availability, canEdit = false, eligibleProfiles, match, profiles, lineup = [], trainingProfiles = [], pairedMatch, onSelectMatch, onAddTrainingPlayer, onClose, onSave }: {
   availability: MatchAvailability[]
   canEdit?: boolean
   eligibleProfiles: Profile[]
   match: Match
   profiles: Profile[]
+  lineup?: MatchLineup[]
+  trainingProfiles?: Profile[]
+  pairedMatch?: Match
+  onSelectMatch?: (match: Match) => void
+  onAddTrainingPlayer?: (playerId: string, reason: string, slotNumber?: number) => Promise<void>
   onClose: () => void
   onSave?: (playerId: string, status: AvailabilityStatus, comment: string) => Promise<void>
 }) {
   const titleId = useId()
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null)
-  const editable = canEdit && !match.lineup_published
+  const [addingTrainingPlayer, setAddingTrainingPlayer] = useState(false)
+  const editable = canEdit && !match.lineup_published && match.status === 'published'
+  const historical = match.lineup_published && match.match_date <= todayInMadridIso()
+  const candidates = trainingProfiles.filter((player) => historical
+    ? !lineup.some((entry) => entry.player_id === player.id)
+    : !hasTrainingMatchException(match, player.id))
   const profilesById = new Map(profiles.map((profile) => [profile.id, profile]))
   const respondedIds = new Set(availability.map((item) => item.player_id))
 
   return <Modal className="availability-details-dialog" labelledBy={titleId} onClose={onClose}>
     <div className="task-detail-heading"><div><span className="eyebrow">DISPONIBILIDAD DEL EQUIPO</span><h2 id={titleId}>{matchTitle(match)}</h2><p>{availability.length} {availability.length === 1 ? 'respuesta recibida' : 'respuestas recibidas'}</p></div><button aria-label="Cerrar" className="icon-button" onClick={onClose}>×</button></div>
+    {pairedMatch && onSelectMatch && <div aria-label="Equipos del derbi" className="match-report-team-tabs" role="tablist">{[match, pairedMatch].sort((a, b) => Number(b.is_home) - Number(a.is_home)).map((team) => <button aria-selected={team.id === match.id} className="secondary-button compact" key={team.id} onClick={() => { setAddingTrainingPlayer(false); setEditingPlayerId(null); onSelectMatch(team) }} role="tab" type="button">{team.season_teams?.name ?? (team.is_home ? 'Equipo local' : 'Equipo visitante')}</button>)}</div>}
+    {onAddTrainingPlayer && ['published', 'completed'].includes(match.status) && <div className="availability-exception-action"><button className="secondary-button" disabled={!historical && (match.lineup_published || pairedMatch?.lineup_published)} onClick={() => setAddingTrainingPlayer(true)} type="button">Añadir de solo entrenamientos</button>{historical && <p>Para incorporar a una jugadora al acta, indica el dorsal con el que participó.</p>}</div>}
     {canEdit && match.lineup_published && <div className="availability-locked"><strong>Edición de disponibilidad cerrada</strong><span>Desbloquea primero la convocatoria para registrar cambios comunicados por las jugadoras.</span></div>}
     <div className="availability-groups">{groups.map((group) => {
       const responses = group.status === 'unanswered'
@@ -40,10 +55,11 @@ export function MatchAvailabilityDialog({ availability, canEdit = false, eligibl
         <div>{responses.length ? responses.map((response) => {
           const profile = profilesById.get(response.player_id)
           const name = profile?.display_name ?? 'Jugadora no disponible'
-          return <article key={response.player_id}><Avatar name={name} /><div><strong>{name}</strong>{response.comment && <p>{response.comment}</p>}</div>{editable && eligibleProfiles.some((person) => person.id === response.player_id) && onSave && <button className="secondary-button compact" onClick={() => setEditingPlayerId(response.player_id)} type="button">Editar</button>}</article>
+          return <article key={response.player_id}><Avatar name={name} /><div><strong>{name}</strong>{hasTrainingMatchException(match, response.player_id) && <small>Solo entrenamientos · Autorizada para este partido</small>}{response.comment && <p>{response.comment}</p>}</div>{editable && eligibleProfiles.some((person) => person.id === response.player_id) && onSave && <button className="secondary-button compact" onClick={() => setEditingPlayerId(response.player_id)} type="button">Editar</button>}</article>
         }) : <p className="availability-empty">{group.empty}</p>}</div>
       </section>
     })}</div>
+    {addingTrainingPlayer && onAddTrainingPlayer && <TrainingPlayerExceptionDialog key={match.id} historical={historical} lineup={lineup} match={match} players={candidates} onClose={() => setAddingTrainingPlayer(false)} onSave={onAddTrainingPlayer} />}
     {editingPlayerId && onSave && <CoachAvailabilityDialog
       initial={availability.find((item) => item.player_id === editingPlayerId)}
       match={match}

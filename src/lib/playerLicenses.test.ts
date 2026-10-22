@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countNationalLeagueStarts, licenseAllowsTeam, lineupLicenseWarnings, matchAvailabilityRestriction, matchLicenseRestriction } from './playerLicenses'
+import { countNationalLeagueStarts, trainingExceptionCandidates, licenseAllowsTeam, lineupLicenseWarnings, matchAvailabilityRestriction, matchLicenseRestriction } from './playerLicenses'
 import { makeMatch, makeMembership, makeProfile } from '../test/fixtures'
 import type { MatchLineup, PlayerLicenseType } from '../types'
 
@@ -7,6 +7,23 @@ const competition = { id: 'competition-1', name: 'Liga nacional', color: 'blue',
 const lineup: MatchLineup = { match_id: 'match-1', player_id: 'player-1', slot_number: 1, role: 'starter', position: null, sort_order: 1, updated_at: '2026-09-01T12:00:00Z' }
 
 describe('fichas deportivas', () => {
+  it('autoriza solo la jugadora y ficha del partido elegido, sin habilitar Sin ficha', () => {
+    const match = makeMatch({ training_exceptions: [{ player_id: 'player-1' }] })
+    const membership = makeMembership({ license_type: 'training', season_team_id: null })
+    expect(matchAvailabilityRestriction(match, [membership], 'player-1')).toBeNull()
+    expect(matchLicenseRestriction({ ...match, season_competitions: competition }, [membership], 'player-1')).toBeNull()
+    expect(matchLicenseRestriction(makeMatch({ id: 'other' }), [membership], 'player-1')).toMatch(/amistosos/)
+    expect(matchLicenseRestriction({ ...match, training_exceptions: [{ player_id: 'other' }] }, [membership], 'player-1')).toMatch(/amistosos/)
+    expect(matchAvailabilityRestriction(match, [{ ...membership, license_type: 'none' }], 'player-1')).toMatch(/Regional o Nacional/)
+    expect(matchAvailabilityRestriction(match, [{ ...membership, active_until: '2000-01-01' }], 'player-1')).toMatch(/vinculada/)
+    expect(matchLicenseRestriction(match, [{ ...membership, national_starts: 6 }], 'player-1')).toMatch(/seis titularidades/)
+  })
+  it('ofrece únicamente jugadoras activas de solo entrenamientos vinculadas en la fecha', () => {
+    const players = [makeProfile(), makeProfile({ id: 'regional' }), makeProfile({ id: 'archived', is_archived: true }), makeProfile({ id: 'expired' }), makeProfile({ id: 'coach', is_player: false, is_coach: true })]
+    const memberships = players.map((player) => makeMembership({ player_id: player.id, license_type: player.id === 'regional' ? 'regional' : 'training', season_team_id: null, active_until: player.id === 'expired' ? '2000-01-01' : null }))
+    expect(trainingExceptionCandidates(makeMatch(), memberships, players).map((player) => player.id)).toEqual(['player-1'])
+  })
+
   it.each(['none', 'training'] as PlayerLicenseType[])('%s permite convocatorias amistosas, pero no oficiales', (license_type) => {
     const membership = makeMembership({ license_type, season_team_id: null })
     expect(licenseAllowsTeam(license_type)).toBe(false)

@@ -1,7 +1,7 @@
 import type { Profile, ViewName } from '../types'
 import { preloadableView } from '../lib/preloadableView'
-import { canAccessView } from './appAccess'
 import { canManageSport } from '../lib/permissions'
+import { navigationPreloadTargets, prepareNavigationQueue } from './navigationPreparation'
 
 const modules = {
   home: () => import('../features/dashboard/Dashboard'),
@@ -72,9 +72,6 @@ export function preloadView(view: ViewName, profile?: Profile, permissionKeys?: 
 }
 
 export async function preloadAccessibleViews(profile: Profile, permissionKeys: readonly string[], cancelled: () => boolean) {
-  const priority: ViewName[] = ['calendar', 'matches', 'attendance', 'training-groups', 'home', 'training', 'statistics', 'library', 'competition', 'surveys', 'settings']
-  const allowed = priority.filter((view) => canAccessView(profile, view, permissionKeys))
-  for (let index = 0; index < allowed.length && !cancelled(); index += 2) {
-    await Promise.all(allowed.slice(index, index + 2).map((view) => preloadView(view, profile, permissionKeys)))
-  }
+  const allowed = navigationPreloadTargets(profile, permissionKeys)
+  await prepareNavigationQueue(allowed, (view) => preloadView(view, profile, permissionKeys), cancelled)
 }

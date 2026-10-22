@@ -61,6 +61,25 @@ describe('MatchReportDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(onSaveDerby).toHaveBeenCalledExactlyOnceWith(home, away, expect.objectContaining({ scores: { team: 46, opponent: 7 }, events: [expect.objectContaining({ player_id: 'player-1' })] }), expect.objectContaining({ scores: { team: 7, opponent: 46 }, events: [expect.objectContaining({ player_id: 'away-player-1' })] })))
   })
+  test('conserva el listado del B cuando falta el dorsal 17 e identifica la pestaña pendiente', async () => {
+    const home = { ...match, id: 'home-match', internal_fixture_id: 'fixture' }
+    const away = { ...match, id: 'away-match', internal_fixture_id: 'fixture', is_home: false }
+    const awayLineup = lineup.map((entry) => ({ ...entry, match_id: away.id, player_id: `away-${entry.player_id}` }))
+    const people = [...profiles, makeProfile({ id: 'away-player-1', display_name: 'Nerea Andrés' }), makeProfile({ id: 'away-player-2', display_name: 'Nuria Cabello' })]
+    vi.mocked(readMatchReportPdf).mockResolvedValue({ ...parsed, events: { home: parsed.events.home, away: [{ type: 'substitution', dorsal: 1, replacementDorsal: 17, minute: 40 }] } })
+    render(<MatchReportDialog match={home} pairedMatch={away} lineup={lineup} pairedLineup={awayLineup} profiles={people} onClose={vi.fn()} onSave={vi.fn()} onSaveDerby={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Importar acta PDF (opcional)'), { target: { files: [pdf()] } })
+    await screen.findByText(/Revisa la pestaña Equipo visitante/)
+    fireEvent.click(screen.getByRole('tab', { name: 'Equipo visitante' }))
+    const preview = screen.getByRole('region', { name: 'Vista previa de minutos' })
+    expect(preview).toHaveTextContent('Nerea Andrés')
+    expect(preview).toHaveTextContent('Nuria Cabello')
+    expect(within(preview).getAllByText('Pendiente')).toHaveLength(2)
+    expect(screen.getByText(/Equipo visitante, evento 1: Dorsal 1 → 17/)).toBeInTheDocument()
+    expect(screen.queryByText(/Revisa la pestaña Equipo local/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled()
+  })
+
   test('records manual changes and reentries without selecting a PDF', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
     render(<MatchReportDialog match={match} lineup={lineup} profiles={profiles} onClose={vi.fn()} onSave={onSave} />)

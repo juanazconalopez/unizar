@@ -2,7 +2,7 @@ import { todayIso } from './lib/dates'
 import { licenseLabel, membershipLicense } from './lib/playerLicenses'
 import { Suspense, useEffect } from 'react'
 import { AppViewRouter } from './app/AppViewRouter'
-import { PlayerPreviewView, preloadAccessibleViews, preloadView } from './app/viewModules'
+import { PlayerPreviewView, preloadView } from './app/viewModules'
 import { createAnnouncementActions } from './app/actions/announcementActions'
 import type { AppActions } from './app/actions/appActions'
 import { createClubActions } from './app/actions/clubActions'
@@ -19,7 +19,7 @@ import { useNotifications } from './hooks/useNotifications'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useOperationFeedback } from './hooks/useOperationFeedback'
 import { useTrainingData } from './hooks/useTrainingData'
-import { canManageSport, canViewTeamData, isPlayer } from './lib/permissions'
+import { canManageSport, canViewTeamData, hasPermission, isPlayer, PERMISSIONS } from './lib/permissions'
 import './App.css'
 
 function App() {
@@ -29,21 +29,12 @@ function App() {
   const online = useOnlineStatus()
   const data = useTrainingData(auth.session, view)
   const notifications = useNotifications(data.profile, auth.session?.user.id, data.ownProfileDetails, data.permissionKeys)
-  const competition = useCompetitionData(view === 'competition' && Boolean(auth.session), Boolean(data.profile?.is_owner))
+  const competition = useCompetitionData(Boolean(data.profile && data.loadedUserId === auth.session?.user.id && hasPermission(data.profile, PERMISSIONS.competition.view, data.permissionKeys)), Boolean(data.profile?.is_owner && view === 'competition'), data.resources)
   const userId = auth.session?.user.id
 
   useEffect(() => {
     if (userId && data.profile) void preloadView(view, data.profile, data.permissionKeys)
   }, [data.permissionKeys, data.profile, userId, view])
-
-  useEffect(() => {
-    if (!data.profile || data.loadedUserId !== userId) return
-    let cancelled = false
-    const timer = window.setTimeout(() => {
-      void preloadAccessibleViews(data.profile!, data.permissionKeys, () => cancelled)
-    }, 0)
-    return () => { cancelled = true; window.clearTimeout(timer) }
-  }, [data.loadedUserId, data.permissionKeys, data.profile, userId])
 
   async function reloadData() {
     await Promise.all([data.reload(), notifications.reload()])
@@ -91,6 +82,8 @@ function App() {
   }
   if (data.profile.is_archived || (data.profile.is_approved && !data.profile.is_active)) return <DisabledScreen name={data.profile.display_name} onSignOut={handleSignOut} />
   if (!data.profile.is_approved) return <PendingScreen name={data.profile.display_name} onSignOut={handleSignOut} />
+
+  if (!data.navigationReady) return <LoadingScreen />
 
   const profile = data.profile
   const canManage = canManageSport(profile, data.permissionKeys)

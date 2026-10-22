@@ -34,6 +34,17 @@ describe('useCompetitionData', () => {
     expect(fetchCompetitionSeasonData).toHaveBeenCalledWith('competition-2024-25')
   })
 
+  test('reopening the section reuses the prepared season without downloading it again', async () => {
+    const { result, rerender } = renderHook(({ enabled }) => useCompetitionData(enabled, false), { initialProps: { enabled: true } })
+    await waitFor(() => expect(result.current.fixtures).toEqual([]))
+    await waitFor(() => expect(fetchCompetitionSeasonData).toHaveBeenCalledOnce())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    rerender({ enabled: false }); rerender({ enabled: true })
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)) })
+    expect(fetchCompetitionSeasons).toHaveBeenCalledOnce()
+    expect(fetchCompetitionSeasonData).toHaveBeenCalledOnce()
+  })
+
   test('lets the owner synchronize and reload the persisted snapshot', async () => {
     const { result } = renderHook(() => useCompetitionData(true, true))
     await waitFor(() => expect(result.current.seasons).toHaveLength(1))

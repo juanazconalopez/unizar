@@ -1,5 +1,5 @@
 import type { Match, MatchLineup, PlayerLicenseType, Profile, SeasonPlayer } from '../types'
-import { membershipCoversDate } from './selectors'
+import { activePlayers, membershipCoversDate } from './selectors'
 
 export const PLAYER_LICENSES: Array<{ value: PlayerLicenseType; label: string }> = [
   { value: 'none', label: 'Sin ficha' }, { value: 'training', label: 'Solo entrenamientos' },
@@ -14,25 +14,37 @@ export function licenseAllowsTeam(type: PlayerLicenseType) { return type === 're
 // La RPC siempre devuelve un tipo explícito en producción, incluso «none».
 export function membershipLicense(membership: SeasonPlayer): PlayerLicenseType { return membership.license_type ?? 'regional' }
 
+export function hasTrainingMatchException(match: Match, playerId: string) {
+  return match.training_exceptions?.some((entry) => entry.player_id === playerId) ?? false
+}
+
+export function trainingExceptionCandidates(match: Match, memberships: SeasonPlayer[], profiles: Profile[]) {
+  return activePlayers(profiles).filter((profile) => memberships.some((membership) => membership.player_id === profile.id
+    && membership.season_id === match.season_id && membershipCoversDate(membership, match.match_date)
+    && membershipLicense(membership) === 'training' && !membership.season_team_id))
+    .sort((a, b) => a.display_name.localeCompare(b.display_name, 'es'))
+}
+
 export function matchLicenseRestriction(match: Match, memberships: SeasonPlayer[], playerId: string): string | null {
   const membership = memberships.find((item) => item.player_id === playerId && item.season_id === match.season_id && membershipCoversDate(item, match.match_date))
   if (!membership) return 'No está vinculada a la temporada en la fecha del partido.'
   // La ficha vigente no impide corregir una convocatoria de un partido finalizado.
   if (match.match_kind === 'friendly' || match.status === 'completed') return null
   const type = membershipLicense(membership)
-  if (!licenseAllowsTeam(type)) return 'La ficha solo permite participar en amistosos.'
+  const trainingException = type === 'training' && hasTrainingMatchException(match, playerId)
+  if (!licenseAllowsTeam(type) && !trainingException) return 'La ficha solo permite participar en amistosos.'
   const level = match.season_competitions?.competition_level ?? 'regional'
-  if (level === 'national' && type !== 'national') return 'Este partido requiere ficha Nacional.'
+  if (level === 'national' && type !== 'national' && !trainingException) return 'Este partido requiere ficha Nacional.'
   if (level === 'regional' && (membership.national_starts ?? 0) >= 6) return 'No puede jugar regional: acumula seis titularidades en liga nacional esta temporada.'
   return null
 }
 
 // Consultar un partido no exige ficha deportiva ni pertenecer a su equipo.
-// Responder disponibilidad sí exige Regional/Nacional, también en amistosos.
+// Para responder se necesita Regional/Nacional o una autorización de Solo entrenamientos para esta ficha.
 export function matchAvailabilityRestriction(match: Match, memberships: SeasonPlayer[], playerId: string): string | null {
   const membership = memberships.find((item) => item.player_id === playerId && item.season_id === match.season_id && membershipCoversDate(item, match.match_date))
   if (!membership) return 'No está vinculada a la temporada en la fecha del partido.'
-  if (!licenseAllowsTeam(membershipLicense(membership))) return 'Puedes consultar el partido y la convocatoria. Para responder disponibilidad necesitas ficha Regional o Nacional.'
+  if (!licenseAllowsTeam(membershipLicense(membership)) && !(membershipLicense(membership) === 'training' && hasTrainingMatchException(match, playerId))) return 'Puedes consultar el partido y la convocatoria. Para responder disponibilidad necesitas ficha Regional o Nacional.'
   return matchLicenseRestriction(match, memberships, playerId)
 }
 
