@@ -3,7 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
-import { checkRelease, nextReleaseVersion, prepareRelease, publishRelease } from './automaticRelease.ts'
+import { checkRelease, prepareRelease, publishRelease } from './automaticRelease.ts'
+import { updateCommitVersion } from './commitVersion.ts'
 
 const directories: string[] = []
 afterEach(() => {
@@ -38,46 +39,32 @@ function changeMain(work: string) {
   git(work, 'reset', '--hard', 'origin/main')
   writeFileSync(join(work, 'app.txt'), 'new app\n')
   git(work, 'add', 'app.txt')
+  updateCommitVersion(work)
   git(work, 'commit', '--quiet', '-m', 'Next main change')
   git(work, 'push', '--quiet', 'origin', 'main')
   return git(work, 'rev-parse', 'HEAD')
 }
 
-describe('automatic release numbering', () => {
-  test.each([
-    ['1.0.0', null, '1.0.1'],
-    ['1.0.0', '1.0.0', '1.0.1'],
-    ['1.0.0', '1.0.9', '1.0.10'],
-    ['1.1.0', '1.0.9', '1.1.0'],
-    ['2.0.0', '1.9.99', '2.0.0'],
-    ['1.0.0', '2.0.0', '2.0.1'],
-  ])('uses main %s and previous release %s to prepare %s', (source, previous, expected) => {
-    expect(nextReleaseVersion(source, previous)).toBe(expected)
-  })
-
-  test.each(['1.0', '1.0.1-beta', '01.0.0', '1.0.9007199254740992'])('rejects unsupported version %s', (version) => {
-    expect(() => nextReleaseVersion(version, null)).toThrow('Versión no válida')
-  })
-})
-
 describe('automatic release against a real Git repository', () => {
-  test('creates release with synchronized versions in main and release', () => {
+  test('publica la versión del commit sin generar otro commit en main', () => {
     const repo = repository()
     expect(checkRelease(repo.work, repo.sourceSha).ready).toBe(true)
     const status = prepareRelease(repo.work, repo.sourceSha)
     expect(status.ready).toBe(true)
     if (!status.ready) throw new Error('Missing release candidate')
-    expect(status.candidate.version).toBe('1.0.1')
+    expect(status.candidate.version).toBe('1.0.0')
+    expect(git(repo.work, 'status', '--porcelain')).toBe('')
     expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.0"')
     expect(git(repo.remote, 'ls-remote', '.', 'refs/heads/release')).toBe('')
     expect(publishRelease(repo.work, status.candidate).published).toBe(true)
-    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.1"')
-    expect(git(repo.remote, 'show', 'main:package-lock.json')).toContain('"version": "1.0.1"')
+    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.0"')
+    expect(git(repo.remote, 'show', 'main:package-lock.json')).toContain('"version": "1.0.0"')
     expect(git(repo.remote, 'show', 'main:app.txt')).toBe('initial app')
-    expect(git(repo.remote, 'rev-parse', 'main^')).toBe(repo.sourceSha)
+    expect(git(repo.remote, 'rev-parse', 'main')).toBe(repo.sourceSha)
+    expect(git(repo.remote, 'rev-parse', 'main^{tree}')).toBe(git(repo.remote, 'rev-parse', 'release^{tree}'))
     const pkg = JSON.parse(git(repo.remote, 'show', 'release:package.json'))
     const lock = JSON.parse(git(repo.remote, 'show', 'release:package-lock.json'))
-    expect([pkg.version, lock.version, lock.packages[''].version]).toEqual(['1.0.1', '1.0.1', '1.0.1'])
+    expect([pkg.version, lock.version, lock.packages[''].version]).toEqual(['1.0.0', '1.0.0', '1.0.0'])
     expect(git(repo.remote, 'show', 'release:app.txt')).toBe('initial app')
     expect(git(repo.remote, 'show', '-s', '--format=%B', 'release')).toContain(`Unizar-Source-Commit: ${git(repo.remote, 'rev-parse', 'main')}`)
   })
@@ -104,11 +91,11 @@ describe('automatic release against a real Git repository', () => {
     const nextSource = changeMain(repo.work)
     const next = prepareRelease(repo.work, nextSource)
     if (!next.ready) throw new Error('Missing next candidate')
-    expect(next.candidate.version).toBe('1.0.2')
+    expect(next.candidate.version).toBe('1.0.1')
     expect(publishRelease(repo.work, next.candidate).published).toBe(true)
     expect(git(repo.remote, 'merge-base', '--is-ancestor', firstRelease, 'release')).toBe('')
     expect(git(repo.remote, 'show', 'release:app.txt')).toBe('new app')
-    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.2"')
+    expect(git(repo.remote, 'show', 'main:package.json')).toContain('"version": "1.0.1"')
     expect(git(repo.remote, 'show', 'main:app.txt')).toBe('new app')
   })
 
@@ -159,7 +146,7 @@ describe('automatic release against a real Git repository', () => {
     const status = prepareRelease(repo.work, repo.sourceSha)
     if (!status.ready) throw new Error('Missing release candidate')
     writeFileSync(join(repo.work, 'app.txt'), 'unexpected modification\n')
-    expect(() => publishRelease(repo.work, status.candidate)).toThrow('solo puede modificar')
+    expect(() => publishRelease(repo.work, status.candidate)).toThrow('cambios locales')
     expect(git(repo.remote, 'ls-remote', '.', 'refs/heads/release')).toBe('')
   })
 
@@ -195,10 +182,32 @@ describe('automatic release against a real Git repository', () => {
     expect(run('check').status).toBe(0)
     expect(readFileSync(output, 'utf8')).toContain('ready=true')
     expect(run('prepare').status).toBe(0)
-    expect(readFileSync(output, 'utf8')).toContain('version=1.0.1\nprevious_release_sha=\n')
-    expect(run('publish', { UNIZAR_RELEASE_VERSION: '1.0.1', UNIZAR_PREVIOUS_RELEASE_SHA: '' }).status).toBe(0)
-    expect(JSON.parse(git(repo.remote, 'show', 'release:package.json')).version).toBe('1.0.1')
-    expect(JSON.parse(git(repo.remote, 'show', 'main:package.json')).version).toBe('1.0.1')
+    expect(readFileSync(output, 'utf8')).toContain('version=1.0.0\nprevious_release_sha=\n')
+    expect(run('publish', { UNIZAR_RELEASE_VERSION: '1.0.0', UNIZAR_PREVIOUS_RELEASE_SHA: '' }).status).toBe(0)
+    expect(JSON.parse(git(repo.remote, 'show', 'release:package.json')).version).toBe('1.0.0')
+    expect(JSON.parse(git(repo.remote, 'show', 'main:package.json')).version).toBe('1.0.0')
     expect(git(repo.remote, 'show', 'main:app.txt')).toBe('initial app')
+  })
+
+  test('rechaza publicar código distinto sin haber incrementado la versión en el commit', () => {
+    const repo = repository()
+    const first = prepareRelease(repo.work, repo.sourceSha)
+    if (!first.ready) throw new Error('Missing candidate')
+    publishRelease(repo.work, first.candidate)
+    writeFileSync(join(repo.work, 'app.txt'), 'unversioned change\n')
+    git(repo.work, 'add', 'app.txt')
+    git(repo.work, 'commit', '--quiet', '-m', 'Skipped version hook')
+    git(repo.work, 'push', '--quiet', 'origin', 'main')
+    expect(() => checkRelease(repo.work, git(repo.work, 'rev-parse', 'HEAD'))).toThrow('versión superior')
+  })
+
+  test('no vuelve a desplegar un commit que solo cambia el mensaje', () => {
+    const repo = repository()
+    const first = prepareRelease(repo.work, repo.sourceSha)
+    if (!first.ready) throw new Error('Missing candidate')
+    publishRelease(repo.work, first.candidate)
+    git(repo.work, 'commit', '--quiet', '--allow-empty', '-m', 'Message only')
+    git(repo.work, 'push', '--quiet', 'origin', 'main')
+    expect(checkRelease(repo.work, git(repo.work, 'rev-parse', 'HEAD')).ready).toBe(false)
   })
 })

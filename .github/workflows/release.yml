@@ -9,26 +9,14 @@ permissions:
   contents: read
 
 jobs:
-  wait:
-    name: Agrupar cambios durante 10 minutos
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    concurrency:
-      group: unizar-release-wait
-      cancel-in-progress: true
-    steps:
-      - name: Esperar por si llegan más commits
-        run: sleep 600
-
   publish:
     name: Validar y preparar release
-    needs: wait
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: write
-    # Una publicación en marcha termina; las esperas de nuevos pushes son independientes.
+    # Una publicación en marcha termina y comprueba de nuevo el último SHA antes de enviar.
     concurrency:
       group: unizar-release-publish
       cancel-in-progress: false
@@ -43,37 +31,33 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
-      - name: Comprobar si sigue pendiente este commit
+      - name: Comprobar commit y versión
         id: candidate
-        run: node scripts/automaticRelease.ts check
+        run: node scripts/automaticRelease.ts prepare
       - name: Instalar dependencias del lockfile
         if: steps.candidate.outputs.ready == 'true'
         run: npm ci
-      - name: Preparar la versión siguiente
-        if: steps.candidate.outputs.ready == 'true'
-        id: version
-        run: node scripts/automaticRelease.ts prepare
       - name: Pruebas
-        if: steps.version.outputs.ready == 'true'
+        if: steps.candidate.outputs.ready == 'true'
         run: npm test -- --run --maxWorkers=2
       - name: ESLint
-        if: steps.version.outputs.ready == 'true'
+        if: steps.candidate.outputs.ready == 'true'
         run: npm run lint
       - name: Build y presupuesto de arranque
-        if: steps.version.outputs.ready == 'true'
+        if: steps.candidate.outputs.ready == 'true'
         env:
           # Solo se usan para validar el build. Cloudflare conserva sus variables reales.
           VITE_SUPABASE_URL: https://supabase.test
           VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
         run: npm run build
       - name: Comprobar espacios del diff
-        if: steps.version.outputs.ready == 'true'
+        if: steps.candidate.outputs.ready == 'true'
         run: git diff --check
       - name: Enviar la publicación a release
-        if: steps.version.outputs.ready == 'true'
+        if: steps.candidate.outputs.ready == 'true'
         env:
-          UNIZAR_RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          UNIZAR_PREVIOUS_RELEASE_SHA: ${{ steps.version.outputs.previous_release_sha }}
+          UNIZAR_RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          UNIZAR_PREVIOUS_RELEASE_SHA: ${{ steps.candidate.outputs.previous_release_sha }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

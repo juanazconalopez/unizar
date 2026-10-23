@@ -227,51 +227,50 @@ autorizada de Google continúa siendo el callback de Supabase, no la URL de Clou
 
 ### Versionado y publicación automática
 
-`.github/workflows/release.yml` se activa al hacer push a `main` y también permite
-una ejecución manual desde Actions, seleccionando `main`. Espera diez minutos;
-un nuevo push cancela la espera anterior y comienza otra. Al terminar, un único
-proceso prepara la siguiente versión y ejecuta pruebas, lint, build y revisión
-del diff antes de enviar el código a `release`. Las comprobaciones habituales de
-`quality.yml` siguen ejecutándose en cada push y PR.
+`npm ci` instala el hook `.githooks/pre-commit`. En un clon existente se puede
+activar también con `npm run setup:hooks`. Se conserva cualquier configuración
+de hooks ajena al proyecto: si existe, hay que integrar ambos antes de activarlo.
 
-`scripts/automaticRelease.ts` incrementa el patch de la última versión preparada:
-1.0.0 → 1.0.1 → 1.0.2. La primera publicación parte del número de `main` y lo
-incrementa si todavía no existe `release`. Si se establece en `main` una versión
-superior, por ejemplo 1.1.0 o 2.0.0, esa pasa a ser la siguiente publicación.
-Actualiza conjuntamente `package.json` y `package-lock.json` y publica el mismo
-commit de versión en `main` y `release`. Así, `git pull` en `main` descarga el
-número que se está desplegando. El commit generado registra su origen mediante
-`Unizar-Source-Commit` y conserva el historial de ambas ramas. Los dos refs se
-envían atómicamente: si cualquiera cambió durante la publicación, no se actualiza
-ninguno.
+Al hacer un commit local con cambios preparados, el hook incrementa el patch
+(1.0.11 → 1.0.12), actualiza `package.json` y los dos campos de versión raíz de
+`package-lock.json`, y añade únicamente esos archivos al mismo commit. No hace
+falta ejecutar `npm version patch` ni crear un commit adicional. Funciona con Git
+y con los editores que ejecutan sus hooks; utiliza Node 24 y carga nvm si hace falta.
+No instala dependencias ni ejecuta las pruebas durante el commit.
 
-Antes de preparar la versión y justo antes de enviarla se comprueba que el SHA
-siga siendo el último de `main`. Si llegaron otros commits, la ejecución antigua
-termina sin publicar. Repetir el mismo SHA no crea otra versión. Si falla una
-comprobación, no se envía a `release`; si falla el despliegue posterior de
-Cloudflare, reintentar ese build en el panel conserva el mismo número.
+Si un commit falla después de preparar la versión, reintentarlo conserva ese
+número. Los commits sin cambios preparados no incrementan la versión. Si los
+package files contienen cambios de dependencias sin preparar, el hook detiene
+el commit para que no se incluyan por accidente: prepara esos cambios primero.
+Los demás cambios locales que no se hayan preparado se conservan fuera del commit.
+Para un salto minor o major, ejecuta `npm version minor --no-git-tag-version` o
+`npm version major --no-git-tag-version` y prepara ambos archivos; el hook
+respeta el número superior que hayas elegido.
 
-Para activar el flujo por primera vez:
+Cada push a `main` activa `.github/workflows/release.yml` directamente, sin una
+espera fija. Ejecuta pruebas, lint, build y revisión del diff y envía a `release`
+exactamente la versión incluida en el commit. `quality.yml` comprueba los PR y
+las ejecuciones manuales; no repite automáticamente las validaciones de `main`.
+Continúa siendo necesario el tiempo de las comprobaciones y del despliegue de
+Cloudflare. La automatización no incrementa la versión de nuevo ni escribe en `main`.
 
-1. Si todavía no existe `release`, crearla a partir del último código de `main`
-   que ya esté publicado. Esto permite seleccionar la rama de producción antes
-   del primer push con la automatización. No incluir cambios locales ni forzar el push.
-2. En Cloudflare → Workers & Pages → unizar → Settings → Builds, seleccionar
-   **Production branch: release** y desmarcar **Builds for non-production branches**.
-   Conservar `npm run build`, `npx wrangler deploy` y las variables reales de Supabase.
-   La desactivación de builds de otras ramas evita que los pushes a `main` se
-   desplieguen antes de la espera, también en la configuración antigua de previews.
-3. Subir los cambios del workflow y los scripts a `main`. En Actions, comprobar
-   que **Publicación automática** prepara una única versión tras la espera y
-   las comprobaciones, y que Cloudflare despliega `release`. El workflow usa el token temporal
-   de GitHub con `contents: write` solo en el job de publicación; no necesita un
-   token de Cloudflare en GitHub. Si existen reglas de protección sobre `release`,
-   deben permitir el push de la automatización.
+`scripts/automaticRelease.ts` conserva el historial de `release` sin forzar pushes
+y registra `Unizar-Source-Commit`. Comprueba que el SHA siga siendo el último de
+`main` antes de validar y justo antes de publicar. Repetir un SHA o publicar el
+mismo contenido no crea otra publicación. Si falla una comprobación, no se envía
+a `release`; reintentar un build de Cloudflare conserva el mismo número.
 
-Hasta seleccionar `release` en Cloudflare, la configuración anterior de `main`
-puede seguir desplegando cada push. Los builds de comprobación en GitHub usan
-valores ficticios de Supabase; el build real se realiza en Cloudflare con sus
-variables existentes. No guardar tokens o URLs de deploy hooks en el repositorio.
+Los hooks locales no se ejecutan al editar desde la web de GitHub o al omitirlos
+con Git. CI comprueba que los package files coincidan y que la versión sea
+superior a la anterior antes de publicar código distinto.
+
+Cloudflare debe tener **Production branch: release** y **Builds for non-production
+branches** desactivado. Se conservan `npm run build`, `npx wrangler deploy` y las
+variables reales de Supabase. GitHub utiliza su token temporal con `contents: write`
+solo en el job de publicación; no necesita un token de Cloudflare. Las reglas de
+protección de `release` deben permitir el push de la automatización. Los builds
+de comprobación en GitHub usan valores ficticios de Supabase; el build real se
+realiza en Cloudflare. No guardar tokens o deploy hooks en el repositorio.
 
 ## Aplicación instalable (PWA)
 
