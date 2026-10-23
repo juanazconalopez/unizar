@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 type QueryBuilder = {
   eq: ReturnType<typeof vi.fn>
@@ -14,7 +14,9 @@ type QueryBuilder = {
 const mocks = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { from: mocks.from, rpc: mocks.rpc } }))
 
-import { fetchAttendanceDate, fetchAttendanceForSessions, fetchMatchWindow, fetchTaskWindow } from './trainingQueriesService'
+import { makeSession } from '../test/fixtures'
+
+import { fetchAttendanceDate, fetchAttendanceForSessions, fetchMatchWindow, fetchStatisticsSeason, fetchStatisticsWindow, fetchTaskWindow } from './trainingQueriesService'
 
 function query(data: unknown[]): QueryBuilder {
   const builder = {} as QueryBuilder
@@ -33,6 +35,34 @@ function query(data: unknown[]): QueryBuilder {
 
 describe('training data queries', () => {
   beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.useRealTimers())
+
+  test('excluye las sesiones futuras antes de solicitar filas de asistencia', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-23T20:00:00+02:00'))
+    const builder = query([])
+    mocks.from.mockReturnValue(builder)
+    const actual = makeSession({ id: 'actual', session_date: '2026-10-22' })
+    const future = makeSession({ id: 'future', session_date: '2026-10-30' })
+    const result = await fetchAttendanceForSessions([actual, future])
+    expect(result.trainingSessions).toEqual([actual])
+    expect(builder.in).toHaveBeenCalledWith('session_id', ['actual'])
+    mocks.from.mockClear()
+    expect((await fetchAttendanceForSessions([future])).trainingSessions).toEqual([])
+    expect(mocks.from).not.toHaveBeenCalled()
+  })
+
+  test('acota a hoy las consultas estadísticas mensuales y de temporada, en hora de Madrid', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-23T00:30:00+02:00'))
+    const sessions = query([])
+    mocks.from.mockReturnValue(sessions)
+    await fetchStatisticsWindow('2026-10-01', { tasks: false, attendance: true })
+    expect(sessions.lte).toHaveBeenCalledWith('session_date', '2026-10-23')
+    sessions.lte.mockClear()
+    await fetchStatisticsSeason('season-1', '2026-09-01', '2027-06-30', { tasks: false, attendance: true })
+    expect(sessions.lte).toHaveBeenCalledWith('session_date', '2026-10-23')
+  })
 
   test('does not request announcements when home loads its limited agenda separately', async () => {
     mocks.from.mockReturnValue(query([]))

@@ -19,7 +19,7 @@ describe('planning calendar training plans', () => {
 
     const day = screen.getByRole('button', { name: /1 de septiembre.*2 entrenamientos programados/i })
     expect(within(day).getAllByText('E')).toHaveLength(2)
-    expect(screen.getByText('E · Entrenamientos publicados y borradores')).toBeInTheDocument()
+    expect(screen.getByText('E · Entrenamientos')).toBeInTheDocument()
   })
 
   test('marks birthdays without exposing an age', () => {

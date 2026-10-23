@@ -1,3 +1,6 @@
+import { useCalendarTrainings } from '../../hooks/useCalendarTrainings'
+import type { SessionQueryCache } from '../../services/sessionQueryCache'
+import type { SaveTrainingResponse } from '../../types'
 import { crossTeamCallupReference } from '../../lib/crossTeamCallups'
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { MatchReportValues, SavedReportEvent } from '../../services/matchReportService'
@@ -56,6 +59,8 @@ import { StatusControl } from '../tasks/StatusControl'
 import type { CalendarSurvey } from '../tasks/calendarSurveys'
 
 type CalendarViewProps = {
+  resources?: SessionQueryCache
+  onRespondTraining?: SaveTrainingResponse
   permissions?: {
     taskCreate: boolean; taskEdit: boolean; taskDelete: boolean; taskPublish: boolean; taskReorder: boolean; taskResults: boolean
     announcementCreate: boolean; announcementEdit: boolean; announcementDelete: boolean; announcementPublish: boolean
@@ -103,7 +108,7 @@ type CalendarViewProps = {
   onFinalizeInternal?: (match: Match) => Promise<void>
   onLoadCallupReport: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
-  onLoadTrainingPlans: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
+  onLoadTrainingPlans?: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
   onOpenTrainingPlan: (trainingPlanId: string) => void
   onEditTrainingPlan?: (trainingPlanId: string) => void
   holidays?: string[]
@@ -134,7 +139,8 @@ export function CalendarView(props: CalendarViewProps) {
   const [reviewFixtureId, setReviewFixtureId] = useState<string | null>(null)
   const [selectedAvailabilityMatch, setAvailabilityMatch] = useState<Match | null>(null)
   const availabilityMatch = props.matches.find((item) => item.id === selectedAvailabilityMatch?.id) ?? selectedAvailabilityMatch
-  const [trainingPlans, setTrainingPlans] = useState<TrainingPlanCalendarItem[]>([])
+  const training = useCalendarTrainings(month, onLoadTrainingPlans, props.onRespondTraining, props.resources)
+  const trainingPlans = training.plans
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
   const holidays = useSeasonHolidayDates(props.seasons.map((season) => season.id), props.holidays)
   const selectedWeek = mondayFor(selectedDate)
@@ -151,22 +157,11 @@ export function CalendarView(props: CalendarViewProps) {
   const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedTrainingPlans.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
   const activeSeason = seasonForDate(props.seasons, today)
 
-  const loadTrainingPlans = useCallback(async (targetMonth: string) => {
-    try {
-      setTrainingPlans(await onLoadTrainingPlans(monthStart(targetMonth), monthEnd(targetMonth)))
-    } catch {
-      setTrainingPlans([])
-    }
-  }, [onLoadTrainingPlans])
   const loadSurveyClosures = useCallback(async (targetMonth: string) => {
     if (!onLoadSurveyClosures) return
     try { setSurveyClosures(await onLoadSurveyClosures(monthStart(targetMonth), monthEnd(targetMonth))) } catch { setSurveyClosures([]) }
   }, [onLoadSurveyClosures])
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => void loadTrainingPlans(month), 0)
-    return () => window.clearTimeout(timer)
-  }, [loadTrainingPlans, month])
   useEffect(() => { const timer = window.setTimeout(() => void loadSurveyClosures(month), 0); return () => window.clearTimeout(timer) }, [loadSurveyClosures, month])
 
   useEffect(() => {
@@ -183,7 +178,6 @@ export function CalendarView(props: CalendarViewProps) {
     await Promise.all([
       props.onLoadTaskRange(mondayFor(monthStart(nextMonth)), mondayFor(monthEnd(nextMonth))),
       props.onLoadMatchMonth(nextMonth),
-      loadTrainingPlans(nextMonth),
     ]).catch(() => undefined)
   }
 
@@ -197,7 +191,7 @@ export function CalendarView(props: CalendarViewProps) {
     await Promise.all([
       props.onLoadTaskRange(mondayFor(date), mondayFor(date)),
       props.onLoadMatchMonth(`${date.slice(0, 7)}-01`),
-      loadTrainingPlans(`${date.slice(0, 7)}-01`),
+      training.reload(true),
     ])
   }
 
@@ -287,6 +281,7 @@ export function CalendarView(props: CalendarViewProps) {
           onMonthChange={(nextMonth) => void changeMonth(nextMonth)}
           onSelectDate={setSelectedDate}
         />
+        {training.error && <p className="form-error" role="alert">No se han podido cargar los entrenamientos: {training.error} <button className="text-button" onClick={() => void training.reload(true)} type="button">Reintentar</button></p>}
         <section className="selected-planning-week">
           {hasSelectedDayContent && <div className="selected-day-date"><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>}
           {holidays.includes(selectedDate) && <HolidayDayContext />}
@@ -299,7 +294,7 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActions(announcement)} announcement={announcement} initialOpen={props.focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
           </div>}
           {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={(survey) => onOpenSurveyResults?.(survey.id)} />}
-          <CalendarTrainingPlans plans={selectedTrainingPlans} onEdit={props.onEditTrainingPlan} onOpen={props.onOpenTrainingPlan} />
+          <CalendarTrainingPlans onRespond={training.respond} plans={selectedTrainingPlans} onEdit={props.onEditTrainingPlan} onOpen={props.onOpenTrainingPlan} />
           {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
             <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
             <div className="match-list">{selectedMatches.map(renderMatch)}</div>

@@ -1358,6 +1358,10 @@ export type Database = {
       }
       training_plans: {
         Row: {
+          self_managed: boolean
+          start_time: string
+          end_time: string
+          schedule_version: number
           created_at: string
           created_by: string
           id: string
@@ -1370,6 +1374,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          self_managed?: boolean
+          start_time?: string
+          end_time?: string
+          schedule_version?: number
           created_at?: string
           created_by: string
           id?: string
@@ -1382,6 +1390,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          self_managed?: boolean
+          start_time?: string
+          end_time?: string
+          schedule_version?: number
           created_at?: string
           created_by?: string
           id?: string
@@ -1410,8 +1422,19 @@ export type Database = {
           },
         ]
       }
+      training_responses: {
+        Row: { training_plan_id: string; player_id: string; attending: boolean; comment: string; schedule_version: number; updated_at: string }
+        Insert: { training_plan_id: string; player_id: string; attending: boolean; comment?: string; schedule_version: number; updated_at?: string }
+        Update: { training_plan_id?: string; player_id?: string; attending?: boolean; comment?: string; schedule_version?: number; updated_at?: string }
+        Relationships: [
+          { foreignKeyName: "training_responses_training_plan_id_fkey"; columns: ["training_plan_id"]; isOneToOne: false; referencedRelation: "training_plans"; referencedColumns: ["id"] },
+          { foreignKeyName: "training_responses_player_id_fkey"; columns: ["player_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
       training_sessions: {
         Row: {
+          training_plan_id: string | null
+          self_managed: boolean
           created_at: string
           created_by: string
           id: string
@@ -1420,6 +1443,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          training_plan_id?: string | null
+          self_managed?: boolean
           created_at?: string
           created_by: string
           id?: string
@@ -1428,6 +1453,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          training_plan_id?: string | null
+          self_managed?: boolean
           created_at?: string
           created_by?: string
           id?: string
@@ -1436,6 +1463,7 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          { foreignKeyName: "training_sessions_training_plan_id_fkey"; columns: ["training_plan_id"]; isOneToOne: true; referencedRelation: "training_plans"; referencedColumns: ["id"] },
           {
             foreignKeyName: "training_sessions_created_by_fkey"
             columns: ["created_by"]
@@ -1457,6 +1485,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      finalize_self_managed_training_attendance: { Args: Record<PropertyKey, never>; Returns: number }
+      self_managed_attendance_write_allowed: { Args: { checked_plan_id: string; checked_date: string }; Returns: boolean }
+      lock_training_date: { Args: { checked_date: string }; Returns: undefined }
+      training_player_eligible: { Args: { checked_season: string; checked_date: string; checked_player: string }; Returns: boolean }
+
+      get_training_calendar: {
+        Args: { from_date: string; until_date: string }
+        Returns: { id: string; session_date: string; title: string; status: Database["public"]["Enums"]["task_status"]; start_time: string; end_time: string; schedule_version: number; own_attending: boolean | null; own_comment: string | null; response_stale: boolean; responses_closed: boolean; attendance_recorded: boolean; attending_count: number; self_managed: boolean }[]
+      }
+      generate_training_schedule: {
+        Args: { apply_changes?: boolean }
+        Returns: { session_date: string; title: string; result: string }[]
+      }
+      save_training_response: {
+        Args: { checked_plan_id: string; checked_attending: boolean; checked_comment: string; checked_version: number }
+        Returns: undefined
+      }
+      get_training_attendance_basis: {
+        Args: { checked_date: string }
+        Returns: Json
+      }
+
       add_match_training_player: {
         Args: { checked_match_id: string; checked_player_id: string; checked_reason: string; checked_slot_number?: number | null }
         Returns: undefined

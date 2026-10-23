@@ -1,3 +1,4 @@
+import { isFridayTrainingDate } from '../../lib/trainingSchedule'
 import { addDays, todayIso } from '../../lib/dates'
 import { seasonForDate } from '../../lib/selectors'
 import { EMPTY_TACTICS_BOARD } from '../../services/trainingPlansService'
@@ -17,7 +18,7 @@ export function initialTrainingPlanValues(plan: TrainingPlan | undefined, templa
           title: exercise.title, description: exercise.description ?? '', durationMinutes: exercise.duration_minutes,
           diagramData: structuredClone(exercise.diagram_data),
         }))
-      : [emptyTrainingExercise(1)],
+      : source ? [] : [emptyTrainingExercise(1)],
   }
 }
 
@@ -77,6 +78,9 @@ export function demoPlanFromValues(values: TrainingPlanValues, seasons: Season[]
   const timestamp = existing?.updated_at ?? '2026-01-01T00:00:00.000Z'
   const planId = existing?.id ?? `demo-plan-${values.sessionDate}`
   return {
+    self_managed: existing && existing.session_date === values.sessionDate ? existing.self_managed ?? false : isFridayTrainingDate(values.sessionDate),
+    start_time: existing?.start_time ?? '19:30:00', end_time: existing?.end_time ?? '21:30:00',
+    schedule_version: (existing?.schedule_version ?? 1) + (existing && existing.session_date !== values.sessionDate ? 1 : 0),
     id: planId, season_id: values.seasonId, session_date: values.sessionDate, title: values.title,
     objectives: values.objectives || null, material: values.material || null, status: values.status,
     created_by: existing?.created_by ?? 'demo-user', created_at: existing?.created_at ?? timestamp, updated_at: timestamp,

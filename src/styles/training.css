@@ -1636,3 +1636,120 @@
     min-height: 180px;
   }
 }
+
+.training-generation-preview { max-height: 40vh; overflow: auto; margin: 1rem 0; }
+.training-generation-preview ul { list-style: none; margin: 0; padding: 0; }
+.training-generation-preview li { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem; border-bottom: 1px solid var(--border); }
+.calendar-training-list .calendar-training-card {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.calendar-training-body {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "info" "count" "response" "manage";
+}
+
+.calendar-training-info { grid-area: info; min-width: 0; overflow-wrap: anywhere; }
+.calendar-training-manage { grid-area: manage; justify-self: end; margin-top: 12px; }
+
+.training-attending-count {
+  grid-area: count;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: .65rem 0 .15rem;
+  padding: 8px 12px;
+  border: 1px solid #b4d7c1;
+  border-radius: 999px;
+  background: #e1f1e8;
+  color: #07513c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.training-attending-total { display: inline-flex; align-items: center; gap: 7px; }
+.calendar-training-list .training-attending-count strong { font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.training-response { grid-area: response; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; margin-top: 12px; }
+.training-own-response { flex: 1 1 180px; min-width: 0; margin: 0; }
+.training-own-response strong { display: inline-flex; align-items: center; gap: 4px; }
+.training-response-yes { color: #167447; }
+.training-response-no { color: #bf3434; }
+.training-own-comment { flex-basis: 100%; min-width: 0; margin: 0; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+.training-response > small, .training-response > .form-error { flex-basis: 100%; }
+.training-response form { flex: 1 1 100%; min-width: 0; display: grid; gap: .65rem; }
+.training-response label { display: grid; gap: .3rem; }
+.training-response-actions { display: flex; justify-content: flex-end; gap: 8px; margin-left: auto; }
+.training-response-actions button { min-width: 0; }
+
+@media (min-width: 681px) {
+  .calendar-training-body {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "info manage response count";
+    column-gap: 24px;
+  }
+
+  .calendar-training-manage {
+    align-self: center;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  .training-response {
+    align-self: center;
+    justify-self: start;
+    flex-direction: row;
+    align-items: center;
+    width: max-content;
+    max-width: min(420px, 36vw);
+    margin-top: 0;
+    gap: 6px;
+  }
+
+  .training-response .training-own-response { flex: 0 1 auto; width: auto; }
+  .training-response .training-own-comment { flex-basis: 100%; width: 100%; }
+  .training-response-actions { justify-content: flex-start; margin-left: 0; }
+  .calendar-training-body:has(> .training-response-editing, > .training-response-closed) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "info count" "response response" "manage manage";
+  }
+
+  .training-response-editing, .training-response-closed { width: 100%; max-width: none; justify-self: stretch; align-items: stretch; margin-top: 12px; }
+
+  .training-attending-count {
+    align-self: start;
+    justify-self: end;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 94px;
+    min-height: 68px;
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    gap: 5px;
+    font-size: 11px;
+  }
+
+  .calendar-training-list .training-attending-count strong { font-size: 24px; }
+}
+
+@media (max-width: 680px) {
+  .training-response-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .training-response-actions button.compact { min-height: 38px; padding: 8px 10px; font-size: 11px; }
+  .training-response-actions button:only-child { grid-column: 1 / -1; justify-self: end; }
+  .training-response-answered:not(.training-response-editing) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+  }
+  .training-response-answered:not(.training-response-editing) .training-own-response { grid-column: 1; grid-row: 1; }
+  .training-response-answered:not(.training-response-editing) .training-response-actions { grid-column: 2; grid-row: 1; width: auto; }
+  .training-response-answered:not(.training-response-editing) .training-own-comment { grid-column: 1 / -1; }
+  .training-response-notice { grid-column: 1 / -1; }
+  .training-response > .form-error { grid-column: 1 / -1; }
+}
+
+.attendance-player > span { flex-wrap: wrap; }
+.attendance-player > span > small { width: 100%; padding-left: 3rem; font-size: .8rem; font-weight: 400; overflow-wrap: anywhere; }

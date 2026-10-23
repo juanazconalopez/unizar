@@ -1,3 +1,4 @@
+import { madridDateTime } from '../../lib/trainingSchedule'
 import type { AttendanceRecord, ProvisionalAttendanceRecord, SeasonCallupReportPlayer, TrainingSession } from '../../types'
 
 export function recordDate(record: AttendanceRecord) {
@@ -10,6 +11,11 @@ export function monthlyAttendanceSummary(
   provisionalAttendance: ProvisionalAttendanceRecord[],
   playerIds: Set<string>,
 ) {
+  const today = madridDateTime().slice(0, 10)
+  sessions = sessions.filter((session) => session.session_date <= today)
+  const sessionIds = new Set(sessions.map((session) => session.id))
+  attendance = attendance.filter((record) => sessionIds.has(record.session_id))
+  provisionalAttendance = provisionalAttendance.filter((record) => sessionIds.has(record.session_id))
   if (!sessions.length) return { average: null, maximum: null, minimum: null, percentage: null }
 
   const attendanceBySession = new Map<string, number>()

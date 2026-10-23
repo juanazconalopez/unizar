@@ -53,6 +53,7 @@ function PlayerSeasonSummaryContent({ summary }: { summary: PlayerSeasonSummary 
     <div className="player-season-metrics">
       <SummaryMetric label="Convocatorias" note={`${summary.callups.official} oficiales · ${summary.callups.friendly} amistosas`} value={totalCallups.toString()} />
       <SummaryMetric label="Participación" note={`${summary.callups.starter} titular · ${summary.callups.substitute} suplente`} value={`${summary.callups.starter}/${summary.callups.substitute}`} />
+      <SummaryMetric label="Minutos jugados" note="Partidos oficiales con acta revisada" value={`${summary.playedMinutes ?? 0}`} />
       <SummaryMetric label="Disponibilidad" note={`${summary.availability.responded}/${summary.availability.eligibleMatches} respuestas`} value={percentage(summary.availability.percentage)} />
       <SummaryMetric label="Asistencia a campo" note={`${summary.attendance.attended}/${summary.attendance.eligibleSessions} entrenamientos`} value={percentage(summary.attendance.percentage)} />
     </div>

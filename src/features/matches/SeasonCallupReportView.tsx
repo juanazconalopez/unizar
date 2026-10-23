@@ -74,7 +74,7 @@ export function SeasonCallupReportView({ season, onLoad, onLoadPlayer }: {
       </div>
       <div className="callup-report-table-wrap">
         <table className="callup-report-table">
-          <thead><tr><th>Nombre</th><th>Oficiales <b>{report.totals.officialMatches}</b></th><th>Amistosos <b>{report.totals.friendlyMatches}</b></th><th>Titular</th><th>Suplente</th><th>Disponibilidad</th><th>Asistencia <b>{report.totals.trainingSessions}</b></th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Oficiales <b>{report.totals.officialMatches}</b></th><th>Amistosos <b>{report.totals.friendlyMatches}</b></th><th>Titular</th><th>Suplente</th><th>Minutos jugados</th><th>Disponibilidad</th><th>Asistencia <b>{report.totals.trainingSessions}</b></th></tr></thead>
           <tbody>{orderedPlayers.map((player) => (
             <tr key={player.playerId}>
               <th scope="row">{onLoadPlayer ? <button className="callup-player-link" onClick={() => setSelectedPlayerId(player.playerId)} type="button">{player.name}<Icon name="arrow" size={14} /></button> : player.name}</th>
@@ -82,6 +82,7 @@ export function SeasonCallupReportView({ season, onLoad, onLoadPlayer }: {
               <td>{player.friendlyCallups}</td>
               <td>{player.starterCallups}</td>
               <td>{player.substituteCallups}</td>
+              <td>{player.playedMinutes ?? 0}</td>
               <td><strong>{player.availabilityResponded}/{player.eligibleMatches}</strong><span>{player.availabilityPercentage === null ? 'Sin datos' : `${player.availabilityPercentage}%`}</span></td>
               <td><strong>{player.attendedSessions}</strong><span>{player.attendancePercentage === null ? 'Sin datos' : `${player.attendancePercentage}%`}</span></td>
             </tr>
@@ -89,7 +90,7 @@ export function SeasonCallupReportView({ season, onLoad, onLoadPlayer }: {
         </table>
         {!report.players.length && <EmptyState title="Sin participantes" text="Todavía no hay jugadoras inscritas en esta temporada." />}
       </div>
-      <p className="callup-report-note">Disponibilidad: respuestas sobre las oportunidades de su equipo o préstamo, una por fin de semana (viernes a domingo) y por día entre semana. «No disponible» y «En duda» también cuentan como respuesta. La asistencia se calcula sobre los entrenamientos realizados durante su periodo de inscripción.</p>
+      <p className="callup-report-note">Los minutos corresponden a partidos oficiales finalizados con el acta revisada. Disponibilidad: respuestas sobre las oportunidades de su equipo o préstamo, una por fin de semana (viernes a domingo) y por día entre semana. «No disponible» y «En duda» también cuentan como respuesta. La asistencia se calcula sobre los entrenamientos realizados durante su periodo de inscripción.</p>
       {selectedPlayerId && onLoadPlayer && <PlayerSeasonSummaryDialog key={selectedPlayerId} onClose={() => setSelectedPlayerId(null)} onLoad={onLoadPlayer} playerId={selectedPlayerId} season={season} />}
     </section>
   )

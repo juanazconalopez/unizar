@@ -3,7 +3,7 @@ import type { Profile } from '../types'
 export const PERMISSIONS = {
   dashboard: { personal: 'dashboard.view_personal', team: 'dashboard.view_team' },
   statistics: { view: 'statistics.view', attendance: 'statistics.attendance', tasks: 'statistics.tasks' },
-  calendar: { personal: 'calendar.view_personal', manage: 'calendar.view_manage' },
+  calendar: { personal: 'calendar.view_personal', manage: 'calendar.view_manage', trainingView: 'calendar.training_view', trainingRespond: 'calendar.training_respond' },
   tasks: {
     own: 'tasks.view_own', submitOwn: 'tasks.submit_own', team: 'tasks.view_team', results: 'tasks.view_results',
     create: 'tasks.create', edit: 'tasks.edit', delete: 'tasks.delete', publish: 'tasks.publish', reorder: 'tasks.reorder',
@@ -16,7 +16,7 @@ export const PERMISSIONS = {
     trainingExceptions: 'matches.training_exceptions',
   },
   attendance: { view: 'attendance.view', record: 'attendance.record', report: 'attendance.report', guests: 'attendance.guests' },
-  training: { view: 'training.view', create: 'training.create', edit: 'training.edit', delete: 'training.delete', publish: 'training.publish' },
+  training: { view: 'training.view', create: 'training.create', edit: 'training.edit', delete: 'training.delete', publish: 'training.publish', generate: 'training.generate' },
   trainingGroups: { view: 'training_groups.view', manage: 'training_groups.manage', publish: 'training_groups.publish' },
   workGroups: { view: 'work_groups.view', manage: 'work_groups.manage' },
   videoAnalysis: { view: 'video_analysis.view', manage: 'video_analysis.manage' },
@@ -63,7 +63,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.matches.trainingExceptions,
     PERMISSIONS.attendance.view, PERMISSIONS.attendance.record, PERMISSIONS.attendance.report, PERMISSIONS.attendance.guests,
     PERMISSIONS.training.view, PERMISSIONS.training.create, PERMISSIONS.training.edit, PERMISSIONS.training.delete,
-    PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
+    PERMISSIONS.training.generate, PERMISSIONS.training.publish, PERMISSIONS.exercises.view, PERMISSIONS.exercises.create, PERMISSIONS.exercises.edit,
     PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.team.positions, PERMISSIONS.trainingGroups.view, PERMISSIONS.trainingGroups.manage, PERMISSIONS.trainingGroups.publish,
     PERMISSIONS.exercises.delete, PERMISSIONS.competition.view, PERMISSIONS.library.view,
     PERMISSIONS.surveys.manage, PERMISSIONS.surveys.create, PERMISSIONS.surveys.edit, PERMISSIONS.surveys.publish,
@@ -77,7 +77,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   player: new Set([
-    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
+    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.calendar.trainingView, PERMISSIONS.calendar.trainingRespond, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
     PERMISSIONS.announcements.view, PERMISSIONS.matches.view, PERMISSIONS.matches.ownAvailability, PERMISSIONS.matches.lineup,
     PERMISSIONS.competition.view, PERMISSIONS.library.view, PERMISSIONS.surveys.own, PERMISSIONS.surveys.respondOwn,
   ]),
@@ -108,6 +108,10 @@ export function isPlayer(profile: Profile) { return profile.is_player }
 
 export function canManagePlayerPositions(profile: Profile, loadedKeys?: readonly string[]) {
   return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.team.positions, loadedKeys)
+}
+
+export function canGenerateTrainingSchedule(profile: Profile, loadedKeys?: readonly string[]) {
+  return (profile.is_owner || profile.is_coach) && hasPermission(profile, PERMISSIONS.training.generate, loadedKeys)
 }
 
 export function canManageTrainingExceptions(profile: Profile, loadedKeys?: readonly string[]) {

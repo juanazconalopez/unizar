@@ -59,6 +59,22 @@ describe('training plan reading view', () => {
     vi.restoreAllMocks()
   })
 
+  test('edits a generated empty draft on its original identifier and requires exercises only when publishing', async () => {
+    const user = userEvent.setup()
+    mocks.fetchTrainingPlans.mockResolvedValue([{ ...plan, training_exercises: [] }])
+    mocks.saveTrainingPlan.mockResolvedValue(plan.id)
+    render(<TrainingPlansView focusedPlanId={plan.id} focusedPlanMode="edit" onReturnToList={vi.fn()} seasons={[season]} userId="owner-1" onNotify={vi.fn()} />)
+    await screen.findByRole('button', { name: 'Guardar cambios' })
+    expect(screen.queryByLabelText('Duración (min)')).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Estado'), 'published')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(screen.getByText('Añade al menos un ejercicio antes de publicar.')).toBeInTheDocument()
+    expect(mocks.saveTrainingPlan).not.toHaveBeenCalled()
+    await user.selectOptions(screen.getByLabelText('Estado'), 'draft')
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(mocks.saveTrainingPlan).toHaveBeenCalledWith(plan.id, expect.objectContaining({ exercises: [], status: 'draft' }), 'owner-1'))
+  })
+
   test('keeps a prepared list visible while a stale refresh is pending', async () => {
     const resources = new SessionQueryCache(0)
     await resources.load(navigationResourceKeys.trainingPlans(), () => Promise.resolve([plan]))

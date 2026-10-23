@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
-import { todayIso } from '../../lib/dates'
+import { addDays, formatDate, todayIso } from '../../lib/dates'
 import { makeAttendance, makeMembership, makeProfile, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSession } from '../../test/fixtures'
 import { AttendanceView } from './AttendanceView'
 
@@ -100,5 +100,57 @@ describe('AttendanceView', () => {
       { id: 'guest-1', displayName: 'Laura Invitada' },
       { displayName: 'Nuria Prueba' },
     ])
+  })
+})
+
+describe('base de asistencia desde respuestas', () => {
+  const common = () => ({ profiles: [makeProfile(), makeProfile({ id: 'player-2', display_name: 'María López' }), makeProfile({ id: 'player-3', display_name: 'Eva García' })], memberships: [makeMembership(), makeMembership({ id: 'm2', player_id: 'player-2' }), makeMembership({ id: 'm3', player_id: 'player-3' })], sessions: [], attendance: [], seasons: [makeSeason({ start_date: '2026-01-01', end_date: '2026-12-31' })], onSave: vi.fn().mockResolvedValue(undefined) })
+  test('preselecciona las confirmadas y permite corregirlas antes de guardar asistencia real', async () => {
+    const props = common()
+    const user = userEvent.setup()
+    const onLoadBasis = vi.fn().mockResolvedValue({ recorded: false, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }, { player_id: 'player-2', attending: false, comment: 'Trabajo' }] })
+    render(<AttendanceView {...props} onLoadBasis={onLoadBasis} />)
+    expect(await screen.findByText(/Base de las respuestas:/)).toHaveTextContent('1 asistirán · 1 rechazan · 1 sin responder')
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /María López/ })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: /Ana Martín/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Eva García/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
+    expect(props.onSave).toHaveBeenCalledWith(todayIso(), ['player-1', 'player-2', 'player-3'], ['player-3'], [])
+    expect(screen.getByText(/Las respuestas de las jugadoras están cerradas/)).toBeInTheDocument()
+  })
+  test.each([false, true])('los viernes son de consulta con o sin registro automático (%s)', async (recorded) => {
+    const props = common()
+    render(<AttendanceView {...props} onLoadBasis={async () => ({ self_managed: true, recorded, attended_player_ids: recorded ? ['player-1'] : [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
+    await screen.findByText(recorded ? /Asistencia registrada automáticamente/ : /La asistencia se registrará automáticamente/)
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: /María López/ })).not.toBeChecked()
+    expect(screen.queryByRole('button', { name: 'Guardar asistencia' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Añadir invitada' })).not.toBeInTheDocument()
+    expect(props.onSave).not.toHaveBeenCalled()
+  })
+  test('restaura una asistencia real vacía aunque haya respuestas afirmativas anteriores', async () => {
+    render(<AttendanceView {...common()} onLoadBasis={async () => ({ recorded: true, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
+    await screen.findByText(/Asistencia real guardada/)
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).not.toBeChecked()
+  })
+  test('ignora una base tardía de otra fecha', async () => {
+    const user = userEvent.setup()
+    const yesterday = addDays(todayIso(), -1)
+    let finish!: (basis: { recorded: boolean; attended_player_ids: string[]; responses: { player_id: string; attending: boolean; comment: string }[] }) => void
+    const onLoadBasis = vi.fn().mockImplementationOnce(() => new Promise((resolve) => { finish = resolve })).mockResolvedValue({ recorded: true, attended_player_ids: [], responses: [] })
+    render(<AttendanceView {...common()} sessions={[makeSession({ session_date: yesterday })]} onLoadBasis={onLoadBasis} />)
+    await user.click(screen.getByRole('button', { name: formatDate(yesterday, { day: 'numeric', month: 'short' }) }))
+    await screen.findByText(/Asistencia real guardada/)
+    await act(async () => { finish({ recorded: false, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] }) })
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).not.toBeChecked()
+  })
+
+  test('bloquea el guardado si no ha podido consultar la asistencia real', async () => {
+    render(<AttendanceView {...common()} onLoadBasis={async () => { throw new Error('Sin conexión') }} />)
+    await screen.findByText('Sin conexión')
+    expect(screen.getByRole('button', { name: 'Guardar asistencia' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Reintentar carga de asistencia' })).toBeEnabled()
   })
 })

@@ -64,7 +64,7 @@ export type TeamAnnouncement = Tables<'team_announcements'> & {
 
 export type TaskResult = Tables<'task_results'>
 
-export type TrainingSession = Tables<'training_sessions'>
+export type TrainingSession = Omit<Tables<'training_sessions'>, 'self_managed' | 'training_plan_id'> & Partial<Pick<Tables<'training_sessions'>, 'self_managed' | 'training_plan_id'>>
 
 export type TacticsElementType = 'player' | 'opponent' | 'cone' | 'ball' | 'shield' | 'run' | 'pass' | 'defense' | 'zone' | 'text'
 
@@ -94,12 +94,33 @@ export type TrainingExercisePreset = Omit<Tables<'training_exercise_presets'>, '
   diagram_data: TacticsBoardData
 }
 
-export type TrainingPlan = Tables<'training_plans'> & {
+export type TrainingPlan = Omit<Tables<'training_plans'>, 'start_time' | 'end_time' | 'schedule_version' | 'self_managed'> & Partial<Pick<Tables<'training_plans'>, 'start_time' | 'end_time' | 'schedule_version' | 'self_managed'>> & {
   seasons: { name: string } | null
   training_exercises: TrainingExercise[]
 }
 
-export type TrainingPlanCalendarItem = Pick<Tables<'training_plans'>, 'id' | 'session_date' | 'title' | 'status'>
+export type TrainingPlanCalendarItem = Pick<Tables<'training_plans'>, 'id' | 'session_date' | 'title' | 'status'> & {
+  start_time?: string
+  end_time?: string
+  schedule_version?: number
+  own_attending?: boolean | null
+  own_comment?: string | null
+  response_stale?: boolean
+  responses_closed?: boolean
+  attendance_recorded?: boolean
+  attending_count?: number
+  self_managed?: boolean
+}
+
+export type TrainingGenerationDay = { session_date: string; title: string; result: string }
+export type TrainingAttendanceBasis = {
+  self_managed?: boolean
+  recorded: boolean
+  attended_player_ids: string[]
+  responses: { player_id: string; attending: boolean; comment: string }[]
+}
+export type SaveTrainingResponse = (plan: TrainingPlanCalendarItem, attending: boolean, comment: string) => Promise<void>
+
 
 export type TrainingExerciseValues = {
   title: string
@@ -170,6 +191,7 @@ export type SeasonCallupReportPlayer = {
   friendlyCallups: number
   starterCallups: number
   substituteCallups: number
+  playedMinutes?: number
   eligibleMatches: number
   availabilityResponded: number
   availabilityPercentage: number | null
@@ -198,6 +220,7 @@ export type PlayerSeasonSummary = {
   playerName: string
   generatedOn: string
   callups: { official: number; friendly: number; starter: number; substitute: number }
+  playedMinutes?: number
   availability: {
     eligibleMatches: number
     responded: number

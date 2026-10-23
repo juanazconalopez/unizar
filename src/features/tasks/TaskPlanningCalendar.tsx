@@ -153,7 +153,7 @@ export function TaskPlanningCalendar({ month, selectedDate, tasks, announcements
       {showLegend && <div className="calendar-legend">
         <span><i className="task-dot" />T · {legendVariant === 'player' ? 'Tareas publicadas' : 'Tareas publicadas o en borrador guardadas en el lunes de su semana'}</span>
         <span><i className="announcement-dot" />A · Avisos en su fecha exacta</span>
-        {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos publicados y borradores</span>}
+        {includesTrainingPlans && <span><i className="training-plan-dot" />E · Entrenamientos</span>}
         {includesMatches && matchLegendItems(visibleMatches).map((item) => <span key={item.key}><i className="match-dot" style={{ backgroundColor: item.solid }} />P · {item.label}</span>)}
         {birthdays.length > 0 && <span>🎂 · Cumpleaños</span>}
         {calendarSurveys.some((survey) => survey.state === 'active') && <span><i className="survey-active-line-dot" />Encuestas abiertas</span>}

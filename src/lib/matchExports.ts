@@ -26,19 +26,20 @@ export function callupReportXml(report: SeasonCallupReport) {
 <resumen-convocatorias temporada="${escapeXml(report.seasonName)}" fecha="${escapeXml(report.generatedOn)}">
   <totales oficiales="${report.totals.officialMatches}" amistosos="${report.totals.friendlyMatches}" entrenamientos="${report.totals.trainingSessions}" />
   <jugadoras>
-${report.players.map((player) => `    <jugadora nombre="${escapeXml(player.name)}" oficiales="${player.officialCallups}" amistosos="${player.friendlyCallups}" titular="${player.starterCallups}" suplente="${player.substituteCallups}" disponibilidades-respondidas="${player.availabilityResponded}" partidos-elegibles="${player.eligibleMatches}" porcentaje-disponibilidad="${player.availabilityPercentage ?? ''}" asistencias="${player.attendedSessions}" entrenamientos-computables="${player.eligibleSessions}" porcentaje-asistencia="${player.attendancePercentage ?? ''}" />`).join('\n')}
+${report.players.map((player) => `    <jugadora nombre="${escapeXml(player.name)}" oficiales="${player.officialCallups}" amistosos="${player.friendlyCallups}" titular="${player.starterCallups}" suplente="${player.substituteCallups}" minutos-jugados="${player.playedMinutes ?? 0}" disponibilidades-respondidas="${player.availabilityResponded}" partidos-elegibles="${player.eligibleMatches}" porcentaje-disponibilidad="${player.availabilityPercentage ?? ''}" asistencias="${player.attendedSessions}" entrenamientos-computables="${player.eligibleSessions}" porcentaje-asistencia="${player.attendancePercentage ?? ''}" />`).join('\n')}
   </jugadoras>
 </resumen-convocatorias>`
 }
 
 export function callupReportTsv(report: SeasonCallupReport) {
-  const header = `Nombre\tOficiales (${report.totals.officialMatches})\tAmistosos (${report.totals.friendlyMatches})\tTitular\tSuplente\tDisponibilidad\tAsistencia (${report.totals.trainingSessions})`
+  const header = `Nombre\tOficiales (${report.totals.officialMatches})\tAmistosos (${report.totals.friendlyMatches})\tTitular\tSuplente\tMinutos jugados\tDisponibilidad\tAsistencia (${report.totals.trainingSessions})`
   return [header, ...report.players.map((player) => [
     player.name,
     player.officialCallups,
     player.friendlyCallups,
     player.starterCallups,
     player.substituteCallups,
+    player.playedMinutes ?? 0,
     `${player.availabilityResponded}/${player.eligibleMatches} (${player.availabilityPercentage === null ? '—' : `${player.availabilityPercentage}%`})`,
     `${player.attendedSessions} (${player.attendancePercentage === null ? '—' : `${player.attendancePercentage}%`})`,
   ].join('\t'))].join('\n')

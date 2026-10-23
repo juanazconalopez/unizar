@@ -1,3 +1,4 @@
+import { madridDateTime } from '../../lib/trainingSchedule'
 import { useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { useSeasonHolidayDates } from '../../hooks/useSeasonHolidayDates'
@@ -44,6 +45,11 @@ type StatisticsProps = {
 }
 
 export function StatisticsView({ profiles = [], provisionalPlayers = [], provisionalAttendance = [], seasons = [], sessions = [], attendance = [], memberships = [], tasks = [], results = [], birthdays = [], loadingRange = false, canViewAttendance = true, canViewTasks = true, holidays: providedHolidays, onLoadMonth, onLoadSeasonReport, onLoadSeasonEvolution }: StatisticsProps) {
+  const todayMadrid = madridDateTime().slice(0, 10)
+  sessions = sessions.filter((session) => session.session_date <= todayMadrid)
+  const actualIds = new Set(sessions.map((session) => session.id))
+  attendance = attendance.filter((record) => actualIds.has(record.session_id))
+  provisionalAttendance = provisionalAttendance.filter((record) => actualIds.has(record.session_id))
   const today = todayIso()
   const [month, setMonth] = useState(`${today.slice(0, 7)}-01`)
   const [selectedDate, setSelectedDate] = useState(today)
@@ -55,7 +61,7 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
   const historicalPlayers = useMemo(() => profiles.filter(isPlayer), [profiles])
   const playerIds = useMemo(() => new Set(historicalPlayers.map((profile) => profile.id)), [historicalPlayers])
   const publishedTaskIds = new Set(tasks.filter((task) => task.status === 'published').map((task) => task.id))
-  const playerAttendance = attendance.filter((record) => playerIds.has(record.player_id))
+  const playerAttendance = attendance.filter((record) => playerIds.has(record.player_id) && (recordDate(record) ?? '9999') <= todayMadrid)
   const playerResults = results.filter((result) => (
     playerIds.has(result.player_id) && publishedTaskIds.has(result.task_id)
   ))
@@ -70,7 +76,7 @@ export function StatisticsView({ profiles = [], provisionalPlayers = [], provisi
       && playerIds.has(membership.player_id)
     ))
     .map((membership) => membership.player_id))
-  const monthSessions = sessions.filter((session) => session.session_date.startsWith(monthPrefix))
+  const monthSessions = sessions.filter((session) => session.session_date <= todayMadrid && session.session_date.startsWith(monthPrefix))
   const monthAttendance = playerAttendance.filter((record) => recordDate(record)?.startsWith(monthPrefix))
   const monthResults = playerResults.filter((result) => (
     result.performed_on.startsWith(monthPrefix) && eligibleMonthPlayerIds.has(result.player_id)

@@ -1,6 +1,7 @@
+import { madridDateTime } from '../../lib/trainingSchedule'
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import { formatDate, monthEnd, monthStart, offsetMonth, todayIso } from '../../lib/dates'
+import { formatDate, monthEnd, monthStart, offsetMonth } from '../../lib/dates'
 import { membershipCoversDate, membershipOverlapsSeasonRange } from '../../lib/selectors'
 import { isPlayer } from '../../lib/permissions'
 import type { Profile, ProvisionalAttendanceRecord, Season, SeasonPlayer } from '../../types'
@@ -47,7 +48,8 @@ export function SeasonEvolutionView({ data, season, memberships, profiles, provi
   const playerIds = new Set(profiles.filter(isPlayer).map((profile) => profile.id))
   const publishedTaskIds = new Set(data.tasks.filter((task) => task.status === 'published').map((task) => task.id))
   const months = seasonMonths(season)
-  const currentMonth = todayIso().slice(0, 7)
+  const todayMadrid = madridDateTime().slice(0, 10)
+  const currentMonth = todayMadrid.slice(0, 7)
   const points = months.map((month) => {
     const monthIsAvailable = month.slice(0, 7) <= currentMonth
     const monthFrom = monthStart(month)
@@ -58,8 +60,8 @@ export function SeasonEvolutionView({ data, season, memberships, profiles, provi
         && playerIds.has(membership.player_id)
       ))
       .map((membership) => membership.player_id))
-    const sessions = data.trainingSessions.filter((session) => session.session_date.startsWith(month.slice(0, 7)))
-    const attendance = data.attendance.filter((record) => recordDate(record)?.startsWith(month.slice(0, 7)))
+    const sessions = data.trainingSessions.filter((session) => session.session_date <= todayMadrid && session.session_date.startsWith(month.slice(0, 7)))
+    const attendance = data.attendance.filter((record) => (recordDate(record) ?? '9999') <= todayMadrid && recordDate(record)?.startsWith(month.slice(0, 7)))
     const summary = monthlyAttendanceSummary(sessions, attendance, provisionalAttendance, playerIds)
     const attendanceThresholds = attendanceThresholdCounts(sessions, attendance, memberships, season, eligiblePlayerIds)
     const results = data.results.filter((result) => (

@@ -1,3 +1,4 @@
+import { madridDateTime } from '../lib/trainingSchedule'
 import { addDays, mondayFor, monthEnd, monthStart, offsetMonth } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import { fetchMatchAvailability } from './matchAvailabilityService'
@@ -88,6 +89,8 @@ export function homeAgendaEnd(today: string, seasonEnd: string) {
 }
 
 export async function fetchAttendanceForSessions(sessionRows: TrainingSession[], playerId?: string): Promise<AttendanceWindowData> {
+  const today = madridDateTime().slice(0, 10)
+  sessionRows = sessionRows.filter((session) => session.session_date <= today)
   if (!sessionRows.length) return emptyAttendanceWindow
   const attendancePromise = fetchAllPages((from, to) => {
     let query = supabase
@@ -120,7 +123,7 @@ export async function fetchStatisticsWindow(month: string, include: { tasks: boo
   const toDate = monthEnd(month)
   const [taskData, sessionsResponse] = await Promise.all([
     include.tasks ? fetchTaskWindow('', true, mondayFor(fromDate), mondayFor(toDate)) : Promise.resolve(emptyTaskWindow),
-    include.attendance ? fetchAllPages((from, to) => supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate).order('session_date', { ascending: false }).order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
+    include.attendance ? fetchAllPages((from, to) => supabase.from('training_sessions').select('*').gte('session_date', fromDate).lte('session_date', toDate < madridDateTime().slice(0, 10) ? toDate : madridDateTime().slice(0, 10)).order('session_date', { ascending: false }).order('id').range(from, to)) : Promise.resolve({ data: [], error: null }),
   ])
   if (sessionsResponse.error) throw sessionsResponse.error
   return { ...taskData, ...(include.attendance ? await fetchAttendanceForSessions(sessionsResponse.data ?? []) : emptyAttendanceWindow) }
@@ -143,7 +146,7 @@ export async function fetchStatisticsSeason(seasonId: string, fromDate: string, 
         .select('*')
         .eq('season_id', seasonId)
         .gte('session_date', fromDate)
-        .lte('session_date', toDate)
+        .lte('session_date', toDate < madridDateTime().slice(0, 10) ? toDate : madridDateTime().slice(0, 10))
         .order('session_date', { ascending: false }).order('id').range(from, to))
       : Promise.resolve({ data: [], error: null }),
   ])
@@ -177,7 +180,7 @@ export async function fetchAttendanceDate(date: string): Promise<AttendanceWindo
 }
 
 export async function fetchRecentAttendance(): Promise<AttendanceWindowData> {
-  const { data, error } = await supabase.from('training_sessions').select('*').order('session_date', { ascending: false }).limit(5)
+  const { data, error } = await supabase.from('training_sessions').select('*').lte('session_date', madridDateTime().slice(0, 10)).order('session_date', { ascending: false }).limit(5)
   if (error) throw error
   return fetchAttendanceForSessions(data ?? [])
 }

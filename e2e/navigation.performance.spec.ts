@@ -17,7 +17,8 @@ async function startApp(page: Page, owner: boolean) {
     if (name === 'profile_private_details') data = [makeProfilePrivateDetails({ profile_id: profile.id })]
     if (name === 'competition_seasons') data = [{ id: 'current', name: '2026–27', starts_on: '2026-08-01', source_label: 'MatchReady', synced_at: '2026-10-21T10:00:00Z' }]
     if (name === 'seasons') data = [makeSeason({ start_date: '2026-08-01', end_date: '2027-06-30' })]
-    if (name === 'get_my_permissions') data = [PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.trainingGroups.view, PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.library.view]
+    if (name === 'get_my_permissions') data = [PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.calendar.trainingView, PERMISSIONS.calendar.trainingRespond, PERMISSIONS.trainingGroups.view, PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.library.view]
+    if (name === 'get_training_attendance_basis') data = { recorded: false, attended_player_ids: [], responses: [] }
     if (name === 'get_training_group_summary') data = { blocks: [], own_groups: [] }
     if (name === 'get_training_group_workspace') data = { candidates: [], members: [], draft: null }
     if (name === 'get_work_group_workspace') data = { version: 0, initial_derby_id: null, candidates: [], members: [], matches: [], assignments: [] }
@@ -83,6 +84,10 @@ test('all prepared sections remain immediately usable after prolonged idle and a
 
 test('a player prepares her permitted sections without loading private management lists', async ({ page }) => {
   const { paths } = await startApp(page, false)
+  await page.getByRole('button', { name: 'Calendario', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Calendario', exact: true })).toBeVisible()
+  await page.waitForLoadState('networkidle')
+  expect(paths.some((path) => path.includes('get_training_calendar'))).toBe(true)
   expect(paths.some((path) => path.includes('get_training_group_workspace'))).toBe(true)
   expect(paths.some((path) => path.includes('get_work_group_workspace'))).toBe(true)
   expect(paths.some((path) => path.includes('/training_plans') || path.includes('get_manage_surveys') || path.includes('role_permissions'))).toBe(false)

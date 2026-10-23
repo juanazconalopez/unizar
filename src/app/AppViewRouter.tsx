@@ -1,4 +1,5 @@
-import { canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageWorkGroups } from '../lib/permissions'
+import { fetchTrainingAttendanceBasis, saveTrainingResponse } from '../services/trainingScheduleService'
+import { canGenerateTrainingSchedule, canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageWorkGroups } from '../lib/permissions'
 import { lazy, Suspense, useState } from 'react'
 import { SectionError, SectionLoading, ViewErrorBoundary } from '../components/AsyncViewState'
 import type { useCompetitionData } from '../hooks/useCompetitionData'
@@ -127,11 +128,12 @@ export function AppViewRouter({
         sessions={data.trainingSessions}
         canRecord={can(PERMISSIONS.attendance.record)}
         canManageGuests={can(PERMISSIONS.attendance.guests)}
+        onLoadBasis={can(PERMISSIONS.attendance.record) && (profile.is_owner || profile.is_coach) ? fetchTrainingAttendanceBasis : undefined}
         onLoadDate={data.loadAttendanceDate}
         onSave={actions.club.saveAttendance}
       />}
       {view === 'training' && can(PERMISSIONS.training.view) && <TrainingPlansView resources={data.resources} focusedPlanId={navigation.trainingPlanId} focusedPlanMode={navigation.trainingPlanMode} seasons={data.seasons} userId={userId} onNotify={notify} onEditPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' })} onReturnToList={() => navigate('training')} permissions={{
-        create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
+        generate: canGenerateTrainingSchedule(profile, permissionKeys), create: can(PERMISSIONS.training.create), edit: can(PERMISSIONS.training.edit), delete: can(PERMISSIONS.training.delete), publish: can(PERMISSIONS.training.publish),
         viewExercises: can(PERMISSIONS.exercises.view), createExercises: can(PERMISSIONS.exercises.create), editExercises: can(PERMISSIONS.exercises.edit), deleteExercises: can(PERMISSIONS.exercises.delete),
       }} />}
       {view === 'calendar' && can(PERMISSIONS.calendar.manage) && <CalendarView
@@ -165,7 +167,9 @@ export function AppViewRouter({
         onLoadCallupReport={fetchSeasonCallupReport}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadPlayerSeasonSummary={fetchPlayerSeasonSummary}
-        onLoadTrainingPlans={fetchCalendarTrainingPlans}
+        resources={data.resources}
+        onRespondTraining={profile.is_player && can(PERMISSIONS.calendar.trainingRespond) ? saveTrainingResponse : undefined}
+        onLoadTrainingPlans={can(PERMISSIONS.training.view) || can(PERMISSIONS.calendar.trainingView) ? fetchCalendarTrainingPlans : undefined}
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
         onEditTrainingPlan={can(PERMISSIONS.training.edit) ? (trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' }) : undefined}
@@ -199,6 +203,9 @@ export function AppViewRouter({
         results={personalResults}
         tasks={data.tasks}
         userId={userId}
+        resources={data.resources}
+        onLoadTrainingPlans={can(PERMISSIONS.calendar.trainingView) ? fetchCalendarTrainingPlans : undefined}
+        onRespondTraining={profile.is_player && can(PERMISSIONS.calendar.trainingRespond) ? saveTrainingResponse : undefined}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadTaskRange={data.loadTaskRange}
         onSaveAvailability={can(PERMISSIONS.matches.ownAvailability) ? actions.matches.saveAvailability : undefined}

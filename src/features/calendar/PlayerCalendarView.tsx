@@ -1,3 +1,7 @@
+import type { SaveTrainingResponse, TrainingPlanCalendarItem } from '../../types'
+import type { SessionQueryCache } from '../../services/sessionQueryCache'
+import { useCalendarTrainings } from '../../hooks/useCalendarTrainings'
+import { CalendarTrainingPlans } from './CalendarTrainingPlans'
 import { matchAvailabilityRestriction } from '../../lib/playerLicenses'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/Icon'
@@ -54,6 +58,7 @@ export function PlayerCalendarView({
   results,
   tasks,
   userId,
+  onLoadTrainingPlans, onRespondTraining, resources,
   onLoadMatchMonth,
   onLoadTaskRange,
   onLoadSurveyClosures,
@@ -65,6 +70,9 @@ export function PlayerCalendarView({
   onSaveAvailability,
   onSaveResult,
 }: {
+  resources?: SessionQueryCache
+  onLoadTrainingPlans?: (from: string, until: string) => Promise<TrainingPlanCalendarItem[]>
+  onRespondTraining?: SaveTrainingResponse
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
   demo?: boolean
@@ -95,6 +103,7 @@ export function PlayerCalendarView({
   const initialDate = focusedDate ?? today
   const [selectedDate, setSelectedDate] = useState(initialDate)
   const [month, setMonth] = useState(`${initialDate.slice(0, 7)}-01`)
+  const training = useCalendarTrainings(month, onLoadTrainingPlans, onRespondTraining, resources)
   const [detailMatch, setDetailMatch] = useState<Match | null>(null)
   const pairedDetailMatch = detailMatch?.internal_fixture_id ? matches.find((item) => item.id !== detailMatch.id && item.internal_fixture_id === detailMatch.internal_fixture_id) : undefined
   const [surveyClosures, setSurveyClosures] = useState<CalendarSurvey[]>([])
@@ -113,7 +122,8 @@ export function PlayerCalendarView({
     .sort(compareMatches)
   const selectedBirthdays = birthdays.filter((birthday) => birthday.birthday_on === selectedDate)
   const selectedSurveyClosures = surveyClosures.filter((survey) => calendarSurveyAppearsOnDate(survey, selectedDate))
-  const hasSelectedDayContent = selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
+  const selectedTrainings = training.plans.filter((plan) => plan.session_date === selectedDate)
+  const hasSelectedDayContent = selectedTrainings.length + selectedBirthdays.length + selectedAnnouncements.length + selectedMatches.length + selectedSurveyClosures.length > 0 || holidays.includes(selectedDate)
 
   useEffect(() => {
     if (!focusedDate) return
@@ -185,7 +195,7 @@ export function PlayerCalendarView({
   return <div className="page">
     <PageHeader
       eyebrow="PLANIFICACIÓN"
-      subtitle="Consulta tus tareas, avisos, partidos y próximos cumpleaños."
+      subtitle="Consulta tus tareas, entrenamientos, avisos, partidos y próximos cumpleaños."
       title="Calendario"
     />
     <div className="task-calendar-view player-calendar-view">
@@ -199,10 +209,12 @@ export function PlayerCalendarView({
         month={month}
         selectedDate={selectedDate}
         tasks={visibleTasks}
+        trainingPlans={onLoadTrainingPlans ? training.plans : undefined}
         surveys={surveyClosures}
         onMonthChange={(nextMonth) => void changeMonth(nextMonth)}
         onSelectDate={setSelectedDate}
       />
+      {training.error && <p className="form-error" role="alert">No se han podido cargar los entrenamientos: {training.error} <button className="text-button" onClick={() => void training.reload(true)} type="button">Reintentar</button></p>}
       <section className="selected-planning-week">
         {hasSelectedDayContent && <div className="selected-day-date"><h2>{formatDate(selectedDate, { weekday: 'long', day: 'numeric', month: 'long' })}</h2></div>}
         {holidays.includes(selectedDate) && <HolidayDayContext />}
@@ -215,6 +227,7 @@ export function PlayerCalendarView({
           <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
         </div>}
         {selectedSurveyClosures.length > 0 && <SurveyClosureCards canRespond={canRespondToSurveys} surveys={selectedSurveyClosures} onModify={modifySurvey} onOpen={openSurveyDetail} />}
+        <CalendarTrainingPlans player plans={selectedTrainings} onRespond={training.respond} />
         {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
           <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
           <div className="match-list">{selectedMatches.map(renderMatch)}</div>

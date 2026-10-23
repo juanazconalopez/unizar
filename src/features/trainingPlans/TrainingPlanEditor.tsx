@@ -118,7 +118,6 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
   }
 
   function removeExercise(index: number) {
-    if (values.exercises.length === 1) return
     setValues((current) => ({ ...current, exercises: current.exercises.filter((_, exerciseIndex) => exerciseIndex !== index) }))
   }
 
@@ -134,6 +133,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
+    if (values.status === 'published' && !values.exercises.length) { setFormError('Añade al menos un ejercicio antes de publicar.'); return }
     setSaving(true)
     setFormError('')
     try {
@@ -152,7 +152,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
   }
 
   async function deletePlan() {
-    if (!onDelete || !window.confirm('Esta acción eliminará también todos los ejercicios y esquemas.')) return
+    if (!onDelete || !window.confirm('Esta acción eliminará también todos los ejercicios, esquemas y respuestas de asistencia.')) return
     setDeleting(true)
     setFormError('')
     try { await onDelete(); draft.clearDraft() } catch (error) { setFormError(errorText(error)); setDeleting(false) }
@@ -188,12 +188,14 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
 
         <form onBlurCapture={draft.saveNow} onSubmit={submit}>
         <section className="training-editor-section training-basics">
+          <p className="muted">Horario: {plan?.start_time?.slice(0, 5) ?? '19:30'}–{plan?.end_time?.slice(0, 5) ?? '21:30'}. Las jugadoras pueden responder asistencia aunque los ejercicios estén en borrador.</p>
+          {plan && <p className="muted">Si cambias la fecha, las jugadoras tendrán que confirmar de nuevo su respuesta.</p>}
           <div className="training-section-heading"><span>1</span><div><h2>Datos de la sesión</h2><p>Define cuándo se realiza y qué se quiere trabajar.</p></div></div>
           <div className="form-grid">
             <label>Título<input autoFocus onChange={(event) => update('title', event.target.value)} placeholder="Ej. Defensa organizada y salida" required spellCheck value={values.title} /></label>
             <label>Fecha<input onChange={(event) => changeDate(event.target.value)} required type="date" value={values.sessionDate} /></label>
             <label>Temporada<select onChange={(event) => update('seasonId', event.target.value)} value={values.seasonId}>{seasons.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}</select></label>
-            <label>Estado<select disabled={!canPublish} onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option>{(canPublish || values.status === 'published') && <option value="published">Preparado</option>}{plan && (canPublish || values.status === 'cancelled') && <option value="cancelled">Cancelado</option>}</select></label>
+            <label>Estado<select disabled={!canPublish} onChange={(event) => update('status', event.target.value as TrainingPlanValues['status'])} value={values.status}><option value="draft">Borrador</option>{(canPublish || values.status === 'published') && <option value="published">Publicado</option>}{plan && (canPublish || values.status === 'cancelled') && <option value="cancelled">Cancelado</option>}</select></label>
             <ContentImageTextarea className="full-field" label="Objetivos" onChange={(value) => update('objectives', value)} placeholder="Principios y objetivos principales de la sesión…" rows={4} showFilePicker={false} value={values.objectives} />
             <ContentImageTextarea className="full-field" label="Material" onChange={(value) => update('material', value)} placeholder="Balones, conos, petos, escudos…" rows={3} showFilePicker={false} value={values.material} />
           </div>
@@ -211,7 +213,7 @@ export function TrainingPlanEditor({ plan, template, seasons, userId, canPublish
                     <button aria-label="Subir ejercicio" className="secondary-button compact" disabled={index === 0} onClick={() => moveExercise(index, -1)} type="button">↑</button>
                     <button aria-label="Bajar ejercicio" className="secondary-button compact" disabled={index === values.exercises.length - 1} onClick={() => moveExercise(index, 1)} type="button">↓</button>
                     {onSavePreset && <button aria-label={`Guardar ${exercise.title || `ejercicio ${index + 1}`} como predefinido`} className="secondary-button compact" disabled={savingPresetIndex !== null} onClick={() => void savePreset(index)} title="Guardar como predefinido" type="button"><Icon name="save" size={14} /></button>}
-                    <button aria-label="Eliminar ejercicio" className="secondary-button compact" disabled={values.exercises.length === 1} onClick={() => removeExercise(index)} type="button">×</button>
+                    <button aria-label="Eliminar ejercicio" className="secondary-button compact" onClick={() => removeExercise(index)} type="button">×</button>
                   </div>
                 </header>
                 <div className="training-exercise-fields">

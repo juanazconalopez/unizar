@@ -16,7 +16,7 @@ const profiles = [makeProfile({ display_name: 'Inés & Ana' }), makeProfile({ id
 const report: SeasonCallupReport = {
   seasonId: 'season-1', seasonName: '2026 & 2027', generatedOn: '2026-08-14',
   totals: { officialMatches: 5, friendlyMatches: 3, trainingSessions: 34 },
-  players: [{ playerId: 'player-1', name: 'Inés & Ana', officialCallups: 4, friendlyCallups: 2, starterCallups: 4, substituteCallups: 2, eligibleMatches: 9, availabilityResponded: 8, availabilityPercentage: 89, attendedSessions: 28, eligibleSessions: 33, attendancePercentage: 85 }],
+  players: [{ playerId: 'player-1', name: 'Inés & Ana', officialCallups: 4, friendlyCallups: 2, starterCallups: 4, substituteCallups: 2, playedMinutes: 80, eligibleMatches: 9, availabilityResponded: 8, availabilityPercentage: 89, attendedSessions: 28, eligibleSessions: 33, attendancePercentage: 85 }],
 }
 
 describe('match exports', () => {
@@ -41,6 +41,7 @@ describe('match exports', () => {
   test('exports report totals, percentages and tabular clipboard text', () => {
     expect(callupReportXml(report)).toContain('<totales oficiales="5" amistosos="3" entrenamientos="34" />')
     expect(callupReportXml(report)).toContain('nombre="Inés &amp; Ana"')
-    expect(callupReportTsv(report)).toBe('Nombre\tOficiales (5)\tAmistosos (3)\tTitular\tSuplente\tDisponibilidad\tAsistencia (34)\nInés & Ana\t4\t2\t4\t2\t8/9 (89%)\t28 (85%)')
+    expect(callupReportXml(report)).toContain('minutos-jugados="80"')
+    expect(callupReportTsv(report)).toBe('Nombre\tOficiales (5)\tAmistosos (3)\tTitular\tSuplente\tMinutos jugados\tDisponibilidad\tAsistencia (34)\nInés & Ana\t4\t2\t4\t2\t80\t8/9 (89%)\t28 (85%)')
   })
 })

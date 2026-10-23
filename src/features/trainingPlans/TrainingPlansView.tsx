@@ -1,3 +1,6 @@
+import { generateTrainingSchedule } from '../../services/trainingScheduleService'
+import { GenerateTrainingsDialog } from './GenerateTrainingsDialog'
+import type { TrainingGenerationDay } from '../../types'
 import type { SessionQueryCache } from '../../services/sessionQueryCache'
 import { navigationResourceKeys } from '../../services/navigationResources'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -43,7 +46,10 @@ type EditorSource =
   | { mode: 'edit'; plan: TrainingPlan }
   | { mode: 'duplicate'; template: TrainingPlan }
 
-export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode, resources, seasons, userId, onNotify, onEditPlan, onReturnToList, permissions }: {
+export function TrainingPlansView({ demo = false, demoPlans, onDemoPlansChange, onGenerateTrainings, focusedPlanId, focusedPlanMode, resources, seasons, userId, onNotify, onEditPlan, onReturnToList, permissions }: {
+  demoPlans?: TrainingPlan[]
+  onDemoPlansChange?: (plans: TrainingPlan[]) => void
+  onGenerateTrainings?: (apply: boolean) => Promise<TrainingGenerationDay[]>
   resources?: SessionQueryCache
   demo?: boolean
   focusedPlanId?: string
@@ -54,7 +60,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   userId: string
   onNotify: (message: string) => void
   permissions?: {
-    create: boolean; edit: boolean; delete: boolean; publish: boolean
+    generate?: boolean; create: boolean; edit: boolean; delete: boolean; publish: boolean
     viewExercises: boolean; createExercises: boolean; editExercises: boolean; deleteExercises: boolean
   }
 }) {
@@ -63,6 +69,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   const [loading, setLoading] = useState(!resources?.peek(navigationResourceKeys.trainingPlans()))
   const [loadError, setLoadError] = useState('')
   const [demoMode, setDemoMode] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [editor, setEditor] = useState<EditorSource | null>(null)
   const [viewingPlan, setViewingPlan] = useState<TrainingPlan | null>(null)
   const [demoPresets, setDemoPresets] = useState<TrainingExercisePreset[]>([])
@@ -80,7 +87,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
     setLoadError('')
     try {
       if (demo) {
-        const loadedPlans = demoTrainingPlans(seasons)
+        const loadedPlans = demoPlans ?? demoTrainingPlans(seasons)
         setPlans(loadedPlans)
         setDemoPresets((current) => current.length ? current : demoExercisePresets(seasons, userId))
         if (focusedPlanId) {
@@ -113,12 +120,17 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
     } finally {
       if (request === listRequest.current) setLoading(false)
     }
-  }, [access.edit, demo, focusedPlanId, focusedPlanMode, resources, seasons, userId])
+  }, [access.edit, demo, demoPlans, focusedPlanId, focusedPlanMode, resources, seasons, userId])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(false), 0)
     return () => { window.clearTimeout(timer); listRequest.current += 1 }
   }, [load])
+
+  function invalidatePlanResources() {
+    resources?.invalidatePrefix('training-plans:')
+    resources?.invalidatePrefix('training-calendar:')
+  }
 
   function editPlan(plan: TrainingPlan) {
     if (onEditPlan) { onEditPlan(plan.id); return }
@@ -133,14 +145,16 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
   }
 
   async function remove(plan: TrainingPlan) {
-    if (!window.confirm(`¿Eliminar el entrenamiento “${plan.title}” y todos sus ejercicios?`)) return
+    if (!window.confirm(`¿Eliminar el entrenamiento “${plan.title}” con sus ejercicios y respuestas de asistencia?`)) return
     try {
       if (demoMode) {
-        setPlans((current) => current.filter((item) => item.id !== plan.id))
+        const remaining = plans.filter((item) => item.id !== plan.id)
+        setPlans(remaining); onDemoPlansChange?.(remaining)
         onNotify('Entrenamiento eliminado de la demo.')
         return
       }
       await deleteTrainingPlan(plan.id)
+      invalidatePlanResources()
       onNotify('Entrenamiento eliminado.')
       await load()
     } catch (error) {
@@ -224,12 +238,12 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
       onSavePlan={async (values) => {
         if (!demoMode) {
           await saveTrainingPlan(editedPlan?.id, values, userId)
+          invalidatePlanResources()
           return
         }
         const saved = demoPlanFromValues(values, seasons, editedPlan)
-        setPlans((current) => editedPlan
-          ? current.map((item) => item.id === editedPlan.id ? saved : item)
-          : [saved, ...current])
+        const next = editedPlan ? plans.map((item) => item.id === editedPlan.id ? saved : item) : [saved, ...plans]
+        setPlans(next); onDemoPlansChange?.(next)
       }}
       onLoadPresets={async () => access.viewExercises ? demoMode ? demoPresets : fetchTrainingExercisePresets() : []}
       onSavePreset={access.createExercises ? async (exercise) => {
@@ -261,6 +275,7 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
     <div className="page training-plans-page">
       <PageHeader
         action={<div className="training-header-actions">
+          {access.create && (access.generate ?? Boolean(onGenerateTrainings)) && (!demo || onGenerateTrainings) && <button className="secondary-button" disabled={loading} onClick={() => setGenerating(true)} type="button">Generar entrenamientos</button>}
           {access.viewExercises && <button className="secondary-button" onClick={() => void openLibrary()} type="button"><Icon name="strategy" size={17} />Biblioteca de ejercicios</button>}
           {access.create && <button className="primary-button" disabled={!seasons.length || loading || Boolean(focusedPlanId)} onClick={() => setEditor({ mode: 'create' })}><Icon name="plus" size={17} />Crear entrenamiento</button>}
         </div>}
@@ -271,6 +286,12 @@ export function TrainingPlansView({ demo = false, focusedPlanId, focusedPlanMode
 
       {demoMode && <div className="training-demo-banner"><Icon name="spark" size={17} /><span><strong>Modo de muestra local.</strong> Puedes editar y guardar en memoria; aplica la migración 029 para persistir en Supabase.</span></div>}
 
+      {generating && <GenerateTrainingsDialog onGenerate={onGenerateTrainings ?? generateTrainingSchedule} onClose={() => setGenerating(false)} onDone={async (days) => {
+        invalidatePlanResources()
+        if (!demoMode) await load()
+        setGenerating(false)
+        onNotify(`${days.filter((day) => day.result === 'created').length} entrenamientos generados.`)
+      }} />}
       {loadError && <div className="training-load-error"><p>{loadError}</p><button className="secondary-button compact" onClick={() => void load()}>Reintentar</button>{focusedPlanId && onReturnToList && <button className="text-button" onClick={returnToList}>Volver a entrenamientos</button>}</div>}
       {loading ? <div className="training-loading">Cargando entrenamientos…</div> : visiblePlans.length ? (
         <div className="training-plan-list">

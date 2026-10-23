@@ -108,11 +108,12 @@ describe('matchesService', () => {
   })
 
   test('loads the accumulated report through its protected database function', async () => {
-    const report = { seasonId: 'season-1', seasonName: '2026', generatedOn: '2026-08-14', totals: { officialMatches: 1, friendlyMatches: 0, trainingSessions: 2 }, players: [] }
-    mocks.rpc.mockResolvedValueOnce({ data: report, error: null })
+    const report = { seasonId: 'season-1', seasonName: '2026', generatedOn: '2026-08-14', totals: { officialMatches: 1, friendlyMatches: 0, trainingSessions: 2 }, players: [{ playerId: 'player-1', name: 'A', officialCallups: 1, friendlyCallups: 0, starterCallups: 1, substituteCallups: 0, eligibleMatches: 1, availabilityResponded: 1, availabilityPercentage: 100, attendedSessions: 0, eligibleSessions: 0, attendancePercentage: null }] }
+    mocks.rpc.mockResolvedValueOnce({ data: report, error: null }).mockResolvedValueOnce({ data: [{ player_id: 'player-1', played_minutes: 70 }], error: null })
 
-    await expect(fetchSeasonCallupReport('season-1')).resolves.toEqual(report)
+    await expect(fetchSeasonCallupReport('season-1')).resolves.toEqual({ ...report, players: [{ ...report.players[0], playedMinutes: 70 }] })
     expect(mocks.rpc).toHaveBeenCalledWith('get_season_callup_report', { checked_season_id: 'season-1' })
+    expect(mocks.rpc).toHaveBeenCalledWith('get_season_player_minutes', { checked_season_id: 'season-1' })
   })
 
   test('loads attendance through the protected team-data database function', async () => {
@@ -125,11 +126,12 @@ describe('matchesService', () => {
 
   test('loads one player season summary through its protected database function', async () => {
     const summary = { seasonId: 'season-1', playerId: 'player-1', matches: [] }
-    mocks.rpc.mockResolvedValueOnce({ data: summary, error: null })
+    mocks.rpc.mockResolvedValueOnce({ data: summary, error: null }).mockResolvedValueOnce({ data: [{ player_id: 'player-1', played_minutes: 185 }], error: null })
 
-    await expect(fetchPlayerSeasonSummary('season-1', 'player-1')).resolves.toEqual(summary)
+    await expect(fetchPlayerSeasonSummary('season-1', 'player-1')).resolves.toEqual({ ...summary, playedMinutes: 185 })
     expect(mocks.rpc).toHaveBeenCalledWith('get_player_season_summary', {
       checked_season_id: 'season-1', checked_player_id: 'player-1',
     })
+    expect(mocks.rpc).toHaveBeenCalledWith('get_season_player_minutes', { checked_season_id: 'season-1' })
   })
 })

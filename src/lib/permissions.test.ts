@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { makeProfile } from '../test/fixtures'
-import { canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
+import { canGenerateTrainingSchedule, canAccessTasks, canBeSeasonTeamCoach, canConfigureClub, canManagePlayerPositions, canManageTrainingExceptions, canManageTrainingGroups, canManageSport, canViewTeamData, effectivePermissions, hasPermission, isPlayer, PERMISSIONS } from './permissions'
 
 describe('role permissions', () => {
   test('training groups preserve read-only access for players and Dirección even if a write key is configured', () => {
@@ -89,4 +89,15 @@ describe('autorizaciones de solo entrenamientos', () => {
     expect(canManageTrainingExceptions(makeProfile({ is_viewer: true }), [PERMISSIONS.matches.trainingExceptions])).toBe(false)
     expect(canManageTrainingExceptions(makeProfile(), [PERMISSIONS.matches.trainingExceptions])).toBe(false)
   })
+})
+
+test('solo owner y entrenadores autorizados generan; las jugadoras responden sin recibir el plan privado', () => {
+  expect(canGenerateTrainingSchedule(makeProfile({ is_owner: true }), [])).toBe(true)
+  expect(canGenerateTrainingSchedule(makeProfile({ is_coach: true }))).toBe(true)
+  expect(canGenerateTrainingSchedule(makeProfile({ is_coach: true }), [])).toBe(false)
+  expect(canGenerateTrainingSchedule(makeProfile({ is_owner: true, is_active: false }))).toBe(false)
+  expect(canGenerateTrainingSchedule(makeProfile({ is_viewer: true }), [PERMISSIONS.training.generate])).toBe(false)
+  expect(canGenerateTrainingSchedule(makeProfile(), [PERMISSIONS.training.generate])).toBe(false)
+  expect(hasPermission(makeProfile(), PERMISSIONS.calendar.trainingRespond)).toBe(true)
+  expect(hasPermission(makeProfile(), PERMISSIONS.training.view)).toBe(false)
 })

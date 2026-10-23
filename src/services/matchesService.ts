@@ -99,10 +99,14 @@ export async function unlockMatchLineup(matchId: string) {
 }
 
 export async function fetchSeasonCallupReport(seasonId: string): Promise<SeasonCallupReport> {
-  const { data, error } = await supabase.rpc('get_season_callup_report', { checked_season_id: seasonId })
+  const [{ data, error }, minutes] = await Promise.all([
+    supabase.rpc('get_season_callup_report', { checked_season_id: seasonId }),
+    fetchSeasonPlayerMinutes(seasonId),
+  ])
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen de convocatorias no tiene un formato válido.')
-  return data as unknown as SeasonCallupReport
+  const report = data as unknown as SeasonCallupReport
+  return { ...report, players: report.players.map((player) => ({ ...player, playedMinutes: minutes.get(player.playerId) ?? 0 })) }
 }
 
 export async function fetchSeasonAttendanceReport(seasonId: string): Promise<SeasonCallupReport> {
@@ -113,13 +117,17 @@ export async function fetchSeasonAttendanceReport(seasonId: string): Promise<Sea
 }
 
 export async function fetchPlayerSeasonSummary(seasonId: string, playerId: string): Promise<PlayerSeasonSummary> {
-  const { data, error } = await supabase.rpc('get_player_season_summary', {
-    checked_season_id: seasonId,
-    checked_player_id: playerId,
-  })
+  const [{ data, error }, minutes] = await Promise.all([
+    supabase.rpc('get_player_season_summary', {
+      checked_season_id: seasonId,
+      checked_player_id: playerId,
+    }),
+    fetchSeasonPlayerMinutes(seasonId),
+  ])
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('El resumen personal no tiene un formato válido.')
-  return data as unknown as PlayerSeasonSummary
+  const summary = data as unknown as PlayerSeasonSummary
+  return { ...summary, playedMinutes: minutes.get(playerId) ?? 0 }
 }
 
 export async function fetchSeasonPlayerMinutes(seasonId: string): Promise<Map<string, number>> {

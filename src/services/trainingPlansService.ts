@@ -77,16 +77,8 @@ export async function fetchTrainingPlan(planId: string): Promise<TrainingPlan> {
 }
 
 export async function fetchCalendarTrainingPlans(fromDate: string, toDate: string): Promise<TrainingPlanCalendarItem[]> {
-  const { data, error } = await supabase
-    .from('training_plans')
-    .select('id, session_date, title, status')
-    .gte('session_date', fromDate)
-    .lte('session_date', toDate)
-    .order('session_date')
-  if (error) {
-    if (import.meta.env.DEV && isTrainingPlansSchemaMissing(error)) return []
-    throw error
-  }
+  const { data, error } = await supabase.rpc('get_training_calendar', { from_date: fromDate, until_date: toDate })
+  if (error) throw error
   return data ?? []
 }
 

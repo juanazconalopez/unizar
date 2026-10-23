@@ -1,5 +1,5 @@
 begin;
-select plan(629);
+select plan(708);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -534,7 +534,7 @@ select ok(
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'training_plans'
       and policyname = 'Sport managers can read training plans'
-      and qual like '%current_user_can_manage_sport%'
+      and qual like '%current_user_has_permission%training.view%'
   ),
   'training plans are not readable by players or Dirección'
 );
@@ -543,7 +543,7 @@ select ok(
     select 1 from pg_policies
     where schemaname = 'public' and tablename = 'training_exercise_presets'
       and policyname = 'Sport managers can read training exercise presets'
-      and qual like '%current_user_can_manage_sport%'
+      and qual like '%current_user_has_permission%exercises.view%'
   ),
   'exercise presets are private to owner and coaches'
 );
@@ -1344,6 +1344,98 @@ select throws_ok($$select public.add_match_training_player('00000000-0000-4000-8
 reset role;
 
 select like(pg_get_functiondef('public.player_availability_opportunities(uuid,uuid)'::regprocedure),'%player_has_match_training_exception(match.id,checked_player_id)%','una autorización sin equipo cuenta solo su oportunidad concreta');
+
+
+-- 088: agenda mínima y respuestas separadas de la asistencia real.
+select has_table('public','training_responses','respuestas previstas separadas de la asistencia');
+select ok((select relrowsecurity from pg_class where oid='public.training_responses'::regclass),'las respuestas tienen RLS');
+select ok(not has_table_privilege('authenticated','public.training_responses','SELECT,INSERT,UPDATE,DELETE'),'no hay acceso directo a respuestas ajenas');
+select ok(not has_table_privilege('anon','public.training_responses','SELECT'),'anon no recibe respuestas');
+select has_column('public','training_plans','schedule_version','los cambios de horario invalidan la respuesta anterior');
+select has_trigger('public','training_plans','training_schedule_guard','los cambios de agenda se comprueban en SQL');
+select has_trigger('public','training_sessions','training_attendance_date_lock','asistencia y respuestas comparten el bloqueo');
+select ok(not has_function_privilege('authenticated','public.lock_training_date(date)','EXECUTE'),'el bloqueo es interno');
+select ok(not has_function_privilege('authenticated','public.training_player_eligible(uuid,date,uuid)','EXECUTE'),'no se consulta elegibilidad de otras personas');
+select ok(not has_function_privilege('authenticated','public.guard_training_schedule()','EXECUTE'),'el guardado del histórico es interno');
+select ok(not has_function_privilege('anon','public.get_training_calendar(date,date)','EXECUTE'),'anon no consulta la agenda');
+select ok(not has_function_privilege('anon','public.generate_training_schedule(boolean)','EXECUTE'),'anon no genera sesiones');
+select ok(not has_function_privilege('anon','public.save_training_response(uuid,boolean,text,integer)','EXECUTE'),'anon no responde');
+select ok(not has_function_privilege('anon','public.get_training_attendance_basis(date)','EXECUTE'),'anon no recibe la base de asistencia');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%r.player_id=auth.uid()%','la agenda solo incorpora la respuesta propia');
+select unlike(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%objectives%','la agenda no expone objetivos privados');
+select unlike(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%material%','la agenda no expone material ni ejercicios');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%until_date - from_date > 62%','las consultas de agenda están acotadas');
+select like(pg_get_functiondef('public.save_training_response(uuid,boolean,text,integer)'::regprocedure),'%end_time%Europe/Madrid%clock_timestamp()%training_sessions%','la respuesta cierra al terminar o al registrar asistencia');
+select like(pg_get_functiondef('public.save_training_response(uuid,boolean,text,integer)'::regprocedure),'%checked_version is distinct from p.schedule_version%','no se guarda una respuesta a un horario obsoleto');
+select like(pg_get_functiondef('public.save_training_response(uuid,boolean,text,integer)'::regprocedure),'%training_player_eligible%auth.uid()%','las respuestas respetan perfil y vinculación');
+select unlike(pg_get_functiondef('public.training_player_eligible(uuid,date,uuid)'::regprocedure),'%license_type%','la asistencia admite Solo entrenamientos y Sin ficha');
+select like(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%training.generate%p.is_owner or p.is_coach%','solo owner o entrenadores autorizados generan');
+select like(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%season_holidays%holiday_date=day%','se excluyen los festivos de la temporada activa');
+select like(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%in (2,4,5)%','solo se generan martes, jueves y viernes');
+select like(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%on conflict on constraint training_plans_session_date_key do nothing%','generar de nuevo no duplica ni sobrescribe sesiones');
+select unlike(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%insert into public.training_sessions%','generar no registra asistencia ni ausencias');
+select like(pg_get_functiondef('public.save_training_plan(uuid,uuid,date,text,text,text,public.task_status,jsonb)'::regprocedure),'%checked_status = ''published'' and jsonb_array_length(checked_exercises) = 0%','los borradores vacíos se guardan y la publicación exige ejercicios');
+select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%attendance.record%p.is_owner or p.is_coach%','la base está reservada al registro deportivo');
+select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%''recorded'',exists%','una asistencia guardada sin asistentes no se rellena de nuevo');
+select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%new.schedule_version := old.schedule_version + 1%new.schedule_version := old.schedule_version%','cambiar nombre o ejercicios conserva las respuestas');
+select like(pg_get_functiondef('public.set_season_holidays(uuid,date[])'::regprocedure),'%for update%delete from public.season_holidays%','los festivos no cambian a mitad de una generación');
+select ok(exists(select 1 from public.role_permission_defaults where role='player' and permission_key='calendar.training_respond'),'las jugadoras responden por defecto');
+select ok(not exists(select 1 from public.role_permission_defaults where role in ('player','viewer') and permission_key='training.generate'),'jugadoras y Dirección no generan');
+set local role authenticated;
+select throws_ok($$select public.generate_training_schedule(true)$$,'P0001','No tienes permiso para generar entrenamientos','sin permisos no se genera');
+select throws_ok($$select public.get_training_calendar(current_date,current_date)$$,'P0001','No tienes permiso para consultar entrenamientos','sin permisos no se consulta la agenda');
+select throws_ok($$select public.save_training_response('00000000-0000-4000-8000-000000000001',true,'',1)$$,'P0001','No tienes permiso para responder','sin permisos no se responde');
+select throws_ok($$select public.get_training_attendance_basis(current_date)$$,'P0001','No tienes permiso para registrar asistencia','sin permisos no se reciben respuestas del equipo');
+reset role;
+
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','get_training_calendar fija search_path');
+select like(pg_get_functiondef('public.save_training_response(uuid,boolean,text,integer)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','save_training_response fija search_path');
+select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','get_training_attendance_basis fija search_path');
+select like(pg_get_functiondef('public.generate_training_schedule(boolean)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','generate_training_schedule fija search_path');
+select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','guard_training_schedule fija search_path');
+
+
+-- 089: total agregado de asistencia prevista, sin ampliar los datos personales visibles.
+select like(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%attending_count integer%','la agenda incluye el total de confirmadas');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%confirmed.training_plan_id=p.id and confirmed.attending%confirmed.schedule_version=p.schedule_version%','el contador solo incluye respuestas afirmativas de la versión vigente');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%training_player_eligible(p.season_id,p.session_date,confirmed.player_id)%','el total respeta perfil activo y vinculación en la fecha');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%case when p.status = ''cancelled''%holiday_date=p.session_date) then 0%','cancelados y festivos no anuncian asistentes');
+select unlike(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%player_id%','el total no expone identificadores de otras jugadoras');
+select unlike(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%public.training_attendance%','el total previsto no sustituye la asistencia real');
+select ok(not has_table_privilege('authenticated','public.training_responses','SELECT'),'las jugadoras no leen las respuestas individuales ajenas');
+select ok(not has_function_privilege('anon','public.get_training_calendar(date,date)','EXECUTE'),'el contador sigue restringido a sesiones autenticadas');
+select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','la agenda agregada mantiene search_path restringido');
+
+-- 090: viernes autogestionados, cierre interno y protección de la asistencia.
+select has_column('public','training_plans','self_managed','la agenda identifica los viernes autogestionados');
+select has_column('public','training_sessions','self_managed','el registro conserva su origen automático');
+select has_column('public','training_sessions','training_plan_id','el registro automático conserva el identificador del plan');
+select has_trigger('public','training_sessions','a_guard_self_managed','el staff no crea ni modifica asistencia autogestionada');
+select has_trigger('public','training_attendance','a_guard_self_managed','las filas automáticas están protegidas');
+select has_trigger('public','provisional_training_attendance','a_guard_self_managed','los viernes no admiten validación manual de invitadas');
+select ok(not has_function_privilege('authenticated','public.finalize_self_managed_training_attendance()','EXECUTE'),'los clientes no ejecutan el proceso interno');
+select ok(not has_function_privilege('anon','public.finalize_self_managed_training_attendance()','EXECUTE'),'anon no ejecuta el proceso interno');
+select ok(not has_function_privilege('authenticated','public.self_managed_attendance_write_allowed(uuid,date)','EXECUTE'),'el contexto de escritura es privado');
+select ok(not has_function_privilege('authenticated','public.guard_self_managed_training_attendance()','EXECUTE'),'el trigger de protección es interno');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%session_user not in%auth.uid() is not null%current_setting(''role'',true)%','una variable de sesión no habilita un proceso desde un cliente');
+select like(pg_get_functiondef('public.self_managed_attendance_write_allowed(uuid,date)'::regprocedure),'%session_user in%current_setting(''role'',true)%auth.uid() is null%','los bypass de los triggers exigen conexión interna sin JWT');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%plan.self_managed%extract(isodow from plan.session_date)=5%plan.status <> ''cancelled''%','solo cierra viernes autogestionados no cancelados');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%(plan.session_date+plan.end_time) at time zone ''Europe/Madrid'' <= clock_timestamp()%','las sesiones futuras o sin terminar no crean asistencia');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%season_holidays%holiday_date=plan.session_date%','los festivos no producen ausencias automáticas');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%for update of plan skip locked%lock_training_date%on conflict(session_date) do nothing%','el cierre es idempotente y comparte bloqueos con las respuestas');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%coalesce(response.attending and response.schedule_version=p.schedule_version,false)%left join public.training_responses%','rechazo, sin respuesta o versión obsoleta son ausencia');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%training_player_eligible(p.season_id,p.session_date,player.id)%','el cierre respeta las vinculaciones reales y los perfiles activos');
+select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%new.self_managed := extract(isodow from new.session_date)=5%','mover la fecha recalcula la autogestión');
+select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%new.self_managed := old.self_managed%','editar ejercicios o título conserva el origen histórico');
+select like(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%self_managed boolean%','el calendario recibe el modo de asistencia sin contenido privado');
+select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%''self_managed'',exists%','el registro deportivo conoce su bloqueo automático');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','el proceso interno fija search_path');
+select ok(exists(select 1 from cron.job where jobname='unizar-self-managed-training-attendance' and schedule='*/5 19-23 * * *' and active and command='select public.finalize_self_managed_training_attendance();'),'Cron cierra y recupera sesiones sin depender del navegador');
+select is((select count(*)::integer from pg_constraint where conrelid='public.training_sessions'::regclass and contype='u' and pg_get_constraintdef(oid)='UNIQUE (training_plan_id)'),1,'un plan no puede generar dos sesiones');
+
+-- 091: los minutos y los derbis se reflejan una sola vez en el resumen de convocatorias.
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%count(distinct coalesce(internal_fixture_id, id)) filter (where match_kind = ''official''::public.match_kind)%','el total de partidos oficiales cuenta cada derbi interno una sola vez');
+select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%count(distinct coalesce(ec.internal_fixture_id, ec.match_id)) filter (where ec.match_kind = ''official''::public.match_kind)%','las convocatorias oficiales individuales también deduplican derbis');
 
 select * from finish();
 rollback;

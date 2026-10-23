@@ -34,5 +34,9 @@ export class SessionQueryCache {
     return entry.promise
   }
 
+  invalidatePrefix(prefix: string) {
+    for (const key of this.entries.keys()) if (key.startsWith(prefix)) this.entries.delete(key)
+  }
+
   clear() { this.entries.clear() }
 }
