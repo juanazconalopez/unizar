@@ -1506,6 +1506,10 @@ export type Database = {
         Args: { checked_date: string }
         Returns: Json
       }
+      get_training_plan_attendees: {
+        Args: { checked_plan_id: string }
+        Returns: { display_name: string }[]
+      }
 
       add_match_training_player: {
         Args: { checked_match_id: string; checked_player_id: string; checked_reason: string; checked_slot_number?: number | null }

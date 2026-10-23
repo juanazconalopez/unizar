@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import type { TrainingPlanCalendarItem } from '../../types'
@@ -17,6 +17,16 @@ describe('respuesta personal de entrenamientos', () => {
   test('mantiene el total de confirmadas después del registro real y lo muestra al staff', () => {
     render(<CalendarTrainingPlans plans={[{ ...plan, attendance_recorded: true, attending_count: 12 }]} />)
     expect(screen.getByRole('status', { name: '12 jugadoras han confirmado su asistencia' })).toHaveTextContent('12confirmadas')
+  })
+  test('el staff puede abrir la lista de confirmadas desde el contador', async () => {
+    const user = userEvent.setup()
+    const load = vi.fn().mockResolvedValue(['Ana Pérez', 'Lucía Gómez'])
+    render(<CalendarTrainingPlans onLoadAttendees={load} plans={[{ ...plan, attending_count: 2 }]} />)
+    await user.click(screen.getByRole('button', { name: /2 jugadoras han confirmado su asistencia.*Ver lista/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Respuestas «Asistiré»' })
+    expect(load).toHaveBeenCalledWith('p')
+    expect(within(dialog).getByText('Ana Pérez')).toBeInTheDocument()
+    expect(within(dialog).getByText('Lucía Gómez')).toBeInTheDocument()
   })
   test('explica la autogestión y conserva la respuesta cerrada tras el registro automático', () => {
     render(<CalendarTrainingPlans player plans={[{ ...plan, self_managed: true, own_attending: false, attendance_recorded: true }]} onRespond={vi.fn()} />)

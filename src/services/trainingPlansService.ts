@@ -82,6 +82,12 @@ export async function fetchCalendarTrainingPlans(fromDate: string, toDate: strin
   return data ?? []
 }
 
+export async function fetchTrainingPlanAttendees(planId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_training_plan_attendees', { checked_plan_id: planId })
+  if (error) throw error
+  return (data ?? []).map(({ display_name }) => display_name)
+}
+
 export async function fetchTrainingExercisePresets(): Promise<TrainingExercisePreset[]> {
   const { data, error } = await supabase
     .from('training_exercise_presets')

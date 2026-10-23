@@ -1,12 +1,17 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ rpc: vi.fn() }))
 vi.mock('../lib/supabase', () => ({ supabase: { rpc: mocks.rpc } }))
-import { fetchCalendarTrainingPlans } from './trainingPlansService'
+import { fetchCalendarTrainingPlans, fetchTrainingPlanAttendees } from './trainingPlansService'
 import { fetchTrainingAttendanceBasis, generateTrainingSchedule, saveTrainingResponse } from './trainingScheduleService'
 beforeEach(() => { vi.clearAllMocks(); mocks.rpc.mockResolvedValue({ data: [], error: null }) })
 test('el calendario utiliza exclusivamente la RPC de metadatos, sin consultar planes ni ejercicios', async () => {
   await fetchCalendarTrainingPlans('2026-10-01', '2026-10-31')
   expect(mocks.rpc).toHaveBeenCalledWith('get_training_calendar', { from_date: '2026-10-01', until_date: '2026-10-31' })
+})
+test('carga solo los nombres de las jugadoras confirmadas mediante la RPC restringida', async () => {
+  mocks.rpc.mockResolvedValueOnce({ data: [{ display_name: 'Alicia' }, { display_name: 'Beatriz' }], error: null })
+  await expect(fetchTrainingPlanAttendees('plan-1')).resolves.toEqual(['Alicia', 'Beatriz'])
+  expect(mocks.rpc).toHaveBeenCalledWith('get_training_plan_attendees', { checked_plan_id: 'plan-1' })
 })
 test('la primera petición solo prepara una vista previa y la escritura es explícita', async () => {
   await generateTrainingSchedule()

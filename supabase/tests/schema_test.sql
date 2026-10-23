@@ -1,5 +1,5 @@
 begin;
-select plan(708);
+select plan(716);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1252,6 +1252,8 @@ select ok(to_regprocedure('public.save_internal_match_report(uuid,uuid,integer,i
 select ok(not has_function_privilege('anon','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'anon no ejecuta save_internal_match_report');
 select ok(has_function_privilege('authenticated','public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)','EXECUTE'),'authenticated puede llamar save_internal_match_report con validación interna');
 select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','save_internal_match_report fija search_path');
+select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%current_user_has_permission(''matches.edit'')%current_user_can_edit_match(checked_home_match_id)%current_user_can_edit_match(checked_away_match_id)%','owner y entrenadores autorizados pueden guardar ambas fichas del derbi');
+select unlike(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%current_user_is_owner()%','el acta del derbi no exige rol owner si el entrenador tiene permiso');
 
 
 -- 085: grupos de trabajo y responsabilidades por partido.
@@ -1436,6 +1438,16 @@ select is((select count(*)::integer from pg_constraint where conrelid='public.tr
 -- 091: los minutos y los derbis se reflejan una sola vez en el resumen de convocatorias.
 select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%count(distinct coalesce(internal_fixture_id, id)) filter (where match_kind = ''official''::public.match_kind)%','el total de partidos oficiales cuenta cada derbi interno una sola vez');
 select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regprocedure),'%count(distinct coalesce(ec.internal_fixture_id, ec.match_id)) filter (where ec.match_kind = ''official''::public.match_kind)%','las convocatorias oficiales individuales también deduplican derbis');
+
+-- 093: el guardado atómico del acta también habilita el trigger estructural del derbi.
+select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%set_config(''app.internal_fixture_write'', ''yes'', true)%update public.matches%save_match_events%','el guardado autoriza las dos fichas solo dentro de la RPC validada');
+select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%set_config(''app.internal_fixture_write'', coalesce(previous_fixture_write, ''''), true)%','la RPC restaura el contexto anterior del trigger');
+
+-- 094: el listado de confirmadas solo expone nombres al staff deportivo.
+select has_function('public','get_training_plan_attendees',array['uuid'],'existe la lista de respuestas afirmativas por entrenamiento');
+select ok(not has_function_privilege('anon','public.get_training_plan_attendees(uuid)','EXECUTE'),'anon no consulta quién asistirá');
+select ok(has_function_privilege('authenticated','public.get_training_plan_attendees(uuid)','EXECUTE'),'la RPC autentica al usuario y valida staff y permisos');
+select like(pg_get_functiondef('public.get_training_plan_attendees(uuid)'::regprocedure),'%staff.is_owner or staff.is_coach%staff.is_approved%training.view%response.attending%response.schedule_version = checked_plan.schedule_version%training_player_eligible%','solo devuelve respuestas vigentes de jugadoras elegibles a owner o entrenadores');
 
 select * from finish();
 rollback;

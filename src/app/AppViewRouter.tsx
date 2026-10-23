@@ -10,7 +10,7 @@ import { canAccessTasks, hasPermission, isPlayer, PERMISSIONS } from '../lib/per
 import type { PermissionKey } from '../lib/permissions'
 import { fetchPlayerSeasonSummary, fetchSeasonAttendanceReport, fetchSeasonCallupReport } from '../services/matchesService'
 import { fetchStatisticsSeason } from '../services/trainingQueriesService'
-import { fetchCalendarTrainingPlans } from '../services/trainingPlansService'
+import { fetchCalendarTrainingPlans, fetchTrainingPlanAttendees } from '../services/trainingPlansService'
 import { fetchMyCalendarSurveys, fetchMyPendingSurveys, fetchSurveyCalendarResults, fetchVisibleSurveyClosures } from '../services/surveysService'
 import type { Profile, ViewName } from '../types'
 import type { AppActions } from './actions/appActions'
@@ -170,6 +170,7 @@ export function AppViewRouter({
         resources={data.resources}
         onRespondTraining={profile.is_player && can(PERMISSIONS.calendar.trainingRespond) ? saveTrainingResponse : undefined}
         onLoadTrainingPlans={can(PERMISSIONS.training.view) || can(PERMISSIONS.calendar.trainingView) ? fetchCalendarTrainingPlans : undefined}
+        onLoadTrainingAttendees={can(PERMISSIONS.training.view) ? fetchTrainingPlanAttendees : undefined}
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
         onEditTrainingPlan={can(PERMISSIONS.training.edit) ? (trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' }) : undefined}

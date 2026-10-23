@@ -109,6 +109,7 @@ type CalendarViewProps = {
   onLoadCallupReport: (seasonId: string) => Promise<SeasonCallupReport>
   onLoadPlayerSeasonSummary: (seasonId: string, playerId: string) => Promise<PlayerSeasonSummary>
   onLoadTrainingPlans?: (fromDate: string, toDate: string) => Promise<TrainingPlanCalendarItem[]>
+  onLoadTrainingAttendees?: (trainingPlanId: string) => Promise<string[]>
   onOpenTrainingPlan: (trainingPlanId: string) => void
   onEditTrainingPlan?: (trainingPlanId: string) => void
   holidays?: string[]
@@ -294,7 +295,7 @@ export function CalendarView(props: CalendarViewProps) {
             <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard actions={announcementActions(announcement)} announcement={announcement} initialOpen={props.focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
           </div>}
           {selectedSurveyClosures.length > 0 && <SurveyClosureCards surveys={selectedSurveyClosures} onOpen={(survey) => onOpenSurveyResults?.(survey.id)} />}
-          <CalendarTrainingPlans onRespond={training.respond} plans={selectedTrainingPlans} onEdit={props.onEditTrainingPlan} onOpen={props.onOpenTrainingPlan} />
+          <CalendarTrainingPlans onLoadAttendees={props.onLoadTrainingAttendees} onRespond={training.respond} plans={selectedTrainingPlans} onEdit={props.onEditTrainingPlan} onOpen={props.onOpenTrainingPlan} />
           {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
             <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
             <div className="match-list">{selectedMatches.map(renderMatch)}</div>

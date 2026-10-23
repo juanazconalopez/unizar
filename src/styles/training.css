@@ -1668,7 +1668,13 @@
   color: #07513c;
   font-size: 12px;
   font-weight: 700;
+  font-family: inherit;
+  text-align: center;
 }
+
+button.training-attending-count { cursor: pointer; transition: background-color .15s ease, border-color .15s ease; }
+button.training-attending-count:hover { border-color: #78b693; background: #d6ebdf; }
+button.training-attending-count:focus-visible { outline: 3px solid #267b52; outline-offset: 2px; }
 
 .training-attending-total { display: inline-flex; align-items: center; gap: 7px; }
 .calendar-training-list .training-attending-count strong { font-size: 20px; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -1734,6 +1740,11 @@
 
   .calendar-training-list .training-attending-count strong { font-size: 24px; }
 }
+
+.training-attendees-dialog { width: min(520px, 100%); }
+.training-attendees-list { list-style: none; margin: 18px 0 0; padding: 0; max-height: min(55vh, 480px); overflow: auto; }
+.training-attendees-list li { padding: 11px 14px; border-bottom: 1px solid var(--line); color: var(--ink); font-weight: 600; }
+.training-attendees-list li:first-child { border-top: 1px solid var(--line); }
 
 @media (max-width: 680px) {
   .training-response-actions { width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
