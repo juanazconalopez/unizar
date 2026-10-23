@@ -38,6 +38,16 @@ describe('viernes autogestionados en la demo', () => {
     const actual = [makeAttendance({ attended: false })]
     expect(finalize([plan], profiles, memberships, responses, [existing], actual, [], now).attendance).toBe(actual)
   })
+  test('no sobrescribe las correcciones posteriores, tampoco un registro sin asistentes', () => {
+    const automatic = finalize([plan], profiles, memberships, responses, [], [], [], now)
+    for (const attendedIds of [['missing', 'rejected'], []]) {
+      const corrected = automatic.attendance.map((record) => ({ ...record, attended: attendedIds.includes(record.player_id), marked_by: 'owner-1' }))
+      const result = finalize([plan], profiles, memberships, responses, automatic.sessions, corrected, [], new Date('2026-10-24T12:00:00+02:00'))
+      expect(result.sessions).toBe(automatic.sessions)
+      expect(result.attendance).toBe(corrected)
+      expect(new Set(result.attendance.filter((record) => record.attended).map((record) => record.player_id))).toEqual(new Set(attendedIds))
+    }
+  })
   test('mover un entrenamiento a viernes activa la autogestión; editar el título conserva el histórico manual', () => {
     const historic = { ...plan, self_managed: false }
     const values = { seasonId: 'season-1', sessionDate: plan.session_date, title: 'Nuevo título', objectives: '', material: '', status: 'draft' as const, exercises: [] }

@@ -1,5 +1,5 @@
 begin;
-select plan(716);
+select plan(727);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1412,9 +1412,9 @@ select like(pg_get_functiondef('public.get_training_calendar(date,date)'::regpro
 select has_column('public','training_plans','self_managed','la agenda identifica los viernes autogestionados');
 select has_column('public','training_sessions','self_managed','el registro conserva su origen automático');
 select has_column('public','training_sessions','training_plan_id','el registro automático conserva el identificador del plan');
-select has_trigger('public','training_sessions','a_guard_self_managed','el staff no crea ni modifica asistencia autogestionada');
+select has_trigger('public','training_sessions','a_guard_self_managed','el registro automático conserva su origen al corregirlo');
 select has_trigger('public','training_attendance','a_guard_self_managed','las filas automáticas están protegidas');
-select has_trigger('public','provisional_training_attendance','a_guard_self_managed','los viernes no admiten validación manual de invitadas');
+select has_trigger('public','provisional_training_attendance','a_guard_self_managed','las invitadas del viernes mantienen los controles de corrección');
 select ok(not has_function_privilege('authenticated','public.finalize_self_managed_training_attendance()','EXECUTE'),'los clientes no ejecutan el proceso interno');
 select ok(not has_function_privilege('anon','public.finalize_self_managed_training_attendance()','EXECUTE'),'anon no ejecuta el proceso interno');
 select ok(not has_function_privilege('authenticated','public.self_managed_attendance_write_allowed(uuid,date)','EXECUTE'),'el contexto de escritura es privado');
@@ -1430,7 +1430,7 @@ select like(pg_get_functiondef('public.finalize_self_managed_training_attendance
 select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%new.self_managed := extract(isodow from new.session_date)=5%','mover la fecha recalcula la autogestión');
 select like(pg_get_functiondef('public.guard_training_schedule()'::regprocedure),'%new.self_managed := old.self_managed%','editar ejercicios o título conserva el origen histórico');
 select like(pg_get_function_result('public.get_training_calendar(date,date)'::regprocedure),'%self_managed boolean%','el calendario recibe el modo de asistencia sin contenido privado');
-select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%''self_managed'',exists%','el registro deportivo conoce su bloqueo automático');
+select like(pg_get_functiondef('public.get_training_attendance_basis(date)'::regprocedure),'%''self_managed'',exists%','el registro deportivo conoce su origen automático');
 select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),'%SECURITY DEFINER%SET search_path TO %','el proceso interno fija search_path');
 select ok(exists(select 1 from cron.job where jobname='unizar-self-managed-training-attendance' and schedule='*/5 19-23 * * *' and active and command='select public.finalize_self_managed_training_attendance();'),'Cron cierra y recupera sesiones sin depender del navegador');
 select is((select count(*)::integer from pg_constraint where conrelid='public.training_sessions'::regclass and contype='u' and pg_get_constraintdef(oid)='UNIQUE (training_plan_id)'),1,'un plan no puede generar dos sesiones');
@@ -1448,6 +1448,39 @@ select has_function('public','get_training_plan_attendees',array['uuid'],'existe
 select ok(not has_function_privilege('anon','public.get_training_plan_attendees(uuid)','EXECUTE'),'anon no consulta quién asistirá');
 select ok(has_function_privilege('authenticated','public.get_training_plan_attendees(uuid)','EXECUTE'),'la RPC autentica al usuario y valida staff y permisos');
 select like(pg_get_functiondef('public.get_training_plan_attendees(uuid)'::regprocedure),'%staff.is_owner or staff.is_coach%staff.is_approved%training.view%response.attending%response.schedule_version = checked_plan.schedule_version%training_player_eligible%','solo devuelve respuestas vigentes de jugadoras elegibles a owner o entrenadores');
+
+-- 095: corregir el registro automático sin recrearlo ni reabrir respuestas.
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%current_user_has_permission(''attendance.record'')%staff.is_owner or staff.is_coach%staff.is_approved and staff.is_active and not staff.is_archived%',
+  'solo owner y entrenadores activos con permiso corrigen los viernes');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%tg_table_name = ''provisional_training_attendance''%current_user_has_permission(''attendance.guests'')%',
+  'las correcciones de invitadas requieren su permiso específico');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%select * into stored_session from public.training_sessions where session_date = new.session_date%stored_session.id is null or not stored_session.self_managed%',
+  'el upsert manual solo corrige una sesión automática existente');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%new.id, new.session_date, new.season_id, new.self_managed, new.training_plan_id, new.created_by, new.created_at%is distinct from%old.id, old.session_date, old.season_id, old.self_managed, old.training_plan_id, old.created_by, old.created_at%',
+  'las correcciones conservan identidad, fecha, temporada y origen automático');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%select * into target_session%new.session_id is distinct from old.session_id%',
+  'no se trasladan filas de asistencia desde o hacia sesiones automáticas');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%tg_op = ''DELETE'' then%raise exception ''El registro automático se conserva%',
+  'se corrigen asistentes sin eliminar la sesión automática');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%session_row.session_date > (clock_timestamp() at time zone ''Europe/Madrid'')::date%',
+  'no permite guardar correcciones de asistencia futura');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%perform public.lock_training_date(new.session_date)%perform public.lock_training_date(session_row.session_date)%',
+  'las correcciones comparten los bloqueos por fecha con el proceso automático');
+select like(pg_get_functiondef('public.finalize_self_managed_training_attendance()'::regprocedure),
+  '%not exists(select 1 from public.training_sessions ts where ts.session_date=plan.session_date)%',
+  'Cron no vuelve a calcular registros existentes aunque se hayan corregido');
+select unlike(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%update public.training_responses%', 'corregir la asistencia real no cambia las respuestas previstas');
+select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
+  '%SECURITY DEFINER%SET search_path TO %', 'la protección de correcciones mantiene search_path restringido');
 
 select * from finish();
 rollback;

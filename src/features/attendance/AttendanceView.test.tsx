@@ -1,6 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { addDays, formatDate, todayIso } from '../../lib/dates'
 import { makeAttendance, makeMembership, makeProfile, makeProvisionalAttendance, makeProvisionalPlayer, makeSeason, makeSession } from '../../test/fixtures'
 import { AttendanceView } from './AttendanceView'
@@ -104,6 +104,11 @@ describe('AttendanceView', () => {
 })
 
 describe('base de asistencia desde respuestas', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-23T22:00:00+02:00'))
+  })
+  afterEach(() => vi.useRealTimers())
   const common = () => ({ profiles: [makeProfile(), makeProfile({ id: 'player-2', display_name: 'María López' }), makeProfile({ id: 'player-3', display_name: 'Eva García' })], memberships: [makeMembership(), makeMembership({ id: 'm2', player_id: 'player-2' }), makeMembership({ id: 'm3', player_id: 'player-3' })], sessions: [], attendance: [], seasons: [makeSeason({ start_date: '2026-01-01', end_date: '2026-12-31' })], onSave: vi.fn().mockResolvedValue(undefined) })
   test('preselecciona las confirmadas y permite corregirlas antes de guardar asistencia real', async () => {
     const props = common()
@@ -119,10 +124,10 @@ describe('base de asistencia desde respuestas', () => {
     expect(props.onSave).toHaveBeenCalledWith(todayIso(), ['player-1', 'player-2', 'player-3'], ['player-3'], [])
     expect(screen.getByText(/Las respuestas de las jugadoras están cerradas/)).toBeInTheDocument()
   })
-  test.each([false, true])('los viernes son de consulta con o sin registro automático (%s)', async (recorded) => {
+  test('los viernes son de consulta hasta que exista el registro automático', async () => {
     const props = common()
-    render(<AttendanceView {...props} onLoadBasis={async () => ({ self_managed: true, recorded, attended_player_ids: recorded ? ['player-1'] : [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
-    await screen.findByText(recorded ? /Asistencia registrada automáticamente/ : /La asistencia se registrará automáticamente/)
+    render(<AttendanceView {...props} onLoadBasis={async () => ({ self_managed: true, recorded: false, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
+    await screen.findByText(/La asistencia se registrará automáticamente/)
     expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: /María López/ })).not.toBeChecked()
@@ -130,10 +135,83 @@ describe('base de asistencia desde respuestas', () => {
     expect(screen.queryByRole('button', { name: 'Añadir invitada' })).not.toBeInTheDocument()
     expect(props.onSave).not.toHaveBeenCalled()
   })
-  test('restaura una asistencia real vacía aunque haya respuestas afirmativas anteriores', async () => {
-    render(<AttendanceView {...common()} onLoadBasis={async () => ({ recorded: true, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
-    await screen.findByText(/Asistencia real guardada/)
+
+  test('permite corregir varias veces el registro automático, incluidas las invitadas', async () => {
+    const props = common()
+    const user = userEvent.setup()
+    render(<AttendanceView {...props} onLoadBasis={async () => ({ self_managed: true, recorded: true, attended_player_ids: ['player-1'], responses: [{ player_id: 'player-2', attending: true, comment: '' }] })} />)
+    await screen.findByText(/Asistencia registrada automáticamente/)
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: /María López/ })).not.toBeChecked()
+    await user.click(screen.getByRole('checkbox', { name: /Ana Martín/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Eva García/ }))
+    await user.click(screen.getByRole('button', { name: 'Añadir invitada' }))
+    const dialog = screen.getByRole('dialog', { name: 'Añadir invitada' })
+    await user.type(within(dialog).getByLabelText('Nombre y apellidos'), 'Nuria Prueba')
+    await user.click(within(dialog).getByRole('button', { name: 'Añadir invitada' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
+    expect(props.onSave).toHaveBeenLastCalledWith(todayIso(), ['player-1', 'player-2', 'player-3'], ['player-3'], [{ displayName: 'Nuria Prueba' }])
+    await user.click(screen.getByRole('button', { name: 'Quitar a Nuria Prueba' }))
+    await user.click(screen.getByRole('checkbox', { name: /Eva García/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
+    expect(props.onSave).toHaveBeenCalledTimes(2)
+    expect(props.onSave).toHaveBeenLastCalledWith(todayIso(), ['player-1', 'player-2', 'player-3'], [], [])
+    expect(screen.getByRole('button', { name: 'Guardar asistencia' })).toBeEnabled()
+  })
+
+  test.each([false, true])('restaura una asistencia real vacía aunque haya respuestas afirmativas (automática: %s)', async (selfManaged) => {
+    render(<AttendanceView {...common()} onLoadBasis={async () => ({ self_managed: selfManaged, recorded: true, attended_player_ids: [], responses: [{ player_id: 'player-1', attending: true, comment: '' }] })} />)
+    await screen.findByText(selfManaged ? /Asistencia registrada automáticamente/ : /Asistencia real guardada/)
     expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Guardar asistencia' })).toBeEnabled()
+  })
+
+  test('mantiene los permisos de registro y de invitadas al corregir un viernes', async () => {
+    const props = common()
+    const basis = { self_managed: true, recorded: true, attended_player_ids: ['player-1'], responses: [] }
+    const onLoadBasis = async () => basis
+    const { rerender } = render(<AttendanceView {...props} canManageGuests={false} canRecord={false} onLoadBasis={onLoadBasis} />)
+    await screen.findByText(/Asistencia registrada automáticamente/)
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Guardar asistencia' })).not.toBeInTheDocument()
+    rerender(<AttendanceView {...props} canManageGuests={false} canRecord onLoadBasis={onLoadBasis} />)
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Guardar asistencia' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Añadir invitada' })).not.toBeInTheDocument()
+  })
+
+  test('no desbloquea un registro automático si falla la carga de su base', async () => {
+    render(<AttendanceView {...common()} sessions={[makeSession({ session_date: todayIso(), self_managed: true })]} onLoadBasis={async () => { throw new Error('Sin conexión') }} />)
+    await screen.findByText('Sin conexión')
+    expect(screen.getByRole('checkbox', { name: /Ana Martín/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Guardar asistencia' })).toBeDisabled()
+  })
+
+  test('conserva las correcciones frente a recargas antiguas antes y después de guardar', async () => {
+    const props = common()
+    const user = userEvent.setup()
+    const previousBasis = { self_managed: true, recorded: true, attended_player_ids: ['player-1'], responses: [] }
+    const { rerender } = render(<AttendanceView {...props} onLoadBasis={async () => previousBasis} />)
+    await screen.findByText(/Asistencia registrada automáticamente/)
+    await user.click(screen.getByRole('checkbox', { name: /María López/ }))
+    await user.click(screen.getByRole('button', { name: 'Añadir invitada' }))
+    const dialog = screen.getByRole('dialog', { name: 'Añadir invitada' })
+    await user.type(within(dialog).getByLabelText('Nombre y apellidos'), 'Nuria Prueba')
+    await user.click(within(dialog).getByRole('button', { name: 'Añadir invitada' }))
+    await act(async () => { rerender(<AttendanceView {...props} onLoadBasis={async () => previousBasis} />) })
+    expect(screen.getByRole('checkbox', { name: /María López/ })).toBeChecked()
+    expect(screen.getByRole('region', { name: 'Invitadas: 1' })).toHaveTextContent('Nuria Prueba')
+
+    let finish!: (basis: typeof previousBasis) => void
+    const pendingLoad = () => new Promise<typeof previousBasis>((resolve) => { finish = resolve })
+    rerender(<AttendanceView {...props} onLoadBasis={pendingLoad} />)
+    await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
+    await act(async () => { finish(previousBasis) })
+    expect(screen.getByRole('checkbox', { name: /María López/ })).toBeChecked()
+    expect(screen.getByRole('region', { name: 'Invitadas: 1' })).toHaveTextContent('Nuria Prueba')
+    await user.click(screen.getByRole('checkbox', { name: /Ana Martín/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar asistencia' }))
+    expect(props.onSave).toHaveBeenLastCalledWith(todayIso(), ['player-1', 'player-2', 'player-3'], ['player-2'], [{ displayName: 'Nuria Prueba' }])
   })
   test('ignora una base tardía de otra fecha', async () => {
     const user = userEvent.setup()
