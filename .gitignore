@@ -12,6 +12,27 @@ dist
 dist-ssr
 *.local
 
+# Fuentes de la demo necesarias para Playwright en CI.
+!/demo.local/
+/demo.local/*
+!/demo.local/DemoApp.tsx
+!/demo.local/DemoCrossTeamCallupScenario.tsx
+!/demo.local/DemoInternalMatchScenario.tsx
+!/demo.local/DemoTrainingExceptionScenario.tsx
+!/demo.local/DemoWorkGroupsView.tsx
+!/demo.local/main.tsx
+!/demo.local/mockData.ts
+!/demo.local/demo.css
+!/demo.local/index.html
+!/demo.local/tsconfig.json
+!/demo.local/vite.config.ts
+!/demo.local/README.md
+
+# Informes generados por las pruebas.
+/reports/
+/playwright-report/
+/test-results/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

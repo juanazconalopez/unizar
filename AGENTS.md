@@ -19,7 +19,7 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
 - Reservar `gpt-6-astra` con razonamiento `medium` o `high` para arquitectura, seguridad, RLS, autenticación, migraciones complejas de Supabase, depuración difícil o decisiones de alto impacto. No usar `xhigh`, `max` ni Ultra como valores predeterminados.
 - No activar Fast mode para este proyecto: se prioriza consumir menos cuota aunque algunas tareas tarden más.
 - Mantener las conversaciones acotadas por funcionalidad y enviar solo los archivos, capturas y contexto necesarios. Las conversaciones largas, los resultados de herramientas y los servidores MCP aumentan el contexto y el consumo.
-- Mantener la cobertura y la validación del pipeline; bajar el modelo no debe significar omitir comprobaciones en CI. En local aplicar la política de «Pruebas y definición de terminado»: no ejecutar tests ni Playwright por defecto.
+- Mantener la cobertura y las comprobaciones de CI: lint y build en los pipelines de cambios; tests y Playwright en la ejecución nocturna. Bajar el modelo no debe significar omitir estas comprobaciones. En local aplicar la política de «Pruebas y definición de terminado»: no ejecutar tests ni Playwright por defecto.
 - Para una configuración local orientativa de Codex:
 
   ```toml
@@ -56,7 +56,7 @@ Este archivo contiene el contexto que debe revisarse antes de modificar esta apl
   npm run test:e2e
   ```
 
-- Al terminar una tarea con cambios de código relevantes, ejecutar en local ESLint, build y `git diff --check`, sin repetirlos tras cada edición. Los tests y Playwright se ejecutan por defecto en el pipeline, según «Pruebas y definición de terminado».
+- Al terminar una tarea con cambios de código relevantes, ejecutar en local ESLint, build y `git diff --check`, sin repetirlos tras cada edición. Los tests y Playwright se ejecutan por defecto en el workflow nocturno, según «Pruebas y definición de terminado».
 - El build incluye TypeScript, Vite y generación de la PWA.
 - TypeScript está configurado en modo estricto, con comprobación de variables y parámetros sin utilizar.
 - No hay Docker ni una instancia local de Supabase en este entorno. No intentar ejecutar `supabase start`, `supabase test db`, `supabase db reset` ni otras comprobaciones que requieran PostgreSQL local.
@@ -406,7 +406,7 @@ Reglas importantes:
 
 - Datos de perfil propio muestra la versión del código que ejecuta ese dispositivo, definida en `package.json`. Al abrirlo consulta `version.json` sin caché y ofrece «Actualizar a X.Y.Z» si la publicada es mayor, incluso tras posponer el aviso PWA. No guardar versiones en Supabase ni mostrar la versión del dispositivo del owner como si fuera la de otra persona. `scripts/appVersionPlugin.ts` incorpora ese número al código y genera el archivo de consulta.
 - El hook local `.githooks/pre-commit` incrementa el patch de `package.json` y `package-lock.json` y los incluye en el mismo commit que los cambios preparados. `post-commit` sincroniza únicamente sus entradas de versión en el índice cuando se hace un commit con rutas concretas, conservando los demás cambios preparados. `npm ci` instala los hooks mediante `prepare`; `npm run setup:hooks` los activa en un clon ya existente. Usan Node 24, respetan los demás cambios no preparados y bloquean el commit si hay cambios de dependencias sin preparar en los package files. Un reintento conserva la versión ya preparada; un salto minor/major manual con `npm version minor/major --no-git-tag-version` se respeta. No incrementar el patch a mano ni crear commits adicionales de versión. Los commits sin cambios preparados no incrementan la versión. Los hooks locales no se ejecutan desde la web de GitHub; CI exige una versión superior para publicar código distinto.
-- `.github/workflows/release.yml` valida cada push a `main` y envía su versión exacta a `release`, sin espera de diez minutos ni otro incremento en CI. Mantiene pruebas unitarias, Playwright (demo y navegación real interceptada), lint, build de aplicación y demo, comprobación del diff, histórico y controles del SHA y de publicaciones concurrentes. `quality.yml` comprueba PR y ejecuciones manuales para no duplicar las validaciones automáticas de `main`. La automatización no modifica `main` ni fuerza pushes. No fusionar `release` de vuelta a `main`. Cloudflare debe publicar desde `release` y tener desactivados los builds de otras ramas. No añadir tokens de Cloudflare ni deploy hooks al frontend o al repositorio.
+- `.github/workflows/release.yml` valida cada push a `main` y envía su versión exacta a `release`, sin espera de diez minutos ni otro incremento en CI. Mantiene lint, build de aplicación y demo, comprobación del diff, histórico y controles del SHA y de publicaciones concurrentes; no ejecuta tests ni Playwright. `quality.yml` realiza esas comprobaciones en PR y ejecuciones manuales para no duplicar las validaciones automáticas de `main`. Las pruebas se ejecutan aparte en `nightly-tests.yml` y sus fallos no bloquean publicaciones. La automatización no modifica `main` ni fuerza pushes. No fusionar `release` de vuelta a `main`. Cloudflare debe publicar desde `release` y tener desactivados los builds de otras ramas. No añadir tokens de Cloudflare ni deploy hooks al frontend o al repositorio.
 
 - La aplicación refresca la sección visible al recuperar foco o conexión si sus datos están obsoletos, sin vaciar las demás secciones preparadas.
 - La navegación prioriza cambios rápidos de sección: `useTrainingData` conserva instantáneas por vista en memoria de la sesión, reutiliza datos comunes durante un minuto y prepara todas las secciones permitidas al entrar. El inicio espera a esa preparación hasta 15 segundos; después permite continuar aunque alguna petición siga pendiente. Las vistas preparadas y sus listas se muestran inmediatamente y refrescan en segundo plano al entrar, también tras una inactividad prolongada. `navigationResources.ts` comparte las listas de entrenamientos y encuestas, los grupos y la última competición; no precarga historiales, detalles, imágenes ni datos de gestión sin permiso. Los guardados invalidan las instantáneas y consultas compartidas; el cambio de cuenta o permisos invalida también respuestas pendientes. No persistir estos datos privados en localStorage ni en el service worker.
@@ -435,9 +435,12 @@ Reglas importantes:
 - Las pruebas se encuentran junto a componentes, hooks y servicios.
 - Utilizar fixtures de `src/test/fixtures.ts` cuando sea posible.
 - Para funciones SQL, comprobar existencia, permisos y restricciones en pgTAP.
-- Por defecto, ejecutar los tests unitarios, de integración y E2E/Playwright únicamente en el pipeline de CI, no durante las modificaciones locales ni desde hooks de commit. Esto incluye `npm test -- --run`, `npm run test:e2e` y cualquier ejecución directa de Vitest o Playwright. Seguir creando y actualizando las pruebas necesarias aunque su ejecución se delegue en CI.
+- Por defecto, ejecutar los tests unitarios, de integración y E2E/Playwright únicamente en `.github/workflows/nightly-tests.yml`, no durante las modificaciones locales, desde hooks de commit ni en los pipelines de PR/publicación. Esto incluye `npm test -- --run`, `npm run test:e2e` y cualquier ejecución directa de Vitest o Playwright. Seguir creando y actualizando las pruebas necesarias aunque su ejecución se delegue en el workflow nocturno.
+- El workflow nocturno se programa diariamente a las 00:00 en `Europe/Madrid`, con ajuste automático de verano/invierno, y admite ejecución manual. GitHub puede retrasar su inicio. La programación se activa cuando el archivo está en la rama predeterminada y prueba su último commit; no necesita un servidor propio, Supabase ni un navegador abierto.
+- Las suites unitarias, Playwright de la demo y Playwright de navegación real interceptada se ejecutan de forma independiente, sin cancelar las demás por un fallo. Cada suite conserva durante 14 días informes descargables, logs y el SHA revisado; Playwright añade un informe HTML y las trazas de los fallos. Se descargan desde GitHub → Actions → Pruebas nocturnas → ejecución → Artifacts, o desde el enlace del resumen. No se descargan automáticamente al ordenador local.
+- Los fallos nocturnos no bloquean nuevas publicaciones ni crean correcciones automáticas. Al abordar una incidencia detectada por estas pruebas, descargar y revisar el informe de la ejecución fallida, identificar su commit y preparar la corrección en una versión posterior. No considerar que todas las versiones intermedias han pasado las pruebas: cada noche se comprueba una instantánea.
 - Ante una refactorización amplia o un cambio que modifique muchos archivos existentes, preguntar una sola vez si se quieren ejecutar pruebas en local para detectar regresiones o incompatibilidades antes del push. Explicar brevemente qué áreas afecta y proponer las pruebas relacionadas. La mera creación de muchos archivos nuevos no activa esta consulta.
-- Ejecutar pruebas locales solo si el usuario las solicita expresamente o acepta esa propuesta; respetar el alcance autorizado. Si no hay respuesta o se rechaza, continuar sin ejecutarlas y dejar su validación al pipeline.
+- Ejecutar pruebas locales solo si el usuario las solicita expresamente o acepta esa propuesta; respetar el alcance autorizado. Si no hay respuesta o se rechaza, continuar sin ejecutarlas y dejar su validación a la ejecución nocturna.
 - Para terminar la implementación local de una tarea con cambios de código relevantes deben pasar estas comprobaciones, una vez al final de la tarea:
 
   ```bash
@@ -447,7 +450,7 @@ Reglas importantes:
   ```
 
 - En cambios exclusivamente de documentación, revisar el contenido y ejecutar `git diff --check`; no es necesario ejecutar lint ni build.
-- La validación completa requiere que pasen las pruebas y las demás comprobaciones del pipeline antes de publicar. Un commit local no activa CI: `release.yml` se ejecuta al subir a `main` y `quality.yml` en PR o por ejecución manual. Al entregar, indicar qué se ha comprobado en local y qué queda delegado en CI, sin dar las pruebas por pasadas si todavía no se han ejecutado.
+- Para publicar deben pasar las comprobaciones de `release.yml`, sin esperar a los tests nocturnos. Un commit local no activa CI: `release.yml` se ejecuta al subir a `main`, `quality.yml` en PR o por ejecución manual y `nightly-tests.yml` según su horario o por ejecución manual. Al entregar, indicar qué se ha comprobado en local y qué queda delegado en la ejecución nocturna, sin dar las pruebas por pasadas si todavía no se han ejecutado.
 - Para cambios visuales relevantes añadir o actualizar pruebas de Testing Library y, cuando proceda, Playwright móvil.
 - Mantener `demo.local` sincronizada con las funcionalidades que deban poder probarse sin Supabase. Cuando se modifique una funcionalidad representada en la demo, comprobar también en local, al terminar la tarea:
 
@@ -456,7 +459,7 @@ Reglas importantes:
   npx vite build --config demo.local/vite.config.ts
   ```
 
-- Las pruebas Playwright de la demo y de `playwright.navigation.config.ts` se ejecutan en CI; las ejecuciones locales siguen la política anterior.
+- Las fuentes necesarias de `demo.local` están versionadas para que Playwright pueda ejecutarse en un checkout limpio; sus builds, copias de respaldo y archivos locales adicionales siguen ignorados. Las pruebas Playwright de la demo y de `playwright.navigation.config.ts` se ejecutan en el workflow nocturno; las ejecuciones locales siguen la política anterior.
 - No presentar la ausencia de pruebas locales de base de datos como un fallo pendiente: es el flujo de trabajo previsto. Informar únicamente de que la migración debe ejecutarse y validarse en Supabase web.
 
 ## Archivos generados y sensibles

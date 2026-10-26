@@ -1,0 +1,88 @@
+name: Pruebas nocturnas
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+      timezone: Europe/Madrid
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  tests:
+    name: Pruebas de ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: unitarias
+            timeout: 20
+            browsers: ''
+            command: npm test -- --run --maxWorkers=2 --reporter=default --reporter=junit --outputFile=reports/junit.xml
+          - suite: demo
+            timeout: 40
+            browsers: chromium webkit
+            command: npm run test:e2e -- --workers=2 --forbid-only --reporter=line,html,junit --output=reports/results
+          - suite: navegacion
+            timeout: 20
+            browsers: chromium
+            command: npx playwright test --config playwright.navigation.config.ts --workers=2 --forbid-only --reporter=line,html,junit --output=reports/results
+    env:
+      TZ: Europe/Madrid
+      PLAYWRIGHT_HTML_OPEN: never
+      PLAYWRIGHT_HTML_OUTPUT_DIR: reports/html
+      PLAYWRIGHT_JUNIT_OUTPUT_FILE: reports/junit.xml
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Preparar informes e identificar el commit
+        run: |
+          mkdir -p reports
+          git rev-parse HEAD > reports/commit.txt
+          node --version > reports/node.txt
+      - name: Instalar las dependencias del lockfile
+        run: npm ci 2>&1 | tee reports/install.log
+      - name: Instalar navegadores de Playwright
+        if: matrix.browsers != ''
+        run: npx playwright install --with-deps ${{ matrix.browsers }} 2>&1 | tee reports/browsers.log
+      - name: Ejecutar pruebas
+        id: tests
+        run: ${{ matrix.command }} 2>&1 | tee reports/run.log
+      - name: Guardar informes, logs y trazas
+        if: always()
+        id: reports
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: informes-${{ matrix.suite }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Resumen y descarga
+        if: always()
+        env:
+          SUITE: ${{ matrix.suite }}
+          TEST_RESULT: ${{ steps.tests.outcome }}
+          REPORT_URL: ${{ steps.reports.outputs.artifact-url }}
+        run: |
+          {
+            echo "### Pruebas de $SUITE"
+            echo "Commit: $GITHUB_SHA"
+            echo "Resultado: $TEST_RESULT"
+            if [[ -n "$REPORT_URL" ]]; then
+              echo "[Descargar informes, logs y trazas]($REPORT_URL) (14 días)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

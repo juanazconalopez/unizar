@@ -248,11 +248,26 @@ Para un salto minor o major, ejecuta `npm version minor --no-git-tag-version` o
 respeta el número superior que hayas elegido.
 
 Cada push a `main` activa `.github/workflows/release.yml` directamente, sin una
-espera fija. Ejecuta pruebas, lint, build y revisión del diff y envía a `release`
-exactamente la versión incluida en el commit. `quality.yml` comprueba los PR y
+espera fija. Ejecuta lint, build de aplicación y demo y revisión del diff, y envía
+a `release` exactamente la versión incluida en el commit. `quality.yml` comprueba los PR y
 las ejecuciones manuales; no repite automáticamente las validaciones de `main`.
 Continúa siendo necesario el tiempo de las comprobaciones y del despliegue de
 Cloudflare. La automatización no incrementa la versión de nuevo ni escribe en `main`.
+
+Los tests y Playwright se ejecutan por separado en
+`.github/workflows/nightly-tests.yml`, diariamente a las **00:00 de Madrid**
+(incluidos los cambios de horario) o desde **Actions → Pruebas nocturnas → Run workflow**.
+GitHub puede retrasar el inicio de una ejecución programada. El workflow debe
+estar en la rama predeterminada para activar la programación; revisa su último
+commit, sin bloquear publicaciones ni necesitar un servidor propio.
+
+Cada suite guarda durante **14 días** sus logs, resultados JUnit y el SHA revisado.
+Playwright añade un informe HTML y trazas de los fallos, tanto de la demo como de
+la navegación real con Supabase interceptado. Un fallo no cancela las demás suites.
+Para descargar los informes, abre **Actions → Pruebas nocturnas → ejecución → Artifacts**
+o utiliza el enlace del resumen. La descarga al ordenador es manual; los informes
+permiten revisar los errores y corregirlos en versiones posteriores. Los fallos
+no generan correcciones automáticas y pueden detectarse después de publicar.
 
 `scripts/automaticRelease.ts` conserva el historial de `release` sin forzar pushes
 y registra `Unizar-Source-Commit`. Comprueba que el SHA siga siendo el último de
@@ -427,13 +442,13 @@ Fases aplicadas:
    el cálculo personal pasó de unos 0,23 ms a 0,013 ms y el del staff de 0,23 ms a
    0,15 ms, conservando los mismos resultados. Es una medición de lógica pura,
    sin red, DOM ni dispositivo real, y no representa el tiempo completo de Inicio.
-5. **Comprobaciones continuas.** `.github/workflows/quality.yml` prepara pruebas,
-   lint, build con presupuesto y revisión de espacios para pull requests y cambios
-   en `main`, usando `.nvmrc` y `npm ci`. No despliega la aplicación ni requiere
-   credenciales de Supabase. Vitest no carga `.env.local` y usa valores ficticios
-   de Supabase para que las pruebas funcionen también en un checkout limpio.
-   Los E2E se ejecutan localmente con Chromium y WebKit;
-   `demo.local` no está versionada y no está disponible en el checkout de CI.
+5. **Comprobaciones continuas.** `.github/workflows/quality.yml` realiza lint,
+   build con presupuesto, tipos y build de demo y revisión de espacios en PR;
+   `release.yml` valida y publica los cambios de `main`. Ambos usan `.nvmrc` y
+   `npm ci`, sin tests ni Playwright. `nightly-tests.yml` ejecuta las pruebas
+   unitarias y los E2E con Chromium y WebKit y conserva los informes descargables.
+   No requiere credenciales de Supabase: Vitest no carga `.env.local` y usa valores
+   ficticios. Las fuentes de `demo.local` están versionadas para los E2E del servidor.
 
 Validación local de esta migración: instalación limpia y árbol de dependencias
 correctos; 611 pruebas en 116 archivos y 124 E2E aprobados; lint, build de
@@ -444,17 +459,16 @@ la pantalla de acceso sin conexión cuando la caché está disponible. El workfl
 está preparado y revisado localmente; su ejecución en GitHub queda pendiente de
 subir estos cambios.
 
-Para validar localmente:
+Para validar localmente los cambios habituales (las pruebas quedan para la
+ejecución nocturna; las excepciones se describen en `AGENTS.md`):
 
 ```bash
 nvm use
 npm ci
-npm test -- --run --maxWorkers=2
 npm run lint
 npm run build
 npx tsc -p demo.local/tsconfig.json
 npx vite build --config demo.local/vite.config.ts
-npm run test:e2e
 git diff --check
 ```
 

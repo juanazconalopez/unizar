@@ -1,0 +1,63 @@
+.demo-toolbar {
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  min-height: 58px;
+  padding: 9px clamp(18px, 5vw, 72px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #c8d9d1;
+  color: #18312c;
+  background: rgba(235, 246, 239, .96);
+  backdrop-filter: blur(10px);
+}
+
+.demo-toolbar > div strong,
+.demo-toolbar > div span {
+  display: block;
+}
+
+.demo-toolbar > div strong {
+  color: #2d7653;
+  font-size: 10px;
+  letter-spacing: .9px;
+}
+
+.demo-toolbar > div span {
+  margin-top: 2px;
+  color: #647771;
+  font-size: 11px;
+}
+
+.demo-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: nowrap;
+}
+
+.demo-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.demo-toolbar-actions .secondary-button { min-height: 36px; }
+
+.demo-toolbar select {
+  width: auto;
+  min-width: 135px;
+  margin: 0;
+  padding: 7px 28px 7px 10px;
+  background: white;
+}
+
+@media (max-width: 900px) {
+  .demo-toolbar { top: 0; padding: 8px 14px; }
+  .demo-toolbar > div span { display: none; }
+  .demo-toolbar-actions { gap: 8px; }
+  .demo-toolbar-actions .secondary-button { padding-inline: 10px; font-size: 11px; }
+  .demo-toolbar select { min-width: 120px; }
+}
