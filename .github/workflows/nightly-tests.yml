@@ -56,6 +56,9 @@ jobs:
           node --version > reports/node.txt
       - name: Instalar las dependencias del lockfile
         run: npm ci 2>&1 | tee reports/install.log
+      - name: Tipos y build de la demo
+        if: matrix.suite == 'demo'
+        run: (npx tsc -p demo.local/tsconfig.json && npx vite build --config demo.local/vite.config.ts) 2>&1 | tee reports/demo-build.log
       - name: Instalar navegadores de Playwright
         if: matrix.browsers != ''
         run: npx playwright install --with-deps ${{ matrix.browsers }} 2>&1 | tee reports/browsers.log

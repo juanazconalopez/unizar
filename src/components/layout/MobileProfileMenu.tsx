@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { APP_VERSION } from '../../lib/appVersion'
 import { Icon } from '../Icon'
 import { Avatar } from '../ui/Avatar'
 
@@ -47,6 +48,7 @@ export function MobileProfileMenu({ name, email, role, open, canEditProfile, sho
       {canEditProfile && <button className="mobile-profile-edit-button" onClick={() => { onOpenChange(false); onEditProfile() }} role="menuitem" type="button">Editar mis datos</button>}
       {showInstallAction && <button className="mobile-install-button" onClick={onRequestInstall} role="menuitem" type="button"><Icon name="download" size={18} />Instalar aplicación</button>}
       <button className="mobile-signout-button" onClick={() => { onOpenChange(false); onSignOut() }} role="menuitem" type="button"><Icon name="logout" size={18} />Cerrar sesión</button>
+      <p className="mobile-profile-version">Versión {APP_VERSION} · En este dispositivo</p>
     </div>}
   </div>
 }

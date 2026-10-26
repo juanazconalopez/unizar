@@ -248,11 +248,19 @@ Para un salto minor o major, ejecuta `npm version minor --no-git-tag-version` o
 respeta el número superior que hayas elegido.
 
 Cada push a `main` activa `.github/workflows/release.yml` directamente, sin una
-espera fija. Ejecuta lint, build de aplicación y demo y revisión del diff, y envía
+espera fija. Ejecuta lint, tipos, build de producción y revisión del diff, y envía
 a `release` exactamente la versión incluida en el commit. `quality.yml` comprueba los PR y
 las ejecuciones manuales; no repite automáticamente las validaciones de `main`.
 Continúa siendo necesario el tiempo de las comprobaciones y del despliegue de
 Cloudflare. La automatización no incrementa la versión de nuevo ni escribe en `main`.
+
+Los pipelines reutilizan las descargas de npm y los metadatos de ESLint y
+TypeScript entre commits. Las claves ignoran únicamente el número de versión
+de la aplicación y cambian cuando se modifican dependencias, Node o configuración.
+`npm ci` sigue instalando desde el lockfile; la caché de validación se restaura
+después. El build de producción se genera siempre de nuevo, con su versión y
+su comprobación del presupuesto de arranque. Los tipos y el build de la demo
+se comprueban por la noche antes de sus pruebas Playwright.
 
 Los tests y Playwright se ejecutan por separado en
 `.github/workflows/nightly-tests.yml`, diariamente a las **00:00 de Madrid**
@@ -443,10 +451,11 @@ Fases aplicadas:
    0,15 ms, conservando los mismos resultados. Es una medición de lógica pura,
    sin red, DOM ni dispositivo real, y no representa el tiempo completo de Inicio.
 5. **Comprobaciones continuas.** `.github/workflows/quality.yml` realiza lint,
-   build con presupuesto, tipos y build de demo y revisión de espacios en PR;
+   tipos y build de producción con presupuesto y revisión de espacios en PR;
    `release.yml` valida y publica los cambios de `main`. Ambos usan `.nvmrc` y
    `npm ci`, sin tests ni Playwright. `nightly-tests.yml` ejecuta las pruebas
-   unitarias y los E2E con Chromium y WebKit y conserva los informes descargables.
+   unitarias, los tipos y el build de la demo y los E2E con Chromium y WebKit,
+   y conserva los informes descargables.
    No requiere credenciales de Supabase: Vitest no carga `.env.local` y usa valores
    ficticios. Las fuentes de `demo.local` están versionadas para los E2E del servidor.
 

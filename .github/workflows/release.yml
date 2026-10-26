@@ -28,18 +28,42 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v7.1.0
+        id: node
         with:
           node-version-file: .nvmrc
-          cache: npm
+          package-manager-cache: false
       - name: Comprobar commit y versión
         id: candidate
         run: node scripts/automaticRelease.ts prepare
+      - name: Identificar dependencias sin la versión de la aplicación
+        if: steps.candidate.outputs.ready == 'true'
+        id: dependencies
+        run: node scripts/ciCacheKey.ts >> "$GITHUB_OUTPUT"
+      - name: Caché de descargas de npm
+        if: steps.candidate.outputs.ready == 'true'
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}
+          restore-keys: |
+            npm-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-
       - name: Instalar dependencias del lockfile
         if: steps.candidate.outputs.ready == 'true'
-        run: npm ci
+        run: npm ci --prefer-offline --no-fund
+      - name: Caché de ESLint y TypeScript
+        if: steps.candidate.outputs.ready == 'true'
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            node_modules/.cache/eslint
+            node_modules/.tmp/tsconfig.app.tsbuildinfo
+            node_modules/.tmp/tsconfig.node.tsbuildinfo
+          key: checks-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}-${{ hashFiles('eslint.config.js', 'tsconfig*.json', 'scripts/ciCacheKey.ts') }}-${{ github.sha }}
+          restore-keys: |
+            checks-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}-${{ hashFiles('eslint.config.js', 'tsconfig*.json', 'scripts/ciCacheKey.ts') }}-
       - name: ESLint
         if: steps.candidate.outputs.ready == 'true'
-        run: npm run lint
+        run: npm run lint -- --cache --cache-strategy content --cache-location node_modules/.cache/eslint
       - name: Build y presupuesto de arranque
         if: steps.candidate.outputs.ready == 'true'
         env:
@@ -47,11 +71,6 @@ jobs:
           VITE_SUPABASE_URL: https://supabase.test
           VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
         run: npm run build
-      - name: Tipos y build de la demo
-        if: steps.candidate.outputs.ready == 'true'
-        run: |
-          npx tsc -p demo.local/tsconfig.json
-          npx vite build --config demo.local/vite.config.ts
       - name: Comprobar espacios del diff
         if: steps.candidate.outputs.ready == 'true'
         run: git diff --check

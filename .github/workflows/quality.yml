@@ -18,18 +18,35 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
+        id: node
         with:
           node-version-file: .nvmrc
-          cache: npm
+          package-manager-cache: false
+      - name: Identificar dependencias sin la versión de la aplicación
+        id: dependencies
+        run: node scripts/ciCacheKey.ts >> "$GITHUB_OUTPUT"
+      - name: Caché de descargas de npm
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.npm
+          key: npm-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}
+          restore-keys: |
+            npm-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-
       - name: Instalar las dependencias del lockfile
-        run: npm ci
+        run: npm ci --prefer-offline --no-fund
+      - name: Caché de ESLint y TypeScript
+        uses: actions/cache@v6.1.0
+        with:
+          path: |
+            node_modules/.cache/eslint
+            node_modules/.tmp/tsconfig.app.tsbuildinfo
+            node_modules/.tmp/tsconfig.node.tsbuildinfo
+          key: checks-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}-${{ hashFiles('eslint.config.js', 'tsconfig*.json', 'scripts/ciCacheKey.ts') }}-${{ github.sha }}
+          restore-keys: |
+            checks-v1-${{ runner.os }}-${{ steps.node.outputs.node-version }}-${{ steps.dependencies.outputs.fingerprint }}-${{ hashFiles('eslint.config.js', 'tsconfig*.json', 'scripts/ciCacheKey.ts') }}-
       - name: ESLint
-        run: npm run lint
+        run: npm run lint -- --cache --cache-strategy content --cache-location node_modules/.cache/eslint
       - name: Build y presupuesto de arranque
         run: npm run build
-      - name: Tipos y build de la demo
-        run: |
-          npx tsc -p demo.local/tsconfig.json
-          npx vite build --config demo.local/vite.config.ts
       - name: Comprobar espacios del diff
         run: git diff --check
