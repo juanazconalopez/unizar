@@ -195,9 +195,9 @@ En Supabase, añade tanto la dirección local como la dirección desplegada a **
 El despliegue actual utiliza Workers Builds, conectado al repositorio de GitHub.
 La configuración se encuentra en **Workers & Pages → unizar → Settings → Build**:
 
-- Rama de producción para el versionado automático: `release`
+- Rama de producción: `main`
 - Builds para ramas que no son de producción: desactivados
-- Comando de compilación: `npm run build`
+- Comando de compilación: `npm run lint && npm run build`
 - Comando de despliegue: `npx wrangler deploy`
 - Recursos generados por Vite: `dist`
 - La configuración versionada de Wrangler está en `wrangler.jsonc`; declara los
@@ -247,12 +247,16 @@ Para un salto minor o major, ejecuta `npm version minor --no-git-tag-version` o
 `npm version major --no-git-tag-version` y prepara ambos archivos; el hook
 respeta el número superior que hayas elegido.
 
-Cada push a `main` activa `.github/workflows/release.yml` directamente, sin una
-espera fija. Ejecuta lint, tipos, build de producción y revisión del diff, y envía
-a `release` exactamente la versión incluida en el commit. `quality.yml` comprueba los PR y
-las ejecuciones manuales; no repite automáticamente las validaciones de `main`.
-Continúa siendo necesario el tiempo de las comprobaciones y del despliegue de
-Cloudflare. La automatización no incrementa la versión de nuevo ni escribe en `main`.
+Cada push a `main` activa directamente Workers Builds en Cloudflare. Instala las
+dependencias del lockfile y ejecuta `npm run lint && npm run build` antes de
+`npx wrangler deploy`. El build incluye TypeScript y el presupuesto de arranque;
+si lint o build fallan, no se despliega. No hay una rama intermedia ni un workflow
+que prepare otra publicación: el número publicado es el de `package.json`.
+
+`.github/workflows/quality.yml` conserva lint, tipos, build y revisión del diff
+para PR y ejecuciones manuales. No se ejecuta automáticamente al subir a `main`,
+para evitar otra compilación del mismo cambio. Los tests siguen en el workflow
+nocturno y no retrasan el despliegue.
 
 Los pipelines reutilizan las descargas de npm y los metadatos de ESLint y
 TypeScript entre commits. Las claves ignoran únicamente el número de versión
@@ -277,23 +281,15 @@ o utiliza el enlace del resumen. La descarga al ordenador es manual; los informe
 permiten revisar los errores y corregirlos en versiones posteriores. Los fallos
 no generan correcciones automáticas y pueden detectarse después de publicar.
 
-`scripts/automaticRelease.ts` conserva el historial de `release` sin forzar pushes
-y registra `Unizar-Source-Commit`. Comprueba que el SHA siga siendo el último de
-`main` antes de validar y justo antes de publicar. Repetir un SHA o publicar el
-mismo contenido no crea otra publicación. Si falla una comprobación, no se envía
-a `release`; reintentar un build de Cloudflare conserva el mismo número.
-
 Los hooks locales no se ejecutan al editar desde la web de GitHub o al omitirlos
-con Git. CI comprueba que los package files coincidan y que la versión sea
-superior a la anterior antes de publicar código distinto.
+con Git. En esos casos hay que incrementar la versión y mantener sincronizados
+`package.json` y `package-lock.json` antes de publicar.
 
-Cloudflare debe tener **Production branch: release** y **Builds for non-production
-branches** desactivado. Se conservan `npm run build`, `npx wrangler deploy` y las
-variables reales de Supabase. GitHub utiliza su token temporal con `contents: write`
-solo en el job de publicación; no necesita un token de Cloudflare. Las reglas de
-protección de `release` deben permitir el push de la automatización. Los builds
-de comprobación en GitHub usan valores ficticios de Supabase; el build real se
-realiza en Cloudflare. No guardar tokens o deploy hooks en el repositorio.
+Cloudflare debe tener **Production branch: main** y los builds de vista previa
+desactivados. Conserva las variables reales de Supabase y la caché de build.
+No necesita un workflow con permisos de escritura en GitHub ni tokens de Cloudflare
+o deploy hooks en el repositorio. La antigua rama `release` queda sin uso;
+no debe fusionarse de vuelta a `main`. Reintentar un build conserva la versión.
 
 ## Aplicación instalable (PWA)
 
@@ -314,7 +310,7 @@ El número se incorpora al código durante la compilación y el build genera
 `version.json` para consultar la última versión, fuera de la caché de la PWA.
 No se registra en Supabase: cada dispositivo muestra su propia versión.
 
-El workflow de publicación incrementa automáticamente el patch en ambas ramas.
+El hook de precommit incrementa automáticamente el patch en el mismo commit.
 Para establecer un salto de versión en `main` antes de la próxima publicación, usar
 `npm version minor --no-git-tag-version` o `major` y mantener sincronizados
 `package.json` y `package-lock.json`. El build utiliza un único número para la
@@ -452,8 +448,8 @@ Fases aplicadas:
    sin red, DOM ni dispositivo real, y no representa el tiempo completo de Inicio.
 5. **Comprobaciones continuas.** `.github/workflows/quality.yml` realiza lint,
    tipos y build de producción con presupuesto y revisión de espacios en PR;
-   `release.yml` valida y publica los cambios de `main`. Ambos usan `.nvmrc` y
-   `npm ci`, sin tests ni Playwright. `nightly-tests.yml` ejecuta las pruebas
+   Cloudflare valida y publica directamente los cambios de `main` con lint y
+   build. Se usan Node 24 y el lockfile, sin tests ni Playwright. `nightly-tests.yml` ejecuta las pruebas
    unitarias, los tipos y el build de la demo y los E2E con Chromium y WebKit,
    y conserva los informes descargables.
    No requiere credenciales de Supabase: Vitest no carga `.env.local` y usa valores
