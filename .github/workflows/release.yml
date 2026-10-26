@@ -13,7 +13,7 @@ jobs:
     name: Validar y preparar release
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     permissions:
       contents: write
     # Una publicación en marcha termina y comprueba de nuevo el último SHA antes de enviar.
@@ -50,6 +50,20 @@ jobs:
           VITE_SUPABASE_URL: https://supabase.test
           VITE_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
         run: npm run build
+      - name: Tipos y build de la demo
+        if: steps.candidate.outputs.ready == 'true'
+        run: |
+          npx tsc -p demo.local/tsconfig.json
+          npx vite build --config demo.local/vite.config.ts
+      - name: Instalar navegadores de Playwright
+        if: steps.candidate.outputs.ready == 'true'
+        run: npx playwright install --with-deps chromium webkit
+      - name: Playwright de la demo (escritorio y móvil)
+        if: steps.candidate.outputs.ready == 'true'
+        run: npm run test:e2e -- --workers=2 --forbid-only
+      - name: Playwright de navegación (escritorio y móvil)
+        if: steps.candidate.outputs.ready == 'true'
+        run: npx playwright test --config playwright.navigation.config.ts --workers=2 --forbid-only
       - name: Comprobar espacios del diff
         if: steps.candidate.outputs.ready == 'true'
         run: git diff --check
