@@ -393,6 +393,11 @@
   background: #fff0d6;
 }
 
+.profile-completion-state.missing-data {
+  color: #9a410b;
+  background: #ffdbb5;
+}
+
 .profile-completion-state.incomplete {
   color: #876c18;
   background: #faf1c8;

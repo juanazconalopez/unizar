@@ -22,12 +22,12 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats, err
   onSync?: () => Promise<void>
 }) {
   const orderedSeasons = useMemo(() => seasons.slice().sort((a, b) => b.startsOn.localeCompare(a.startsOn)), [seasons])
-  const [seasonId, setSeasonId] = useState(() => orderedSeasons[0]?.id ?? '')
+  const [seasonId, setSeasonId] = useState<string | null>(null)
   const [tab, setTab] = useState<CompetitionTab>('results')
   const [metric, setMetric] = useState<StatisticMetric>('points')
   const [team, setTeam] = useState('Todos')
   const [renderedAt] = useState(() => Date.now())
-  const selectedSeasonId = orderedSeasons.some((item) => item.id === seasonId) ? seasonId : orderedSeasons[0]?.id ?? ''
+  const selectedSeasonId = seasonId !== null && orderedSeasons.some((item) => item.id === seasonId) ? seasonId : orderedSeasons[0]?.id ?? ''
   const season = orderedSeasons.find((item) => item.id === selectedSeasonId)
   const seasonFixtures = fixtures.filter((item) => item.competitionSeasonId === selectedSeasonId)
   const seasonStandings = standings.filter((item) => item.competitionSeasonId === selectedSeasonId).sort((a, b) => a.position - b.position)
@@ -93,7 +93,7 @@ export function CompetitionView({ seasons, fixtures, standings, playerStats, err
 function Results({ fixtures }: { fixtures: CompetitionFixture[] }) {
   const rounds = useMemo(() => {
     const grouped = new Map<string, CompetitionFixture[]>()
-    fixtures.slice().sort((a, b) => a.roundOrder - b.roundOrder || a.matchDate.localeCompare(b.matchDate)).forEach((fixture) => {
+    fixtures.slice().sort((a, b) => b.roundOrder - a.roundOrder || a.matchDate.localeCompare(b.matchDate)).forEach((fixture) => {
       grouped.set(fixture.round, [...(grouped.get(fixture.round) ?? []), fixture])
     })
     return Array.from(grouped.entries())

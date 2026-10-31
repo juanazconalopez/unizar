@@ -44,6 +44,7 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
   const [editor, setEditor] = useState<'create' | 'edit' | null>(null)
   const [editingSurvey, setEditingSurvey] = useState<DisplaySurvey | null>(null)
   const [questions, setQuestions] = useState<DraftQuestion[]>(initialQuestions)
+  const demoDraftQuestions = useRef(new Map<string, DraftQuestion[]>())
   const [playerQuery, setPlayerQuery] = useState('')
   const [loading, setLoading] = useState(!demo && !prepared)
   const [saving, setSaving] = useState(false)
@@ -134,7 +135,7 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
     setError('')
     setEditingSurvey(survey)
     setDraftSeasonId(survey?.seasonId ?? activeSeason?.id ?? '')
-    setQuestions(initialQuestions)
+    setQuestions(demo && survey ? demoDraftQuestions.current.get(survey.id) ?? initialQuestions : initialQuestions)
     if (mode === 'edit' && survey && !demo) {
       setSaving(true)
       void fetchSurveyDraft(survey.id).then((draft) => {
@@ -161,11 +162,13 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
     setSaving(true); setError('')
     try {
       if (demo) {
+        const surveyId = editingSurvey?.id ?? `demo-survey-${Date.now()}`
+        demoDraftQuestions.current.set(surveyId, questions)
         if (editor === 'edit' && editingSurvey) {
           setSurveys((current) => current.map((survey) => survey.id === editingSurvey.id ? { ...survey, title, description: description || null, startsOn, endsOn, visibility, status: publishNow ? 'Activa' : survey.status } : survey))
           setSelected(null)
         } else {
-          setSurveys((current) => [{ id: `demo-survey-${Date.now()}`, number: Math.max(0, ...current.map((survey) => survey.number)) + 1, title, description: description || null, seasonId: 'demo-season', visibility, startsOn, endsOn, responses: 0, recipients: 18, status: publishNow ? 'Activa' : 'Borrador' }, ...current])
+          setSurveys((current) => [{ id: surveyId, number: Math.max(0, ...current.map((survey) => survey.number)) + 1, title, description: description || null, seasonId: 'demo-season', visibility, startsOn, endsOn, responses: 0, recipients: 18, status: publishNow ? 'Activa' : 'Borrador' }, ...current])
         }
       } else {
         if (!draftSeasonId) throw new Error('Selecciona una temporada activa antes de crear la encuesta.')
@@ -226,7 +229,17 @@ function visibilityToDatabase(visibility: SurveyVisibilityLabel): SurveyVisibili
 function statusFromDatabase(status: ManagedSurvey['status']): SurveyStatus { return status === 'published' ? 'Activa' : status === 'draft' ? 'Borrador' : 'Cancelada' }
 
 function QuestionEditor({ questions, setQuestions }: { questions: DraftQuestion[]; setQuestions: React.Dispatch<React.SetStateAction<DraftQuestion[]>> }) {
-  return <div className="survey-questions-editor"><span className="eyebrow">PREGUNTAS</span>{questions.map((question, index) => <article key={question.id}><b>{index + 1}</b><div><label>Tipo<select value={question.type} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, type: event.target.value as DraftQuestion['type'] } : item))}><option value="long">Respuesta larga</option><option value="single">Una opción</option><option value="multiple">Varias opciones</option></select></label><label>Pregunta<input aria-label={`Pregunta ${index + 1}`} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, text: event.target.value } : item))} placeholder="Escribe la pregunta…" required spellCheck value={question.text} /></label>{question.type !== 'long' && <div className="survey-option-list">{question.options.map((option, optionIndex) => <div className="survey-option-editor" key={optionIndex}><input aria-label={`Opción ${optionIndex + 1} de pregunta ${index + 1}`} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: item.options.map((value, valueIndex) => valueIndex === optionIndex ? event.target.value : value) } : item))} placeholder={`Opción ${optionIndex + 1}`} spellCheck value={option} /><button aria-label={`Quitar opción ${optionIndex + 1} de pregunta ${index + 1}`} className="survey-remove-option" onClick={() => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: item.options.filter((_, valueIndex) => valueIndex !== optionIndex) } : item))} type="button">−</button></div>)}<button className="text-button" onClick={() => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: [...item.options, ''] } : item))} type="button">+ Añadir opción</button></div>}</div></article>)}</div>
+  function moveQuestion(id: DraftQuestion['id'], direction: -1 | 1) {
+    setQuestions((current) => {
+      const index = current.findIndex((question) => question.id === id)
+      const target = index + direction
+      if (index < 0 || target < 0 || target >= current.length) return current
+      const reordered = [...current]
+      ;[reordered[index], reordered[target]] = [reordered[target], reordered[index]]
+      return reordered
+    })
+  }
+  return <div className="survey-questions-editor"><span className="eyebrow">PREGUNTAS</span>{questions.map((question, index) => <article key={question.id}><b>{index + 1}</b><div><div className="survey-question-order"><button aria-label={`Subir pregunta ${index + 1}`} className="secondary-button compact" disabled={index === 0} onClick={() => moveQuestion(question.id, -1)} title="Subir pregunta" type="button">↑</button><button aria-label={`Bajar pregunta ${index + 1}`} className="secondary-button compact" disabled={index === questions.length - 1} onClick={() => moveQuestion(question.id, 1)} title="Bajar pregunta" type="button">↓</button></div><label>Tipo<select value={question.type} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, type: event.target.value as DraftQuestion['type'] } : item))}><option value="long">Respuesta larga</option><option value="single">Una opción</option><option value="multiple">Varias opciones</option></select></label><label>Pregunta<input aria-label={`Pregunta ${index + 1}`} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, text: event.target.value } : item))} placeholder="Escribe la pregunta…" required spellCheck value={question.text} /></label>{question.type !== 'long' && <div className="survey-option-list">{question.options.map((option, optionIndex) => <div className="survey-option-editor" key={optionIndex}><input aria-label={`Opción ${optionIndex + 1} de pregunta ${index + 1}`} onChange={(event) => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: item.options.map((value, valueIndex) => valueIndex === optionIndex ? event.target.value : value) } : item))} placeholder={`Opción ${optionIndex + 1}`} spellCheck value={option} /><button aria-label={`Quitar opción ${optionIndex + 1} de pregunta ${index + 1}`} className="survey-remove-option" onClick={() => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: item.options.filter((_, valueIndex) => valueIndex !== optionIndex) } : item))} type="button">−</button></div>)}<button className="text-button" onClick={() => setQuestions((current) => current.map((item) => item.id === question.id ? { ...item, options: [...item.options, ''] } : item))} type="button">+ Añadir opción</button></div>}</div></article>)}</div>
 }
 
 function AggregatedResults({ survey }: { survey: DisplaySurvey }) {

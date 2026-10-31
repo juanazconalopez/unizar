@@ -570,6 +570,13 @@
   background: var(--green);
 }
 
+.survey-question-order {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 9px;
+}
+
 .survey-questions-editor label {
   display: grid;
   gap: 5px;

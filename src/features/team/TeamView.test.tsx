@@ -37,6 +37,7 @@ describe('TeamView', () => {
     expect(card).not.toHaveTextContent('Activa')
     expect(card).not.toHaveTextContent('Jugadora')
     expect(card).not.toHaveTextContent('Faltan datos')
+    expect(screen.queryByLabelText('0 jugadoras de baja deportiva')).not.toBeInTheDocument()
     expect(card.querySelector('.person-summary-absence-slot')).toBeEmptyDOMElement()
     expect(card.querySelector('.person-summary-completion-slot')).toBeEmptyDOMElement()
     expect(within(card).queryByRole('checkbox')).not.toBeInTheDocument()
@@ -271,6 +272,7 @@ describe('TeamView', () => {
       playerAbsences={[active, upcoming]} />)
     await user.click(screen.getByText('Jugadoras activas'))
 
+    expect(screen.getByLabelText('1 jugadoras de baja deportiva')).toHaveTextContent('1')
     const activeCard = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
     expect(within(activeCard).getByRole('img', { name: 'Baja deportiva' }).querySelector('svg')).toBeInTheDocument()
     expect(activeCard.querySelector('.person-summary-absence-slot')).toContainElement(within(activeCard).getByRole('img', { name: 'Baja deportiva' }))
@@ -367,6 +369,73 @@ describe('TeamView', () => {
     expect(screen.queryByRole('searchbox', { name: 'Buscar por nombre' })).not.toBeInTheDocument()
   })
 
+  test('filters current-season licenses with stable counts and combines them with status and search', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const profiles = [
+      makeProfile({ id: 'training', display_name: 'Ana Entrena' }),
+      makeProfile({ id: 'inactive', display_name: 'Inés Inactiva', is_active: false }),
+      makeProfile({ id: 'regional', display_name: 'Rosa Regional' }),
+      makeProfile({ id: 'none', display_name: 'Sara Sin ficha' }),
+      ...['expired', 'future', 'old-season', 'unlinked'].map((id) => makeProfile({ id, display_name: id })),
+      makeProfile({ id: 'coach', display_name: 'Clara Entrenadora', is_player: false, is_coach: true }),
+      makeProfile({ id: 'archived', is_archived: true }),
+      makeProfile({ id: 'pending', is_approved: false }),
+    ]
+    const memberships = [
+      makeMembership({ player_id: 'training', license_type: 'training', season_team_id: null }),
+      makeMembership({ player_id: 'inactive', license_type: 'training', season_team_id: null }),
+      makeMembership({ player_id: 'regional', license_type: 'regional' }),
+      makeMembership({ player_id: 'none', license_type: 'none', season_team_id: null }),
+      makeMembership({ player_id: 'expired', license_type: 'national', active_until: '2026-09-26' }),
+      makeMembership({ player_id: 'future', license_type: 'national', active_from: '2026-09-28' }),
+      makeMembership({ player_id: 'old-season', season_id: 'previous', license_type: 'national' }),
+      ...['coach', 'archived', 'pending'].map((player_id) => makeMembership({ player_id, license_type: 'national' })),
+    ]
+    render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} seasons={[makeSeason()]} profiles={profiles} memberships={memberships} />)
+    await user.click(document.querySelector('.team-filter-control > summary')!)
+    const licenses = screen.getByRole('group', { name: 'Ficha · temporada activa' })
+    expect(within(licenses).getAllByRole('checkbox')).toHaveLength(3)
+    expect(within(licenses).queryByRole('checkbox', { name: /Nacional/ })).not.toBeInTheDocument()
+    await user.click(within(licenses).getByRole('checkbox', { name: 'Solo entrenamientos (2)' }))
+    expect(screen.getByText('2 resultados')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver datos de Ana Entrena' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver datos de Inés Inactiva' })).toBeInTheDocument()
+    expect(screen.queryByText('Rosa Regional')).not.toBeInTheDocument()
+    expect(screen.queryByText('Clara Entrenadora')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Activas' }))
+    expect(screen.getByText('1 resultado')).toBeInTheDocument()
+    expect(within(licenses).getByRole('checkbox', { name: 'Solo entrenamientos (2)' })).toBeChecked()
+    await user.click(within(licenses).getByRole('checkbox', { name: 'Regional (1)' }))
+    expect(screen.getByText('2 resultados')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Buscar personas' }))
+    const search = screen.getByRole('searchbox', { name: 'Buscar por nombre' })
+    await user.type(search, 'Rosa')
+    expect(screen.getByText('1 resultado')).toBeInTheDocument()
+    expect(within(licenses).getByRole('checkbox', { name: 'Solo entrenamientos (2)' })).toBeInTheDocument()
+    await user.clear(search)
+    await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }))
+    expect(within(licenses).getAllByRole('checkbox').every((input) => !(input as HTMLInputElement).checked)).toBe(true)
+    await user.click(within(licenses).getByRole('checkbox', { name: 'Sin ficha (1)' }))
+    expect(screen.getByText('1 resultado')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver datos de Sara Sin ficha' })).toBeInTheDocument()
+  })
+
+  test('only offers licenses represented in the active season and adds Nacional when assigned', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-27T12:00:00Z'))
+    const props = { currentUserId: 'owner-1', onUpdate: vi.fn(), profiles: [makeProfile()], memberships: [makeMembership({ license_type: 'national' })] }
+    const { rerender } = render(<TeamView {...props} seasons={[makeSeason({ end_date: '2026-09-26' })]} />)
+    expect(screen.queryByRole('group', { name: 'Ficha · temporada activa', hidden: true })).not.toBeInTheDocument()
+    rerender(<TeamView {...props} seasons={[makeSeason()]} />)
+    expect(screen.getByText('Nacional (1)')).toBeInTheDocument()
+    rerender(<TeamView {...props} seasons={[makeSeason()]} memberships={[]} />)
+    expect(screen.queryByText('Nacional (1)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sin ficha (1)')).not.toBeInTheDocument()
+  })
+
   test('keeps inactive cards compact and reports combined filter results', async () => {
     const user = userEvent.setup()
     const active = makeProfile({ id: 'active', display_name: 'Ana Activa' })
@@ -426,7 +495,7 @@ describe('TeamView', () => {
     expect(screen.getByRole('button', { name: 'Ver datos de Diana Dirección' })).toBeInTheDocument()
   })
 
-  test('counts a missing player photo as incomplete but does not require staff photos', async () => {
+  test('distinguishes a missing player photo without requiring staff photos', async () => {
     const user = userEvent.setup()
     render(<TeamView currentUserId="owner-1" onUpdate={vi.fn()} profiles={[
       makeProfile(),
@@ -437,9 +506,32 @@ describe('TeamView', () => {
     ]} />)
 
     await user.click(screen.getByText('Jugadoras activas'))
-    expect(screen.getByRole('button', { name: 'Ver datos de Ana Martín' })).toHaveTextContent('Faltan datos')
+    const playerCard = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
+    expect(within(playerCard).getByText('Falta foto')).toHaveClass('incomplete')
+    expect(playerCard).not.toHaveTextContent('Faltan datos')
     await user.click(screen.getByText('Entrenadores'))
-    expect(screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })).not.toHaveTextContent('Faltan datos')
+    const coachCard = screen.getByRole('button', { name: 'Ver datos de Clara Entrenador' })
+    expect(coachCard).not.toHaveTextContent('Faltan datos')
+    expect(coachCard).not.toHaveTextContent('Falta foto')
+  })
+
+  test.each(['email', 'phone', 'birth_date'] as const)('prioritizes missing %s over the photo and updates after filling it', async (field) => {
+    const user = userEvent.setup()
+    const props = { currentUserId: 'owner-1', onUpdate: vi.fn(), profiles: [makeProfile()] }
+    const details = makeProfilePrivateDetails()
+    const { rerender } = render(<TeamView {...props} profilePrivateDetails={[{ ...details, [field]: null }]} />)
+    await user.click(screen.getByText('Jugadoras activas'))
+
+    const card = screen.getByRole('button', { name: 'Ver datos de Ana Martín' })
+    expect(within(card).getByText('Faltan datos')).toHaveClass('missing-data')
+    expect(card).not.toHaveTextContent('Falta foto')
+
+    rerender(<TeamView {...props} profilePrivateDetails={[details]} />)
+    expect(card).not.toHaveTextContent('Faltan datos')
+    expect(within(card).getByText('Falta foto')).toHaveClass('incomplete')
+
+    rerender(<TeamView {...props} profiles={[makeProfile({ avatar_path: 'players/ana.webp' })]} profilePrivateDetails={[details]} />)
+    expect(card.querySelector('.person-summary-completion-slot')).toBeEmptyDOMElement()
   })
 
   test('moves duplicate review and approval into the pending profile detail', async () => {

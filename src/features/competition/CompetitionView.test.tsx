@@ -25,6 +25,47 @@ describe('CompetitionView', () => {
     expect(screen.getAllByAltText('Escudo de Unizar Femenino').length).toBeGreaterThan(0)
   })
 
+  test('defaults to the latest synchronized season as data arrives and on reopening for players', async () => {
+    const user = userEvent.setup()
+    const props = { fixtures, playerStats, standings }
+    const latest = { ...seasons[0], id: '26-27', name: '2026–27', startsOn: '2026-09-01' }
+    const latestFixtures = [{ ...fixtures[0], id: 'latest-match', competitionSeasonId: latest.id, homeScore: 24, awayScore: 7 }]
+    const { rerender, unmount } = render(<CompetitionView {...props} seasons={[]} />)
+    rerender(<CompetitionView {...props} seasons={seasons} />)
+    expect(screen.getByRole('combobox', { name: 'Temporada' })).toHaveValue('25-26')
+
+    rerender(<CompetitionView {...props} fixtures={[...fixtures, ...latestFixtures]} seasons={[...seasons, latest]} />)
+    expect(screen.getByRole('combobox', { name: 'Temporada' })).toHaveValue('26-27')
+    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(screen.queryByText('51')).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Temporada' }), '25-26')
+    expect(screen.getByText('51')).toBeInTheDocument()
+    rerender(<CompetitionView {...props} seasons={[latest, ...seasons]} />)
+    expect(screen.getByRole('combobox', { name: 'Temporada' })).toHaveValue('25-26')
+
+    unmount()
+    render(<CompetitionView {...props} fixtures={[...fixtures, ...latestFixtures]} seasons={[...seasons, latest]} />)
+    expect(screen.getByRole('combobox', { name: 'Temporada' })).toHaveValue('26-27')
+    expect(screen.getByText('24')).toBeInTheDocument()
+  })
+
+  test('places new rounds above earlier rounds while keeping matches ordered within each round', () => {
+    const first = { ...fixtures[0], id: 'round-1', round: 'Jornada 1', roundOrder: 1, matchDate: '2026-01-10' }
+    const secondEarly = { ...fixtures[0], id: 'round-2-early', round: 'Jornada 2', roundOrder: 2, matchDate: '2026-01-17', homeTeam: 'Equipo sábado' }
+    const secondLate = { ...secondEarly, id: 'round-2-late', matchDate: '2026-01-18', homeTeam: 'Equipo domingo' }
+    const props = { playerStats, standings, seasons }
+    const { rerender } = render(<CompetitionView {...props} fixtures={[first]} />)
+    rerender(<CompetitionView {...props} fixtures={[first, secondLate, secondEarly]} />)
+
+    const rounds = document.querySelectorAll<HTMLElement>('.competition-round')
+    expect([...rounds].map((round) => round.querySelector('.competition-section-heading > span')?.textContent)).toEqual(['Jornada 2', 'Jornada 1'])
+    expect([...rounds[0].querySelectorAll('.competition-team:not(.away) strong')].map((team) => team.textContent)).toEqual(['Equipo sábado', 'Equipo domingo'])
+
+    rerender(<CompetitionView {...props} fixtures={[first, fixtures[0], secondLate, secondEarly]} />)
+    expect([...document.querySelectorAll('.competition-section-heading > span')].map((heading) => heading.textContent)).toEqual(['Final', 'Jornada 2', 'Jornada 1'])
+  })
+
   test('shows the league table and sortable statistic views', async () => {
     const user = userEvent.setup()
     render(<CompetitionView fixtures={fixtures} playerStats={playerStats} seasons={seasons} standings={standings} />)

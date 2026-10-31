@@ -1,6 +1,8 @@
 import type { SavePlayerPositions } from '../../lib/playerPositions'
 import type { SavePlayerLicense } from './PlayerLicenseDialog'
-import type { SeasonPlayer } from '../../types'
+import { PLAYER_LICENSES, membershipLicense } from '../../lib/playerLicenses'
+import { membershipCoversDate } from '../../lib/selectors'
+import type { PlayerLicenseType, SeasonPlayer } from '../../types'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Icon } from '../../components/Icon'
@@ -69,6 +71,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<TeamStatusFilter>('all')
   const [roleFilters, setRoleFilters] = useState<TeamRoleFilter[]>([])
+  const [licenseFilters, setLicenseFilters] = useState<PlayerLicenseType[]>([])
   const [selectedPerson, setSelectedPerson] = useState<Profile | null>(null)
   const normalizedSearch = normalizeDisplayName(search)
   const today = todayIso()
@@ -76,7 +79,20 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   const allPending = profiles.filter((profile) => !profile.is_approved && !profile.is_archived)
   const allApproved = profiles.filter((profile) => profile.is_approved && !profile.is_archived)
   const allArchived = profiles.filter((profile) => profile.is_archived)
-  const hasActiveFilters = statusFilter !== 'all' || roleFilters.length > 0
+  const playerLicenses = new Map<string, PlayerLicenseType>()
+  if (activeSeason) {
+    for (const profile of allApproved) {
+      if (!profile.is_player) continue
+      const membership = memberships.find((item) => item.player_id === profile.id && item.season_id === activeSeason.id && membershipCoversDate(item, today))
+      if (membership) playerLicenses.set(profile.id, membershipLicense(membership))
+    }
+  }
+  const licenseOptions = PLAYER_LICENSES.map((option) => ({
+    ...option,
+    count: [...playerLicenses.values()].filter((license) => license === option.value).length,
+  })).filter((option) => option.count > 0)
+  const selectedLicenseFilters = licenseFilters.filter((license) => licenseOptions.some((option) => option.value === license))
+  const hasActiveFilters = statusFilter !== 'all' || roleFilters.length > 0 || selectedLicenseFilters.length > 0
   const hasSearchOrFilters = Boolean(normalizedSearch) || hasActiveFilters
   const matchesFilters = (profile: Profile) => {
     if (normalizedSearch && !displayNameContains(profile.display_name, normalizedSearch)) return false
@@ -86,6 +102,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       || (statusFilter === 'pending' && !profile.is_approved && !profile.is_archived)
       || (statusFilter === 'archived' && profile.is_archived)
     if (!statusMatches) return false
+    if (selectedLicenseFilters.length > 0 && !selectedLicenseFilters.some((license) => playerLicenses.get(profile.id) === license)) return false
     return roleFilters.length === 0 || roleFilters.some((role) => profile[roleProfileKeys[role]])
   }
   const pending = allPending.filter(matchesFilters)
@@ -103,7 +120,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
   if (membersWithoutRole.length) memberGroups.push({ title: 'Sin rol', members: membersWithoutRole })
   const hasSearchMatches = pending.length + approved.length + archived.length > 0
   const filterResultCount = pending.length + approved.length + archived.length
-  const filterCount = (statusFilter === 'all' ? 0 : 1) + roleFilters.length
+  const filterCount = (statusFilter === 'all' ? 0 : 1) + roleFilters.length + selectedLicenseFilters.length
   const activeApproved = allApproved.filter((profile) => profile.is_active).length
   const inactiveApproved = allApproved.length - activeApproved
   const roleCounts = {
@@ -135,7 +152,11 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
         <legend>Rol</legend>
         {roleFilterOptions.map((option) => <label key={option.value}><input checked={roleFilters.includes(option.value)} onChange={() => setRoleFilters((current) => current.includes(option.value) ? current.filter((role) => role !== option.value) : [...current, option.value])} type="checkbox" />{option.label}</label>)}
       </fieldset>
-      <button className="text-button" disabled={!hasActiveFilters} onClick={() => { setStatusFilter('all'); setRoleFilters([]) }} type="button">Limpiar filtros</button>
+      {licenseOptions.length > 0 && <fieldset>
+        <legend>Ficha · temporada activa</legend>
+        {licenseOptions.map((option) => <label key={option.value}><input checked={selectedLicenseFilters.includes(option.value)} onChange={() => setLicenseFilters((current) => current.includes(option.value) ? current.filter((license) => license !== option.value) : [...current, option.value])} type="checkbox" />{option.label} ({option.count})</label>)}
+      </fieldset>}
+      <button className="text-button" disabled={!hasActiveFilters} onClick={() => { setStatusFilter('all'); setRoleFilters([]); setLicenseFilters([]) }} type="button">Limpiar filtros</button>
     </div>
   </details>
   const headerActions = <div className="team-heading-actions">{searchControl}{filterControl}</div>
@@ -146,7 +167,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
     {pending.length > 0 && <PeopleSection eyebrow="REQUIERE ATENCIÓN" title="Solicitudes pendientes">{pending.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} warning={profiles.some((other) => other.id !== person.id && areDisplayNamesSimilar(person.display_name, other.display_name))} />)}</PeopleSection>}
     {approved.length > 0 && <section className="section-block"><div className="section-heading"><div><span className="eyebrow">MIEMBROS</span><h2>Personas del equipo</h2></div></div>
       <div className="team-member-groups">{memberGroups.filter((group) => !hasSearchOrFilters || group.members.length > 0).map((group) => <details className="team-member-group" key={group.title} open={hasSearchOrFilters || undefined}>
-        <summary><span>{group.title}</span><small>{group.members.length}</small>{group.title === 'Jugadoras activas' && <small aria-label={`${activePlayerAbsenceCount} jugadoras de baja deportiva`} className="team-member-group-absence-count" title="Jugadoras de baja deportiva"><Icon name="medicalCross" size={14} />{activePlayerAbsenceCount}</small>}<Icon name="arrow" size={16} /></summary>
+        <summary><span>{group.title}</span><small>{group.members.length}</small>{group.title === 'Jugadoras activas' && activePlayerAbsenceCount > 0 && <small aria-label={`${activePlayerAbsenceCount} jugadoras de baja deportiva`} className="team-member-group-absence-count" title="Jugadoras de baja deportiva"><Icon name="medicalCross" size={14} />{activePlayerAbsenceCount}</small>}<Icon name="arrow" size={16} /></summary>
         <div className="people-list">{group.members.length ? group.members.map((person) => <PersonCard currentAbsence={getCurrentPlayerAbsence(playerAbsences, person.id, today)} details={profilePrivateDetails.find((item) => item.profile_id === person.id)} key={person.id} onOpen={() => setSelectedPerson(person)} person={person} />) : <p className="team-member-group-empty">No hay personas en este grupo.</p>}</div>
       </details>)}</div>
     </section>}
@@ -161,7 +182,8 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
 }
 
 function PersonCard({ person, details, currentAbsence, warning = false, onOpen }: { person: Profile; details?: ProfilePrivateDetails; currentAbsence?: PlayerAbsence; warning?: boolean; onOpen: () => void }) {
-  const missingData = !details?.email || !details.phone || !details.birth_date || (person.is_player && !person.avatar_path)
+  const missingData = !details?.email || !details.phone || !details.birth_date
+  const missingPhoto = person.is_player && !person.avatar_path
   const age = ageOnDate(details?.birth_date, todayIso())
   const compact = person.is_archived || (person.is_approved && !person.is_active)
   return <button aria-label={`Ver datos de ${person.display_name}`} className={`person-row person-summary-card${person.is_archived ? ' archived-person' : ''}${compact ? ' inactive-person' : ''}${person.is_owner ? ' owner-person' : ''}`} onClick={onOpen} type="button">
@@ -169,7 +191,7 @@ function PersonCard({ person, details, currentAbsence, warning = false, onOpen }
     {!compact && <span className="person-summary-contact"><span><b>Email</b>{details?.email || 'Sin email'}</span><span><b>Teléfono</b>{details?.phone || 'Sin teléfono'}</span><span><b>Edad</b>{age === null ? 'Sin edad' : `${age} años`}</span></span>}
     <span className="person-summary-state">
       <span className="person-summary-absence-slot">{currentAbsence && <span aria-label="Baja deportiva" className="player-absence-indicator" role="img" title="Baja deportiva"><Icon name="medicalCross" size={20} /></span>}</span>
-      <span className="person-summary-completion-slot">{missingData && <small className="profile-completion-state incomplete">Faltan datos</small>}</span>
+      <span className="person-summary-completion-slot">{missingData ? <small className="profile-completion-state missing-data">Faltan datos</small> : missingPhoto ? <small className="profile-completion-state incomplete">Falta foto</small> : null}</span>
       {warning && <small className="person-duplicate-compact"><Icon name="warning" size={13} />Posible duplicado</small>}
     </span>
     <Icon name="arrow" size={17} />
