@@ -8,9 +8,35 @@ import * as surveysService from '../../services/surveysService'
 import { makeSeason } from '../../test/fixtures'
 import { todayIso } from '../../lib/dates'
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers() })
 
 describe('SurveysView draft editor', () => {
+  test('shows publication dates in Madrid as Publicada, Activa and Finalizada while preserving drafts', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-09-07T21:59:00Z'))
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { rerender } = render(<SurveysView demo isOwner />)
+    const card = () => screen.getByRole('button', { name: /valoración del inicio de temporada/i })
+    expect(within(card()).getByText('Publicada')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /seguimiento preventivo/i })).getByText('Borrador')).toBeInTheDocument()
+
+    vi.setSystemTime(new Date('2026-09-07T22:00:00Z'))
+    rerender(<SurveysView demo isOwner />)
+    expect(within(card()).getByText('Activa')).toBeInTheDocument()
+    vi.setSystemTime(new Date('2026-09-14T21:59:00Z'))
+    rerender(<SurveysView demo isOwner />)
+    expect(within(card()).getByText('Activa')).toBeInTheDocument()
+    await user.click(card())
+    expect(within(screen.getByRole('dialog')).getByText('RESULTADOS PROVISIONALES')).toBeInTheDocument()
+
+    vi.setSystemTime(new Date('2026-09-14T22:00:00Z'))
+    rerender(<SurveysView demo isOwner />)
+    expect(within(screen.getByRole('dialog')).queryByText('RESULTADOS PROVISIONALES')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cerrar resultados' }))
+    expect(within(card()).getByText('Finalizada')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /seguimiento preventivo/i })).getByText('Borrador')).toBeInTheDocument()
+  })
+
   test('a delayed list refresh cannot hide a newly saved survey', async () => {
     const resources = new SessionQueryCache(0)
     const season = makeSeason({ start_date: '2020-01-01', end_date: '2099-12-31' })

@@ -15,6 +15,14 @@ export function surveyIsActive(survey: SurveySummary, date: string) {
   return survey.status === 'published' && survey.startsOn <= date && date <= survey.endsOn
 }
 
+export function surveyStatusLabel(survey: Pick<SurveySummary, 'status' | 'startsOn' | 'endsOn'>, date: string) {
+  if (survey.status === 'draft') return 'Borrador'
+  if (survey.status === 'cancelled') return 'Cancelada'
+  if (date < survey.startsOn) return 'Publicada'
+  if (date > survey.endsOn) return 'Finalizada'
+  return 'Activa'
+}
+
 export function surveyResultDate(survey: SurveySummary) {
   return addDays(survey.endsOn, 1)
 }

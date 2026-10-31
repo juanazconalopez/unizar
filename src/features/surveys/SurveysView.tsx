@@ -4,14 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { formatDate, todayIso } from '../../lib/dates'
+import { formatDate, todayInMadridIso, todayIso } from '../../lib/dates'
 import { errorText } from '../../lib/errors'
 import type { Season } from '../../types'
 import { fetchManageSurveys, fetchSurveyDraft, fetchSurveyResults, publishSurvey, saveSurveyDraft } from '../../services/surveysService'
 import type { ManagedSurvey, SurveyDraftQuestion, SurveyResults, SurveyVisibility } from '../../services/surveysService'
-import { participationPercentage } from './surveySelectors'
+import { participationPercentage, surveyStatusLabel } from './surveySelectors'
 
-type SurveyStatus = 'Activa' | 'Cerrada' | 'Borrador' | 'Cancelada'
 type SurveyVisibilityLabel = 'Compartida con el equipo' | 'Gestión' | 'Privada'
 type DisplaySurvey = {
   id: string
@@ -24,19 +23,20 @@ type DisplaySurvey = {
   endsOn: string
   responses: number
   recipients: number
-  status: SurveyStatus
+  status: ManagedSurvey['status']
 }
 type DraftQuestion = { id: string | number; type: 'long' | 'single' | 'multiple'; text: string; options: string[] }
 
 const demoSurveys: DisplaySurvey[] = [
-  { id: 'wellbeing', number: 1, title: 'Valoración del inicio de temporada', description: 'Queremos ajustar las próximas semanas de entrenamiento a cómo os estáis sintiendo en este comienzo.', seasonId: 'demo-season', visibility: 'Compartida con el equipo', startsOn: '2026-09-08', endsOn: '2026-09-14', responses: 14, recipients: 18, status: 'Activa' },
-  { id: 'schedule', number: 2, title: 'Disponibilidad para concentración', description: 'Necesitamos conocer vuestra disponibilidad para cerrar el viaje y la convocatoria.', seasonId: 'demo-season', visibility: 'Gestión', startsOn: '2026-09-01', endsOn: '2026-09-07', responses: 17, recipients: 18, status: 'Cerrada' },
-  { id: 'medical', number: 3, title: 'Seguimiento preventivo', description: 'Esta encuesta sirve para preparar el seguimiento individual de prevención.', seasonId: 'demo-season', visibility: 'Privada', startsOn: '2026-09-15', endsOn: '2026-09-21', responses: 0, recipients: 18, status: 'Borrador' },
+  { id: 'wellbeing', number: 1, title: 'Valoración del inicio de temporada', description: 'Queremos ajustar las próximas semanas de entrenamiento a cómo os estáis sintiendo en este comienzo.', seasonId: 'demo-season', visibility: 'Compartida con el equipo', startsOn: '2026-09-08', endsOn: '2026-09-14', responses: 14, recipients: 18, status: 'published' },
+  { id: 'schedule', number: 2, title: 'Disponibilidad para concentración', description: 'Necesitamos conocer vuestra disponibilidad para cerrar el viaje y la convocatoria.', seasonId: 'demo-season', visibility: 'Gestión', startsOn: '2026-09-01', endsOn: '2026-09-07', responses: 17, recipients: 18, status: 'published' },
+  { id: 'medical', number: 3, title: 'Seguimiento preventivo', description: 'Esta encuesta sirve para preparar el seguimiento individual de prevención.', seasonId: 'demo-season', visibility: 'Privada', startsOn: '2026-09-15', endsOn: '2026-09-21', responses: 0, recipients: 18, status: 'draft' },
 ]
 const demoPlayers = [{ name: 'Laura Martín', responded: true }, { name: 'Lucía Moreno', responded: false }, { name: 'Marta Pérez', responded: true }]
 const initialQuestions: DraftQuestion[] = [{ id: 1, type: 'single', text: '', options: ['', ''] }]
 
 export function SurveysView({ resources, demo = false, initialSurveyId, isOwner, seasons = [] }: { resources?: SessionQueryCache; demo?: boolean; initialSurveyId?: string; isOwner: boolean; seasons?: Season[] }) {
+  const today = todayInMadridIso()
   const prepared = resources?.peek<ManagedSurvey[]>(navigationResourceKeys.surveys)
   const initialSurveys = demo ? demoSurveys.filter((survey) => isOwner || survey.visibility !== 'Privada') : prepared?.map((survey, index) => toDisplaySurvey(survey, index + 1)) ?? []
   const [surveys, setSurveys] = useState<DisplaySurvey[]>(initialSurveys)
@@ -97,7 +97,7 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
 
   useEffect(() => {
     let active = true
-    if (demo || !selected || selected.status === 'Borrador') return () => { active = false }
+    if (demo || !selected || selected.status === 'draft') return () => { active = false }
     void fetchSurveyResults(selected.id).then((value) => { if (active) setResults(value) }).catch((cause) => { if (active) setError(errorText(cause)) })
     return () => { active = false }
   }, [demo, selected])
@@ -165,10 +165,10 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
         const surveyId = editingSurvey?.id ?? `demo-survey-${Date.now()}`
         demoDraftQuestions.current.set(surveyId, questions)
         if (editor === 'edit' && editingSurvey) {
-          setSurveys((current) => current.map((survey) => survey.id === editingSurvey.id ? { ...survey, title, description: description || null, startsOn, endsOn, visibility, status: publishNow ? 'Activa' : survey.status } : survey))
+          setSurveys((current) => current.map((survey) => survey.id === editingSurvey.id ? { ...survey, title, description: description || null, startsOn, endsOn, visibility, status: publishNow ? 'published' : survey.status } : survey))
           setSelected(null)
         } else {
-          setSurveys((current) => [{ id: surveyId, number: Math.max(0, ...current.map((survey) => survey.number)) + 1, title, description: description || null, seasonId: 'demo-season', visibility, startsOn, endsOn, responses: 0, recipients: 18, status: publishNow ? 'Activa' : 'Borrador' }, ...current])
+          setSurveys((current) => [{ id: surveyId, number: Math.max(0, ...current.map((survey) => survey.number)) + 1, title, description: description || null, seasonId: 'demo-season', visibility, startsOn, endsOn, responses: 0, recipients: 18, status: publishNow ? 'published' : 'draft' }, ...current])
         }
       } else {
         if (!draftSeasonId) throw new Error('Selecciona una temporada activa antes de crear la encuesta.')
@@ -192,7 +192,7 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
     {error && !editor && <p className="form-error">{error}</p>}
     {loading && <p className="page-loading">Cargando encuestas…</p>}
     {!loading && !surveys.length && <div className="empty-state"><h2>Aún no hay encuestas</h2><p>Crea un borrador para preparar la primera consulta del equipo.</p></div>}
-    {!!surveys.length && <div className="survey-list">{surveys.map((survey) => <button className="survey-card" key={survey.id} onClick={() => openResults(survey)} type="button"><span className="survey-number">{survey.number}</span><span className="survey-card-copy"><span className="task-meta"><span>{survey.visibility}</span><span>·</span><span>{survey.status}</span></span><strong>{survey.title}</strong>{survey.description && <small className="survey-card-description">{survey.description}</small>}<small>{periodLabel(survey)} · {survey.responses}/{survey.recipients} respuestas ({participationPercentage(survey.responses, survey.recipients)}%)</small></span></button>)}</div>}
+    {!!surveys.length && <div className="survey-list">{surveys.map((survey) => <button className="survey-card" key={survey.id} onClick={() => openResults(survey)} type="button"><span className="survey-number">{survey.number}</span><span className="survey-card-copy"><span className="task-meta"><span>{survey.visibility}</span><span>·</span><span>{surveyStatusLabel(survey, today)}</span></span><strong>{survey.title}</strong>{survey.description && <small className="survey-card-description">{survey.description}</small>}<small>{periodLabel(survey)} · {survey.responses}/{survey.recipients} respuestas ({participationPercentage(survey.responses, survey.recipients)}%)</small></span></button>)}</div>}
 
     {editor && <Modal className="survey-editor-dialog" disabled={saving} labelledBy="survey-editor-title" onClose={closeEditor} onSubmit={saveSurvey}>
       <div className="panel-form-heading"><div><span className="eyebrow">{editor === 'edit' ? 'BORRADOR' : 'NUEVA ENCUESTA'}</span><h2 id="survey-editor-title">{editor === 'edit' ? 'Editar encuesta' : 'Crear encuesta'}</h2></div><button aria-label="Cerrar editor" className="icon-button" onClick={closeEditor} type="button">×</button></div>
@@ -204,9 +204,9 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
     </Modal>}
 
     {selected && <Modal className="survey-results-dialog" labelledBy="survey-results-title" onClose={closeResults}>
-      <div className="panel-form-heading"><div><span className="eyebrow">RESULTADOS {selected.status === 'Activa' ? 'PROVISIONALES' : ''}</span><h2 id="survey-results-title">Encuesta {selected.number} · {selected.title}</h2></div><button aria-label="Cerrar resultados" className="icon-button" onClick={closeResults} type="button">×</button></div>
+      <div className="panel-form-heading"><div><span className="eyebrow">RESULTADOS {surveyStatusLabel(selected, today) === 'Activa' ? 'PROVISIONALES' : ''}</span><h2 id="survey-results-title">Encuesta {selected.number} · {selected.title}</h2></div><button aria-label="Cerrar resultados" className="icon-button" onClick={closeResults} type="button">×</button></div>
       {selected.description && <p className="survey-description">{selected.description}</p>}
-      {selected.status === 'Borrador' ? <div className="survey-draft-summary"><p>Este borrador todavía no tiene respuestas. Puedes revisarlo antes de publicarlo.</p><button className="primary-button" onClick={() => openEditor('edit', selected)} type="button">Editar encuesta</button></div> : <>
+      {selected.status === 'draft' ? <div className="survey-draft-summary"><p>Este borrador todavía no tiene respuestas. Puedes revisarlo antes de publicarlo.</p><button className="primary-button" onClick={() => openEditor('edit', selected)} type="button">Editar encuesta</button></div> : <>
         {demo && selected.visibility === 'Compartida con el equipo' && <label className="survey-player-filter">Ver respuestas de una jugadora<span className="survey-filter-input"><input onChange={(event) => setPlayerQuery(event.target.value)} placeholder="Buscar jugadora de la temporada…" spellCheck value={playerQuery} />{playerQuery && <button aria-label="Quitar filtro de jugadora" onClick={() => setPlayerQuery('')} type="button">×</button>}</span></label>}
         {demo ? (playerQuery && selected.visibility === 'Compartida con el equipo' ? <PlayerAnswers player={player} query={playerQuery} /> : <AggregatedResults survey={selected} />) : selectedResults ? <><ManagedAggregatedResults results={selectedResults} />{isOwner && selectedResults.recipientStatus && <OwnerSurveyTracking loading={loadingPlayerResults} onSelect={selectRecipient} recipients={selectedResults.recipientStatus} selectedPlayerId={selectedPlayerId} selectedResults={selectedPlayerResults} />}</> : <p className="page-loading">Cargando resultados…</p>}
         {((demo && selected.responses > 0 && (!playerQuery || Boolean(player?.responded))) || (!demo && (selectedResults?.participation.responses ?? 0) > 0)) && <div className="form-actions"><button className="secondary-button" onClick={() => window.print()} type="button">Guardar PDF</button></div>}
@@ -216,7 +216,7 @@ export function SurveysView({ resources, demo = false, initialSurveyId, isOwner,
 }
 
 function toDisplaySurvey(survey: ManagedSurvey, number: number): DisplaySurvey {
-  return { ...survey, number, visibility: visibilityFromDatabase(survey.visibility), status: statusFromDatabase(survey.status) }
+  return { ...survey, number, visibility: visibilityFromDatabase(survey.visibility) }
 }
 
 function toDraftQuestion(question: SurveyDraftQuestion): DraftQuestion {
@@ -226,7 +226,6 @@ function toDraftQuestion(question: SurveyDraftQuestion): DraftQuestion {
 function periodLabel(survey: DisplaySurvey) { return `${survey.startsOn} – ${survey.endsOn}` }
 function visibilityFromDatabase(visibility: SurveyVisibility): SurveyVisibilityLabel { return visibility === 'team' ? 'Compartida con el equipo' : visibility === 'management' ? 'Gestión' : 'Privada' }
 function visibilityToDatabase(visibility: SurveyVisibilityLabel): SurveyVisibility { return visibility === 'Compartida con el equipo' ? 'team' : visibility === 'Gestión' ? 'management' : 'private' }
-function statusFromDatabase(status: ManagedSurvey['status']): SurveyStatus { return status === 'published' ? 'Activa' : status === 'draft' ? 'Borrador' : 'Cancelada' }
 
 function QuestionEditor({ questions, setQuestions }: { questions: DraftQuestion[]; setQuestions: React.Dispatch<React.SetStateAction<DraftQuestion[]>> }) {
   function moveQuestion(id: DraftQuestion['id'], direction: -1 | 1) {

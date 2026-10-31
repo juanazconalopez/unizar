@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { canViewSurveyResults, optionPercentages, participationPercentage, surveyIsActive, surveyResultDate } from './surveySelectors'
+import { canViewSurveyResults, optionPercentages, participationPercentage, surveyIsActive, surveyResultDate, surveyStatusLabel } from './surveySelectors'
 
 const survey = { id: 'survey-1', startsOn: '2026-09-08', endsOn: '2026-09-14', status: 'published' as const, visibility: 'team' as const }
 
@@ -9,6 +9,20 @@ describe('survey selectors', () => {
     expect(surveyIsActive(survey, '2026-09-14')).toBe(true)
     expect(surveyIsActive(survey, '2026-09-15')).toBe(false)
     expect(surveyResultDate(survey)).toBe('2026-09-15')
+  })
+
+  test.each([
+    ['published', '2026-09-07', 'Publicada'],
+    ['published', '2026-09-08', 'Activa'],
+    ['published', '2026-09-14', 'Activa'],
+    ['published', '2026-09-15', 'Finalizada'],
+    ['draft', '2026-09-07', 'Borrador'],
+    ['draft', '2026-09-10', 'Borrador'],
+    ['draft', '2026-09-15', 'Borrador'],
+    ['cancelled', '2026-09-10', 'Cancelada'],
+    ['cancelled', '2026-09-15', 'Cancelada'],
+  ] as const)('labels %s surveys on %s as %s', (status, date, label) => {
+    expect(surveyStatusLabel({ ...survey, status }, date)).toBe(label)
   })
 
   test('applies the three agreed result visibilities', () => {
