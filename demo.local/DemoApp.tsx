@@ -1095,6 +1095,7 @@ export function DemoApp() {
           tasks={tasks}
           userId={userId}
           onLoadTrainingPlans={loadCalendarTrainings}
+          onLoadTrainingAttendees={hasPermission(profile, PERMISSIONS.calendar.trainingAttendees, groupPermissionKeys) ? loadTrainingAttendees : undefined}
           onRespondTraining={respondTraining}
           onLoadMatchMonth={loadMatchMonth}
           onLoadTaskRange={loadTaskRange}

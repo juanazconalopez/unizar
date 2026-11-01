@@ -98,6 +98,7 @@ test('solo owner y entrenadores autorizados generan; las jugadoras responden sin
   expect(canGenerateTrainingSchedule(makeProfile({ is_owner: true, is_active: false }))).toBe(false)
   expect(canGenerateTrainingSchedule(makeProfile({ is_viewer: true }), [PERMISSIONS.training.generate])).toBe(false)
   expect(canGenerateTrainingSchedule(makeProfile(), [PERMISSIONS.training.generate])).toBe(false)
+  expect(hasPermission(makeProfile(), PERMISSIONS.calendar.trainingAttendees)).toBe(true)
   expect(hasPermission(makeProfile(), PERMISSIONS.calendar.trainingRespond)).toBe(true)
   expect(hasPermission(makeProfile(), PERMISSIONS.training.view)).toBe(false)
 })

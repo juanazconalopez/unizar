@@ -48,6 +48,20 @@ describe('PlayerCalendarView', () => {
   beforeEach(() => vi.setSystemTime(new Date('2026-09-02T10:00:00+02:00')))
   afterEach(() => vi.useRealTimers())
 
+  test('abre desde el calendario personal los nombres de quienes asistirán', async () => {
+    const user = userEvent.setup()
+    const loadAttendees = vi.fn().mockResolvedValue(['Ana Pérez', 'Lucía Gómez'])
+    render(<PlayerCalendarView {...props()}
+      onLoadTrainingPlans={vi.fn().mockResolvedValue([{ id: 'training-1', session_date: today, title: 'Entrenamiento', status: 'draft', attending_count: 2 }])}
+      onLoadTrainingAttendees={loadAttendees}
+    />)
+    await user.click(await screen.findByRole('button', { name: /2 jugadoras han confirmado su asistencia.*Ver lista/ }))
+    const dialog = await screen.findByRole('dialog', { name: 'Respuestas «Asistiré»' })
+    expect(loadAttendees).toHaveBeenCalledWith('training-1')
+    expect(within(dialog).getByText('Ana Pérez')).toBeInTheDocument()
+    expect(within(dialog).getByText('Lucía Gómez')).toBeInTheDocument()
+  })
+
   test('combines published tasks, announcements, matches and birthdays', () => {
     render(<PlayerCalendarView {...props()} />)
 

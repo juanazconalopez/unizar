@@ -170,7 +170,7 @@ export function AppViewRouter({
         resources={data.resources}
         onRespondTraining={profile.is_player && can(PERMISSIONS.calendar.trainingRespond) ? saveTrainingResponse : undefined}
         onLoadTrainingPlans={can(PERMISSIONS.training.view) || can(PERMISSIONS.calendar.trainingView) ? fetchCalendarTrainingPlans : undefined}
-        onLoadTrainingAttendees={can(PERMISSIONS.training.view) ? fetchTrainingPlanAttendees : undefined}
+        onLoadTrainingAttendees={can(PERMISSIONS.training.view) || (profile.is_player && can(PERMISSIONS.calendar.trainingAttendees)) ? fetchTrainingPlanAttendees : undefined}
         onLoadTaskRange={data.loadTaskRange}
         onOpenTrainingPlan={(trainingPlanId) => navigate({ view: 'training', trainingPlanId })}
         onEditTrainingPlan={can(PERMISSIONS.training.edit) ? (trainingPlanId) => navigate({ view: 'training', trainingPlanId, trainingPlanMode: 'edit' }) : undefined}
@@ -206,6 +206,7 @@ export function AppViewRouter({
         userId={userId}
         resources={data.resources}
         onLoadTrainingPlans={can(PERMISSIONS.calendar.trainingView) ? fetchCalendarTrainingPlans : undefined}
+        onLoadTrainingAttendees={profile.is_player && can(PERMISSIONS.calendar.trainingAttendees) ? fetchTrainingPlanAttendees : undefined}
         onRespondTraining={profile.is_player && can(PERMISSIONS.calendar.trainingRespond) ? saveTrainingResponse : undefined}
         onLoadMatchMonth={data.loadMatchMonth}
         onLoadTaskRange={data.loadTaskRange}

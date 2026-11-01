@@ -18,10 +18,10 @@ describe('respuesta personal de entrenamientos', () => {
     render(<CalendarTrainingPlans plans={[{ ...plan, attendance_recorded: true, attending_count: 12 }]} />)
     expect(screen.getByRole('status', { name: '12 jugadoras han confirmado su asistencia' })).toHaveTextContent('12confirmadas')
   })
-  test('el staff puede abrir la lista de confirmadas desde el contador', async () => {
+  test.each([false, true])('staff o jugadora (player=%s) abre la lista de confirmadas desde el contador', async (player) => {
     const user = userEvent.setup()
     const load = vi.fn().mockResolvedValue(['Ana Pérez', 'Lucía Gómez'])
-    render(<CalendarTrainingPlans onLoadAttendees={load} plans={[{ ...plan, attending_count: 2 }]} />)
+    render(<CalendarTrainingPlans player={player} onLoadAttendees={load} plans={[{ ...plan, attending_count: 2 }]} />)
     await user.click(screen.getByRole('button', { name: /2 jugadoras han confirmado su asistencia.*Ver lista/ }))
     const dialog = await screen.findByRole('dialog', { name: 'Respuestas «Asistiré»' })
     expect(load).toHaveBeenCalledWith('p')

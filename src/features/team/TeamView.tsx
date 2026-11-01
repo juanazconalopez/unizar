@@ -87,10 +87,8 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       if (membership) playerLicenses.set(profile.id, membershipLicense(membership))
     }
   }
-  const licenseOptions = PLAYER_LICENSES.map((option) => ({
-    ...option,
-    count: [...playerLicenses.values()].filter((license) => license === option.value).length,
-  })).filter((option) => option.count > 0)
+  const representedLicenses = new Set(playerLicenses.values())
+  const licenseOptions = PLAYER_LICENSES.filter((option) => representedLicenses.has(option.value))
   const selectedLicenseFilters = licenseFilters.filter((license) => licenseOptions.some((option) => option.value === license))
   const hasActiveFilters = statusFilter !== 'all' || roleFilters.length > 0 || selectedLicenseFilters.length > 0
   const hasSearchOrFilters = Boolean(normalizedSearch) || hasActiveFilters
@@ -154,7 +152,7 @@ export function TeamView({ embedded = false, hideEmbeddedTitle = false, profiles
       </fieldset>
       {licenseOptions.length > 0 && <fieldset>
         <legend>Ficha · temporada activa</legend>
-        {licenseOptions.map((option) => <label key={option.value}><input checked={selectedLicenseFilters.includes(option.value)} onChange={() => setLicenseFilters((current) => current.includes(option.value) ? current.filter((license) => license !== option.value) : [...current, option.value])} type="checkbox" />{option.label} ({option.count})</label>)}
+        {licenseOptions.map((option) => <label key={option.value}><input checked={selectedLicenseFilters.includes(option.value)} onChange={() => setLicenseFilters((current) => current.includes(option.value) ? current.filter((license) => license !== option.value) : [...current, option.value])} type="checkbox" />{option.label}</label>)}
       </fieldset>}
       <button className="text-button" disabled={!hasActiveFilters} onClick={() => { setStatusFilter('all'); setRoleFilters([]); setLicenseFilters([]) }} type="button">Limpiar filtros</button>
     </div>

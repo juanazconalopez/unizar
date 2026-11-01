@@ -3,7 +3,7 @@ import type { Profile } from '../types'
 export const PERMISSIONS = {
   dashboard: { personal: 'dashboard.view_personal', team: 'dashboard.view_team' },
   statistics: { view: 'statistics.view', attendance: 'statistics.attendance', tasks: 'statistics.tasks' },
-  calendar: { personal: 'calendar.view_personal', manage: 'calendar.view_manage', trainingView: 'calendar.training_view', trainingRespond: 'calendar.training_respond' },
+  calendar: { personal: 'calendar.view_personal', manage: 'calendar.view_manage', trainingView: 'calendar.training_view', trainingRespond: 'calendar.training_respond', trainingAttendees: 'calendar.training_attendees' },
   tasks: {
     own: 'tasks.view_own', submitOwn: 'tasks.submit_own', team: 'tasks.view_team', results: 'tasks.view_results',
     create: 'tasks.create', edit: 'tasks.edit', delete: 'tasks.delete', publish: 'tasks.publish', reorder: 'tasks.reorder',
@@ -77,7 +77,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   player: new Set([
-    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.calendar.trainingView, PERMISSIONS.calendar.trainingRespond, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
+    PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.calendar.trainingView, PERMISSIONS.calendar.trainingRespond, PERMISSIONS.calendar.trainingAttendees, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
     PERMISSIONS.announcements.view, PERMISSIONS.matches.view, PERMISSIONS.matches.ownAvailability, PERMISSIONS.matches.lineup,
     PERMISSIONS.competition.view, PERMISSIONS.library.view, PERMISSIONS.surveys.own, PERMISSIONS.surveys.respondOwn,
   ]),

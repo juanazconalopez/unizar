@@ -58,7 +58,7 @@ export function PlayerCalendarView({
   results,
   tasks,
   userId,
-  onLoadTrainingPlans, onRespondTraining, resources,
+  onLoadTrainingPlans, onLoadTrainingAttendees, onRespondTraining, resources,
   onLoadMatchMonth,
   onLoadTaskRange,
   onLoadSurveyClosures,
@@ -72,6 +72,7 @@ export function PlayerCalendarView({
 }: {
   resources?: SessionQueryCache
   onLoadTrainingPlans?: (from: string, until: string) => Promise<TrainingPlanCalendarItem[]>
+  onLoadTrainingAttendees?: (planId: string) => Promise<string[]>
   onRespondTraining?: SaveTrainingResponse
   announcements: TeamAnnouncement[]
   availability: MatchAvailability[]
@@ -227,7 +228,7 @@ export function PlayerCalendarView({
           <div className="task-list">{selectedAnnouncements.map((announcement) => <AnnouncementCard announcement={announcement} initialOpen={focusedAnnouncementId === announcement.id} key={announcement.id} />)}</div>
         </div>}
         {selectedSurveyClosures.length > 0 && <SurveyClosureCards canRespond={canRespondToSurveys} surveys={selectedSurveyClosures} onModify={modifySurvey} onOpen={openSurveyDetail} />}
-        <CalendarTrainingPlans player plans={selectedTrainings} onRespond={training.respond} />
+        <CalendarTrainingPlans onLoadAttendees={onLoadTrainingAttendees} player plans={selectedTrainings} onRespond={training.respond} />
         {selectedMatches.length > 0 && <div className="selected-calendar-group selected-day-matches">
           <div className="task-week-heading"><h2>Partidos</h2><span>{selectedMatches.length}</span></div>
           <div className="match-list">{selectedMatches.map(renderMatch)}</div>

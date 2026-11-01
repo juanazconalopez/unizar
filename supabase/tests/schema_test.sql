@@ -1,5 +1,5 @@
 begin;
-select plan(727);
+select plan(729);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1443,11 +1443,13 @@ select like(pg_get_functiondef('public.get_season_callup_report(uuid)'::regproce
 select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%set_config(''app.internal_fixture_write'', ''yes'', true)%update public.matches%save_match_events%','el guardado autoriza las dos fichas solo dentro de la RPC validada');
 select like(pg_get_functiondef('public.save_internal_match_report(uuid,uuid,integer,integer,integer,jsonb,jsonb)'::regprocedure),'%set_config(''app.internal_fixture_write'', coalesce(previous_fixture_write, ''''), true)%','la RPC restaura el contexto anterior del trigger');
 
--- 094: el listado de confirmadas solo expone nombres al staff deportivo.
+-- 094/096: el listado de confirmadas solo expone nombres al staff y jugadoras autorizadas.
+select ok(exists(select 1 from public.permission_definitions where key = 'calendar.training_attendees' and parent_key = 'calendar.training_view'),'consultar asistentes requiere acceso a entrenamientos');
+select ok(exists(select 1 from public.role_permission_defaults where role = 'player' and permission_key = 'calendar.training_attendees'),'las jugadoras consultan asistentes por defecto');
 select has_function('public','get_training_plan_attendees',array['uuid'],'existe la lista de respuestas afirmativas por entrenamiento');
 select ok(not has_function_privilege('anon','public.get_training_plan_attendees(uuid)','EXECUTE'),'anon no consulta quién asistirá');
-select ok(has_function_privilege('authenticated','public.get_training_plan_attendees(uuid)','EXECUTE'),'la RPC autentica al usuario y valida staff y permisos');
-select like(pg_get_functiondef('public.get_training_plan_attendees(uuid)'::regprocedure),'%staff.is_owner or staff.is_coach%staff.is_approved%training.view%response.attending%response.schedule_version = checked_plan.schedule_version%training_player_eligible%','solo devuelve respuestas vigentes de jugadoras elegibles a owner o entrenadores');
+select ok(has_function_privilege('authenticated','public.get_training_plan_attendees(uuid)','EXECUTE'),'la RPC autentica al usuario y valida permisos y vinculación');
+select like(pg_get_functiondef('public.get_training_plan_attendees(uuid)'::regprocedure),'%training.view%staff.is_owner or staff.is_coach%staff.is_approved%calendar.training_attendees%training_player_eligible(checked_plan.season_id, checked_plan.session_date, auth.uid())%response.attending%response.schedule_version = checked_plan.schedule_version%training_player_eligible%','solo devuelve respuestas vigentes a staff autorizado o jugadoras vinculadas');
 
 -- 095: corregir el registro automático sin recrearlo ni reabrir respuestas.
 select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
