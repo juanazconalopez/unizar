@@ -1,5 +1,5 @@
 begin;
-select plan(729);
+select plan(769);
 
 select ok(
   exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'task_results' and policyname = 'Task managers can read all results'),
@@ -1483,6 +1483,49 @@ select unlike(pg_get_functiondef('public.guard_self_managed_training_attendance(
   '%update public.training_responses%', 'corregir la asistencia real no cambia las respuestas previstas');
 select like(pg_get_functiondef('public.guard_self_managed_training_attendance()'::regprocedure),
   '%SECURITY DEFINER%SET search_path TO %', 'la protección de correcciones mantiene search_path restringido');
+
+
+-- 097/098: suscripciones privadas, cola fiable y permisos en cada entrega.
+select has_table('public','push_subscriptions','se guardan dispositivos push');
+select has_table('public','push_events','se conservan eventos pendientes sin consultar colecciones completas');
+select has_table('public','push_deliveries','cada dispositivo tiene sus propios reintentos');
+select ok((select relrowsecurity from pg_class where oid='public.push_subscriptions'::regclass),'las suscripciones tienen RLS');
+select ok((select relrowsecurity from pg_class where oid='public.push_events'::regclass),'los eventos tienen RLS');
+select ok((select relrowsecurity from pg_class where oid='public.push_deliveries'::regclass),'las entregas tienen RLS');
+select ok(not has_table_privilege('authenticated','public.push_subscriptions','SELECT'),'nadie consulta endpoints ajenos directamente');
+select ok(not has_table_privilege('authenticated','public.push_subscriptions','INSERT'),'el alta de dispositivos pasa por RPC');
+select ok(not has_table_privilege('authenticated','public.push_events','INSERT'),'los clientes no crean mensajes arbitrarios');
+select ok(not has_table_privilege('authenticated','public.push_deliveries','SELECT'),'los clientes no leen la cola');
+select ok(has_function_privilege('authenticated','public.register_push_device(uuid,text,text,text,text[])','EXECUTE'),'una cuenta autorizada puede suscribir su dispositivo');
+select ok(not has_function_privilege('anon','public.register_push_device(uuid,text,text,text,text[])','EXECUTE'),'no se permiten suscripciones anónimas');
+select ok(has_function_privilege('authenticated','public.unregister_push_device(uuid)','EXECUTE'),'se permite desvincular incluso tras retirar permiso push');
+select ok(not has_function_privilege('authenticated','public.claim_push_deliveries(integer)','EXECUTE'),'la cola no se expone a clientes');
+select ok(has_function_privilege('service_role','public.claim_push_deliveries(integer)','EXECUTE'),'el servicio interno reclama entregas');
+select ok(not has_function_privilege('authenticated','public.finish_push_delivery(bigint,uuid,integer)','EXECUTE'),'nadie marca como enviado un aviso ajeno');
+select ok(not has_function_privilege('authenticated','public.dispatch_push_notifications()','EXECUTE'),'solo el proceso interno accede a Vault y al envío');
+select ok(not has_function_privilege('authenticated','public.push_user_has_permission(uuid,text)','EXECUTE'),'el helper de permisos ajenos es privado');
+select ok(not has_function_privilege('authenticated','public.enqueue_push_event(text,text,uuid,uuid,date,date,uuid,interval)','EXECUTE'),'los eventos deportivos solo se encolan desde operaciones autorizadas');
+select ok(public.push_endpoint_allowed('https://fcm.googleapis.com/fcm/send/token'),'admite FCM');
+select ok(public.push_endpoint_allowed('https://web.push.apple.com/token'),'admite Apple');
+select ok(public.push_endpoint_allowed('https://updates.push.services.mozilla.com/wpush/v2/token'),'admite Mozilla');
+select ok(not public.push_endpoint_allowed('https://fcm.googleapis.com.evil.test/token'),'rechaza dominios que imitan al proveedor');
+select ok(not public.push_endpoint_allowed('http://fcm.googleapis.com/token'),'exige HTTPS');
+select ok(not public.push_endpoint_allowed('https://127.0.0.1/token'),'no admite destinos internos');
+select ok(not public.push_endpoint_allowed('https://fcm.googleapis.com@evil.test/token'),'no admite credenciales en la URL');
+select ok(not public.push_user_has_permission(null,'notifications.push'),'no hay permisos sin perfil activo');
+select ok(not public.push_member_on(null,null,current_date),'no hay destinatarias sin vinculación');
+select is(public.push_event_topic('availability_digest'),'availability_digest','el resumen tiene preferencia independiente');
+select is(public.push_event_topic('training_reminder'),'training_reminders','los recordatorios de entrenamientos son configurables');
+select throws_ok($$select public.claim_push_deliveries(30)$$,'P0001','Solo el servicio interno puede enviar push','la reclamación valida también el rol del JWT');
+select like(pg_get_functiondef('public.push_event_allowed(uuid,uuid)'::regprocedure),'%s.created_at>e.created_at%','no envía eventos anteriores a la suscripción');
+select like(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'%skip locked%','los lotes concurrentes no reclaman la misma entrega');
+select like(pg_get_functiondef('public.claim_push_deliveries(integer)'::regprocedure),'%push_event_allowed%','se revalidan los permisos al reclamar');
+select like(pg_get_functiondef('public.finish_push_delivery(bigint,uuid,integer)'::regprocedure),'%404,410%','las suscripciones caducadas se eliminan');
+select like(pg_get_functiondef('public.push_availability_pending(uuid,uuid)'::regprocedure),'%player_license_allows_availability%','los recordatorios respetan fichas y excepciones');
+select like(pg_get_functiondef('public.push_availability_pending(uuid,uuid)'::regprocedure),'%match_fixture_availability%','una respuesta compartida del derbi evita el recordatorio');
+select like(pg_get_functiondef('public.push_training_pending(uuid,uuid)'::regprocedure),'%schedule_version%','las respuestas de un horario anterior siguen pendientes');
+select like(pg_get_functiondef('public.prepare_push_reminders()'::regprocedure),'%Europe/Madrid%','los recordatorios usan la zona del equipo');
+select ok(exists(select 1 from cron.job where jobname='unizar-web-push' and schedule='*/5 * * * *'),'Cron funciona sin navegador y sin Realtime');
 
 select * from finish();
 rollback;

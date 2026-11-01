@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      push_subscriptions: {
+        Row: { id: string; user_id: string; device_key: string; endpoint: string; p256dh: string; auth_key: string; topics: string[]; created_at: string; updated_at: string }
+        Insert: { id?: string; user_id: string; device_key: string; endpoint: string; p256dh: string; auth_key: string; topics: string[]; created_at?: string; updated_at?: string }
+        Update: { id?: string; user_id?: string; device_key?: string; endpoint?: string; p256dh?: string; auth_key?: string; topics?: string[]; created_at?: string; updated_at?: string }
+        Relationships: [{ foreignKeyName: "push_subscriptions_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }]
+      }
+      push_events: {
+        Row: { id: string; event_key: string; kind: string; source_id: string | null; season_id: string | null; target_date: string | null; previous_date: string | null; recipient_id: string | null; subscription_id: string | null; created_at: string; available_at: string; expires_at: string }
+        Insert: { id?: string; event_key: string; kind: string; source_id?: string | null; season_id?: string | null; target_date?: string | null; previous_date?: string | null; recipient_id?: string | null; subscription_id?: string | null; created_at?: string; available_at?: string; expires_at?: string }
+        Update: { id?: string; event_key?: string; kind?: string; source_id?: string | null; season_id?: string | null; target_date?: string | null; previous_date?: string | null; recipient_id?: string | null; subscription_id?: string | null; created_at?: string; available_at?: string; expires_at?: string }
+        Relationships: [{ foreignKeyName: "push_events_season_id_fkey"; columns: ["season_id"]; isOneToOne: false; referencedRelation: "seasons"; referencedColumns: ["id"] }, { foreignKeyName: "push_events_recipient_id_fkey"; columns: ["recipient_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }, { foreignKeyName: "push_events_subscription_id_fkey"; columns: ["subscription_id"]; isOneToOne: false; referencedRelation: "push_subscriptions"; referencedColumns: ["id"] }]
+      }
+      push_deliveries: {
+        Row: { id: number; event_id: string; subscription_id: string; attempts: number; next_attempt_at: string; lease_token: string | null; locked_until: string | null; finished_at: string | null; last_status: number | null }
+        Insert: { id?: never; event_id: string; subscription_id: string; attempts?: number; next_attempt_at?: string; lease_token?: string | null; locked_until?: string | null; finished_at?: string | null; last_status?: number | null }
+        Update: { id?: never; event_id?: string; subscription_id?: string; attempts?: number; next_attempt_at?: string; lease_token?: string | null; locked_until?: string | null; finished_at?: string | null; last_status?: number | null }
+        Relationships: [{ foreignKeyName: "push_deliveries_event_id_fkey"; columns: ["event_id"]; isOneToOne: false; referencedRelation: "push_events"; referencedColumns: ["id"] }, { foreignKeyName: "push_deliveries_subscription_id_fkey"; columns: ["subscription_id"]; isOneToOne: false; referencedRelation: "push_subscriptions"; referencedColumns: ["id"] }]
+      }
       match_training_exceptions: {
         Row: { match_id: string; player_id: string; authorized_by: string; authorized_at: string; reason: string }
         Insert: { match_id: string; player_id: string; authorized_by: string; authorized_at?: string; reason: string }
@@ -1485,6 +1503,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      register_push_device: { Args: { checked_device_key: string; checked_endpoint: string; checked_p256dh: string; checked_auth: string; checked_topics: string[] }; Returns: undefined }
+      get_own_push_device: { Args: { checked_device_key: string }; Returns: { topics: string[] }[] }
+      set_own_push_topics: { Args: { checked_device_key: string; checked_topics: string[] }; Returns: undefined }
+      unregister_push_device: { Args: { checked_device_key: string }; Returns: undefined }
+      queue_own_push_test: { Args: { checked_device_key: string }; Returns: undefined }
+      push_user_has_permission: { Args: { checked_user: string; checked_permission: string }; Returns: boolean }
+      push_endpoint_allowed: { Args: { checked_endpoint: string }; Returns: boolean }
+      push_member_on: { Args: { checked_user: string; checked_season: string; checked_date: string }; Returns: boolean }
+      push_staff_match_scope: { Args: { checked_user: string; checked_match: string }; Returns: boolean }
+      push_availability_pending: { Args: { checked_user: string; checked_match: string }; Returns: boolean }
+      push_training_pending: { Args: { checked_user: string; checked_plan: string }; Returns: boolean }
+      push_event_topic: { Args: { checked_kind: string }; Returns: string }
+      push_event_allowed: { Args: { checked_event: string; checked_subscription: string }; Returns: boolean }
+      enqueue_push_event: { Args: { checked_key: string; checked_kind: string; checked_source: string; checked_season: string; checked_date: string; checked_previous_date?: string; checked_recipient?: string; checked_delay?: string }; Returns: undefined }
+      prepare_push_reminders: { Args: Record<PropertyKey, never>; Returns: undefined }
+      dispatch_push_notifications: { Args: Record<PropertyKey, never>; Returns: undefined }
+      claim_push_deliveries: { Args: { checked_limit?: number }; Returns: { delivery_id: number; lease: string; endpoint: string; p256dh: string; auth_key: string; user_id: string; event_id: string; kind: string; target_date: string | null; source_id: string | null; target_view: string; expires_at: string }[] }
+      finish_push_delivery: { Args: { checked_delivery: number; checked_lease: string; checked_status: number }; Returns: undefined }
       finalize_self_managed_training_attendance: { Args: Record<PropertyKey, never>; Returns: number }
       self_managed_attendance_write_allowed: { Args: { checked_plan_id: string; checked_date: string }; Returns: boolean }
       lock_training_date: { Args: { checked_date: string }; Returns: undefined }

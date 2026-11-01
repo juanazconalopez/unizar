@@ -1,6 +1,7 @@
 import type { Profile } from '../types'
 
 export const PERMISSIONS = {
+  notifications: { push: 'notifications.push' },
   dashboard: { personal: 'dashboard.view_personal', team: 'dashboard.view_team' },
   statistics: { view: 'statistics.view', attendance: 'statistics.attendance', tasks: 'statistics.tasks' },
   calendar: { personal: 'calendar.view_personal', manage: 'calendar.view_manage', trainingView: 'calendar.training_view', trainingRespond: 'calendar.training_respond', trainingAttendees: 'calendar.training_attendees' },
@@ -53,6 +54,7 @@ export const ALL_PERMISSIONS = new Set<PermissionKey>(ALL_PERMISSION_KEYS)
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<PermissionKey>> = {
   coach: new Set([
+    PERMISSIONS.notifications.push,
     PERMISSIONS.dashboard.team, PERMISSIONS.statistics.view, PERMISSIONS.statistics.attendance, PERMISSIONS.statistics.tasks,
     PERMISSIONS.calendar.manage, PERMISSIONS.tasks.team, PERMISSIONS.tasks.results, PERMISSIONS.tasks.create, PERMISSIONS.tasks.edit,
     PERMISSIONS.tasks.delete, PERMISSIONS.tasks.publish, PERMISSIONS.tasks.reorder, PERMISSIONS.announcements.view,
@@ -70,6 +72,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   viewer: new Set([
+    PERMISSIONS.notifications.push,
     PERMISSIONS.dashboard.team, PERMISSIONS.statistics.view, PERMISSIONS.statistics.attendance, PERMISSIONS.statistics.tasks,
     PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.matches.view, PERMISSIONS.matches.teamAvailability, PERMISSIONS.matches.lineup, PERMISSIONS.attendance.report,
     PERMISSIONS.competition.view, PERMISSIONS.library.view,
@@ -77,6 +80,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<ConfigurableRole, ReadonlySet<Perm
     PERMISSIONS.surveys.cancelOwn, PERMISSIONS.surveys.results, PERMISSIONS.surveys.export,
   ]),
   player: new Set([
+    PERMISSIONS.notifications.push,
     PERMISSIONS.workGroups.view, PERMISSIONS.videoAnalysis.view, PERMISSIONS.trainingGroups.view, PERMISSIONS.dashboard.personal, PERMISSIONS.calendar.personal, PERMISSIONS.calendar.trainingView, PERMISSIONS.calendar.trainingRespond, PERMISSIONS.calendar.trainingAttendees, PERMISSIONS.tasks.own, PERMISSIONS.tasks.submitOwn,
     PERMISSIONS.announcements.view, PERMISSIONS.matches.view, PERMISSIONS.matches.ownAvailability, PERMISSIONS.matches.lineup,
     PERMISSIONS.competition.view, PERMISSIONS.library.view, PERMISSIONS.surveys.own, PERMISSIONS.surveys.respondOwn,

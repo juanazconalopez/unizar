@@ -990,6 +990,8 @@ export function DemoApp() {
       errorMessage=""
       permissionKeys={groupPermissionKeys}
       notifications={groupNotifications}
+      pushUserId={profile.id}
+      pushDemo
       notificationReadIds={readGroupNotificationIds}
       notificationUnreadCount={groupNotifications.length}
       onNotificationOpen={(notification) => navigate(notification.view)}

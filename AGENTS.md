@@ -424,6 +424,9 @@ Reglas importantes:
 
 ## Notificaciones
 
+- Web Push usa las migraciones `097_web_push_devices.sql` y `098_web_push_events_and_dispatch.sql`, una cola transaccional privada y la Edge Function `send-push`. El trabajo `unizar-web-push` de Supabase Cron revisa cada cinco minutos e invoca solo si hay pendientes, sin Realtime ni ejecución dinámica en Cloudflare. Despliegue y credenciales manuales en `docs/web-push.md`; nunca añadir claves privadas o el secreto de Cron a variables `VITE_`.
+- Activar push es voluntario por dispositivo desde la campana y requiere `notifications.push`, además de los permisos de cada aviso. Incluye partidos, convocatorias, avisos publicados, grupos, recordatorios de disponibilidad y entrenamientos, cambios/cancelaciones de entrenamientos y un resumen de disponibilidad para staff agrupado durante 15 minutos. No copia el histórico de la campana ni genera push de perfil, cumpleaños o tareas. Las preferencias y los permisos se revalidan antes de enviar.
+- `public/push-sw.js` amplía el worker de Workbox mediante `importScripts`; no registrar un segundo worker. Solo conserva el identificador de cuenta para bloquear mensajes ajenos. Desvincular la suscripción al cerrar sesión/cambiar de cuenta y mantener los mensajes de pantalla bloqueada sin datos privados. La demo simula preferencias y pruebas sin Supabase ni permisos del navegador.
 - La campana combina avisos funcionales y recordatorios del perfil.
 - No volver a consultar tareas o resultados para la campana mientras no generen ninguna notificación. Los avisos solo relacionan `seasons`, sin una relación directa con `season_competitions`.
 - Los cumpleaños no generan elementos persistentes en la campana; se muestran como una línea en Inicio y, para el owner, en el calendario de Resumen.

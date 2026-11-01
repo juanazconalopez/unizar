@@ -16,6 +16,7 @@ import { navigationEntries } from './navigationEntries'
 import { MobileProfileMenu, NotificationButton } from './MobileProfileMenu'
 
 const ProfileDetailsDialog = lazy(() => import('../../features/profile/ProfileDetailsDialog').then(({ ProfileDetailsDialog }) => ({ default: ProfileDetailsDialog })))
+const PushNotificationSettings = lazy(() => import('../../features/notifications/PushNotificationSettings').then(({ PushNotificationSettings }) => ({ default: PushNotificationSettings })))
 
 
 export function AppLayout({
@@ -39,6 +40,8 @@ export function AppLayout({
   onNotificationRead,
   onNotificationOpen,
   onNotificationsReadAll,
+  pushUserId,
+  pushDemo = false,
   children,
 }: {
   profile: Profile
@@ -61,6 +64,8 @@ export function AppLayout({
   onNotificationRead?: (notification: AppNotification) => void
   onNotificationOpen?: (notification: AppNotification) => void
   onNotificationsReadAll?: () => void
+  pushUserId?: string
+  pushDemo?: boolean
   children: ReactNode
 }) {
   const contentRef = useRef<HTMLElement>(null)
@@ -158,6 +163,7 @@ export function AppLayout({
               else navigate(notification.view)
             }}
           />
+          {pushUserId && <Suspense fallback={<p>Preparando notificaciones…</p>}><PushNotificationSettings key={pushUserId} userId={pushUserId} isPlayer={profile.is_player} isStaff={profile.is_owner || profile.is_coach} demo={pushDemo} /></Suspense>}
         </Modal>
       )}
       {iosInstructionsOpen && (

@@ -6,6 +6,10 @@ import { clearProfilePhotoCache, setProfilePhotoCacheUser } from '../services/pr
 import { setBirthdayCacheUser } from '../services/birthdayService'
 import { setContentImageCacheUser } from '../services/contentImagesService'
 
+function syncSessionDevice(userId: string | null) {
+  void import('../services/sessionDeviceService').then((api) => api.syncSessionDevice(userId)).catch(() => undefined)
+}
+
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -22,6 +26,7 @@ export function useAuth() {
         else void clearProfilePhotoCache()
         setBirthdayCacheUser(data.session?.user.id ?? null)
         setContentImageCacheUser(data.session?.user.id ?? null)
+        syncSessionDevice(data.session?.user.id ?? null)
         setSession(data.session)
       })
       .catch((error: unknown) => {
@@ -39,6 +44,7 @@ export function useAuth() {
           else void clearProfilePhotoCache()
           setBirthdayCacheUser(nextSession?.user.id ?? null)
           setContentImageCacheUser(nextSession?.user.id ?? null)
+          syncSessionDevice(nextSession?.user.id ?? null)
           setSession(nextSession)
           setLoading(false)
         }
@@ -54,6 +60,8 @@ export function useAuth() {
   async function signInWithGoogle() {
     setErrorMessage('')
     try {
+      const { rememberAuthNavigation } = await import('../services/sessionDeviceService')
+      rememberAuthNavigation()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
@@ -66,6 +74,8 @@ export function useAuth() {
 
   async function signOut() {
     try {
+      const { disablePush } = await import('../services/sessionDeviceService')
+      await disablePush()
       const { error } = await supabase.auth.signOut()
       if (error) setErrorMessage(error.message)
     } catch (error) {

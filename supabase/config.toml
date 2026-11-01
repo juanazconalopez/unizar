@@ -1,0 +1,5 @@
+# Cron se autentica con PUSH_DISPATCH_SECRET, comprobado por la propia función.
+project_id = "unizar"
+
+[functions.send-push]
+verify_jwt = false

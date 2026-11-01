@@ -44,6 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ['/push-sw.js'],
         cleanupOutdatedCaches: true,
         globPatterns: ['index.html', 'assets/index-*.{js,css}', 'icons.svg'],
         navigateFallback: '/index.html',

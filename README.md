@@ -190,6 +190,15 @@ y se ejecutan con Supabase CLI mediante `supabase test db`.
 
 En Supabase, añade tanto la dirección local como la dirección desplegada a **Authentication → URL Configuration → Redirect URLs**.
 
+## Notificaciones push
+
+La activación voluntaria por dispositivo se encuentra dentro de la campana. La
+PWA recibe Web Push estándar; Supabase mantiene las suscripciones y procesa los
+eventos mediante Cron y la Edge Function `send-push`. Cloudflare conserva el
+alojamiento estático. Para habilitarlo en producción hay que aplicar las
+migraciones 097/098 y configurar las claves según [la guía de despliegue](docs/web-push.md).
+La demo simula estas preferencias sin enviar notificaciones reales.
+
 ## Publicación en Cloudflare Workers
 
 El despliegue actual utiliza Workers Builds, conectado al repositorio de GitHub.

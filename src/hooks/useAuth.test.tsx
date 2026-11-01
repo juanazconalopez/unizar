@@ -6,6 +6,8 @@ vi.mock('../services/profilePhotoService', () => ({ setProfilePhotoCacheUser: ph
 const privateCaches = vi.hoisted(() => ({ birthdays: vi.fn(), images: vi.fn() }))
 vi.mock('../services/birthdayService', () => ({ setBirthdayCacheUser: privateCaches.birthdays }))
 vi.mock('../services/contentImagesService', () => ({ setContentImageCacheUser: privateCaches.images }))
+const push = vi.hoisted(() => ({ disable: vi.fn() }))
+vi.mock('../services/pushNotificationsService', () => ({ disablePush: push.disable, reconcilePushAccount: vi.fn() }))
 
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
@@ -32,6 +34,7 @@ describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     photoCache.clear.mockResolvedValue(undefined)
+    push.disable.mockResolvedValue(undefined)
     mocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: mocks.unsubscribe } } })
   })
 
@@ -82,5 +85,15 @@ describe('useAuth', () => {
     expect(result.current.errorMessage).toBe('Sin espacio para guardar la sesión')
     await act(() => result.current.signOut())
     expect(result.current.errorMessage).toBe('No se ha podido cerrar la sesión')
+  })
+
+  test('no abandona la sesión si no puede desvincular las notificaciones del dispositivo', async () => {
+    mocks.getSession.mockResolvedValue({ data: { session: { user: { id: 'owner-1' } } }, error: null })
+    push.disable.mockRejectedValue(new Error('Recupera la conexión para desactivar las notificaciones.'))
+    const { result } = renderHook(() => useAuth())
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    await act(() => result.current.signOut())
+    expect(mocks.signOut).not.toHaveBeenCalled()
+    expect(result.current.errorMessage).toContain('Recupera la conexión')
   })
 })

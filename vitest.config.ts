@@ -17,6 +17,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: 'https://supabase.test',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'test-publishable-key',
+      VITE_WEB_PUSH_PUBLIC_KEY: 'AQID',
     },
     exclude: ['e2e/**', 'node_modules/**'],
     environment: 'jsdom',

@@ -103,6 +103,7 @@ function App() {
     notificationReadIds={notifications.readIds}
     notificationUnreadCount={notifications.unreadCount}
     notifications={notifications.notifications}
+    pushUserId={hasPermission(profile, PERMISSIONS.notifications.push, data.permissionKeys) ? profile.id : undefined}
     online={online}
     profile={profile}
     permissionKeys={data.permissionKeys}
