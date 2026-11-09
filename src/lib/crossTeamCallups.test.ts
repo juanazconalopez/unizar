@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { makeMatch } from '../test/fixtures'
 import type { Match, MatchLineup } from '../types'
-import { crossTeamCallupOverlap, crossTeamCallupReference, crossTeamCallupRestriction } from './crossTeamCallups'
+import { crossTeamCallupAdditionBlocked, crossTeamCallupOverlap, crossTeamCallupReference, crossTeamCallupRestriction } from './crossTeamCallups'
 
 const target = makeMatch({ id: 'b-next', team_id: 'b', competition_id: 'league', match_date: '2026-10-18' })
 const previous = makeMatch({ id: 'a-last', team_id: 'a', competition_id: 'league', match_date: '2026-10-11', status: 'completed', report_events_reviewed: true, lineup_published: true })
@@ -59,4 +59,16 @@ test('excludes the paired derby fixture from the previous acta comparison', () =
   const derby = { ...target, internal_fixture_id: 'derby', kickoff_time: '12:00:00' }
   const paired = { ...previous, id: 'paired', match_date: derby.match_date, kickoff_time: '11:00:00', internal_fixture_id: 'derby' }
   expect(crossTeamCallupReference(derby, [paired, previous], lineups, true).matchId).toBe(previous.id)
+})
+
+
+test('el bloqueo de incorporación respeta el límite, las seleccionadas y la activación', () => {
+  const reference = crossTeamCallupReference(target, [previous], lineups, true)
+  const selected = lineups.slice(0, 7).map((entry) => entry.player_id)
+  expect(crossTeamCallupAdditionBlocked(reference, selected, 'p-7')).toBe(true)
+  expect(crossTeamCallupAdditionBlocked(reference, selected, 'p-0')).toBe(false)
+  expect(crossTeamCallupAdditionBlocked(reference, selected, 'other')).toBe(false)
+  expect(crossTeamCallupAdditionBlocked(reference, selected.slice(1), 'p-7')).toBe(false)
+  expect(crossTeamCallupAdditionBlocked({ ...reference, enabled: false }, selected, 'p-7')).toBe(false)
+  expect(crossTeamCallupAdditionBlocked(undefined, selected, 'p-7')).toBe(false)
 })

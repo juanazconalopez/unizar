@@ -16,6 +16,13 @@ export function crossTeamCallupOverlap(reference: CrossTeamCallupReference, play
   return [...new Set(playerIds)].filter((id) => previous.has(id))
 }
 
+/** Solo impide nuevas incorporaciones; permite retirar y recolocar las ya elegidas. */
+export function crossTeamCallupAdditionBlocked(reference: CrossTeamCallupReference | undefined, playerIds: Iterable<string>, playerId: string): boolean {
+  if (!reference?.enabled || !reference.matchId || !reference.playerIds.includes(playerId)) return false
+  const selected = new Set(playerIds)
+  return !selected.has(playerId) && crossTeamCallupOverlap(reference, selected).length >= CROSS_TEAM_CALLUP_LIMIT
+}
+
 export function crossTeamCallupRestriction(reference: CrossTeamCallupReference, playerIds: Iterable<string>): string | null {
   if (!reference.enabled || !reference.matchId) return null
   if (!reference.confirmed) return 'Confirma el acta del último partido del otro equipo antes de publicar esta convocatoria.'

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { addDays, todayIso } from '../../lib/dates'
-import { makeMembership, makeProfile } from '../../test/fixtures'
+import { makeMembership, makeProfile, makeSeasonTeam } from '../../test/fixtures'
 import type { Match } from '../../types'
 import { MatchLineupDialog } from './MatchLineupDialog'
 
@@ -11,6 +11,49 @@ function match(overrides: Partial<Match> = {}): Match {
 }
 
 describe('MatchLineupDialog', () => {
+  test('bloquea la octava del acta por botón y arrastre y libera plaza al retirar una marcada', () => {
+    const players = Array.from({ length: 9 }, (_, index) => makeProfile({ id: `p-${index}`, display_name: `Jugadora ${index}` }))
+    const reference = { enabled: true, matchId: 'previous', teamName: 'CEFA Unizar B', matchDate: '2026-10-01', confirmed: true, playerIds: players.slice(0, 8).map((player) => player.id) }
+    render(<MatchLineupDialog demo demoCallupReference={reference}
+      match={match({ season_competitions: { id: 'league', name: 'Liga', color: 'blue', is_default: true, restrict_cross_team_callups: true } })}
+      profiles={players} memberships={players.map((player) => makeMembership({ player_id: player.id }))}
+      availability={players.map((player) => ({ match_id: 'match-1', player_id: player.id, status: 'available', comment: null, updated_at: player.created_at }))}
+      entries={players.slice(0, 7).map((player, index) => ({ match_id: 'match-1', player_id: player.id, slot_number: index + 1, role: 'starter', sort_order: index + 1, position: null, updated_at: player.created_at }))}
+      onClose={vi.fn()} onSave={vi.fn()} />)
+    const card = screen.getByText('Jugadora 7').closest('article')!
+    expect(within(card).getByRole('button', { name: 'Añadir' })).toBeDisabled()
+    expect(card).toHaveAttribute('draggable', 'false')
+    expect(within(card).getByLabelText(/Convocada en la última acta de CEFA Unizar B/)).toHaveTextContent('B')
+    expect(within(screen.getByText('Jugadora 8').closest('article')!).getByRole('button', { name: 'Añadir' })).toBeEnabled()
+    const summary = screen.getByLabelText('Distribución por posición principal')
+    expect(within(summary).getByText('Total').closest('span')).toHaveTextContent('Total 7')
+    const slots = screen.getByRole('dialog').querySelectorAll('.lineup-slot')
+    fireEvent.drop(slots[7], { dataTransfer: { getData: () => 'p-7' } })
+    expect(screen.queryByRole('combobox', { name: 'Posición de Jugadora 7' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Posición de Jugadora 0' }), { target: { value: '9' } })
+    expect(screen.getByRole('combobox', { name: 'Posición de Jugadora 0' })).toHaveValue('9')
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar a Jugadora 0' }))
+    expect(within(card).getByRole('button', { name: 'Añadir' })).toBeEnabled()
+    fireEvent.click(within(card).getByRole('button', { name: 'Añadir' }))
+    expect(screen.getByRole('combobox', { name: 'Posición de Jugadora 7' })).toBeInTheDocument()
+    expect(within(summary).getByText('Total').closest('span')).toHaveTextContent('Total 7')
+  })
+
+  test('conserva el color del equipo al incorporar una jugadora a la alineación', () => {
+    const player = makeProfile()
+    const team = makeSeasonTeam({ name: 'Unizar A', color: 'blue' })
+    render(<MatchLineupDialog demo match={match({ team_id: team.id })} profiles={[player]} seasonTeams={[team]}
+      memberships={[makeMembership({ season_team_id: team.id })]} entries={[]}
+      availability={[{ match_id: 'match-1', player_id: player.id, status: 'available', comment: null, updated_at: player.created_at }]}
+      onClose={vi.fn()} onSave={vi.fn()} />)
+    const card = screen.getByText(player.display_name).closest('article')!
+    expect(card).toHaveAttribute('title', 'Unizar A')
+    expect(card.style.getPropertyValue('--lineup-team-soft')).toBe('#edf6fb')
+    fireEvent.click(within(card).getByRole('button', { name: 'Añadir' }))
+    const slot = screen.getByRole('combobox', { name: `Posición de ${player.display_name}` }).closest('.lineup-slot') as HTMLElement
+    expect(slot.style.getPropertyValue('--lineup-team-soft')).toBe('#edf6fb')
+  })
+
   test('excluye reservas del otro equipo sin borrar coincidencias previas y las libera al actualizar', () => {
     const player = makeProfile()
     const other = makeProfile({ id: 'other', display_name: 'Beatriz López' })

@@ -1276,3 +1276,34 @@
 .match-dot {
   background: #7459ae;
 }
+
+/* La pertenencia al equipo conserva su color también al alcanzar un límite. */
+.available-player-pool article,
+.available-player-pool article.lineup-player-reserved,
+.lineup-slot.filled {
+  background: var(--lineup-team-soft, white);
+  border-left: 3px solid var(--lineup-team-border, var(--line));
+}
+
+.available-player-pool article.lineup-player-reserved {
+  cursor: default;
+}
+
+.lineup-acta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  padding: 2px 5px;
+  border: 1px solid #b7c5bf;
+  border-radius: 5px;
+  background: white;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.lineup-player-badges:empty { display: none; }
+.lineup-player-identity { flex-wrap: wrap; }
+.lineup-cross-team-counter { margin: 8px 0; font-size: 12px; }
